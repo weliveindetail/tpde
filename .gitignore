@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+build*
+.vscode
+.idea
