@@ -15,6 +15,13 @@
 
 namespace tpde {
 
+#ifdef TPDE_LOGGING
+template <typename T>
+concept CanBeFormatted = requires(T a) {
+    { spdlog::trace("{}", a) };
+};
+#endif
+
 template <bool B>
 concept IsFalse = (B == false);
 
@@ -201,6 +208,20 @@ concept IRAdaptor = requires(T a) {
     {
         a.block_phis(ARG(typename T::IRBlockRef))
     } -> IRRange<typename T::IRValueRef>;
+
+    /// The compiler needs to store some values that are attached to a block.
+    /// Some adaptors may be able to store them efficiently so we ask the
+    /// adaptor to handle the storage for them
+    { a.block_info() } -> std::same_as<u32>;
+
+    /// Set the block info
+    { a.block_set_info(ARG(typename T::IRBlockRef), ARG(u32)) };
+
+#ifdef TPDE_LOGGING
+    /// If logging is enabled, we want to be able to print blocks and want to
+    /// give the adaptor the opportunity to dictate how that is done
+    { a.block_fmt_ref(ARG(typename T::IRBlockRef)) } -> CanBeFormatted;
+#endif
 
 
     // information about values

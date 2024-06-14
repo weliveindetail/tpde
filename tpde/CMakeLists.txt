@@ -37,17 +37,23 @@ else ()
     set(TPDE_INCLUDE_SPDLOG FALSE)
 endif ()
 
+# gharveymn/small_vector
+add_subdirectory(../deps/small_vector ${CMAKE_CURRENT_BINARY_DIR}/deps/small_vector)
+
 
 #------------------------------------------------------------------------------
 # sources
 #------------------------------------------------------------------------------
 
 set(TPDE_HEADERS
+    include/tpde/Analyzer.hpp
     include/tpde/base.hpp
     include/tpde/CompilerBase.hpp
     include/tpde/CompilerBase.hpp
     include/tpde/IRAdaptor.hpp
-    include/tpde/Analyzer.hpp
+    include/tpde/util/SmallBitSet.hpp
+    include/tpde/util/SmallVector.hpp
+    include/tpde/util/misc.hpp
 )
 
 set(TPDE_SOURCES
@@ -87,7 +93,13 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(tpde PUBLIC TPDE_ASSERTS)
 endif ()
 
+# depend on spdlog if logging is enabled
 if (${TPDE_INCLUDE_SPDLOG})
     target_compile_definitions(tpde PUBLIC TPDE_LOGGING)
     target_link_libraries(tpde PUBLIC spdlog::spdlog)
 endif ()
+
+# link small_vector
+target_link_libraries(tpde PRIVATE gch::small_vector)
+# we don't use exceptions
+target_compile_definitions(tpde PRIVATE GCH_NO_STRONG_EXCEPTION_GUARANTEES)

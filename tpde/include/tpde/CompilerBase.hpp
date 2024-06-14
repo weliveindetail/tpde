@@ -24,7 +24,7 @@ struct CompilerBase {
     using IRBlockRef = typename Adaptor::IRBlockRef;
     using IRFuncRef  = typename Adaptor::IRFuncRef;
 
-    Adaptor           adaptor;
+    Adaptor          *adaptor;
     Analyzer<Adaptor> analyzer;
 
     /// shortcut for casting to the Derived class so that overloading works
@@ -35,6 +35,9 @@ struct CompilerBase {
     }
 
     /// Compile the functions returned by Adaptor::funcs
+    ///
+    /// \warning If you intend to call this multiple times, you must call reset
+    ///   inbetween the calls.
     ///
     /// \returns Whether the compilation was successful
     bool compile();
