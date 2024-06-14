@@ -32,7 +32,7 @@ if (((TPDE_LOGGING STREQUAL "DebugOnly") AND (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(TPDE_INCLUDE_SPDLOG TRUE)
 
     set(SPDLOG_NO_EXCEPTIONS ON CACHE BOOL "TPDE compiles without exceptions")
-    add_subdirectory(../tp/spdlog ${CMAKE_CURRENT_BINARY_DIR}/tp/spdlog)
+    add_subdirectory(../deps/spdlog ${CMAKE_CURRENT_BINARY_DIR}/deps/spdlog)
 else ()
     set(TPDE_INCLUDE_SPDLOG FALSE)
 endif ()
