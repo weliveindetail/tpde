@@ -260,6 +260,10 @@ concept IRAdaptor = requires(T a) {
 
     /// The compiler is now compiling the specified function
     { a.switch_func(ARG(typename T::IRFuncRef)) };
+
+    /// The compiler is being resetted. If there is any data remaining that
+    /// would cause problems with recompiling it should be cleared
+    { a.reset() };
 };
 
 #undef ARG
