@@ -5,3 +5,7 @@
 	path = deps/small_vector
 	url = git@github.com:gharveymn/small_vector.git
 	branch = main
+[submodule "deps/args"]
+	path = deps/args
+	url = https://github.com/Taywee/args.git
+	branch = master

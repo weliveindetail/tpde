@@ -14,8 +14,6 @@ struct TestIR {
             arg,
             alloca,
             phi,
-            jump,
-            terminate,
         };
         std::string name;
         u32         local_idx;
@@ -37,7 +35,7 @@ struct TestIR {
 
     struct Function {
         std::string name;
-        u32         entry_block;
+        u32         block_begin_idx, block_end_idx;
         u32         arg_begin_idx, arg_end_idx;
     };
 
@@ -87,12 +85,13 @@ struct TestIR {
                                    BodyParseState  &parse_state) noexcept;
 
     static void remove_whitespace(std::string_view &text) noexcept;
-    static [[nodiscard]] std::string_view
+    [[nodiscard]] static std::string_view
         get_line(std::string_view text) noexcept;
-    static [[nodiscard]] std::string_view
+    [[nodiscard]] static std::string_view
         parse_name(std::string_view &text) noexcept;
 
     void dump_debug() const noexcept;
+    void print() const noexcept;
 
 
     // Implementation of IRAdaptor

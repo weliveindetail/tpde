@@ -59,8 +59,6 @@ set(TPDE_HEADERS
 set(TPDE_SOURCES
     # dummy target for autocomplete
     src/main.cpp
-    src/test/TestIR.cpp
-    src/test/TestIR.hpp
 )
 
 #------------------------------------------------------------------------------
@@ -104,3 +102,38 @@ endif ()
 target_link_libraries(tpde PRIVATE gch::small_vector)
 # we don't use exceptions
 target_compile_definitions(tpde PRIVATE GCH_NO_STRONG_EXCEPTION_GUARANTEES)
+
+
+# TODO(ts): create test target which sets TPDE_TESTING so that we can say,
+# we only want to run until the early stages of the loop analysis or w/e
+#------------------------------------------------------------------------------
+# target tpde_test
+#------------------------------------------------------------------------------
+
+add_executable(tpde_test)
+
+target_link_libraries(tpde_test PUBLIC tpde)
+
+target_include_directories(tpde_test PRIVATE ../deps/)
+
+set(TPDE_TEST_SOURCES
+    src/test/TestIR.cpp
+    src/test/TestIR.hpp
+    src/test/test_main.cpp
+)
+
+target_sources(tpde_test PRIVATE ${TPDE_TEST_SOURCES})
+
+set_target_properties(tpde_test PROPERTIES
+    VERSION 0.1.0
+    LINKER_LANGUAGE CXX
+)
+
+# warnings
+if (MSVC)
+    target_compile_options(tpde_test PRIVATE /W4 /WX)
+else ()
+    target_compile_options(tpde_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif ()
+
+target_compile_definitions(tpde_test PUBLIC TPDE_TESTING)
