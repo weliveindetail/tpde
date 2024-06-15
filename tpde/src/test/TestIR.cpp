@@ -738,6 +738,15 @@ bool tpde::test::TestIR::parse_block(std::string_view line,
 }
 
 void tpde::test::TestIR::remove_whitespace(std::string_view &text) noexcept {
+    // remove comments
+    while (!text.empty() && text[0] == ';') {
+        auto comment_len = text.find('\n');
+        if (comment_len == std::string::npos) {
+            comment_len = text.size() - 1;
+        }
+        text = text.substr(comment_len + 1);
+    }
+
     if (text.empty()) {
         return;
     }
@@ -756,7 +765,7 @@ void tpde::test::TestIR::remove_whitespace(std::string_view &text) noexcept {
     if (!text.empty() && text[0] == ';') {
         auto comment_len = text.find('\n');
         if (comment_len == std::string::npos) {
-            comment_len = text.size();
+            comment_len = text.size() - 1;
         }
         text = text.substr(comment_len + 1);
         remove_whitespace(text);

@@ -1,0 +1,6 @@
+import os
+
+config.tpde_src_root = r'@CMAKE_CURRENT_SOURCE_DIR@'
+config.tpde_obj_root = r'@CMAKE_CURRENT_BINARY_DIR@'
+
+lit_config.load_config(config, os.path.join(config.tpde_src_root, 'test/filetest/lit.cfg.py'))

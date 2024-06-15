@@ -137,3 +137,15 @@ else ()
 endif ()
 
 target_compile_definitions(tpde_test PUBLIC TPDE_TESTING)
+
+#------------------------------------------------------------------------------
+# target tpde_filetest
+#------------------------------------------------------------------------------
+
+# configure lit.site.cfg.py
+configure_file(test/filetest/lit.site.cfg.py.in test/filetest/lit.site.cfg.py @ONLY)
+
+# TODO(ts): make this configurable
+add_custom_target(tpde_filetest
+    COMMAND lit -v "${CMAKE_CURRENT_BINARY_DIR}/test/filetest"
+    DEPENDS tpde_test)
