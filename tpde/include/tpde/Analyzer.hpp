@@ -123,7 +123,7 @@ void Analyzer<Adaptor>::identify_loops(
     loop_heads.clear();
     loop_heads.resize(block_rpo.size());
 
-    // Implement the modified algorithm from Wei at al.: A New Algorithm for
+    // Implement the modified algorithm from Wei et al.: A New Algorithm for
     // Identifying Loops in Decompilation
     // in a non-recursive form
 
@@ -152,7 +152,8 @@ void Analyzer<Adaptor>::identify_loops(
     // The algorithm will reach the depth of the CFG so the small vector needs
     // to be relatively big
     // TODO(ts); maybe use the recursive form for small CFGs since that may be
-    // faster or use stack switching
+    // faster or use stack switching since the non-recursive version is really
+    // ugly
     util::SmallVector<TravState, SMALL_BLOCK_NUM> trav_state;
 
     trav_state.push_back(TravState{.block_idx = 0, .dfsp_pos = 1});

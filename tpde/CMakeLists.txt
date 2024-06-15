@@ -60,6 +60,7 @@ set(TPDE_SOURCES
     # dummy target for autocomplete
     src/main.cpp
     src/test/TestIR.cpp
+    src/test/TestIR.hpp
 )
 
 #------------------------------------------------------------------------------
