@@ -3,9 +3,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <algorithm>
+
 #include "IRAdaptor.hpp"
 #include "util/SmallBitSet.hpp"
 #include "util/SmallVector.hpp"
+
+#include <ranges>
 
 namespace tpde {
 
@@ -22,21 +26,41 @@ struct Analyzer {
 
     static constexpr IRBlockRef INVALID_BLOCK_REF = Adaptor::INVALID_BLOCK_REF;
 
+
     static constexpr size_t SMALL_BLOCK_NUM = 64;
 
     /// Reference to the adaptor
     Adaptor *adaptor;
 
     /// An index into block_layout
-    enum class BlockIndex : uint32_t {
+    enum class BlockIndex : u32 {
     };
+    static constexpr BlockIndex INVALID_BLOCK_IDX =
+        static_cast<BlockIndex>(~0u);
+
     /// The block layout, a BlockIndex is an index into this array
     util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> block_layout = {};
 
+    /// For each BlockIndex, the corresponding loop
+    // util::SmallVector<u32, SMALL_BLOCK_NUM>        block_loop_map = {};
+
+    struct Loop {
+        u32        level;
+        u32        parent;
+        BlockIndex begin = INVALID_BLOCK_IDX, end = INVALID_BLOCK_IDX;
+
+        // for building the loop tree, we accumulate the number of blocks here
+        u32 num_blocks = 0;
+        // TODO(ts): add skip_target?
+    };
+
+    util::SmallVector<Loop, 16> loops = {};
 
 #ifdef TPDE_TESTING
-    RunTestUntil test_run_until = RunTestUntil::full;
-    bool         test_print_rpo = false;
+    RunTestUntil test_run_until          = RunTestUntil::full;
+    bool         test_print_rpo          = false;
+    bool         test_print_block_layout = false;
+    bool         test_print_loops        = false;
 #endif
 
     explicit Analyzer(Adaptor *adaptor) : adaptor(adaptor) {}
@@ -46,7 +70,10 @@ struct Analyzer {
     /// This assumes that the adaptor was already switched to the new function
     void switch_func(IRFuncRef func);
 
-    void build_loop_tree_and_block_layout();
+    void build_loop_tree_and_block_layout(
+        const util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> &block_rpo,
+        const util::SmallVector<u32, SMALL_BLOCK_NUM>        &loop_parent,
+        const util::SmallBitSet<256>                         &loop_heads);
 
     /// Builds a vector of block references in reverse post-order.
     void build_rpo_block_order(
@@ -60,7 +87,7 @@ struct Analyzer {
         util::SmallBitSet<256> &loop_heads) const noexcept;
 
     /// Resets the analyzer state
-    void reset() {}
+    void reset();
 };
 
 template <IRAdaptor Adaptor>
@@ -84,7 +111,189 @@ void Analyzer<Adaptor>::switch_func(IRFuncRef func) {
     }
 #endif
 
-    // TODO(ts): rest of loop analysis
+    util::SmallVector<u32, SMALL_BLOCK_NUM> loop_parent{};
+    util::SmallBitSet<256>                  loop_heads{};
+
+    // TODO(ts): print out this step?
+    identify_loops(block_rpo, loop_parent, loop_heads);
+    assert(loop_parent.size() == block_rpo.size());
+    // the entry block is always the loop head for the root loop
+    loop_heads.mark_set(0);
+
+    build_loop_tree_and_block_layout(block_rpo, loop_parent, loop_heads);
+
+#ifdef TPDE_TESTING
+    if (test_print_block_layout) {
+        fmt::println("Block Layout for {}", adaptor->func_link_name(func));
+        for (u32 i = 0; i < block_layout.size(); ++i) {
+            fmt::println(
+                "  {}: {}", i, adaptor->block_fmt_ref(block_layout[i]));
+        }
+        fmt::println("End Block Layout");
+    }
+
+    if (test_print_loops) {
+        fmt::println("Loops for {}", adaptor->func_link_name(func));
+        for (u32 i = 0; i < loops.size(); ++i) {
+            const auto &loop = loops[i];
+            fmt::println("  {}: level {}, parent {}, {}->{}",
+                         i,
+                         loop.level,
+                         loop.parent,
+                         static_cast<u32>(loop.begin),
+                         static_cast<u32>(loop.end));
+        }
+        fmt::println("End Loops");
+    }
+
+    if (static_cast<u32>(test_run_until)
+        <= static_cast<u32>(RunTestUntil::block_layout)) {
+        return;
+    }
+#endif
+}
+
+template <IRAdaptor Adaptor>
+void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
+    const util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> &block_rpo,
+    const util::SmallVector<u32, SMALL_BLOCK_NUM>        &loop_parent,
+    const util::SmallBitSet<256>                         &loop_heads) {
+    // TODO(ts): maybe merge this into the block_rpo?
+    struct BlockLoopInfo {
+        u32 loop_idx;
+        u32 rpo_idx;
+    };
+
+    util::SmallVector<BlockLoopInfo, SMALL_BLOCK_NUM> loop_blocks;
+    loop_blocks.reserve(block_rpo.size());
+    for (u32 i = 0; i < block_rpo.size(); ++i) {
+        loop_blocks.push_back(BlockLoopInfo{~0u, i});
+    }
+
+    // if we have not seen the parent loop before, we need to recursively insert
+    // them happens with irreducible control-flow
+    const auto build_or_get_parent_loop = [&](const u32   i,
+                                              const auto &self) -> u32 {
+        const auto parent = loop_parent[i];
+        if (loop_blocks[parent].loop_idx != ~0u) {
+            // we have already seen that block and given it a loop
+            return loop_blocks[parent].loop_idx;
+        } else {
+            // get the parent loop and build the loop for this block
+            const auto parent_loop_idx = self(parent, self);
+            const auto loop_idx        = loops.size();
+            loops.push_back(Loop{.level  = loops[parent_loop_idx].level + 1,
+                                 .parent = parent_loop_idx});
+            loop_blocks[parent].loop_idx = loop_idx;
+            return loop_idx;
+        }
+    };
+
+    // entry is always the head of the top-level loop
+    loops.push_back(Loop{.level = 0, .parent = 0, .num_blocks = 1});
+    loop_blocks[0].loop_idx = 0;
+
+    for (u32 i = 1; i < loop_parent.size(); ++i) {
+        const u32 parent_loop =
+            build_or_get_parent_loop(i, build_or_get_parent_loop);
+
+        if (loop_heads.is_set(i)) {
+            const auto loop_idx = loops.size();
+            loops.push_back(Loop{.level  = loops[parent_loop].level + 1,
+                                 .parent = parent_loop});
+            loop_blocks[i].loop_idx = loop_idx;
+            ++loops[loop_idx].num_blocks;
+        } else {
+            loop_blocks[i].loop_idx = parent_loop;
+            ++loops[parent_loop].num_blocks;
+        }
+    }
+
+    // acummulate the total number of blocks in a loop by iterating over them in
+    // reverse-order. this works since we always push the parents first
+    // leave out the first loop since it's its own parent
+    for (u32 i = loops.size() - 1; i > 0; --i) {
+        const auto &loop               = loops[i];
+        loops[loop.parent].num_blocks += loop.num_blocks;
+    }
+
+    assert(loops[0].num_blocks == block_rpo.size());
+
+    // now layout the blocks by iterating in RPO and either place them at the
+    // current offset of the parent loop or, if they are a new loop, place the
+    // whole loop at the offset of the parent. this will ensure that blocks
+    // surrounded by loops will also be layouted that way in the final order.
+    //
+    // however, the way this is implemented causes the loop index to not
+    // correspond 1:1 with the final layout, though they will still be tightly
+    // packed and only the order inside a loop may change. note(ts): this could
+    // be mitigated with another pass i think.
+    block_layout.resize(block_rpo.size());
+
+    loops[0].begin = loops[0].end = static_cast<BlockIndex>(0);
+
+    const auto layout_loop = [&](const u32 loop_idx, const auto &self) -> void {
+        assert(loops[loop_idx].begin == INVALID_BLOCK_IDX);
+        const auto parent = loops[loop_idx].parent;
+        if (loops[parent].begin == INVALID_BLOCK_IDX) {
+            // should only happen with irreducible control-flow
+            self(parent, self);
+        }
+
+        const auto loop_begin = loops[parent].end;
+        reinterpret_cast<u32 &>(loops[parent].end) +=
+            loops[loop_idx].num_blocks;
+        assert(static_cast<u32>(loops[parent].end)
+                   - static_cast<u32>(loops[parent].begin)
+               <= loops[parent].num_blocks);
+
+        loops[loop_idx].begin = loops[loop_idx].end = loop_begin;
+    };
+
+    for (u32 i = 0u; i < block_rpo.size(); ++i) {
+        const auto loop_idx = loop_blocks[i].loop_idx;
+        if (loops[loop_idx].begin == INVALID_BLOCK_IDX) {
+            layout_loop(loop_idx, layout_loop);
+        }
+
+        block_layout[reinterpret_cast<u32 &>(loops[loop_idx].end)++] =
+            block_rpo[loop_blocks[i].rpo_idx];
+    }
+
+    assert(static_cast<u32>(loops[0].end) == block_rpo.size());
+
+#ifdef TPDE_ASSERTS
+    struct Constraint {
+        u32 begin, end;
+        u32 index;
+        u32 level;
+    };
+
+    util::SmallVector<Constraint, 16> constraint_stack{};
+    constraint_stack.push_back(
+        Constraint{0, static_cast<u32>(loops[0].end), 0, 0});
+    for (u32 i = 1; i < loops.size(); ++i) {
+        const auto &loop = loops[i];
+        assert(!constraint_stack.empty());
+        while (static_cast<u32>(loop.begin) >= constraint_stack.back().end) {
+            constraint_stack.pop_back();
+        }
+
+        const auto &con = constraint_stack.back();
+        assert(static_cast<u32>(loop.end) - static_cast<u32>(loop.begin)
+               == loop.num_blocks);
+        assert(static_cast<u32>(loop.begin) >= con.begin);
+        assert(static_cast<u32>(loop.end) <= con.end);
+        assert(loop.parent == con.index);
+        assert(loop.level == con.level + 1);
+
+        constraint_stack.push_back(Constraint{static_cast<u32>(loop.begin),
+                                              static_cast<u32>(loop.end),
+                                              i,
+                                              loop.level});
+    }
+
+#endif
 }
 
 template <IRAdaptor Adaptor>
@@ -288,16 +497,32 @@ void Analyzer<Adaptor>::identify_loops(
                     block_infos[block_idx].self_loop = true;
                 }
 
-                if (block_infos[block_idx].traversed) {
+                if (block_infos[succ_idx].traversed) {
+                    if (block_infos[succ_idx].dfsp_pos > 0) {
+                        tag_lhead(block_idx, succ_idx);
+                    } else if (block_infos[succ_idx].iloop_header != 0) {
+                        auto h_idx = block_infos[succ_idx].iloop_header;
+                        if (block_infos[h_idx].dfsp_pos > 0) {
+                            tag_lhead(block_idx, h_idx);
+                        } else {
+                            while (block_infos[h_idx].iloop_header != 0) {
+                                h_idx = block_infos[h_idx].iloop_header;
+                                if (block_infos[h_idx].dfsp_pos > 0) {
+                                    tag_lhead(block_idx, h_idx);
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     ++state.succ_it;
                     continue;
                 }
 
                 // recurse
-                cont = true;
+                cont        = true;
+                state.state = 2;
                 trav_state.push_back(TravState{.block_idx = succ_idx,
                                                .dfsp_pos = state.dfsp_pos + 1});
-                state.state = 2;
                 break;
             }
 
@@ -314,25 +539,8 @@ void Analyzer<Adaptor>::identify_loops(
             continue;
         }
         case 2: {
-            const auto succ_idx = adaptor->block_info(*state.succ_it);
-            const auto nh       = state.nh;
+            const auto nh = state.nh;
             tag_lhead(block_idx, nh);
-            if (block_infos[succ_idx].dfsp_pos > 0) {
-                tag_lhead(block_idx, succ_idx);
-            } else if (block_infos[succ_idx].iloop_header != 0) {
-                auto h_idx = block_infos[succ_idx].iloop_header;
-                if (block_infos[h_idx].dfsp_pos > 0) {
-                    tag_lhead(block_idx, h_idx);
-                } else {
-                    while (block_infos[h_idx].iloop_header != 0) {
-                        h_idx = block_infos[h_idx].iloop_header;
-                        if (block_infos[h_idx].dfsp_pos > 0) {
-                            tag_lhead(block_idx, h_idx);
-                            break;
-                        }
-                    }
-                }
-            }
 
             ++state.succ_it;
             state.state = 1;
@@ -351,6 +559,13 @@ void Analyzer<Adaptor>::identify_loops(
             loop_heads.mark_set(i);
         }
     }
+}
+
+template <IRAdaptor Adaptor>
+void Analyzer<Adaptor>::reset() {
+    block_layout.clear();
+    // block_loop_map.clear();
+    loops.clear();
 }
 
 } // namespace tpde

@@ -30,10 +30,19 @@ int main(int argc, char *argv[]) {
     args::Flag print_rpo(
         parser, "print_rpo", "Print the block RPO", {"print-rpo"});
 
+    args::Flag print_layout(parser,
+                            "print_layout",
+                            "Print the finished block layout",
+                            {"print-layout"});
+
+    args::Flag print_loops(
+        parser, "print_loops", "Print the loops", {"print-loops"});
+
     std::unordered_map<std::string_view, RunTestUntil> run_map{
         {    "full",          RunTestUntil::full},
         {      "ir",    RunTestUntil::ir_parsing},
         {     "rpo",           RunTestUntil::rpo},
+        {  "layout",  RunTestUntil::block_layout},
         {"analyzer", RunTestUntil::only_analyzer},
     };
     args::MapFlag<std::string_view, RunTestUntil> run_until(
@@ -120,12 +129,16 @@ int main(int argc, char *argv[]) {
         test::TestIRAdaptor adaptor{&ir};
 
         Analyzer<test::TestIRAdaptor> analyzer{&adaptor};
-        analyzer.test_run_until = run_until.Get();
-        analyzer.test_print_rpo = print_rpo;
+        analyzer.test_run_until          = run_until.Get();
+        analyzer.test_print_rpo          = print_rpo;
+        analyzer.test_print_block_layout = print_layout;
+        analyzer.test_print_loops        = print_loops;
 
         for (auto func : adaptor.funcs()) {
             adaptor.switch_func(func);
             analyzer.switch_func(func);
+
+            analyzer.reset();
         }
 
         return 0;

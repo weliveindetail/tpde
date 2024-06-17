@@ -1,0 +1,83 @@
+; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+;
+; SPDX-License-Identifier: LicenseRef-Proprietary
+
+; RUN: %tpde_test --run-until=layout --print-loops --print-layout %s | FileCheck %s --dump-input always
+
+; CHECK: Block Layout for single
+; CHECK-NEXT: 0: entry
+; CHECK-NEXT: End Block Layout
+; CHECK: Loops for single
+; CHECK-NEXT: 0: level 0, parent 0, 0->1
+; CHECK-NEXT: End Loops
+single() {
+entry:
+  terminate
+}
+
+
+; COM: Here we test that the original block order is respected for the ordering
+; COM: of successors
+
+; CHECK: Block Layout for loop1
+; CHECK-NEXT: 0: entry
+; CHECK-NEXT: 1: loop_head
+; CHECK-NEXT: 2: loop_body
+; CHECK-NEXT: 3: cont
+; CHECK-NEXT: End Block Layout
+; CHECK: Loops for loop1
+; CHECK-NEXT: 0: level 0, parent 0, 0->4
+; CHECK-NEXT: 1: level 1, parent 0, 1->3
+; CHECK-NEXT: End Loops
+loop1() {
+entry:
+  jump %loop_head
+loop_head:
+  jump %loop_body, %cont
+loop_body:
+  jump %loop_head
+cont:
+  terminate
+}
+
+; CHECK: Block Layout for loop2
+; CHECK-NEXT: 0: entry
+; CHECK-NEXT: 1: loop_head
+; CHECK-NEXT: 2: loop_body
+; CHECK-NEXT: 3: cont
+; CHECK-NEXT: End Block Layout
+; CHECK: Loops for loop2
+; CHECK-NEXT: 0: level 0, parent 0, 0->4
+; CHECK-NEXT: 1: level 1, parent 0, 1->3
+; CHECK-NEXT: End Loops
+loop2() {
+entry:
+  jump %loop_head
+cont:
+  terminate
+loop_head:
+  jump %loop_body, %cont
+loop_body:
+  jump %loop_head
+}
+
+; CHECK: Block Layout for loop3
+; CHECK-NEXT: 0: entry
+; CHECK-NEXT: 1: cont
+; CHECK-NEXT: 2: loop_head
+; CHECK-NEXT: 3: loop_body
+; CHECK-NEXT: End Block Layout
+; CHECK: Loops for loop3
+; CHECK-NEXT: 0: level 0, parent 0, 0->4
+; CHECK-NEXT: 1: level 1, parent 0, 2->4
+; CHECK-NEXT: End Loops
+loop3() {
+entry:
+  jump %loop_head, %cont
+cont:
+  terminate
+loop_head:
+  jump %loop_body, %cont
+loop_body:
+  jump %loop_head
+}

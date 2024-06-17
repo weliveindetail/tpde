@@ -54,6 +54,8 @@ enum class RunTestUntil {
     ir_parsing,
     /// Reverse-Post-Order generation
     rpo,
+    /// Block Layout and Loop Info
+    block_layout,
     /// marks the end of the flags that will only run the analyzer
     only_analyzer,
     /// No restriction
