@@ -9,13 +9,40 @@
 #include <args/args.hxx>
 
 #include "TestIR.hpp"
+#include "tpde/Analyzer.hpp"
 
 int main(int argc, char *argv[]) {
+    using namespace tpde;
+
     args::ArgumentParser parser("Testing utility for TPDE");
     args::HelpFlag       help(parser, "help", "Display help", {'h', "help"});
+    args::ValueFlag<unsigned> log_level(
+        parser,
+        "log_level",
+        "Set the log level to 0=NONE, 1=ERR, 2=WARN(default), 3=INFO, 4=DEBUG, "
+        ">5=TRACE",
+        {'l', "log-level"},
+        2);
 
     args::Flag print_ir(
         parser, "print_ir", "Print the IR after parsing", {"print-ir"});
+
+    args::Flag print_rpo(
+        parser, "print_rpo", "Print the block RPO", {"print-rpo"});
+
+    std::unordered_map<std::string_view, RunTestUntil> run_map{
+        {    "full",          RunTestUntil::full},
+        {      "ir",    RunTestUntil::ir_parsing},
+        {     "rpo",           RunTestUntil::rpo},
+        {"analyzer", RunTestUntil::only_analyzer},
+    };
+    args::MapFlag<std::string_view, RunTestUntil> run_until(
+        parser,
+        "run_until",
+        "Run the test only to a certain step in the pipeline",
+        {"run-until"},
+        run_map,
+        RunTestUntil::full);
 
     args::Positional<std::string> ir_path(parser,
                                           "ir_path",
@@ -40,7 +67,22 @@ int main(int argc, char *argv[]) {
 
 // TODO(ts): make this configurable
 #ifdef TPDE_LOGGING
-    spdlog::set_level(spdlog::level::trace);
+    {
+        spdlog::level::level_enum level = spdlog::level::off;
+        switch (log_level.Get()) {
+        case 0: level = spdlog::level::off; break;
+        case 1: level = spdlog::level::err; break;
+        case 2: level = spdlog::level::warn; break;
+        case 3: level = spdlog::level::info; break;
+        case 4: level = spdlog::level::debug; break;
+        default:
+            assert(level >= 5);
+            level = spdlog::level::trace;
+            break;
+        }
+
+        spdlog::set_level(level);
+    }
 #endif
 
     const auto file_path = args::get(ir_path);
@@ -58,7 +100,7 @@ int main(int argc, char *argv[]) {
 
     file.read(buf.data(), file_size);
 
-    tpde::test::TestIR ir{};
+    test::TestIR ir{};
     if (!ir.parse_ir(buf)) {
         fprintf(stderr, "Failed to parse IR\n");
         return 1;
@@ -68,4 +110,26 @@ int main(int argc, char *argv[]) {
         ir.print();
         return 0;
     }
+
+    if (run_until.Get() == RunTestUntil::ir_parsing) {
+        return 0;
+    }
+
+    if (static_cast<u32>(run_until.Get())
+        <= static_cast<u32>(RunTestUntil::only_analyzer)) {
+        test::TestIRAdaptor adaptor{&ir};
+
+        Analyzer<test::TestIRAdaptor> analyzer{&adaptor};
+        analyzer.test_run_until = run_until.Get();
+        analyzer.test_print_rpo = print_rpo;
+
+        for (auto func : adaptor.funcs()) {
+            adaptor.switch_func(func);
+            analyzer.switch_func(func);
+        }
+
+        return 0;
+    }
+
+    return 0;
 }

@@ -20,6 +20,8 @@ struct Analyzer {
     using IRBlockRef = typename Adaptor::IRBlockRef;
     using IRFuncRef  = typename Adaptor::IRFuncRef;
 
+    static constexpr IRBlockRef INVALID_BLOCK_REF = Adaptor::INVALID_BLOCK_REF;
+
     static constexpr size_t SMALL_BLOCK_NUM = 64;
 
     /// Reference to the adaptor
@@ -29,10 +31,19 @@ struct Analyzer {
     enum class BlockIndex : uint32_t {
     };
     /// The block layout, a BlockIndex is an index into this array
-    util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> block_layout;
+    util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> block_layout = {};
+
+
+#ifdef TPDE_TESTING
+    RunTestUntil test_run_until = RunTestUntil::full;
+    bool         test_print_rpo = false;
+#endif
+
+    explicit Analyzer(Adaptor *adaptor) : adaptor(adaptor) {}
 
     /// Start the compilation of a new function and build the loop tree and
-    /// liveness information
+    /// liveness information.
+    /// This assumes that the adaptor was already switched to the new function
     void switch_func(IRFuncRef func);
 
     void build_loop_tree_and_block_layout();
@@ -53,12 +64,48 @@ struct Analyzer {
 };
 
 template <IRAdaptor Adaptor>
+void Analyzer<Adaptor>::switch_func(IRFuncRef func) {
+    util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> block_rpo{};
+
+    build_rpo_block_order(block_rpo);
+
+#ifdef TPDE_TESTING
+    if (test_print_rpo) {
+        fmt::println("RPO for func {}", adaptor->func_link_name(func));
+        for (u32 i = 0; i < block_rpo.size(); ++i) {
+            fmt::println("  {}: {}", i, adaptor->block_fmt_ref(block_rpo[i]));
+        }
+        fmt::println("End RPO");
+    }
+
+    if (static_cast<u32>(test_run_until)
+        <= static_cast<u32>(RunTestUntil::rpo)) {
+        return;
+    }
+#endif
+
+    // TODO(ts): rest of loop analysis
+}
+
+template <IRAdaptor Adaptor>
 void Analyzer<Adaptor>::build_rpo_block_order(
     util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> &out) const noexcept {
     out.clear();
 
-    // implement the RPO generation using a simple stack that also walks in RPO.
-    // This will however generate a bit of an unatural RPO since
+    {
+        // Initialize the block info
+        u32 idx = 0;
+        for (IRBlockRef cur = adaptor->cur_entry_block();
+             cur != INVALID_BLOCK_REF;
+             cur = adaptor->block_sibling(cur)) {
+            adaptor->block_set_info(cur, idx);
+            adaptor->block_set_info2(cur, 0);
+            ++idx;
+        }
+    }
+
+    // implement the RPO generation using a simple stack that also walks in
+    // RPO. However, consider the following CFG
     //
     // A:
     //  - B:
@@ -68,9 +115,10 @@ void Analyzer<Adaptor>::build_rpo_block_order(
     //    - F
     //    - G
     //
-    // will be generated as A C G F B E D
-    // which is not very nice for loops so we push the children and then reverse
-    // them
+    // which has valid RPOs A B D E C F G, A B D E C G F, A B E D C F G, ...
+    // which is not very nice for loops since in many IRs the order of the block
+    // has some meaning for the layout so we sort the pushed children by the
+    // order in the block list
     util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM / 2> stack;
     stack.push_back(adaptor->cur_entry_block());
 
@@ -78,31 +126,63 @@ void Analyzer<Adaptor>::build_rpo_block_order(
         const auto cur_node = stack.back();
         stack.pop_back();
 
-        // visit the current node
+// visit the current node
+#ifdef TPDE_ASSERTS
+        adaptor->block_set_info2(cur_node, adaptor->block_info2(cur_node) | 2);
+#endif
         adaptor->block_set_info(cur_node, out.size());
         out.push_back(cur_node);
 
         const auto start_idx = stack.size();
         // push the successors onto the stack to visit them
         for (const auto succ : adaptor->block_succs(cur_node)) {
+            assert(succ != adaptor->cur_entry_block());
+#ifdef TPDE_ASSERTS
+            if ((adaptor->block_info2(succ) & 1) != 0) {
+#else
+            if (adaptor->block_info2(succ) != 0) {
+#endif
+                // we have already visited the block
+                continue;
+            }
+
+#ifdef TPDE_ASSERTS
+            // when we have not yet seen the block, we cannot have given it an
+            // RPO index
+            assert((adaptor->block_info2(succ) & 2) == 0);
+#endif
+
+            // TODO(ts): if we just do a post-order traversal and reverse
+            // everything at the end we could use only block_info to check
+            // whether we already saw a block
+            adaptor->block_set_info2(succ, 1);
             stack.push_back(succ);
         }
-        // Reverse the pushed nodes to get a more natural ordering
-        // TODO(ts): should we just reverse everything at the end?
-        // maybe measure the perf or/and ask the adaptor whether it can
-        // efficiently give us a reverse iteration over the successors and then
-        // we can just not do any of that
+
+        // Order the pushed children by the reverse of their original block
+        // index since the children get visited in reverse
         const auto len = stack.size() - start_idx;
         if (len <= 1) {
             continue;
         }
 
         if (len == 2) {
-            std::swap(stack[start_idx], stack[start_idx + 1]);
+            if (adaptor->block_info(stack[start_idx])
+                < adaptor->block_info(stack[start_idx + 1])) {
+                std::swap(stack[start_idx], stack[start_idx + 1]);
+            }
             continue;
         }
 
-        std::reverse(stack.begin() + start_idx, stack.end());
+        std::sort(stack.begin() + start_idx,
+                  stack.end(),
+                  [this](const IRBlockRef lhs, const IRBlockRef rhs) {
+                      // note(ts): this may have not so nice performance
+                      // characteristics if the block lookup is a hashmap so
+                      // maybe cache this for larger lists?
+                      return adaptor->block_info(lhs)
+                             > adaptor->block_info(rhs);
+                  });
     }
 
 #ifdef TPDE_LOGGING

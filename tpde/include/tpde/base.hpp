@@ -47,4 +47,18 @@ using i8  = int8_t;
 using i16 = int16_t;
 using i32 = int32_t;
 using i64 = int64_t;
+
+#ifdef TPDE_TESTING
+enum class RunTestUntil {
+    /// IR-Parsing
+    ir_parsing,
+    /// Reverse-Post-Order generation
+    rpo,
+    /// marks the end of the flags that will only run the analyzer
+    only_analyzer,
+    /// No restriction
+    full,
+};
+#endif
+
 } // namespace tpde

@@ -227,7 +227,7 @@ bool tpde::test::TestIR::parse_func_body(std::string_view body,
         if (first) {
             TPDE_LOG_TRACE("Parsing line '{}'", line);
             // parse entry block
-            if (!parse_block(line, parse_state)) {
+            if (!parse_block(line, parse_state, true)) {
                 TPDE_LOG_ERR("Failed to parse entry block for function '{}'",
                              functions[func_idx].name);
                 return false;
@@ -324,6 +324,7 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
         }
 
         if (line.starts_with("alloca")) {
+            parse_state.block_finished_phis = true;
             if (functions[func_idx].block_begin_idx != parse_state.cur_block) {
                 TPDE_LOG_ERR("Encountered alloca '{}' in non-entry block '{}'",
                              value_name,
@@ -357,6 +358,12 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
             values[val_idx].alloca_size = size;
 
         } else if (line.starts_with("phi")) {
+            if (parse_state.block_finished_phis) {
+                TPDE_LOG_ERR("Got phi '{}' in block after non-phi instruction",
+                             value_name);
+                return false;
+            }
+
             line.remove_prefix(3);
             remove_whitespace(line);
 
@@ -471,6 +478,8 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
                 line.remove_prefix(operand.size() + 1);
             }
         } else {
+            parse_state.block_finished_phis = true;
+
             values[val_idx].op_count = 0;
             auto had_arg             = false;
             while (!line.empty()) {
@@ -656,12 +665,13 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
 
         blocks[parse_state.cur_block].inst_end_idx = values.size();
 
-        return parse_block(line, parse_state);
+        return parse_block(line, parse_state, false);
     }
 }
 
 bool tpde::test::TestIR::parse_block(std::string_view line,
-                                     BodyParseState  &parse_state) noexcept {
+                                     BodyParseState  &parse_state,
+                                     const bool       is_entry) noexcept {
     const auto func_idx   = parse_state.func_idx;
     const auto block_name = parse_name(line);
     if (block_name.empty()) {
@@ -698,6 +708,10 @@ bool tpde::test::TestIR::parse_block(std::string_view line,
         return false;
     }
 
+    if (!is_entry) {
+        blocks[parse_state.cur_block].has_sibling = true;
+    }
+
     const u32 cur_block   = blocks.size();
     parse_state.cur_block = cur_block;
     blocks.push_back(Block{.name           = std::string(block_name),
@@ -705,6 +719,7 @@ bool tpde::test::TestIR::parse_block(std::string_view line,
                            .inst_end_idx   = static_cast<u32>(values.size())});
     parse_state.block_map[block_name] = cur_block;
     parse_state.block_finished        = false;
+    parse_state.block_finished_phis   = false;
 
     TPDE_LOG_TRACE(
         "Starting new block '{}' with idx {}", block_name, cur_block);
@@ -796,10 +811,11 @@ std::string_view
         return {};
     }
 
-    const auto len = std::find_if(text.begin(),
-                                  text.end(),
-                                  [](const auto c) { return !std::isalnum(c); })
-                     - text.begin();
+    const auto len =
+        std::find_if(text.begin(),
+                     text.end(),
+                     [](const auto c) { return !std::isalnum(c) && c != '_'; })
+        - text.begin();
     const auto name = text.substr(0, len);
     text.remove_prefix(len);
     return name;

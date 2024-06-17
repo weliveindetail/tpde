@@ -27,7 +27,12 @@ struct CompilerBase {
     Adaptor          *adaptor;
     Analyzer<Adaptor> analyzer;
 
-    /// shortcut for casting to the Derived class so that overloading works
+    /// Initialize a CompilerBase, should be called by the derived classes
+    explicit CompilerBase(Adaptor *adaptor)
+        : adaptor(adaptor), analyzer(adaptor) {}
+
+    /// shortcut for casting to the Derived class so that overloading
+    /// works
     Derived *derived() { return static_cast<Derived *>(this); }
 
     const Derived *derived() const {

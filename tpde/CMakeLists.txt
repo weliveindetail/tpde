@@ -99,9 +99,9 @@ if (${TPDE_INCLUDE_SPDLOG})
 endif ()
 
 # link small_vector
-target_link_libraries(tpde PRIVATE gch::small_vector)
+target_link_libraries(tpde PUBLIC gch::small_vector)
 # we don't use exceptions
-target_compile_definitions(tpde PRIVATE GCH_NO_STRONG_EXCEPTION_GUARANTEES)
+target_compile_definitions(tpde PUBLIC GCH_NO_STRONG_EXCEPTION_GUARANTEES)
 
 
 # TODO(ts): create test target which sets TPDE_TESTING so that we can say,

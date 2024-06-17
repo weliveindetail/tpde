@@ -2,4 +2,86 @@
 ;
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
-; RUN: true
+; RUN: %tpde_test --run-until=rpo --print-rpo %s | FileCheck %s --dump-input always
+
+; CHECK: RPO for func single
+; CHECK-NEXT: 0: entry
+; CHECK-NEXT: End RPO
+single() {
+entry:
+  terminate
+}
+
+
+; COM: Here we test that the original block order is respected for the ordering
+; COM: of successors
+
+; CHECK: RPO for func loop1
+; CHECK-NEXT: 0: entry
+; CHECK-NEXT: 1: loop_head
+; CHECK-NEXT: 2: loop_body
+; CHECK-NEXT: 3: cont
+; CHECK-NEXT: End RPO
+loop1() {
+entry:
+  jump %loop_head
+loop_head:
+  jump %loop_body, %cont
+loop_body:
+  jump %loop_head
+cont:
+  terminate
+}
+
+; CHECK: RPO for func loop2
+; CHECK-NEXT: 0: entry
+; CHECK-NEXT: 1: loop_head
+; CHECK-NEXT: 2: cont
+; CHECK-NEXT: 3: loop_body
+; CHECK-NEXT: End RPO
+loop2() {
+entry:
+  jump %loop_head
+cont:
+  terminate
+loop_head:
+  jump %loop_body, %cont
+loop_body:
+  jump %loop_head
+}
+
+; CHECK: RPO for func loop3
+; CHECK-NEXT: 0: entry
+; CHECK-NEXT: 1: cont
+; CHECK-NEXT: 2: loop_head
+; CHECK-NEXT: 3: loop_body
+; CHECK-NEXT: End RPO
+loop3() {
+entry:
+  jump %loop_head, %cont
+cont:
+  terminate
+loop_head:
+  jump %loop_body, %cont
+loop_body:
+  jump %loop_head
+}
+
+; CHECK: RPO for func loop4
+; CHECK-NEXT: 0: entry
+; CHECK-NEXT: 1: loop_head
+; CHECK-NEXT: 2: cont
+; CHECK-NEXT: 3: loop_body
+; CHECK-NEXT: End RPO
+loop4() {
+entry:
+  jump %loop_head
+loop_head:
+  jump %loop_body, %cont
+cont:
+  terminate
+loop_body:
+  jump %loop_head
+}
+
+; TODO(ts): more advanced tests for larger funcs
