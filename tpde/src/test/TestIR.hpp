@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <unordered_set>
+
 #include "tpde/base.hpp"
 
 namespace tpde::test {
@@ -79,7 +81,9 @@ struct TestIR {
     };
 
     [[nodiscard]] bool parse_ir(std::string_view text) noexcept;
-    [[nodiscard]] bool parse_func(std::string_view &text) noexcept;
+    [[nodiscard]] bool
+                       parse_func(std::string_view                     &text,
+                                  std::unordered_set<std::string_view> &func_names) noexcept;
     [[nodiscard]] bool parse_func_body(std::string_view body,
                                        BodyParseState  &parse_state) noexcept;
     [[nodiscard]] bool parse_body_line(std::string_view line,

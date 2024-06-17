@@ -1,0 +1,16 @@
+; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+;
+; SPDX-License-Identifier: LicenseRef-Proprietary
+
+; RUN: not %tpde_test --run-until=ir %s
+
+; Duplicate function definitions are not okay
+func() {
+entry:
+  terminate
+}
+
+func() {
+entry:
+  terminate
+}

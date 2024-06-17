@@ -45,8 +45,10 @@ bool tpde::test::TestIR::parse_ir(std::string_view text) noexcept {
     block_succs.clear();
     functions.clear();
 
+    std::unordered_set<std::string_view> func_names;
+
     while (!text.empty()) {
-        if (!parse_func(text)) {
+        if (!parse_func(text, func_names)) {
             TPDE_LOG_ERR("Failed to parse function");
             return false;
         }
@@ -58,7 +60,9 @@ bool tpde::test::TestIR::parse_ir(std::string_view text) noexcept {
     return true;
 }
 
-bool tpde::test::TestIR::parse_func(std::string_view &text) noexcept {
+bool tpde::test::TestIR::parse_func(
+    std::string_view                     &text,
+    std::unordered_set<std::string_view> &func_names) noexcept {
     TPDE_LOG_TRACE("Parsing function");
     remove_whitespace(text);
 
@@ -73,10 +77,18 @@ bool tpde::test::TestIR::parse_func(std::string_view &text) noexcept {
         return false;
     }
 
+    if (func_names.contains(name)) {
+        TPDE_LOG_ERR(
+            "Failed to parse function. Function with name '{}' already exists",
+            name);
+        return false;
+    }
+
     TPDE_LOG_TRACE("Got func with name '{}'", name);
 
     const auto func_idx = functions.size();
     functions.push_back(Function{.name = std::string(name)});
+    func_names.insert(name);
 
     remove_whitespace(text);
     if (text.empty() || text[0] != '(') {

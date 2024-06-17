@@ -2,7 +2,7 @@
 ;
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
-; RUN: %tpde_test --print-ir %s | FileCheck %s --dump-input always
+; RUN: %tpde_test --run-until=ir --print-ir %s | FileCheck %s --dump-input always
 
 ; CHECK: Printing IR
 
