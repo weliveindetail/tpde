@@ -28,6 +28,7 @@ struct Analyzer {
 
 
     static constexpr size_t SMALL_BLOCK_NUM = 64;
+    static constexpr size_t SMALL_VALUE_NUM = 128;
 
     /// Reference to the adaptor
     Adaptor *adaptor;
@@ -42,11 +43,12 @@ struct Analyzer {
     util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> block_layout = {};
 
     /// For each BlockIndex, the corresponding loop
-    // util::SmallVector<u32, SMALL_BLOCK_NUM>        block_loop_map = {};
+    util::SmallVector<u32, SMALL_BLOCK_NUM> block_loop_map = {};
 
     struct Loop {
         u32        level;
         u32        parent;
+        // [begin, end[
         BlockIndex begin = INVALID_BLOCK_IDX, end = INVALID_BLOCK_IDX;
 
         // for building the loop tree, we accumulate the number of blocks here
@@ -56,11 +58,29 @@ struct Analyzer {
 
     util::SmallVector<Loop, 16> loops = {};
 
+    // TODO(ts): move all struct definitions to the top?
+    struct LivenessInfo {
+        // [first, last]
+        BlockIndex first, last;
+        u32        ref_count;
+        u32        lowest_common_loop;
+
+        // TODO(ts): maybe outsource both these booleans to a bitset?
+        // we're wasting a lot of space here
+
+        /// The value may not be deallocated until the last block is finished
+        /// even if the reference count hits 0
+        bool last_full;
+    };
+
+    util::SmallVector<LivenessInfo, SMALL_VALUE_NUM> liveness = {};
+
 #ifdef TPDE_TESTING
     RunTestUntil test_run_until          = RunTestUntil::full;
     bool         test_print_rpo          = false;
     bool         test_print_block_layout = false;
     bool         test_print_loops        = false;
+    bool         test_print_liveness     = false;
 #endif
 
     explicit Analyzer(Adaptor *adaptor) : adaptor(adaptor) {}
@@ -68,7 +88,22 @@ struct Analyzer {
     /// Start the compilation of a new function and build the loop tree and
     /// liveness information.
     /// This assumes that the adaptor was already switched to the new function
+    /// and the analyzer was reset
     void switch_func(IRFuncRef func);
+
+    /// Resets the analyzer state
+    void reset();
+
+    IRBlockRef block_ref(const BlockIndex idx) const noexcept {
+        assert(static_cast<u32>(idx) < block_layout.size());
+        return block_layout[static_cast<u32>(idx)];
+    }
+
+  protected:
+    // for use during liveness analysis
+    LivenessInfo &liveness_maybe(const IRValueRef val) noexcept;
+
+    void build_block_layout(IRFuncRef func);
 
     void build_loop_tree_and_block_layout(
         const util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> &block_rpo,
@@ -86,14 +121,69 @@ struct Analyzer {
         util::SmallVector<u32, SMALL_BLOCK_NUM>              &loop_parent,
         util::SmallBitSet<256> &loop_heads) const noexcept;
 
-    /// Resets the analyzer state
-    void reset();
+    void compute_liveness() noexcept;
 };
 
 template <IRAdaptor Adaptor>
 void Analyzer<Adaptor>::switch_func(IRFuncRef func) {
-    util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> block_rpo{};
+    build_block_layout(func);
 
+#ifdef TPDE_TESTING
+    if (static_cast<u32>(test_run_until)
+        <= static_cast<u32>(RunTestUntil::block_layout)) {
+        return;
+    }
+#endif
+
+    compute_liveness();
+
+#ifdef TPDE_TESTING
+    if (test_print_liveness) {
+        fmt::println("Liveness for {}", adaptor->func_link_name(func));
+        for (u32 i = 0; i < liveness.size(); ++i) {
+            const auto &info = liveness[i];
+            fmt::println("  {}: {} refs, {}->{} ({}->{}), lf: {}",
+                         i,
+                         info.ref_count,
+                         static_cast<u32>(info.first),
+                         static_cast<u32>(info.last),
+                         adaptor->block_fmt_ref(block_ref(info.first)),
+                         adaptor->block_fmt_ref(block_ref(info.last)),
+                         info.last_full);
+        }
+        fmt::println("End Liveness");
+    }
+#endif
+}
+
+template <IRAdaptor Adaptor>
+void Analyzer<Adaptor>::reset() {
+    block_layout.clear();
+    block_loop_map.clear();
+    loops.clear();
+    liveness.clear();
+}
+
+template <IRAdaptor Adaptor>
+typename Analyzer<Adaptor>::LivenessInfo &
+    Analyzer<Adaptor>::liveness_maybe(const IRValueRef val) noexcept {
+    const u32 val_idx = adaptor->val_local_idx(val);
+    if constexpr (Adaptor::TPDE_PROVIDES_HIGHEST_VAL_IDX) {
+        assert(liveness.size() > val_idx);
+        return liveness[val_idx];
+    } else {
+        if (liveness.size() <= val_idx) {
+            // TODO(ts): add a check if liveness.size() == val_idx and then do
+            // push_back?
+            liveness.resize(val_idx + 1);
+        }
+        return liveness[val_idx];
+    }
+}
+
+template <IRAdaptor Adaptor>
+void Analyzer<Adaptor>::build_block_layout(IRFuncRef func) {
+    util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> block_rpo{};
     build_rpo_block_order(block_rpo);
 
 #ifdef TPDE_TESTING
@@ -145,11 +235,6 @@ void Analyzer<Adaptor>::switch_func(IRFuncRef func) {
         }
         fmt::println("End Loops");
     }
-
-    if (static_cast<u32>(test_run_until)
-        <= static_cast<u32>(RunTestUntil::block_layout)) {
-        return;
-    }
 #endif
 }
 
@@ -171,7 +256,8 @@ void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
     }
 
     // if we have not seen the parent loop before, we need to recursively insert
-    // them happens with irreducible control-flow
+    // them.
+    // the recursive call only happens with irreducible control-flow
     const auto build_or_get_parent_loop = [&](const u32   i,
                                               const auto &self) -> u32 {
         const auto parent = loop_parent[i];
@@ -229,6 +315,10 @@ void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
     // packed and only the order inside a loop may change. note(ts): this could
     // be mitigated with another pass i think.
     block_layout.resize(block_rpo.size());
+    // TODO(ts): merge this with block_layout for less malloc calls?
+    // however, we will mostly need this in the liveness computation so it may
+    // be better for cache utilization to keep them separate
+    block_loop_map.resize(block_rpo.size());
 
     loops[0].begin = loops[0].end = static_cast<BlockIndex>(0);
 
@@ -256,8 +346,12 @@ void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
             layout_loop(loop_idx, layout_loop);
         }
 
-        block_layout[reinterpret_cast<u32 &>(loops[loop_idx].end)++] =
-            block_rpo[loop_blocks[i].rpo_idx];
+        const auto block_ref = block_rpo[loop_blocks[i].rpo_idx];
+        const auto block_idx = reinterpret_cast<u32 &>(loops[loop_idx].end)++;
+
+        block_layout[block_idx]   = block_ref;
+        block_loop_map[block_idx] = loop_idx;
+        adaptor->block_set_info(block_ref, block_idx);
     }
 
     assert(static_cast<u32>(loops[0].end) == block_rpo.size());
@@ -562,10 +656,253 @@ void Analyzer<Adaptor>::identify_loops(
 }
 
 template <IRAdaptor Adaptor>
-void Analyzer<Adaptor>::reset() {
-    block_layout.clear();
-    // block_loop_map.clear();
-    loops.clear();
+void Analyzer<Adaptor>::compute_liveness() noexcept {
+    // implement the liveness algorithm described in
+    // http://databasearchitects.blogspot.com/2020/04/linear-time-liveness-analysis.html
+    // and Kohn et al.: Adaptive Execution of Compiled Queries
+    // TODO(ts): also expose the two-pass liveness algo as an option
+
+    TPDE_LOG_TRACE("Starting Liveness Analysis");
+    if constexpr (Adaptor::TPDE_PROVIDES_HIGHEST_VAL_IDX) {
+        liveness.resize(adaptor->cur_highest_val_idx() + 1);
+    }
+
+    const auto visit = [this](const IRValueRef value, const u32 block_idx) {
+        TPDE_LOG_TRACE("  Visiting value {} in block {}",
+                       adaptor->val_local_idx(value),
+                       block_idx);
+        if (adaptor->val_ignore_in_liveness_analysis(value)) {
+            TPDE_LOG_TRACE("    value is ignored");
+            return;
+        }
+
+        auto &liveness = liveness_maybe(value);
+        if (liveness.ref_count == 0) {
+            TPDE_LOG_TRACE("    initializing liveness info, lcl is {}",
+                           block_loop_map[block_idx]);
+            liveness.first = liveness.last = static_cast<BlockIndex>(block_idx);
+            liveness.ref_count             = 1;
+            liveness.lowest_common_loop    = block_loop_map[block_idx];
+            return;
+        }
+
+        ++liveness.ref_count;
+        TPDE_LOG_TRACE("    increasing ref_count to {}", liveness.ref_count);
+
+        // helpers
+        const auto update_for_block_only = [&liveness, block_idx]() {
+            const auto old_first = static_cast<u32>(liveness.first);
+            const auto old_last  = static_cast<u32>(liveness.last);
+
+            const auto new_first = std::min(old_first, block_idx);
+            const auto new_last  = std::max(old_last, block_idx);
+            liveness.first       = static_cast<BlockIndex>(new_first);
+            liveness.last        = static_cast<BlockIndex>(new_last);
+
+            // if last changed, we don't need to extend the lifetime to the end
+            // of the last block
+            liveness.last_full =
+                (old_last == new_last) ? liveness.last_full : false;
+        };
+
+        const auto update_for_loop = [&liveness](const Loop &loop) {
+            const auto old_first = static_cast<u32>(liveness.first);
+            const auto old_last  = static_cast<u32>(liveness.last);
+
+            const auto new_first =
+                std::min(old_first, static_cast<u32>(loop.begin));
+            const auto new_last =
+                std::max(old_last, static_cast<u32>(loop.end) - 1);
+            liveness.first = static_cast<BlockIndex>(new_first);
+            liveness.last  = static_cast<BlockIndex>(new_last);
+
+            // if last changed, set last_full to true
+            // since the values need to be allocated when the loop is active
+            liveness.last_full =
+                (old_last == new_last) ? liveness.last_full : true;
+        };
+
+        const auto block_loop_idx = block_loop_map[block_idx];
+        if (liveness.lowest_common_loop == block_loop_idx) {
+            // just extend the liveness interval
+            TPDE_LOG_TRACE("    lcl is same as block loop");
+            update_for_block_only();
+
+            TPDE_LOG_TRACE("    new interval {}->{}, lf: {}",
+                           static_cast<u32>(liveness.first),
+                           static_cast<u32>(liveness.last),
+                           liveness.last_full);
+            return;
+        }
+
+        const Loop &liveness_loop = loops[liveness.lowest_common_loop];
+        const Loop &block_loop    = loops[block_loop_idx];
+
+        if (liveness_loop.level < block_loop.level
+            && static_cast<u32>(block_loop.begin)
+                   < static_cast<u32>(liveness_loop.end)) {
+            assert(static_cast<u32>(block_loop.end)
+                   <= static_cast<u32>(liveness_loop.end));
+
+            TPDE_LOG_TRACE("    block_loop {} is nested inside lcl",
+                           block_loop_idx);
+            // The current use is nested inside the loop of the liveness
+            // interval so we only need to get the loop at level
+            // (liveness_loop.level + 1) that contains block_loop and extend the
+            // liveness interval
+            const auto target_level = liveness_loop.level + 1;
+            auto       cur_loop_idx = block_loop_idx;
+            auto       cur_level    = block_loop.level;
+            // TODO(ts): we could also skip some loops here since we know that
+            // there have to be at least n=(cur_level-target_level) loops
+            // between cur_loop and target_loop
+            // so we could choose cur_loop_idx = min(cur_parent, cur_idx-n)?
+            // however this might jump into more nested loops
+            // so maybe check (cur_idx-n).level first?
+            while (cur_level != target_level) {
+                cur_loop_idx = loops[cur_loop_idx].parent;
+                --cur_level;
+            }
+            assert(loops[cur_loop_idx].level == target_level);
+            TPDE_LOG_TRACE("    target_loop is {}", cur_loop_idx);
+            update_for_loop(loops[cur_loop_idx]);
+
+            TPDE_LOG_TRACE("    new interval {}->{}, lf: {}",
+                           static_cast<u32>(liveness.first),
+                           static_cast<u32>(liveness.last),
+                           liveness.last_full);
+            return;
+        }
+
+        TPDE_LOG_TRACE(
+            "    block_loop {} is nested higher or in a different loop",
+            block_loop_idx);
+        // need to update the lowest common loop to contain both liveness_loop
+        // and block_loop and then extend the interval accordingly
+
+        // TODO(ts): this algorithm is currently worst-case O(n) which makes the
+        // whole liveness analysis worst-case O(n^2) which is not good. However,
+        // we expect the number of loops to be much smaller than the number of
+        // values so it should be fine for most programs. To be safe, we should
+        // implement the algorithm from "Gusfield: Constant-Time Lowest Common
+        // Ancestor Retrieval" which seems to be the one with the most
+        // reasonable overhead. It is however not zero and the queries are also
+        // not exactly free so we should definitely benchmark both version first
+        // with both small and large programs
+
+        auto lhs_idx  = liveness.lowest_common_loop;
+        auto rhs_idx  = block_loop_idx;
+        auto prev_rhs = rhs_idx;
+        auto prev_lhs = lhs_idx;
+        while (lhs_idx != rhs_idx) {
+            const auto lhs_level = loops[lhs_idx].level;
+            const auto rhs_level = loops[rhs_idx].level;
+            if (lhs_level > rhs_level) {
+                prev_lhs = lhs_idx;
+                lhs_idx  = loops[lhs_idx].parent;
+            } else if (lhs_level < rhs_level) {
+                prev_rhs = rhs_idx;
+                rhs_idx  = loops[rhs_idx].parent;
+            } else {
+                prev_lhs = lhs_idx;
+                prev_rhs = rhs_idx;
+                lhs_idx  = loops[lhs_idx].parent;
+                rhs_idx  = loops[rhs_idx].parent;
+            }
+        }
+
+        assert(static_cast<u32>(loops[lhs_idx].begin)
+               <= static_cast<u32>(liveness_loop.begin));
+        assert(static_cast<u32>(loops[lhs_idx].end)
+               >= static_cast<u32>(liveness_loop.end));
+        TPDE_LOG_TRACE("    new lcl is {}", lhs_idx);
+
+        liveness.lowest_common_loop = lhs_idx;
+
+        // extend for the full loop that contains liveness_loop and is nested
+        // directly in lcl
+        assert(loops[prev_lhs].parent == lhs_idx);
+        assert(static_cast<u32>(loops[prev_lhs].begin)
+               <= static_cast<u32>(liveness_loop.begin));
+        assert(static_cast<u32>(loops[prev_lhs].end)
+               >= static_cast<u32>(liveness_loop.end));
+        update_for_loop(loops[prev_lhs]);
+
+        // extend by block if the block_loop is the lcl
+        // or by prev_rhs (the loop containing block_loop nested directly in
+        // lcl) otherwise
+        if (lhs_idx == block_loop_idx) {
+            update_for_block_only();
+        } else {
+            assert(loops[prev_rhs].parent == lhs_idx);
+            assert(loops[prev_rhs].level == loops[lhs_idx].level + 1);
+            update_for_loop(loops[prev_rhs]);
+        }
+
+        TPDE_LOG_TRACE("    new interval {}->{}, lf: {}",
+                       static_cast<u32>(liveness.first),
+                       static_cast<u32>(liveness.last),
+                       liveness.last_full);
+    };
+
+    assert(block_layout[0] == adaptor->cur_entry_block());
+    if constexpr (Adaptor::TPDE_LIVENESS_VISIT_ARGS) {
+        for (const IRValueRef arg : adaptor->cur_args()) {
+            visit(arg, 0);
+        }
+    }
+
+    for (u32 block_idx = 0; block_idx < block_layout.size(); ++block_idx) {
+        TPDE_LOG_TRACE("Analyzing block {} ('{}')",
+                       block_idx,
+                       adaptor->block_fmt_ref(block_layout[block_idx]));
+
+        for (const IRValueRef value :
+             adaptor->block_values(block_layout[block_idx])) {
+            TPDE_LOG_TRACE("Analyzing value {}", adaptor->val_local_idx(value));
+
+            if (adaptor->val_ignore_in_liveness_analysis(value)) {
+                TPDE_LOG_TRACE("value is ignored in liveness analysis");
+                continue;
+            }
+
+            if (adaptor->val_is_phi(value)) {
+                TPDE_LOG_TRACE("value is phi");
+                const auto phi_ref    = adaptor->val_as_phi(value);
+                const u32  slot_count = phi_ref.incoming_count();
+                for (u32 i = 0; i < slot_count; ++i) {
+                    const IRBlockRef incoming_block =
+                        phi_ref.incoming_block_for_slot(i);
+                    const IRValueRef incoming_value =
+                        phi_ref.incoming_val_for_slot(i);
+                    const auto incoming_block_idx =
+                        adaptor->block_info(incoming_block);
+                    TPDE_LOG_TRACE("got value {} from block {} ('{})",
+                                   adaptor->val_local_idx(incoming_value),
+                                   incoming_block_idx,
+                                   adaptor->block_fmt_ref(incoming_block));
+
+                    // mark the incoming value as used in the incoming block
+                    visit(incoming_value, incoming_block_idx);
+                    // mark the PHI-value as used in the incoming block
+                    visit(value, incoming_block_idx);
+                }
+
+                // mark the PHI-value as used in the current block
+                visit(value, block_idx);
+            } else {
+                // mark the value as used in the current block
+                visit(value, block_idx);
+
+                // visit the operands
+                for (const IRValueRef operand : adaptor->val_operands(value)) {
+                    visit(operand, block_idx);
+                }
+            }
+        }
+    }
+
+    TPDE_LOG_TRACE("Finished Liveness Analysis");
 }
 
 } // namespace tpde

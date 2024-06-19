@@ -38,6 +38,11 @@ int main(int argc, char *argv[]) {
     args::Flag print_loops(
         parser, "print_loops", "Print the loops", {"print-loops"});
 
+    args::Flag print_liveness(parser,
+                              "print_liveness",
+                              "Print the liveness information",
+                              {"print-liveness"});
+
     std::unordered_map<std::string_view, RunTestUntil> run_map{
         {    "full",          RunTestUntil::full},
         {      "ir",    RunTestUntil::ir_parsing},
@@ -133,6 +138,7 @@ int main(int argc, char *argv[]) {
         analyzer.test_print_rpo          = print_rpo;
         analyzer.test_print_block_layout = print_layout;
         analyzer.test_print_loops        = print_loops;
+        analyzer.test_print_liveness     = print_liveness;
 
         for (auto func : adaptor.funcs()) {
             adaptor.switch_func(func);

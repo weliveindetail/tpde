@@ -123,6 +123,8 @@ struct TestIRAdaptor {
     static constexpr bool TPDE_PROVIDES_HIGHEST_VAL_IDX = true;
     u32                   highest_local_val_idx;
 
+    static constexpr bool TPDE_LIVENESS_VISIT_ARGS = true;
+
     [[nodiscard]] u32 func_count() const noexcept {
         return static_cast<u32>(ir->functions.size());
     }
@@ -481,7 +483,7 @@ struct TestIRAdaptor {
                 true, data + info.op_begin_idx + 1, data + info.op_end_idx + 1);
         } else if (info.type == TestIR::Value::Type::normal) {
             return Range(
-                true, data + info.op_begin_idx, data + info.op_end_idx);
+                false, data + info.op_begin_idx, data + info.op_end_idx);
         } else {
             return Range{false, nullptr, nullptr};
         }
@@ -562,6 +564,9 @@ struct TestIRAdaptor {
 
         highest_local_val_idx = ir->blocks[info.block_end_idx - 1].inst_end_idx
                                 - info.arg_begin_idx;
+        if (highest_local_val_idx > 0) {
+            --highest_local_val_idx;
+        }
     }
 
     void reset() { highest_local_val_idx = 0; }

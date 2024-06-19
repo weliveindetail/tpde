@@ -125,6 +125,12 @@ concept IRAdaptor = requires(T a) {
     /// function to be compiled ahead of time?
     { T::TPDE_PROVIDES_HIGHEST_VAL_IDX } -> SameBaseAs<bool>;
 
+    /// Does the liveness analysis have to explicitly visit the function
+    /// arguments or do they show up as values in the entry block?
+    ///
+    /// Note: One of these has to be true
+    { T::TPDE_LIVENESS_VISIT_ARGS } -> SameBaseAs<bool>;
+
     // Can the adaptor store two 32 bit values for efficient access through the
     // block reference?
     // { T::TPDE_CAN_STORE_BLOCK_AUX } -> std::same_as<bool>;
