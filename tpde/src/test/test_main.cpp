@@ -14,32 +14,6 @@
 int main(int argc, char *argv[]) {
     using namespace tpde;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-
-    struct ValueAssignment {
-        u32 frame_off;
-        u32 size;
-
-        union {
-            ValueAssignment *next_free_list_entry;
-
-            struct {
-                u32 references_left;
-
-                union {
-                    u32 first_part;
-                    u32 parts[];
-                };
-            };
-        };
-    };
-
-#pragma GCC diagnostic pop
-
-    fmt::println("{} {}",
-                 offsetof(ValueAssignment, first_part),
-                 offsetof(ValueAssignment, parts));
 
     args::ArgumentParser parser("Testing utility for TPDE");
     args::HelpFlag       help(parser, "help", "Display help", {'h', "help"});
@@ -85,10 +59,8 @@ int main(int argc, char *argv[]) {
         run_map,
         RunTestUntil::full);
 
-    args::Positional<std::string> ir_path(parser,
-                                          "ir_path",
-                                          "Path to the input IR file",
-                                          args::Options::Required);
+    args::Positional<std::string> ir_path(
+        parser, "ir_path", "Path to the input IR file");
 
     try {
         parser.ParseCLI(argc, argv);
@@ -126,20 +98,34 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-    const auto file_path = args::get(ir_path);
-    auto       file      = std::ifstream{file_path, std::ios::ate};
-    if (!file.is_open()) {
-        fprintf(stderr, "Failed to open file '%s'\n", file_path.c_str());
-        return 1;
-    }
-
-    const auto file_size = file.tellg();
-    file.seekg(0, std::ios::beg);
-
     std::string buf;
-    buf.resize(file_size);
 
-    file.read(buf.data(), file_size);
+    if (ir_path) {
+        fmt::println("GOT IR FILE");
+        const auto file_path = args::get(ir_path);
+        auto       file      = std::ifstream{file_path, std::ios::ate};
+        if (!file.is_open()) {
+            fprintf(stderr, "Failed to open file '%s'\n", file_path.c_str());
+            return 1;
+        }
+
+        const auto file_size = file.tellg();
+        file.seekg(0, std::ios::beg);
+
+        buf.resize(file_size);
+
+        file.read(buf.data(), file_size);
+    } else {
+        // Read from stdin
+        std::string line{};
+        while (std::getline(std::cin, line)) {
+            if (std::cin.eof()) {
+                break;
+            }
+            buf += line;
+            buf += '\n';
+        }
+    }
 
     test::TestIR ir{};
     if (!ir.parse_ir(buf)) {
