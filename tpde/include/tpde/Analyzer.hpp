@@ -99,6 +99,11 @@ struct Analyzer {
         return block_layout[static_cast<u32>(idx)];
     }
 
+    const LivenessInfo &liveness_info(const u32 val_idx) const noexcept {
+        assert(val_idx < liveness.size());
+        return liveness[val_idx];
+    }
+
   protected:
     // for use during liveness analysis
     LivenessInfo &liveness_maybe(const IRValueRef val) noexcept;

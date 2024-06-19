@@ -16,4 +16,29 @@ constexpr T align_up(T val, std::type_identity_t<T> align) {
     return (val + (align - 1)) & ~(align - 1);
 }
 
+template <typename T>
+T cnt_tz(T val) {
+    static_assert(false);
+}
+
+template <>
+inline u8 cnt_tz<u8>(const u8 val) {
+    return __builtin_ctz(val);
+}
+
+template <>
+inline u16 cnt_tz<u16>(const u16 val) {
+    return __builtin_ctz(val);
+}
+
+template <>
+inline u32 cnt_tz<u32>(const u32 val) {
+    return __builtin_ctz(val);
+}
+
+template <>
+inline u64 cnt_tz<u64>(const u64 val) {
+    return __builtin_ctzll(val);
+}
+
 } // namespace tpde::util

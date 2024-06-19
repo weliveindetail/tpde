@@ -27,6 +27,84 @@ struct CompilerBase {
     Adaptor          *adaptor;
     Analyzer<Adaptor> analyzer;
 
+    // data for frame management
+
+    struct {
+        /// The current size of the stack frame
+        u32                                       frame_size          = 0;
+        /// Free-Lists for 1/2/4/8/16 sized allocations
+        // TODO(ts): make the allocations for 4/8 different from the others
+        // since they are probably the one's most used?
+        util::SmallVector<u32, 16>                fixed_free_lists[5] = {};
+        /// Free-Lists for all other sizes
+        // TODO(ts): think about which data structure we want here
+        std::unordered_map<u32, std::vector<u32>> dynamic_free_lists{};
+    } stack = {};
+
+    // Assignments
+
+    // disable Wpedantic here since these are compiler extensions
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+
+// GCC < 15 does not support the flexible array member in the union
+// see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53548
+#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ < 15
+    #define GNU_ZERO 0
+#else
+    #define GNU_ZERO
+#endif
+
+    // TODO(ts): add option to use fixed size assignments if there is no need
+    // for arbitrarily many parts since that comes with a 1-3% cost in
+    // compile-time
+    struct ValueAssignment {
+        u32 frame_off;
+        u32 size;
+
+        // we want tight packing and with this construct we get a base size of
+        // 16 bytes for values with only one part (the majority)
+        union {
+            ValueAssignment *next_free_list_entry;
+
+            struct {
+                u32 references_left;
+
+                // TODO: get the type of parts from Derived
+                // note: the top bit of each part is reserved to indicate
+                // whether there is another part after this
+                union {
+                    u32 first_part;
+                    u32 parts[GNU_ZERO];
+                };
+            };
+        };
+    };
+
+#undef GNU_ZERO
+#pragma GCC diagnostic pop
+
+    static constexpr size_t ASSIGNMENT_BUF_SIZE = 16 * 1024;
+
+    struct AssignmentBuffer {
+        std::unique_ptr<u8[]> data;
+        u32                   cur_off = 0;
+    };
+
+    // TODO(ts): think about different ways to store this that are maybe more
+    // compact?
+    struct {
+        util::SmallVector<AssignmentBuffer, 8> buffers = {};
+        u32                                    cur_buf = 0;
+        util::SmallVector<ValueAssignment *, Analyzer<Adaptor>::SMALL_VALUE_NUM>
+            value_ptrs;
+
+        // free lists for two initial size classes (depending on the alignment
+        // of ValueAssignment and the part type)
+        ValueAssignment                           *fixed_free_lists[2] = {};
+        std::unordered_map<u32, ValueAssignment *> dynamic_free_lists;
+    } assignments = {};
+
     /// Initialize a CompilerBase, should be called by the derived classes
     explicit CompilerBase(Adaptor *adaptor)
         : adaptor(adaptor), analyzer(adaptor) {}
@@ -50,17 +128,235 @@ struct CompilerBase {
     /// Reset any leftover data from the previous compilation such that it will
     /// not affect the next compilation
     void reset();
+
+  protected:
+    ValueAssignment *allocate_assignment(u32  part_count,
+                                         bool skip_free_list = false) noexcept;
+
+    u32 allocate_stack_slot(u32 size) noexcept;
+
+    bool compile_func(IRFuncRef func) noexcept;
+
+    bool compile_block(IRBlockRef block) noexcept;
 };
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile() {
+    for (const IRFuncRef func : adaptor->funcs()) {
+        TPDE_LOG_TRACE("Compiling func {}", adaptor->func_link_name(func));
+        derived()->compile_func(func);
+    }
+
     return false;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::reset() {
     analyzer.reset();
-    adaptor.reset();
+    adaptor->reset();
+
+    for (auto &e : stack.fixed_free_lists) {
+        e.clear();
+    }
+    stack.dynamic_free_lists.clear();
+
+    assignments.value_ptrs.clear();
+    assignments.buffers.clear();
+    assignments.cur_buf             = 0;
+    assignments.fixed_free_lists[0] = assignments.fixed_free_lists[1] = nullptr;
+    assignments.dynamic_free_lists.clear();
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
+    CompilerBase<Adaptor, Derived, Config>::allocate_assignment(
+        const u32 part_count, bool skip_free_list) noexcept {
+    u32 size = sizeof(ValueAssignment);
+
+    constexpr u32 PARTS_INCLUDED =
+        sizeof(ValueAssignment) - offsetof(ValueAssignment, parts);
+    u32 free_list_idx = 0;
+    if (part_count > PARTS_INCLUDED) {
+        size +=
+            (part_count - PARTS_INCLUDED) * sizeof(ValueAssignment::first_part);
+        size = util::align_up(size, alignof(ValueAssignment));
+        assert((size & (alignof(ValueAssignment) - 1)) == 0);
+
+        free_list_idx = (((part_count - PARTS_INCLUDED)
+                          * sizeof(ValueAssignment::first_part))
+                         / alignof(ValueAssignment))
+                        + 1;
+    }
+    assert(size <= ASSIGNMENT_BUF_SIZE);
+
+    if (!skip_free_list) {
+        if (free_list_idx <= 1) [[likely]] {
+            if (auto *a = assignments.fixed_free_lists[free_list_idx];
+                a != nullptr) {
+                assignments.fixed_free_lists[free_list_idx] =
+                    a->next_free_list_entry;
+                return a;
+            }
+        } else {
+            auto it = assignments.dynamic_free_lists.find(free_list_idx);
+            if (it != assignments.dynamic_free_lists.end()) {
+                if (auto *a = it->second; a != nullptr) {
+                    it->second = a->next_free_list_entry;
+                    return a;
+                }
+                // TODO(ts): remove if it->second is nullptr?
+            }
+        }
+    }
+
+    // need to allocate new assignment
+    if (ASSIGNMENT_BUF_SIZE - assignments.buffers[assignments.cur_buf].cur_off
+        >= size) {
+        auto &buf = assignments.buffers[assignments.cur_buf];
+        auto *assignment =
+            reinterpret_cast<ValueAssignment *>(buf.data.get() + buf.cur_off);
+        buf.cur_off += size;
+
+        new (assignment) ValueAssignment{};
+        return assignments;
+    }
+
+    ++assignments.cur_buf;
+    if (assignments.cur_buf == assignments.buffers.size()) {
+        assignments.buffers.emplace_back(
+            std::make_unique<u8[]>(ASSIGNMENT_BUF_SIZE), 0);
+    }
+    assert(assignments.cur_buf < assignments.buffers.size());
+    assert(assignments.buffers[assignments.cur_buf].cur_off == 0);
+
+    auto &buf        = assignments.buffers[assignments.cur_buf];
+    auto *assignment = reinterpret_cast<ValueAssignment *>(buf.data.get());
+    buf.cur_off      = size;
+
+    new (assignment) ValueAssignment{};
+    return assignment;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
+    u32 size) noexcept {
+    assert(size > 0);
+    if (size <= 16) {
+        assert(size == 1 || size == 2 || size == 4 || size == 8 || size == 16);
+
+        const u32 free_list_idx = util::cnt_tz(size);
+        if (!stack.fixed_free_lists[free_list_idx].empty()) {
+            const auto slot = stack.fixed_free_lists[free_list_idx].back();
+            stack.fixed_free_lists[free_list_idx].pop_back();
+            return slot;
+        }
+
+        // align the frame size
+        for (const u32 list_idx = util::cnt_tz(stack.frame_size);
+             list_idx < free_list_idx;
+             list_idx = util::cnt_tz(stack.frame_size)) {
+            stack.fixed_free_lists[list_idx].push_back(stack.frame_size);
+            stack.frame_size += 1ull << list_idx;
+        }
+    } else {
+        // align the size to 16
+        size = util::align_up(size, 16);
+
+        auto it = stack.dynamic_free_lists.find(size);
+        if (it != stack.dynamic_free_lists.end() && !it->second.empty()) {
+            const auto slot = it->second.back();
+            it->second.pop_back();
+            return slot;
+        }
+
+        // align the frame size up to 16
+        for (const u32 list_idx = util::cnt_tz(stack.frame_size); list_idx < 5;
+             list_idx           = util::cnt_tz(stack.frame_size)) {
+            stack.fixed_free_lists[list_idx].push_back(stack.frame_size);
+            stack.frame_size += 1ull << list_idx;
+        }
+    }
+
+    const auto slot   = stack.frame_size;
+    stack.frame_size += size;
+    return slot;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+bool CompilerBase<Adaptor, Derived, Config>::compile_func(
+    const IRFuncRef func) noexcept {
+    // reset per-func data
+    analyzer.reset();
+
+    adaptor->switch_func(func);
+    analyzer.switch_func(func);
+
+    stack.frame_size = 0;
+    for (auto &e : stack.fixed_free_lists) {
+        e.clear();
+    }
+    stack.dynamic_free_lists.clear();
+
+    assignments.value_ptrs.clear();
+    assignments.value_ptrs.resize(analyzer.liveness.size());
+    for (auto &buf : assignments.buffers) {
+        buf.cur_off = 0;
+    }
+    assignments.cur_buf             = 0;
+    assignments.fixed_free_lists[0] = assignments.fixed_free_lists[1] = nullptr;
+    assignments.dynamic_free_lists.clear();
+
+    if (assignments.buffers.empty()) {
+        assignments.buffers.emplace_back(
+            std::make_unique<u8[]>(ASSIGNMENT_BUF_SIZE), 0);
+    }
+
+    for (const IRValueRef alloca : adaptor->cur_static_allocas()) {
+        // TODO(ts): add a flag in the adaptor to not do this if it is
+        // unnecessary?
+        const auto local_idx = adaptor->val_local_idx(alloca);
+        if (const auto &info = analyzer.liveness_info(local_idx);
+            info.ref_count != 0) {
+            // the value is ref_counted
+            if (--info.ref_count == 0) {
+                // no need to allocate the slot, the value is not used
+                continue;
+            }
+        }
+
+        auto *assignment = allocate_assignment(1, true);
+        auto  slot       = allocate_stack_slot(Derived::PLATFORM_POINTER_SIZE);
+
+        assignment->frame_off = slot;
+        assignment->size      = Derived::PLATFORM_POINTER_SIZE;
+        assignment->references_left =
+            analyzer.liveness_info(local_idx).ref_count;
+
+        assignments.value_ptrs[local_idx] = assignment;
+
+        // TODO(ts): initialize the part
+        assert(0);
+    }
+
+    // TODO(ts): generate prologue
+    // TODO(ts): exception handling
+
+    for (u32 i = 0; i < analyzer.block_layout.size(); ++i) {
+        const auto block_ref = analyzer.block_layout[i];
+        TPDE_LOG_TRACE(
+            "Compiling block {} ({})", i, adaptor->block_fmt_ref(block_ref));
+        derived()->compile_block(block_ref);
+    }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+bool CompilerBase<Adaptor, Derived, Config>::compile_block(
+    const IRBlockRef block) noexcept {
+    for (const IRValueRef value : adaptor->block_values(block)) {
+        derived()->compile_inst(value);
+    }
+
+    // TODO(ts): free delayed releases
 }
 
 

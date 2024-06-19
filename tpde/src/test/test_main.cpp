@@ -14,6 +14,33 @@
 int main(int argc, char *argv[]) {
     using namespace tpde;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+
+    struct ValueAssignment {
+        u32 frame_off;
+        u32 size;
+
+        union {
+            ValueAssignment *next_free_list_entry;
+
+            struct {
+                u32 references_left;
+
+                union {
+                    u32 first_part;
+                    u32 parts[];
+                };
+            };
+        };
+    };
+
+#pragma GCC diagnostic pop
+
+    fmt::println("{} {}",
+                 offsetof(ValueAssignment, first_part),
+                 offsetof(ValueAssignment, parts));
+
     args::ArgumentParser parser("Testing utility for TPDE");
     args::HelpFlag       help(parser, "help", "Display help", {'h', "help"});
     args::ValueFlag<unsigned> log_level(
