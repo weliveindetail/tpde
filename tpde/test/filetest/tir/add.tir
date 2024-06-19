@@ -1,0 +1,24 @@
+; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+;
+; SPDX-License-Identifier: LicenseRef-Proprietary
+
+; RUN: %tpde_test --run-until=ir --print-ir %s | FileCheck %s --dump-input always
+
+; CHECK: Printing IR
+
+; CHECK-LABEL: Function func
+func() {
+; CHECK-NEXT: Block entry
+entry:
+; CHECK-NEXT: Value a
+  %a =
+; CHECK-NEXT: Value b
+  %b =
+; CHECK-NEXT: Value c (add)
+; CHECK-NEXT: Op a
+; CHECK-NEXT: Op b
+  %c = add %a, %b
+  terminate
+}
+
+; CHECK-EMPTY

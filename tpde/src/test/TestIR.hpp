@@ -17,9 +17,17 @@ struct TestIR {
             alloca,
             phi,
         };
+
+        enum class Op : u8 {
+            none,
+            add
+        };
+        inline static constexpr const char *OP_NAMES[] = {"none", "add"};
+
         std::string name;
         u32         local_idx;
         Type        type;
+        Op          op;
 
         union {
             u32 alloca_size;

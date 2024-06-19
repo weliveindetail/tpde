@@ -493,7 +493,25 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
             parse_state.block_finished_phis = true;
 
             values[val_idx].op_count = 0;
-            auto had_arg             = false;
+            values[val_idx].op       = Value::Op::none;
+
+            remove_whitespace(line);
+
+            u32              required_op_count = ~0u;
+            std::string_view op                = {};
+            if (!line.empty()) {
+                if (line.starts_with("add ")) {
+                    op = line.substr(0, 3);
+                    line.remove_prefix(4);
+                    values[val_idx].op = Value::Op::add;
+                    required_op_count  = 2;
+                }
+            }
+            if (values[val_idx].op != Value::Op::none) {
+                TPDE_LOG_TRACE("  Value {} has op {}", val_idx, op);
+            }
+
+            auto had_arg = false;
             while (!line.empty()) {
                 remove_whitespace(line);
                 if (line.empty()) {
@@ -551,6 +569,14 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
                 }
 
                 ++values[val_idx].op_count;
+            }
+
+            if (required_op_count != ~0u
+                && required_op_count != values[val_idx].op_count) {
+                TPDE_LOG_ERR("Invalid op count {} for op {}",
+                             values[val_idx].op_count,
+                             op);
+                return false;
             }
         }
 
@@ -872,7 +898,14 @@ void tpde::test::TestIR::dump_debug() const noexcept {
                 switch (val.type) {
                     using enum Value::Type;
                 case normal: {
-                    TPDE_LOG_DBG("    Value {}: {}", val_idx, val.name);
+                    if (val.op == Value::Op::none) {
+                        TPDE_LOG_DBG("    Value {}: {}", val_idx, val.name);
+                    } else {
+                        TPDE_LOG_DBG("    Value {} ({}): {}",
+                                     val_idx,
+                                     Value::OP_NAMES[static_cast<u32>(val.op)],
+                                     val.name);
+                    }
                     for (auto op = val.op_begin_idx; op < val.op_end_idx;
                          ++op) {
                         const auto op_idx = value_operands[op];
@@ -944,7 +977,13 @@ void tpde::test::TestIR::print() const noexcept {
                 switch (val.type) {
                     using enum Value::Type;
                 case normal: {
-                    fmt::println("    Value {}", val.name);
+                    if (val.op == Value::Op::none) {
+                        fmt::println("    Value {}", val.name);
+                    } else {
+                        fmt::println("    Value {} ({})",
+                                     val.name,
+                                     Value::OP_NAMES[static_cast<u32>(val.op)]);
+                    }
                     for (auto op = val.op_begin_idx; op < val.op_end_idx;
                          ++op) {
                         const auto op_idx = value_operands[op];

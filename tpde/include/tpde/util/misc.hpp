@@ -17,7 +17,7 @@ constexpr T align_up(T val, std::type_identity_t<T> align) {
 }
 
 template <typename T>
-T cnt_tz(T val) {
+T cnt_tz(T) {
     static_assert(false);
 }
 
