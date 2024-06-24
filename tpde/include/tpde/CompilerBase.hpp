@@ -24,6 +24,9 @@ struct CompilerBase {
     using IRBlockRef = typename Adaptor::IRBlockRef;
     using IRFuncRef  = typename Adaptor::IRFuncRef;
 
+    using Assembler = typename Config::Assembler;
+
+#pragma region CompilerData
     Adaptor          *adaptor;
     Analyzer<Adaptor> analyzer;
 
@@ -105,9 +108,23 @@ struct CompilerBase {
         std::unordered_map<u32, ValueAssignment *> dynamic_free_lists;
     } assignments = {};
 
+    struct RegisterFile;
+    RegisterFile register_file;
+
+    Assembler                               assembler;
+    // TODO(ts): smallvector?
+    std::vector<typename Assembler::SymRef> func_syms;
+
+
+    struct ScratchRegister;
+    struct ValueRef;
+#pragma endregion
+
     /// Initialize a CompilerBase, should be called by the derived classes
-    explicit CompilerBase(Adaptor *adaptor)
-        : adaptor(adaptor), analyzer(adaptor) {}
+    explicit CompilerBase(Adaptor *adaptor, const bool generate_object)
+        : adaptor(adaptor), analyzer(adaptor), assembler(generate_object) {
+        static_assert(std::is_base_of_v<CompilerBase, Derived>);
+    }
 
     /// shortcut for casting to the Derived class so that overloading
     /// works
@@ -135,19 +152,37 @@ struct CompilerBase {
 
     u32 allocate_stack_slot(u32 size) noexcept;
 
-    bool compile_func(IRFuncRef func) noexcept;
+    bool compile_func(IRFuncRef func, u32 func_idx) noexcept;
 
     bool compile_block(IRBlockRef block) noexcept;
 };
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile() {
+    // create function symbols
+
+    assert(func_syms.empty());
     for (const IRFuncRef func : adaptor->funcs()) {
-        TPDE_LOG_TRACE("Compiling func {}", adaptor->func_link_name(func));
-        derived()->compile_func(func);
+        func_syms.push_back(derived()->assembler.sym_predef_func(
+            adaptor->func_link_name(func),
+            adaptor->func_only_local(func),
+            adaptor->func_has_weak_linkage(func)));
     }
 
-    return false;
+    // TODO(ts): create function labels?
+
+    u32 func_idx = 0;
+    for (const IRFuncRef func : adaptor->funcs()) {
+        TPDE_LOG_TRACE("Compiling func {}", adaptor->func_link_name(func));
+        if (!derived()->compile_func(func, func_idx)) {
+            return false;
+        }
+        ++func_idx;
+    }
+
+    // TODO(ts): generate object/map?
+
+    return true;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -165,6 +200,9 @@ void CompilerBase<Adaptor, Derived, Config>::reset() {
     assignments.cur_buf             = 0;
     assignments.fixed_free_lists[0] = assignments.fixed_free_lists[1] = nullptr;
     assignments.dynamic_free_lists.clear();
+
+    assembler.reset();
+    func_syms.clear();
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -218,7 +256,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
         buf.cur_off += size;
 
         new (assignment) ValueAssignment{};
-        return assignments;
+        return assignment;
     }
 
     ++assignments.cur_buf;
@@ -252,7 +290,7 @@ u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
         }
 
         // align the frame size
-        for (const u32 list_idx = util::cnt_tz(stack.frame_size);
+        for (u32 list_idx = util::cnt_tz(stack.frame_size);
              list_idx < free_list_idx;
              list_idx = util::cnt_tz(stack.frame_size)) {
             stack.fixed_free_lists[list_idx].push_back(stack.frame_size);
@@ -270,8 +308,8 @@ u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
         }
 
         // align the frame size up to 16
-        for (const u32 list_idx = util::cnt_tz(stack.frame_size); list_idx < 5;
-             list_idx           = util::cnt_tz(stack.frame_size)) {
+        for (u32 list_idx = util::cnt_tz(stack.frame_size); list_idx < 5;
+             list_idx     = util::cnt_tz(stack.frame_size)) {
             stack.fixed_free_lists[list_idx].push_back(stack.frame_size);
             stack.frame_size += 1ull << list_idx;
         }
@@ -284,7 +322,7 @@ u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile_func(
-    const IRFuncRef func) noexcept {
+    const IRFuncRef func, const u32 func_idx) noexcept {
     // reset per-func data
     analyzer.reset();
 
@@ -311,17 +349,18 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
             std::make_unique<u8[]>(ASSIGNMENT_BUF_SIZE), 0);
     }
 
+    derived()->reset_register_file();
+
+    assembler.start_func(func_syms[func_idx]);
+
     for (const IRValueRef alloca : adaptor->cur_static_allocas()) {
         // TODO(ts): add a flag in the adaptor to not do this if it is
         // unnecessary?
         const auto local_idx = adaptor->val_local_idx(alloca);
         if (const auto &info = analyzer.liveness_info(local_idx);
-            info.ref_count != 0) {
-            // the value is ref_counted
-            if (--info.ref_count == 0) {
-                // no need to allocate the slot, the value is not used
-                continue;
-            }
+            info.ref_count == 1) {
+            // the value is ref-counted and not used, so skip it
+            continue;
         }
 
         auto *assignment = allocate_assignment(1, true);
@@ -338,26 +377,40 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
         assert(0);
     }
 
-    // TODO(ts): generate prologue
+    // TODO(ts): place function label
+    // TODO(ts): make function labels optional?
+
+    derived()->gen_func_prolog_and_args();
     // TODO(ts): exception handling
 
     for (u32 i = 0; i < analyzer.block_layout.size(); ++i) {
         const auto block_ref = analyzer.block_layout[i];
         TPDE_LOG_TRACE(
             "Compiling block {} ({})", i, adaptor->block_fmt_ref(block_ref));
-        derived()->compile_block(block_ref);
+        if (!derived()->compile_block(block_ref)) {
+            return false;
+        }
     }
+
+    derived()->finish_func();
+    assembler.end_func();
+
+    return true;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile_block(
     const IRBlockRef block) noexcept {
     for (const IRValueRef value : adaptor->block_values(block)) {
-        derived()->compile_inst(value);
+        if (!derived()->compile_inst(value)) {
+            return false;
+        }
     }
 
     // TODO(ts): free delayed releases
+    return true;
 }
 
-
 } // namespace tpde
+
+#include "RegisterFile.hpp"

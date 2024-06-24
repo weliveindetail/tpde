@@ -255,7 +255,7 @@ struct TestIRAdaptor {
                 bool operator!=(const Iter &other) const noexcept {
                     assert(other.self == self);
                     assert(other.val_idx_end == val_idx_end);
-                    return other.val == val;
+                    return other.val != val;
                 }
 
                 IRValueRef operator*() const noexcept {
@@ -279,7 +279,15 @@ struct TestIRAdaptor {
         const auto &entry = ir->blocks[ir->functions[cur_func].block_begin_idx];
         assert(ir->functions[cur_func].block_begin_idx
                != ir->functions[cur_func].block_end_idx);
-        return Range{ir, entry.inst_begin_idx, entry.inst_end_idx};
+
+        u32 first_alloca = entry.inst_begin_idx;
+        while (first_alloca != entry.inst_end_idx) {
+            if (ir->values[first_alloca].type == TestIR::Value::Type::alloca) {
+                break;
+            }
+            ++first_alloca;
+        }
+        return Range{ir, first_alloca, entry.inst_end_idx};
     }
 
     [[nodiscard]] IRBlockRef cur_entry_block() const noexcept {

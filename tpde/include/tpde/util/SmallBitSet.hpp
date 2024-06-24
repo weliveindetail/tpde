@@ -14,38 +14,71 @@ struct SmallBitSet {
     // we divide by 64 bits for the SmallVector
     static_assert((InternalCapacity % 64) == 0);
 
-    SmallVector<uint64_t, InternalCapacity / 64> data;
+    SmallVector<u64, InternalCapacity / 64> data;
+    u32                                     bit_size = 0;
 
     SmallBitSet() = default;
 
-    SmallBitSet(const SmallBitSet &other) : data(other.data) {}
+    SmallBitSet(const SmallBitSet &other)
+        : data(other.data), bit_size(other.bit_size) {}
 
-    SmallBitSet(SmallBitSet &&other) noexcept { data = std::move(other.data); }
+    SmallBitSet(SmallBitSet &&other) noexcept {
+        data     = std::move(other.data);
+        bit_size = other.bit_size;
+    }
 
     SmallBitSet &operator=(const SmallBitSet &other) {
         if (&other != this) {
-            data = other.data;
+            data     = other.data;
+            bit_size = other.bit_size;
         }
         return *this;
     }
 
     SmallBitSet &operator=(SmallBitSet &&other) noexcept {
         if (&other != this) {
-            data = std::move(data);
+            data     = std::move(data);
+            bit_size = other.bit_size;
         }
         return *this;
     }
 
-    void clear() noexcept { data.clear(); }
+    void clear() noexcept {
+        data.clear();
+        bit_size = 0;
+    }
 
-    void resize(u32 size) noexcept {
-        size = align_up(size, 64) / 64;
-        data.resize(size);
+    void resize(const u32 bit_size) noexcept {
+        const auto byte_size = align_up(bit_size, 64) / 64;
+        if (bit_size > this->bit_size && this->bit_size != 0) {
+            const auto last_bits = this->bit_size & 63;
+            const auto set_mask  = (1ull << last_bits) - 1;
+            data.back()          = data.back() & set_mask;
+        }
+
+        data.resize(byte_size);
+        this->bit_size = bit_size;
     }
 
     void zero() {
         for (auto &v : data) {
             v = 0;
+        }
+    }
+
+    void push_back(const bool val) noexcept {
+        if (bit_size / 64 != (bit_size + 1) / 64) {
+            data.push_back(0);
+            if (val) {
+                mark_set(bit_size);
+            }
+            ++bit_size;
+            return;
+        }
+        if (val) {
+            mark_set(bit_size++);
+        } else {
+            mark_unset(bit_size++);
         }
     }
 

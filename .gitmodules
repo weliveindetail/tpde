@@ -9,3 +9,7 @@
 	path = deps/args
 	url = https://github.com/Taywee/args.git
 	branch = master
+[submodule "deps/fadec"]
+	path = deps/fadec
+	url = git@gitlab.db.in.tum.de:tpde/fadec.git
+	branch = master

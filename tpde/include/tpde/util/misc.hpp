@@ -41,4 +41,32 @@ inline u64 cnt_tz<u64>(const u64 val) {
     return __builtin_ctzll(val);
 }
 
+struct BitSetIterator {
+    u64 set;
+
+    struct Iter {
+        u64 set;
+
+        Iter &operator++() noexcept {
+            set = set & (set - 1);
+            return *this;
+        }
+
+        [[nodiscard]] u64 operator*() const noexcept {
+            assert(set != 0);
+            return cnt_tz(set);
+        }
+
+        [[nodiscard]] bool operator!=(const Iter &rhs) const noexcept {
+            return rhs.set != set;
+        }
+    };
+
+    explicit BitSetIterator(const u64 set) : set(set) {}
+
+    [[nodiscard]] Iter begin() const noexcept { return Iter{.set = set}; }
+
+    [[nodiscard]] Iter end() const noexcept { return Iter{.set = 0}; }
+};
+
 } // namespace tpde::util

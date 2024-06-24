@@ -23,6 +23,8 @@ add_library(tpde::tpde ALIAS tpde)
 set(TPDE_LOGGING "DebugOnly" CACHE STRING "Enable logging with spdlog (DebugOnly(default)/ON/OFF)")
 set_property(CACHE TPDE_LOGGING PROPERTY STRINGS DebugOnly ON OFF)
 
+option(TPDE_X64 "enable x86-64 support" ON)
+
 #------------------------------------------------------------------------------
 # dependencies
 #------------------------------------------------------------------------------
@@ -40,6 +42,17 @@ endif ()
 # gharveymn/small_vector
 add_subdirectory(../deps/small_vector ${CMAKE_CURRENT_BINARY_DIR}/deps/small_vector)
 
+# fadec
+if (TPDE_X64)
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(FADEC_DECODE ON CACHE BOOL "fadec decode for asserts")
+    else ()
+        set(FADEC_DECODE OFF CACHE BOOL "no fadec decode")
+    endif ()
+    set(FADEC_ENCODE OFF CACHE BOOL "no fadec encode")
+    set(FADEC_ENCODE2 ON CACHE BOOL "fadec encode2 support")
+    add_subdirectory(../deps/fadec ${CMAKE_CURRENT_BINARY_DIR}/deps/fadec)
+endif ()
 
 #------------------------------------------------------------------------------
 # sources
@@ -47,10 +60,13 @@ add_subdirectory(../deps/small_vector ${CMAKE_CURRENT_BINARY_DIR}/deps/small_vec
 
 set(TPDE_HEADERS
     include/tpde/Analyzer.hpp
+    include/tpde/Assembler.hpp
     include/tpde/base.hpp
     include/tpde/CompilerBase.hpp
     include/tpde/CompilerBase.hpp
+    include/tpde/AssemblerElf.hpp
     include/tpde/IRAdaptor.hpp
+    include/tpde/RegisterFile.hpp
     include/tpde/util/SmallBitSet.hpp
     include/tpde/util/SmallVector.hpp
     include/tpde/util/misc.hpp
@@ -61,6 +77,11 @@ set(TPDE_SOURCES
     src/main.cpp
 )
 
+set(TPDE_X64_HEADERS
+    include/tpde/x64/AssemblerElfX64.hpp
+    include/tpde/x64/CompilerX64.hpp
+)
+
 #------------------------------------------------------------------------------
 # target tpde
 #------------------------------------------------------------------------------
@@ -68,6 +89,11 @@ set(TPDE_SOURCES
 target_include_directories(tpde PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 target_sources(tpde PRIVATE ${TPDE_SOURCES} ${TPDE_HEADERS})
+
+if (TPDE_X64)
+    target_sources(tpde PRIVATE ${TPDE_X64_HEADERS})
+    target_link_libraries(tpde PUBLIC fadec::fadec)
+endif ()
 
 set_target_properties(tpde PROPERTIES
     VERSION 0.1.0
@@ -119,6 +145,8 @@ target_include_directories(tpde_test PRIVATE ../deps/)
 set(TPDE_TEST_SOURCES
     src/test/TestIR.cpp
     src/test/TestIR.hpp
+    src/test/TestIRCompiler.cpp
+    src/test/TestIRCompiler.hpp
     src/test/test_main.cpp
 )
 

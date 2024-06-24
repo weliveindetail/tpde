@@ -9,11 +9,12 @@
 #include <args/args.hxx>
 
 #include "TestIR.hpp"
+#include "TestIRCompiler.hpp"
 #include "tpde/Analyzer.hpp"
+#include "tpde/CompilerBase.hpp"
 
 int main(int argc, char *argv[]) {
     using namespace tpde;
-
 
     args::ArgumentParser parser("Testing utility for TPDE");
     args::HelpFlag       help(parser, "help", "Display help", {'h', "help"});
@@ -58,6 +59,12 @@ int main(int argc, char *argv[]) {
         {"run-until"},
         run_map,
         RunTestUntil::full);
+
+    args::ValueFlag<std::string> obj_out_path(
+        parser,
+        "obj_path",
+        "Path where the output object file should be written",
+        {'o', "obj-out"});
 
     args::Positional<std::string> ir_path(
         parser, "ir_path", "Path to the input IR file");
@@ -162,6 +169,35 @@ int main(int argc, char *argv[]) {
 
         return 0;
     }
+
+    // TODO(ts): multiple arch select
+    {
+        test::TestIRAdaptor     adaptor{&ir};
+        test::TestIRCompilerX64 compiler{&adaptor};
+
+        compiler.analyzer.test_run_until          = run_until.Get();
+        compiler.analyzer.test_print_rpo          = print_rpo;
+        compiler.analyzer.test_print_block_layout = print_layout;
+        compiler.analyzer.test_print_loops        = print_loops;
+        compiler.analyzer.test_print_liveness     = print_liveness;
+
+        if (!compiler.compile()) {
+            spdlog::error("Failed to compile IR");
+            return 1;
+        }
+
+        if (obj_out_path) {
+            const std::vector<u8> data = compiler.assembler.build_object_file();
+            std::ofstream out_file{obj_out_path.Get(), std::ios::binary};
+            if (!out_file.is_open()) {
+                spdlog::error("Failed to open output file");
+                return 1;
+            }
+            out_file.write(reinterpret_cast<const char *>(data.data()),
+                           data.size());
+        }
+    }
+
 
     return 0;
 }

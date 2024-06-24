@@ -17,7 +17,7 @@
         #include <cassert>
     #endif
 #else
-    #define assert(x)
+    #define assert(x) (void)(x)
 #endif
 
 #ifdef TPDE_LOGGING
