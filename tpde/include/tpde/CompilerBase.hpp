@@ -72,16 +72,23 @@ struct CompilerBase {
 
             struct {
                 u32 references_left;
+                u8  max_part_size;
+                u8  lock_count;
 
                 // TODO: get the type of parts from Derived
                 // note: the top bit of each part is reserved to indicate
                 // whether there is another part after this
                 union {
-                    u32 first_part;
-                    u32 parts[GNU_ZERO];
+                    u16 first_part;
+                    u16 parts[GNU_ZERO];
                 };
             };
         };
+
+        void initialize(u32 frame_off,
+                        u32 size,
+                        u32 ref_count,
+                        u16 max_part_size) noexcept;
     };
 
 #undef GNU_ZERO
@@ -116,8 +123,12 @@ struct CompilerBase {
     std::vector<typename Assembler::SymRef> func_syms;
 
 
-    struct ScratchRegister;
-    struct ValueRef;
+    enum class ValLocalIdx : u32 {
+    };
+
+    struct ScratchReg;
+    struct AssignmentPartRef;
+    struct ValuePartRef;
 #pragma endregion
 
     /// Initialize a CompilerBase, should be called by the derived classes
@@ -132,6 +143,15 @@ struct CompilerBase {
 
     const Derived *derived() const {
         return static_cast<const Derived *>(this);
+    }
+
+    [[nodiscard]] ValLocalIdx val_idx(const IRValueRef value) const noexcept {
+        return static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
+    }
+
+    [[nodiscard]] ValueAssignment *
+        val_assignment(const ValLocalIdx idx) noexcept {
+        return assignments.value_ptrs[static_cast<u32>(idx)];
     }
 
     /// Compile the functions returned by Adaptor::funcs
@@ -156,6 +176,15 @@ struct CompilerBase {
 
     bool compile_block(IRBlockRef block) noexcept;
 };
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::ValueAssignment::initialize(
+    u32 frame_off, u32 size, u32 ref_count, u16 max_part_size) noexcept {
+    this->frame_off       = frame_off;
+    this->size            = size;
+    this->references_left = ref_count;
+    this->max_part_size   = max_part_size;
+}
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile() {
@@ -212,7 +241,8 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
     u32 size = sizeof(ValueAssignment);
 
     constexpr u32 PARTS_INCLUDED =
-        sizeof(ValueAssignment) - offsetof(ValueAssignment, parts);
+        (sizeof(ValueAssignment) - offsetof(ValueAssignment, parts))
+        / sizeof(ValueAssignment::first_part);
     u32 free_list_idx = 0;
     if (part_count > PARTS_INCLUDED) {
         size +=
@@ -366,11 +396,10 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
         auto *assignment = allocate_assignment(1, true);
         auto  slot       = allocate_stack_slot(Derived::PLATFORM_POINTER_SIZE);
 
-        assignment->frame_off = slot;
-        assignment->size      = Derived::PLATFORM_POINTER_SIZE;
-        assignment->references_left =
-            analyzer.liveness_info(local_idx).ref_count;
-
+        assignment->initialize(slot,
+                               Derived::PLATFORM_POINTER_SIZE,
+                               analyzer.liveness_info(local_idx).ref_count,
+                               Derived::PLATFORM_POINTER_SIZE);
         assignments.value_ptrs[local_idx] = assignment;
 
         // TODO(ts): initialize the part
@@ -413,4 +442,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
 
 } // namespace tpde
 
+#include "AssignmentPartRef.hpp"
 #include "RegisterFile.hpp"
+#include "ScratchReg.hpp"
+#include "ValuePartRef.hpp"

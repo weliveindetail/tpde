@@ -67,6 +67,9 @@ set(TPDE_HEADERS
     include/tpde/AssemblerElf.hpp
     include/tpde/IRAdaptor.hpp
     include/tpde/RegisterFile.hpp
+    include/tpde/ScratchReg.hpp
+    include/tpde/AssignmentPartRef.hpp
+    include/tpde/ValuePartRef.hpp
     include/tpde/util/SmallBitSet.hpp
     include/tpde/util/SmallVector.hpp
     include/tpde/util/misc.hpp

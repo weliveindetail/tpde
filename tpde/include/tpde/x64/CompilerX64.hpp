@@ -204,6 +204,8 @@ struct CallingConv {
 
 struct PlatformConfig : CompilerConfigDefault {
     using Assembler = AssemblerElfX64;
+
+    static constexpr u8 GP_BANK = 0;
 };
 
 template <IRAdaptor Adaptor, typename Derived>
@@ -231,6 +233,11 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
     void reset_register_file() noexcept;
 
     void reset() noexcept;
+
+
+    void spill_reg(const AsmReg::REG reg,
+                   const u32         frame_off,
+                   const u32         size) noexcept;
 };
 
 template <IRAdaptor Adaptor, typename Derived>
@@ -345,5 +352,35 @@ void CompilerX64<Adaptor, Derived>::reset_register_file() noexcept {
 template <IRAdaptor Adaptor, typename Derived>
 void CompilerX64<Adaptor, Derived>::reset() noexcept {
     Base::reset();
+}
+
+template <IRAdaptor Adaptor, typename Derived>
+void CompilerX64<Adaptor, Derived>::spill_reg(const AsmReg::REG reg,
+                                              const u32         frame_off,
+                                              const u32         size) noexcept {
+    this->assembler.text_ensure_space(16);
+    const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(frame_off));
+    if (reg <= AsmReg::R15) {
+        switch (size) {
+        case 1: ASMNC(MOV8mr, mem, AsmReg{reg}); break;
+        case 2: ASMNC(MOV16mr, mem, AsmReg{reg}); break;
+        case 4: ASMNC(MOV32mr, mem, AsmReg{reg}); break;
+        case 8: ASMNC(MOV64mr, mem, AsmReg{reg}); break;
+        default: assert(0); __builtin_unreachable();
+        }
+        return;
+    }
+
+    switch (size) {
+    case 4: ASMNC(SSE_MOVD_X2Gmr, mem, AsmReg{reg}); break;
+    case 8: ASMNC(SSE_MOVQ_X2Gmr, mem, AsmReg{reg}); break;
+    case 16:
+        ASMNC(SSE_MOVUPDmr, mem, AsmReg{reg});
+        break;
+        // TODO(ts): 32/64 with feature flag?
+    case 1: assert(0);
+    case 2: assert(0);
+    default: assert(0); __builtin_unreachable();
+    }
 }
 } // namespace tpde::x64

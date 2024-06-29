@@ -1,0 +1,130 @@
+// SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+//
+// SPDX-License-Identifier: LicenseRef-Proprietary
+#pragma once
+
+namespace tpde {
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
+    ValueAssignment *assignment;
+    u32              part;
+
+    // note for how parts are structured:
+    // |15|14|13|12|11|10|09|08|07|06|05|04|03|02|01|00|
+    // |NP|   PS   |RV|VR|IM|  |  bank  |    reg_id    |
+    //                         |      full_reg_id      |
+    //
+    // NP: Is there a part following this one
+    // PS: 1 << PS = part size (TODO(ts): maybe swap with NP so that it can be
+    //     extracted easier?)
+    // RV: Register Valid
+    // VR: Variable Reference (i.e. is this a reference to a stack-slot/global
+    //     that does not need to be spilled)
+    // IM: Is the current register value not on the stack?
+    //
+
+    AssignmentPartRef(ValueAssignment *assignment, const u32 part)
+        : assignment(assignment), part(part) {}
+
+    [[nodiscard]] u8 bank() const noexcept {
+        return (assignment->parts[part] >> 5) & 0b111;
+    }
+
+    void set_bank(const u8 bank) noexcept {
+        assert(bank <= 0b111);
+        auto data                = assignment->parts[part] & ~0b1110'0000;
+        data                    |= bank << 5;
+        assignment->parts[part]  = data;
+    }
+
+    [[nodiscard]] u8 full_reg_id() const noexcept {
+        return assignment->parts[part] & 0xFF;
+    }
+
+    void set_full_reg_id(const u8 id) noexcept {
+        assert(bank() == ((id >> 5) & 0b111));
+        assignment->parts[part] = (assignment->parts[part] & 0xFF00) | id;
+    }
+
+    [[nodiscard]] bool modified() const noexcept {
+        return (assignment->parts[part] & (1u << 9)) != 0;
+    }
+
+    void set_modified(const bool val) noexcept {
+        if (val) {
+            assignment->parts[part] |= (1u << 9);
+        } else {
+            assignment->parts[part] &= ~(1u << 9);
+        }
+    }
+
+    [[nodiscard]] bool variable_ref() const noexcept {
+        return (assignment->parts[part] & (1u << 10)) != 0;
+    }
+
+    void set_variable_ref(const bool val) noexcept {
+        if (val) {
+            assignment->parts[part] |= (1u << 10);
+        } else {
+            assignment->parts[part] &= ~(1u << 10);
+        }
+    }
+
+    [[nodiscard]] bool register_valid() const noexcept {
+        return (assignment->parts[part] & (1u << 11)) != 0;
+    }
+
+    void set_register_valid(const bool val) noexcept {
+        if (val) {
+            assignment->parts[part] |= (1u << 11);
+        } else {
+            assignment->parts[part] &= ~(1u << 11);
+        }
+    }
+
+    [[nodiscard]] u32 part_size() const noexcept {
+        return 1u << ((assignment->parts[part] >> 12) & 0b111);
+    }
+
+    void set_part_size(const u32 part_size) noexcept {
+        assert((part_size & (part_size - 1)) == 0);
+        const u32 shift = util::cnt_tz(part_size);
+        assert(shift <= 0b111);
+        auto data                = assignment->parts[part] & ~(0b111 << 12);
+        data                    |= (shift << 12);
+        assignment->parts[part]  = data;
+    }
+
+    [[nodiscard]] bool has_next_part() const noexcept {
+        return (assignment->parts[part] & (1u << 15)) != 0;
+    }
+
+    void set_has_next_part(const bool val) noexcept {
+        if (val) {
+            assignment->parts[part] |= (1u << 15);
+        } else {
+            assignment->parts[part] &= ~(1u << 15);
+        }
+    }
+
+    void spill(CompilerBase *compiler) noexcept;
+};
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef::spill(
+    CompilerBase *compiler) noexcept {
+    assert(this->register_valid());
+
+    if (this->variable_ref()) {
+        // variable references don't need to be spilled
+        return;
+    }
+
+    compiler->derived()->spill_reg(
+        this->full_reg_id(), assignment->frame_off, this->part_size());
+
+    this->set_modified(false);
+    this->set_register_valid(false);
+}
+} // namespace tpde
