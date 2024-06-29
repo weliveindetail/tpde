@@ -43,6 +43,7 @@ struct Analyzer {
     util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> block_layout = {};
 
     /// For each BlockIndex, the corresponding loop
+    // TODO(ts): add the delayed free list in here to save on allocations?
     util::SmallVector<u32, SMALL_BLOCK_NUM> block_loop_map = {};
 
     struct Loop {

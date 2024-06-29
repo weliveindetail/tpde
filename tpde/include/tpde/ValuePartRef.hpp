@@ -43,17 +43,55 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
         }
     }, is_const(false) {}
 
+    ~ValuePartRef() noexcept { reset(); }
+
     [[nodiscard]] AssignmentPartRef assignment() const noexcept {
         assert(!is_const);
         return AssignmentPartRef{state.v.assignment, state.v.part};
     }
 
     void spill() noexcept;
+    void reset() noexcept;
 };
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::spill() noexcept {
     assert(!is_const);
     assert(0);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
+    if (is_const) {
+        return;
+    }
+
+    // TODO(ts): need to implement the lock counter
+    assert(!state.v.locked);
+
+    if (state.v.assignment->references_left == 0) {
+        assert(assignment().variable_ref());
+        return;
+    }
+
+    if (--state.v.assignment->references_left != 0) {
+        return;
+    }
+
+    if (const auto &liveness = state.v.compiler->analyzer.liveness_info(
+            static_cast<u32>(state.v.local_idx));
+        liveness.last_full
+        && liveness.last != state.v.compiler->cur_block_idx) {
+        // need to wait until release
+        auto &free_list_head =
+            state.v.compiler->assignments
+                .delayed_free_lists[static_cast<u32>(liveness.last)];
+        state.v.assignment->next_delayed_free_entry = free_list_head;
+        free_list_head                              = state.v.local_idx;
+
+        return;
+    }
+
+    state.v.compiler->free_assignment(state.v.local_idx);
 }
 } // namespace tpde

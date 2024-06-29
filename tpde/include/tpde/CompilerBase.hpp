@@ -44,7 +44,13 @@ struct CompilerBase {
         std::unordered_map<u32, std::vector<u32>> dynamic_free_lists{};
     } stack = {};
 
+    typename Analyzer<Adaptor>::BlockIndex cur_block_idx;
+
     // Assignments
+
+    enum class ValLocalIdx : u32 {
+    };
+    static constexpr ValLocalIdx INVALID_VAL_LOCAL_IDX = ~0u;
 
     // disable Wpedantic here since these are compiler extensions
 #pragma GCC diagnostic push
@@ -69,6 +75,7 @@ struct CompilerBase {
         // 16 bytes for values with only one part (the majority)
         union {
             ValueAssignment *next_free_list_entry;
+            ValLocalIdx      next_delayed_free_entry;
 
             struct {
                 u32 references_left;
@@ -113,6 +120,9 @@ struct CompilerBase {
         // of ValueAssignment and the part type)
         ValueAssignment                           *fixed_free_lists[2] = {};
         std::unordered_map<u32, ValueAssignment *> dynamic_free_lists;
+
+        util::SmallVector<ValLocalIdx, Analyzer<Adaptor>::SMALL_BLOCK_NUM>
+            delayed_free_lists;
     } assignments = {};
 
     struct RegisterFile;
@@ -122,9 +132,6 @@ struct CompilerBase {
     // TODO(ts): smallvector?
     std::vector<typename Assembler::SymRef> func_syms;
 
-
-    enum class ValLocalIdx : u32 {
-    };
 
     struct ScratchReg;
     struct AssignmentPartRef;
@@ -169,12 +176,18 @@ struct CompilerBase {
   protected:
     ValueAssignment *allocate_assignment(u32  part_count,
                                          bool skip_free_list = false) noexcept;
+    /// Puts an assignment back into the free list
+    void             deallocate_assignment(ValLocalIdx local_idx) noexcept;
 
-    u32 allocate_stack_slot(u32 size) noexcept;
+    /// Frees an assignment, its stack slot and registers
+    void free_assignment(ValLocalIdx local_idx) noexcept;
+
+    u32  allocate_stack_slot(u32 size) noexcept;
+    void free_stack_slot(u32 slot, u32 size) noexcept;
 
     bool compile_func(IRFuncRef func, u32 func_idx) noexcept;
 
-    bool compile_block(IRBlockRef block) noexcept;
+    bool compile_block(IRBlockRef block, u32 block_idx) noexcept;
 };
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -229,6 +242,7 @@ void CompilerBase<Adaptor, Derived, Config>::reset() {
     assignments.cur_buf             = 0;
     assignments.fixed_free_lists[0] = assignments.fixed_free_lists[1] = nullptr;
     assignments.dynamic_free_lists.clear();
+    assignments.delayed_free_lists.clear();
 
     assembler.reset();
     func_syms.clear();
@@ -306,6 +320,37 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::free_assignment(
+    const ValLocalIdx local_idx) noexcept {
+    ValueAssignment *assignment =
+        assignments.value_ptrs[static_cast<u32>(local_idx)];
+    const auto is_var_ref = AssignmentPartRef{assignment, 0}.variable_ref();
+
+    // free registers
+    u32 part_idx = 0;
+    while (true) {
+        auto part = AssignmentPartRef{assignment, part};
+        if (assignment.register_valid()) {
+            const auto reg = assignment.full_reg_id();
+            assert(!register_file.is_fixed(reg));
+            register_file.unmark_used(reg);
+            assignment.set_register_valid(false);
+        }
+        if (!assignment.has_next_part()) {
+            break;
+        }
+        ++part_idx;
+    }
+
+    // variable references do not have a stack slot
+    if (!is_var_ref) {
+        free_stack_slot(assignment->frame_off, assignment->size);
+    }
+
+    free_assignment(local_idx);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
     u32 size) noexcept {
     assert(size > 0);
@@ -373,6 +418,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     assignments.cur_buf             = 0;
     assignments.fixed_free_lists[0] = assignments.fixed_free_lists[1] = nullptr;
     assignments.dynamic_free_lists.clear();
+    assignments.delayed_free_lists.clear();
+    assignments.delayed_free_lists.resize(analyzer.block_layout.size(), ~0u);
 
     if (assignments.buffers.empty()) {
         assignments.buffers.emplace_back(
@@ -416,7 +463,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
         const auto block_ref = analyzer.block_layout[i];
         TPDE_LOG_TRACE(
             "Compiling block {} ({})", i, adaptor->block_fmt_ref(block_ref));
-        if (!derived()->compile_block(block_ref)) {
+        if (!derived()->compile_block(block_ref, i)) {
             return false;
         }
     }
@@ -429,14 +476,24 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile_block(
-    const IRBlockRef block) noexcept {
+    const IRBlockRef block, const u32 block_idx) noexcept {
+    cur_block_idx = block_idx;
     for (const IRValueRef value : adaptor->block_values(block)) {
         if (!derived()->compile_inst(value)) {
             return false;
         }
     }
 
-    // TODO(ts): free delayed releases
+    if (static_cast<u32>(assignments.delayed_free_lists[block_idx]) != ~0u) {
+        auto list_entry = assignments.delayed_free_lists[block_idx];
+        while (static_cast<u32>(list_entry) != ~0u) {
+            auto next_entry =
+                assignments.value_ptrs[static_cast<u32>(list_entry)]
+                    ->next_delayed_free_entry;
+            derived()->free_assignment(list_entry);
+            list_entry = next_entry;
+        }
+    }
     return true;
 }
 
