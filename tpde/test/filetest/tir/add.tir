@@ -18,6 +18,7 @@ entry:
 ; CHECK-NEXT: Op a
 ; CHECK-NEXT: Op b
   %c = add %a, %b
+; CHECK-NEXT: Ret
   terminate
 }
 

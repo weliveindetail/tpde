@@ -50,7 +50,8 @@ struct CompilerBase {
 
     enum class ValLocalIdx : u32 {
     };
-    static constexpr ValLocalIdx INVALID_VAL_LOCAL_IDX = ~0u;
+    static constexpr ValLocalIdx INVALID_VAL_LOCAL_IDX =
+        static_cast<ValLocalIdx>(~0u);
 
     // disable Wpedantic here since these are compiler extensions
 #pragma GCC diagnostic push
@@ -320,6 +321,41 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::deallocate_assignment(
+    ValLocalIdx local_idx) noexcept {
+    auto *assignment = assignments.value_ptrs[static_cast<u32>(local_idx)];
+
+    u32 part_count = 0;
+    while (true) {
+        auto ap = AssignmentPartRef{assignment, part_count++};
+        if (!ap.has_next_part()) {
+            break;
+        }
+    }
+
+    constexpr u32 PARTS_INCLUDED =
+        (sizeof(ValueAssignment) - offsetof(ValueAssignment, parts))
+        / sizeof(ValueAssignment::first_part);
+    u32 free_list_idx = 0;
+    if (part_count > PARTS_INCLUDED) {
+        free_list_idx = (((part_count - PARTS_INCLUDED)
+                          * sizeof(ValueAssignment::first_part))
+                         / alignof(ValueAssignment))
+                        + 1;
+    }
+
+    if (free_list_idx <= 1) [[likely]] {
+        assignment->next_free_list_entry =
+            assignments.fixed_free_lists[free_list_idx];
+        assignments.fixed_free_lists[free_list_idx] = assignment;
+    } else {
+        auto &entry = assignments.dynamic_free_lists[free_list_idx];
+        assignment->next_free_list_entry = entry;
+        entry                            = assignment;
+    }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::free_assignment(
     const ValLocalIdx local_idx) noexcept {
     ValueAssignment *assignment =
@@ -329,14 +365,14 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
     // free registers
     u32 part_idx = 0;
     while (true) {
-        auto part = AssignmentPartRef{assignment, part};
-        if (assignment.register_valid()) {
-            const auto reg = assignment.full_reg_id();
+        auto ap = AssignmentPartRef{assignment, part_idx};
+        if (ap.register_valid()) {
+            const auto reg = ap.full_reg_id();
             assert(!register_file.is_fixed(reg));
             register_file.unmark_used(reg);
-            assignment.set_register_valid(false);
+            ap.set_register_valid(false);
         }
-        if (!assignment.has_next_part()) {
+        if (!ap.has_next_part()) {
             break;
         }
         ++part_idx;
@@ -347,7 +383,8 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
         free_stack_slot(assignment->frame_off, assignment->size);
     }
 
-    free_assignment(local_idx);
+    // TODO(ts): calculating part count twice here
+    deallocate_assignment(local_idx);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -396,6 +433,22 @@ u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::free_stack_slot(
+    const u32 slot, u32 size) noexcept {
+    if (size <= 16) {
+        assert(size == 1 || size == 2 || size == 4 || size == 8 || size == 16);
+
+        const u32 free_list_idx = util::cnt_tz(size);
+        stack.fixed_free_lists[free_list_idx].push_back(slot);
+    } else {
+        // align the size to 16
+        size = util::align_up(size, 16);
+
+        stack.dynamic_free_lists[size].push_back(slot);
+    }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     const IRFuncRef func, const u32 func_idx) noexcept {
     // reset per-func data
@@ -419,7 +472,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     assignments.fixed_free_lists[0] = assignments.fixed_free_lists[1] = nullptr;
     assignments.dynamic_free_lists.clear();
     assignments.delayed_free_lists.clear();
-    assignments.delayed_free_lists.resize(analyzer.block_layout.size(), ~0u);
+    assignments.delayed_free_lists.resize(analyzer.block_layout.size(),
+                                          INVALID_VAL_LOCAL_IDX);
 
     if (assignments.buffers.empty()) {
         assignments.buffers.emplace_back(
@@ -477,7 +531,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile_block(
     const IRBlockRef block, const u32 block_idx) noexcept {
-    cur_block_idx = block_idx;
+    cur_block_idx =
+        static_cast<typename Analyzer<Adaptor>::BlockIndex>(block_idx);
     for (const IRValueRef value : adaptor->block_values(block)) {
         if (!derived()->compile_inst(value)) {
             return false;

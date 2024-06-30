@@ -66,15 +66,28 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
         return;
     }
 
-    // TODO(ts): need to implement the lock counter
-    assert(!state.v.locked);
+    if (state.v.locked) {
+        auto ap = AssignmentPartRef{state.v.assignment, state.v.part};
+        assert(ap.reg_valid());
+        assert(state.v.compiler->register_file.is_fixed(ap.full_reg_id()));
+
+        if (state.v.compiler->register_file.dec_lock_count(ap.full_reg_id())
+            == 0) {
+            state.v.compiler->register_file.unmark_fixed(ap.full_reg_id());
+        }
+        state.v.locked = false;
+    }
 
     if (state.v.assignment->references_left == 0) {
         assert(assignment().variable_ref());
+        is_const = true;
+        state.c  = ConstantData{0, 0, 0};
         return;
     }
 
     if (--state.v.assignment->references_left != 0) {
+        is_const = true;
+        state.c  = ConstantData{0, 0, 0};
         return;
     }
 
@@ -90,8 +103,11 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
         free_list_head                              = state.v.local_idx;
 
         return;
+    } else {
+        state.v.compiler->free_assignment(state.v.local_idx);
     }
 
-    state.v.compiler->free_assignment(state.v.local_idx);
+    is_const = true;
+    state.c  = ConstantData{0, 0, 0};
 }
 } // namespace tpde

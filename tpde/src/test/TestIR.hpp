@@ -16,11 +16,12 @@ struct TestIR {
             arg,
             alloca,
             phi,
+            ret,
         };
 
         enum class Op : u8 {
             none,
-            add
+            add,
         };
         inline static constexpr const char *OP_NAMES[] = {"none", "add"};
 
@@ -497,7 +498,8 @@ struct TestIRAdaptor {
         if (info.type == TestIR::Value::Type::phi) {
             return Range(
                 true, data + info.op_begin_idx + 1, data + info.op_end_idx + 1);
-        } else if (info.type == TestIR::Value::Type::normal) {
+        } else if (info.type == TestIR::Value::Type::normal
+                   || info.type == TestIR::Value::Type::ret) {
             return Range(
                 false, data + info.op_begin_idx, data + info.op_end_idx);
         } else {

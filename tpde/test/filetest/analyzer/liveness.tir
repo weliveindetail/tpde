@@ -13,6 +13,7 @@
 ; CHECK-NEXT: 5: 2 refs, 1->1 (loop->loop), lf: false
 ; CHECK-NEXT: 6: 2 refs, 1->1 (loop->loop), lf: false
 ; CHECK-NEXT: 7: 1 refs, 2->2 (ret->ret), lf: false
+; CHECK-NEXT: 8: 1 refs, 2->2 (ret->ret), lf: false
 ; CHECK-NEXT: End Liveness
 simple(%a) {
 entry:
@@ -33,6 +34,7 @@ ret:
 ; CHECK: Liveness for nest_extend
 ; CHECK-NEXT: 0: 2 refs, 0->3 (entry->loop_inner2), lf: true
 ; CHECK-NEXT: 1: 1 refs, 2->2 (loop_inner1->loop_inner1), lf: false
+; CHECK-NEXT: 2: 1 refs, 4->4 (ret->ret), lf: false
 ; CHECK-NEXT: End Liveness
 nest_extend() {
 entry:
@@ -47,4 +49,13 @@ loop_inner2:
   jump %loop_inner2, %loop1
 ret:
   terminate
+}
+
+; CHECK: Liveness for ret
+; CHECK-NEXT: 0: 2 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT: 1: 1 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT: End Liveness
+ret(%a) {
+entry:
+  terminate %a
 }

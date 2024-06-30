@@ -598,9 +598,6 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
             return false;
         }
 
-        blocks[parse_state.cur_block].inst_end_idx = values.size();
-        parse_state.block_finished                 = true;
-
         const auto block_idx = parse_state.cur_block;
         if (line.starts_with("jump")) {
             TPDE_LOG_TRACE("Got jump in block {}", block_idx);
@@ -680,6 +677,53 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
             TPDE_LOG_TRACE("Got terminating instruction for block {}",
                            block_idx);
             line.remove_prefix(9);
+            const u32 val_idx = values.size();
+            values.push_back(
+                Value{.name         = std::string(),
+                      .type         = Value::Type::ret,
+                      .op_count     = 0,
+                      .op_begin_idx = static_cast<u32>(value_operands.size())});
+            TPDE_LOG_TRACE("Got return with idx {}", val_idx);
+
+            remove_whitespace(line);
+            if (!line.empty()) {
+                if (line[0] != '%') {
+                    TPDE_LOG_ERR("Expected value after terminate, got {}",
+                                 line);
+                    return false;
+                }
+
+                line.remove_prefix(1);
+                const auto op_name = parse_name(line);
+                if (op_name.empty()) {
+                    TPDE_LOG_ERR(
+                        "Failed to parse operand for terminate. Expected "
+                        "name but got '{}'",
+                        line);
+                    return false;
+                }
+
+                if (parse_state.value_map.contains(op_name)) {
+                    value_operands.push_back(parse_state.value_map[op_name]);
+                    TPDE_LOG_TRACE("Got terminate op '{}' with idx {}",
+                                   op_name,
+                                   parse_state.value_map[op_name]);
+                } else {
+                    TPDE_LOG_TRACE(
+                        "Got terminate op '{}' with unknown idx at {}+{}",
+                        op_name,
+                        val_idx,
+                        values[val_idx].op_count);
+                    value_operands.push_back(~0u);
+                    parse_state.pending_value_resolves[op_name].emplace_back(
+                        val_idx, values[val_idx].op_count);
+                }
+
+                ++values[val_idx].op_count;
+            }
+
+            values[val_idx].op_end_idx =
+                static_cast<u32>(value_operands.size());
         }
 
         remove_whitespace(line);
@@ -690,6 +734,9 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
                          line);
             return false;
         }
+
+        blocks[parse_state.cur_block].inst_end_idx = values.size();
+        parse_state.block_finished                 = true;
 
         return true;
     } else {
@@ -940,6 +987,15 @@ void tpde::test::TestIR::dump_debug() const noexcept {
                     }
                     break;
                 }
+                case ret: {
+                    TPDE_LOG_DBG("    Ret {}", val_idx);
+                    for (auto op = val.op_begin_idx; op < val.op_end_idx;
+                         ++op) {
+                        const auto op_idx = value_operands[op];
+                        TPDE_LOG_DBG(
+                            "      Op {}: {}", op_idx, values[op_idx].name);
+                    }
+                }
                 }
             }
         }
@@ -1011,6 +1067,15 @@ void tpde::test::TestIR::print() const noexcept {
                         fmt::println("      {} from {}",
                                      values[inc_idx].name,
                                      blocks[block_idx].name);
+                    }
+                    break;
+                }
+                case ret: {
+                    fmt::println("    Ret");
+                    for (auto op = val.op_begin_idx; op < val.op_end_idx;
+                         ++op) {
+                        const auto op_idx = value_operands[op];
+                        fmt::println("      Op {}", values[op_idx].name);
                     }
                     break;
                 }

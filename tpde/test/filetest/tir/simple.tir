@@ -41,6 +41,7 @@ myfunc(%a) {
 ; CHECK-NEXT: val from entry
 ; CHECK-NEXT: val2 from other
     %phi = phi [%entry, %val], [%other, %val2]
+; CHECK-NEXT: Ret
     terminate
 }
 
@@ -52,6 +53,8 @@ secfunc(%a, %b) {
   entry:
 ; CHECK-NEXT: Value val
     %val =
-    terminate
+; CHECK-NEXT: Ret
+; CHECK-NEXT: Op val
+    terminate %val
 }
 ; CHECK-EMPTY

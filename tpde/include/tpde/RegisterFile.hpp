@@ -16,6 +16,8 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     struct Assignment {
         ValLocalIdx local_idx;
         u32         part;
+        u32 lock_count; // TODO(ts): put this somewhere else since it's probably
+                        // only used for a few assignments at a time
     };
 
     std::array<Assignment, 64> assignments;
@@ -36,9 +38,10 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
         assert(reg < 64);
         assert(!is_used(reg));
         assert(!is_fixed(reg));
-        used             |= (1ull << reg);
-        free             &= ~(1ull << reg);
-        assignments[reg]  = Assignment{.local_idx = local_idx, .part = part};
+        used |= (1ull << reg);
+        free &= ~(1ull << reg);
+        assignments[reg] =
+            Assignment{.local_idx = local_idx, .part = part, .lock_count = 0};
     }
 
     void unmark_used(const u8 reg) noexcept {
@@ -60,6 +63,19 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
         assert(is_used(reg));
         assert(is_fixed(reg));
         fixed &= ~(1ull << reg);
+    }
+
+    u32 inc_lock_count(const u8 reg) noexcept {
+        assert(reg < 64);
+        assert(is_used(reg));
+        return ++assignments[reg].lock_count;
+    }
+
+    u32 dec_lock_count(const u8 reg) noexcept {
+        assert(reg < 64);
+        assert(is_used(reg));
+        assert(assignments[reg].lock_count > 0);
+        return --assignments[reg].lock_count;
     }
 
     void mark_clobbered(const u8 reg) noexcept {
