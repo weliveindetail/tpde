@@ -425,11 +425,17 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
         ap.set_part_size(size);
     }
 
+    const auto size      = max_part_size * part_count;
+    auto       frame_off = allocate_stack_slot(size);
+    if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
+        frame_off += size;
+    }
+
     assert(max_part_size <= 256);
     assignment->max_part_size   = max_part_size;
     assignment->lock_count      = 0;
-    assignment->size            = max_part_size * part_count;
-    assignment->frame_off       = allocate_stack_slot(assignment->size);
+    assignment->size            = size;
+    assignment->frame_off       = frame_off;
     assignment->references_left = analyzer.liveness(local_idx).ref_count;
 }
 
@@ -458,7 +464,11 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
 
     // variable references do not have a stack slot
     if (!is_var_ref) {
-        free_stack_slot(assignment->frame_off, assignment->size);
+        auto slot = assignment->frame_off;
+        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
+            slot -= assignment->size;
+        }
+        free_stack_slot(slot, assignment->size);
     }
 
     // TODO(ts): calculating part count twice here
