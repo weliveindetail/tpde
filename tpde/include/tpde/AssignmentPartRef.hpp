@@ -108,11 +108,19 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
         }
     }
 
-    void spill(CompilerBase *compiler) noexcept;
+    [[nodiscard]] u32 frame_off() const noexcept {
+        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
+            return assignment->frame_off - assignment->max_part_size * part;
+        } else {
+            return assignment->frame_off + assignment->max_part_size * part;
+        }
+    }
+
+    void spill_if_needed(CompilerBase *compiler) noexcept;
 };
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef::spill(
+void CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef::spill_if_needed(
     CompilerBase *compiler) noexcept {
     assert(this->register_valid());
 
@@ -121,8 +129,12 @@ void CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef::spill(
         return;
     }
 
+    if (!this->modified()) {
+        return;
+    }
+
     compiler->derived()->spill_reg(
-        this->full_reg_id(), assignment->frame_off, this->part_size());
+        this->full_reg_id(), this->frame_off(), this->part_size());
 
     this->set_modified(false);
     this->set_register_valid(false);

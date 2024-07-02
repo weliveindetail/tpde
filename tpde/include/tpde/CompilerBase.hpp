@@ -25,6 +25,7 @@ struct CompilerBase {
     using IRFuncRef  = typename Adaptor::IRFuncRef;
 
     using Assembler = typename Config::Assembler;
+    using AsmReg    = typename Config::AsmReg;
 
 #pragma region CompilerData
     Adaptor          *adaptor;
@@ -180,11 +181,61 @@ struct CompilerBase {
     /// Puts an assignment back into the free list
     void             deallocate_assignment(ValLocalIdx local_idx) noexcept;
 
+    void init_assignment(IRValueRef value, ValLocalIdx local_idx) noexcept;
+
     /// Frees an assignment, its stack slot and registers
     void free_assignment(ValLocalIdx local_idx) noexcept;
 
     u32  allocate_stack_slot(u32 size) noexcept;
     void free_stack_slot(u32 slot, u32 size) noexcept;
+
+    ValuePartRef val_ref(IRValueRef value, u32 part) noexcept;
+
+    /// Create a reference to a value using its local index
+    /// \note The assignment must already exist, if that could not be the case
+    /// use val_ref using an IRValueRef
+    ValuePartRef val_ref(ValLocalIdx local_idx, u32 part) noexcept;
+
+    /// Try to salvage the register of a value (i.e. if it does not have any
+    /// references left) or get it into another register.
+    ///
+    /// ref_adjust is the amount of references that are allowed
+    /// to be left (might be higher if you are currently referencing multiple
+    /// parts)
+    // TODO(ts): get the register type from the RegisterFile or the
+    // CompilerConfig?
+    u8 val_salvage(ValuePartRef &&val_ref,
+                   ScratchReg    &scratch_out,
+                   u32            ref_adjust = 1) noexcept;
+    u8 val_salvage_into_specific(ValuePartRef &&val_ref,
+                                 ScratchReg    &scratch_out,
+                                 AsmReg         reg,
+                                 u32            ref_adjust = 1) noexcept;
+
+    /// Get the value as a register
+    /// \warning This register must not be overwritten
+    AsmReg val_as_reg(ValuePartRef &val_ref, ScratchReg &scratch) noexcept;
+
+    /// Get the value into a specific register
+    /// \warning The value is not saved specifically so may not be overwritten
+    /// if it might be used later
+    AsmReg val_as_specific_reg(ValuePartRef &val_ref, AsmReg reg) noexcept;
+
+    ValuePartRef result_ref_lazy(ValLocalIdx local_idx, u32 part) noexcept;
+    ValuePartRef result_ref_lazy(IRValueRef value, u32 part) noexcept;
+    ValuePartRef result_ref_eager(ValLocalIdx local_idx, u32 part) noexcept;
+    ValuePartRef result_ref_salvage(ValLocalIdx    local_idx,
+                                    u32            part,
+                                    ValuePartRef &&arg,
+                                    u32            ref_adjust = 1) noexcept;
+    ValuePartRef result_ref_salvage_into_result(ValLocalIdx    local_idx,
+                                                u32            part,
+                                                ValuePartRef &&arg,
+                                                u32 ref_adjust = 1) noexcept;
+    // TODO(ts): here we want smth that can output an operand that can house an
+    // imm/mem or reg operand and maybe keep the overload that only outputs to a
+    // reg? ValuePartRef result_ref_salvage_with_original(ValLocalIdx local_idx,
+    // u32 part) noexcept;
 
     bool compile_func(IRFuncRef func, u32 func_idx) noexcept;
 
@@ -356,6 +407,33 @@ void CompilerBase<Adaptor, Derived, Config>::deallocate_assignment(
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::init_assignment(
+    IRValueRef value, ValLocalIdx local_idx) noexcept {
+    assert(val_assignment(local_idx) == nullptr);
+
+    const u32 part_count = analyzer.adaptor->val_part_count(value);
+    auto     *assignment = allocate_assignment(part_count);
+    assignments.value_ptrs[static_cast<u32>(local_idx)] = assignment;
+
+    u32 max_part_size = 0;
+    for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
+        auto ap = AssignmentPartRef{assignment, part_count};
+        ap.set_bank(analyzer.adaptor->val_part_bank(value, part_idx));
+        const u32 size = analyzer.adaptor->val_part_size(value, part_idx);
+        assert(size > 0);
+        max_part_size = std::max(max_part_size, size);
+        ap.set_part_size(size);
+    }
+
+    assert(max_part_size <= 256);
+    assignment->max_part_size   = max_part_size;
+    assignment->lock_count      = 0;
+    assignment->size            = max_part_size * part_count;
+    assignment->frame_off       = allocate_stack_slot(assignment->size);
+    assignment->references_left = analyzer.liveness(local_idx).ref_count;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::free_assignment(
     const ValLocalIdx local_idx) noexcept {
     ValueAssignment *assignment =
@@ -367,7 +445,7 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
     while (true) {
         auto ap = AssignmentPartRef{assignment, part_idx};
         if (ap.register_valid()) {
-            const auto reg = ap.full_reg_id();
+            const auto reg = AsmReg{ap.full_reg_id()};
             assert(!register_file.is_fixed(reg));
             register_file.unmark_used(reg);
             ap.set_register_valid(false);
@@ -446,6 +524,89 @@ void CompilerBase<Adaptor, Derived, Config>::free_stack_slot(
 
         stack.dynamic_free_lists[size].push_back(slot);
     }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::val_ref(IRValueRef value,
+                                                    u32        part) noexcept {
+    const auto local_idx =
+        static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
+
+    // TODO(ts): use an overload with the IRValueRef?
+    if (auto ref = derived()->val_ref_special(local_idx, part); ref) {
+        return *ref;
+    }
+
+    if (val_assignment(local_idx) == nullptr) {
+        init_assignment(value, local_idx);
+    }
+    assert(val_assignment(local_idx) != nullptr);
+
+    return ValuePartRef{this, local_idx, part};
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::val_ref(ValLocalIdx local_idx,
+                                                    u32         part) noexcept {
+    if (auto ref = derived()->val_ref_special(local_idx, part); ref) {
+        return *ref;
+    }
+
+    assert(assignments.value_ptrs[static_cast<u32>(local_idx)] != nullptr);
+    return ValuePartRef{this, local_idx, part};
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+CompilerBase<Adaptor, Derived, Config>::AsmReg
+    CompilerBase<Adaptor, Derived, Config>::val_as_reg(
+        ValuePartRef &val_ref, ScratchReg &scratch) noexcept {
+    if (val_ref.is_const) {
+        // TODO(ts): materialize constant
+        (void)scratch;
+        assert(0);
+        exit(1);
+    }
+
+    return val_ref.alloc_reg(true);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::AsmReg
+    CompilerBase<Adaptor, Derived, Config>::val_as_specific_reg(
+        ValuePartRef &val_ref, AsmReg reg) noexcept {
+    if (val_ref.is_const) {
+        // TODO(ts): materialize constant
+        (void)reg;
+        assert(0);
+        exit(1);
+    }
+
+    return val_ref.move_into_specific(reg);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::result_ref_lazy(
+        const ValLocalIdx local_idx, const u32 part) noexcept {
+    assert(val_assignment(local_idx) != nullptr);
+    return ValuePartRef{this, local_idx, part};
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::result_ref_lazy(IRValueRef value,
+                                                            u32 part) noexcept {
+    const auto local_idx =
+        static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
+
+    if (val_assignment(local_idx) == nullptr) {
+        init_assignment(value, local_idx);
+    }
+    assert(val_assignment(local_idx) != nullptr);
+
+    return ValuePartRef{this, local_idx, part};
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

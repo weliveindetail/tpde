@@ -41,6 +41,32 @@ inline u64 cnt_tz<u64>(const u64 val) {
     return __builtin_ctzll(val);
 }
 
+template <typename T>
+T cnt_lz(T) {
+    static_assert(false);
+}
+
+template <>
+inline u8 cnt_lz<u8>(const u8 val) {
+    return __builtin_clz((u32)val) - 24;
+}
+
+template <>
+inline u16 cnt_lz<u16>(const u16 val) {
+    return __builtin_clz((u32)val) - 16;
+}
+
+template <>
+inline u32 cnt_lz<u32>(const u32 val) {
+    return __builtin_clz(val);
+}
+
+template <>
+inline u64 cnt_lz<u64>(const u64 val) {
+    return __builtin_clzll(val);
+}
+
+template <bool Reverse = false>
 struct BitSetIterator {
     u64 set;
 
@@ -48,13 +74,21 @@ struct BitSetIterator {
         u64 set;
 
         Iter &operator++() noexcept {
-            set = set & (set - 1);
+            if constexpr (Reverse) {
+                set = set & ~(1ull << (64 - cnt_lz(set)));
+            } else {
+                set = set & (set - 1);
+            }
             return *this;
         }
 
         [[nodiscard]] u64 operator*() const noexcept {
             assert(set != 0);
-            return cnt_tz(set);
+            if constexpr (Reverse) {
+                return 64 - cnt_lz(set);
+            } else {
+                return cnt_tz(set);
+            }
         }
 
         [[nodiscard]] bool operator!=(const Iter &rhs) const noexcept {
