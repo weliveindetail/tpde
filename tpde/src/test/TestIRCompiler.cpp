@@ -12,7 +12,16 @@ bool TestIRCompilerX64::compile_inst(IRValueRef val_idx) noexcept {
     switch (value.type) {
         using enum TestIR::Value::Type;
     case ret: {
-        assert(value.op_count == 0);
+        if (value.op_count == 1) {
+            const auto op = static_cast<IRValueRef>(
+                this->adaptor->ir->value_operands[value.op_begin_idx]);
+
+            ValuePartRef val_ref   = this->val_ref(op, 0);
+            const auto   call_conv = this->cur_calling_convention();
+            val_ref.move_into_specific(call_conv.ret_regs_gp()[0]);
+        } else {
+            assert(value.op_count == 0);
+        }
         this->gen_func_epilog();
         return true;
     }

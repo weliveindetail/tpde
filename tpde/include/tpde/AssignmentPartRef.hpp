@@ -134,7 +134,7 @@ void CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef::spill_if_needed(
     }
 
     compiler->derived()->spill_reg(
-        this->full_reg_id(), this->frame_off(), this->part_size());
+        AsmReg{this->full_reg_id()}, this->frame_off(), this->part_size());
 
     this->set_modified(false);
     this->set_register_valid(false);

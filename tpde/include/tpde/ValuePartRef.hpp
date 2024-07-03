@@ -75,6 +75,16 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     /// specified register
     AsmReg reload_into_specific(AsmReg reg) noexcept;
 
+    ValLocalIdx local_idx() const noexcept {
+        assert(!is_const);
+        return state.v.local_idx;
+    }
+
+    u32 part() const noexcept {
+        assert(!is_const);
+        return state.v.part;
+    }
+
     /// Reset the reference to the value part
     void reset() noexcept;
 };
@@ -160,18 +170,18 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     }
 
     if (reg_file.is_used(reg)) {
-        assert(!reg_file.is_fixed());
+        assert(!reg_file.is_fixed(reg));
 
         auto ap = AssignmentPartRef{
             state.v.compiler->val_assignment(reg_file.reg_local_idx(reg)),
             reg_file.reg_part(reg)};
-        ap.spill_if_needed();
+        ap.spill_if_needed(state.v.compiler);
         ap.set_register_valid(false);
         reg_file.unmark_used(reg);
     }
 
     if (ap.register_valid()) {
-        state.v.compiler->derived()->mov(reg.id(), ap.full_reg_id());
+        state.v.compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()});
     } else {
         state.v.compiler->derived()->load_from_stack(
             reg, ap.frame_off(), ap.part_size());
@@ -179,6 +189,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     }
 
     ap.set_full_reg_id(reg.id());
+    reg_file.mark_used(reg, state.v.local_idx, state.v.part);
     return reg;
 }
 

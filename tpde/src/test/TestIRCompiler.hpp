@@ -19,6 +19,8 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
         return x64::CallingConv::SYSV_CC;
     }
 
+    static bool arg_is_int128(IRValueRef) noexcept { return false; }
+
     std::optional<ValuePartRef> val_ref_special(ValLocalIdx local_idx,
                                                 u32         part) noexcept {
         (void)local_idx;

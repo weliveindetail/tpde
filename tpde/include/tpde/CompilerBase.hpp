@@ -189,6 +189,7 @@ struct CompilerBase {
     u32  allocate_stack_slot(u32 size) noexcept;
     void free_stack_slot(u32 slot, u32 size) noexcept;
 
+  public:
     ValuePartRef val_ref(IRValueRef value, u32 part) noexcept;
 
     /// Create a reference to a value using its local index
@@ -237,6 +238,9 @@ struct CompilerBase {
     // reg? ValuePartRef result_ref_salvage_with_original(ValLocalIdx local_idx,
     // u32 part) noexcept;
 
+    void set_value(ValuePartRef &val_ref, AsmReg reg) noexcept;
+
+  protected:
     bool compile_func(IRFuncRef func, u32 func_idx) noexcept;
 
     bool compile_block(IRBlockRef block, u32 block_idx) noexcept;
@@ -432,11 +436,12 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
     }
 
     assert(max_part_size <= 256);
-    assignment->max_part_size   = max_part_size;
-    assignment->lock_count      = 0;
-    assignment->size            = size;
-    assignment->frame_off       = frame_off;
-    assignment->references_left = analyzer.liveness(local_idx).ref_count;
+    assignment->max_part_size = max_part_size;
+    assignment->lock_count    = 0;
+    assignment->size          = size;
+    assignment->frame_off     = frame_off;
+    assignment->references_left =
+        analyzer.liveness_info(static_cast<u32>(local_idx)).ref_count;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -617,6 +622,26 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     assert(val_assignment(local_idx) != nullptr);
 
     return ValuePartRef{this, local_idx, part};
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::set_value(ValuePartRef &val_ref,
+                                                       AsmReg reg) noexcept {
+    auto ap = val_ref.assignment();
+    if (ap.register_valid()) {
+        auto cur_reg = AsmReg{ap.full_reg_id()};
+        assert(!register_file.is_fixed(cur_reg));
+        register_file.unmark_used(cur_reg);
+    }
+
+    // TODO(ts): needs special handling for fixed assignments
+
+    assert(!register_file.is_used(reg));
+
+    register_file.mark_used(reg, val_ref.local_idx(), val_ref.part());
+    ap.set_full_reg_id(reg.id());
+    ap.set_register_valid(true);
+    ap.set_modified(true);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

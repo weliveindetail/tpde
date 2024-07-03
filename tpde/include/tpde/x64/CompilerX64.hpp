@@ -134,6 +134,9 @@ constexpr static u64 create_bitmask(const std::array<AsmReg, N> regs) {
     return set;
 }
 
+template <IRAdaptor Adaptor, typename Derived>
+struct CompilerX64;
+
 struct CallingConv {
     enum TYPE {
         SYSV_CC
@@ -143,17 +146,31 @@ struct CallingConv {
 
     constexpr CallingConv(const TYPE ty) : ty(ty) {}
 
-    [[nodiscard]] constexpr std::span<const FeRegGP>
+    [[nodiscard]] constexpr std::span<const AsmReg>
         arg_regs_gp() const noexcept {
         switch (ty) {
         case SYSV_CC: return SysV::arg_regs_gp;
         }
     }
 
-    [[nodiscard]] constexpr std::span<const FeRegXMM>
+    [[nodiscard]] constexpr std::span<const AsmReg>
         arg_regs_vec() const noexcept {
         switch (ty) {
         case SYSV_CC: return SysV::arg_regs_vec;
+        }
+    }
+
+    [[nodiscard]] constexpr std::span<const AsmReg>
+        ret_regs_gp() const noexcept {
+        switch (ty) {
+        case SYSV_CC: return SysV::ret_regs_gp;
+        }
+    }
+
+    [[nodiscard]] constexpr std::span<const AsmReg>
+        ret_regs_vec() const noexcept {
+        switch (ty) {
+        case SYSV_CC: return SysV::ret_regs_vec;
         }
     }
 
@@ -176,18 +193,31 @@ struct CallingConv {
         }
     }
 
-    struct SysV {
-        constexpr static std::array<FeRegGP, 6> arg_regs_gp{
-            FE_DI, FE_SI, FE_DX, FE_CX, FE_R8, FE_R9};
+    template <typename Adaptor, typename Derived>
+    void handle_func_args(CompilerX64<Adaptor, Derived> *) const noexcept;
 
-        constexpr static std::array<FeRegXMM, 8> arg_regs_vec{FE_XMM0,
-                                                              FE_XMM1,
-                                                              FE_XMM2,
-                                                              FE_XMM3,
-                                                              FE_XMM4,
-                                                              FE_XMM5,
-                                                              FE_XMM6,
-                                                              FE_XMM7};
+    struct SysV {
+        constexpr static std::array<AsmReg, 6> arg_regs_gp{AsmReg::DI,
+                                                           AsmReg::SI,
+                                                           AsmReg::DX,
+                                                           AsmReg::CX,
+                                                           AsmReg::R8,
+                                                           AsmReg::R9};
+
+        constexpr static std::array<AsmReg, 8> arg_regs_vec{AsmReg::XMM0,
+                                                            AsmReg::XMM1,
+                                                            AsmReg::XMM2,
+                                                            AsmReg::XMM3,
+                                                            AsmReg::XMM4,
+                                                            AsmReg::XMM5,
+                                                            AsmReg::XMM6,
+                                                            AsmReg::XMM7};
+
+        constexpr static std::array<AsmReg, 2> ret_regs_gp{AsmReg::AX,
+                                                           AsmReg::DX};
+
+        constexpr static std::array<AsmReg, 2> ret_regs_vec{AsmReg::XMM0,
+                                                            AsmReg::XMM1};
 
         constexpr static std::array<AsmReg, 5> callee_saved_regs{
             AsmReg::BX,
@@ -246,17 +276,67 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
 
     void gen_func_epilog() noexcept;
 
-    void spill_reg(const AsmReg::REG reg,
-                   const u32         frame_off,
-                   const u32         size) noexcept;
+    void spill_reg(const AsmReg reg,
+                   const u32    frame_off,
+                   const u32    size) noexcept;
 
-    void load_from_stack(AsmReg::REG dst,
-                         u32         frame_off,
-                         u32         size,
-                         bool        sign_extend = false) noexcept;
+    void load_from_stack(AsmReg dst,
+                         u32    frame_off,
+                         u32    size,
+                         bool   sign_extend = false) noexcept;
 
-    void mov(AsmReg::REG dst, AsmReg::REG src, bool only_32 = false) noexcept;
+    void mov(AsmReg dst, AsmReg src, bool only_32 = false) noexcept;
 };
+
+template <typename Adaptor, typename Derived>
+void CallingConv::handle_func_args(
+    CompilerX64<Adaptor, Derived> *compiler) const noexcept {
+    using IRValueRef = typename Adaptor::IRValueRef;
+
+    u32 scalar_reg_count = 0, xmm_reg_count = 0;
+    // u32 frame_off = 16;
+
+    const auto gp_regs  = arg_regs_gp();
+    const auto xmm_regs = arg_regs_vec();
+
+    for (const IRValueRef arg : compiler->adaptor->cur_args()) {
+        const u32 part_count = compiler->adaptor->val_part_count(arg);
+
+        if (compiler->derived()->arg_is_int128(arg)) {
+            if (scalar_reg_count + 1 >= gp_regs.size()) {
+                scalar_reg_count = gp_regs.size();
+            }
+        }
+
+        for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
+            auto part_ref = compiler->result_ref_lazy(arg, part_idx);
+
+            if (compiler->adaptor->val_part_bank(arg, part_idx) == 0) {
+                if (scalar_reg_count < gp_regs.size()) {
+                    compiler->set_value(part_ref, gp_regs[scalar_reg_count++]);
+                } else {
+                    // const auto size =
+                    //     compiler->adaptor->val_part_size(arg, part_idx);
+                    //  TODO(ts): maybe allow negative frame offsets for value
+                    //  assignments so we can simply reference this?
+                    //  but this probably doesn't work with multi-part values
+                    //  since the offsets are different
+                    assert(0);
+                }
+            } else {
+                if (xmm_reg_count < xmm_regs.size()) {
+                    compiler->set_value(part_ref, xmm_regs[xmm_reg_count++]);
+                } else {
+                    assert(0);
+                }
+            }
+
+            if (part_idx != part_count - 1) {
+                part_ref.inc_ref_count();
+            }
+        }
+    }
+}
 
 template <IRAdaptor Adaptor, typename Derived>
 void CompilerX64<Adaptor, Derived>::gen_func_prolog_and_args() noexcept {
@@ -308,24 +388,7 @@ void CompilerX64<Adaptor, Derived>::gen_func_prolog_and_args() noexcept {
     assert((this->assembler.text_cur_off() - frame_size_setup_offset) == 7);
 #endif
 
-    // TODO(ts): setup args
-
-    u32 scalar_reg_count = 0, xmm_reg_count = 0;
-    u32 frame_off = 16;
-    for (const IRValueRef arg : this->adaptor->cur_args()) {
-        const u32 part_count = this->adaptor->val_part_count(arg);
-
-        for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
-            auto part_ref = this->result_ref_lazy(arg, part_idx);
-
-
-            if (part_idx != part_count - 1) {
-                part_ref.inc_ref_count();
-            }
-        }
-
-        assert(0);
-    }
+    call_conv.handle_func_args(this);
 }
 
 template <IRAdaptor Adaptor, typename Derived>
@@ -434,27 +497,27 @@ void CompilerX64<Adaptor, Derived>::gen_func_epilog() noexcept {
 }
 
 template <IRAdaptor Adaptor, typename Derived>
-void CompilerX64<Adaptor, Derived>::spill_reg(const AsmReg::REG reg,
-                                              const u32         frame_off,
-                                              const u32         size) noexcept {
+void CompilerX64<Adaptor, Derived>::spill_reg(const AsmReg reg,
+                                              const u32    frame_off,
+                                              const u32    size) noexcept {
     this->assembler.text_ensure_space(16);
     const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(frame_off));
-    if (reg <= AsmReg::R15) {
+    if (reg.id() <= AsmReg::R15) {
         switch (size) {
-        case 1: ASMNC(MOV8mr, mem, AsmReg{reg}); break;
-        case 2: ASMNC(MOV16mr, mem, AsmReg{reg}); break;
-        case 4: ASMNC(MOV32mr, mem, AsmReg{reg}); break;
-        case 8: ASMNC(MOV64mr, mem, AsmReg{reg}); break;
+        case 1: ASMNC(MOV8mr, mem, reg); break;
+        case 2: ASMNC(MOV16mr, mem, reg); break;
+        case 4: ASMNC(MOV32mr, mem, reg); break;
+        case 8: ASMNC(MOV64mr, mem, reg); break;
         default: assert(0); __builtin_unreachable();
         }
         return;
     }
 
     switch (size) {
-    case 4: ASMNC(SSE_MOVD_X2Gmr, mem, AsmReg{reg}); break;
-    case 8: ASMNC(SSE_MOVQ_X2Gmr, mem, AsmReg{reg}); break;
+    case 4: ASMNC(SSE_MOVD_X2Gmr, mem, reg); break;
+    case 8: ASMNC(SSE_MOVQ_X2Gmr, mem, reg); break;
     case 16:
-        ASMNC(SSE_MOVUPDmr, mem, AsmReg{reg});
+        ASMNC(SSE_MOVUPDmr, mem, reg);
         break;
         // TODO(ts): 32/64 with feature flag?
     case 1: assert(0);
@@ -465,28 +528,28 @@ void CompilerX64<Adaptor, Derived>::spill_reg(const AsmReg::REG reg,
 
 template <IRAdaptor Adaptor, typename Derived>
 void CompilerX64<Adaptor, Derived>::load_from_stack(
-    const AsmReg::REG dst,
-    const u32         frame_off,
-    const u32         size,
-    const bool        sign_extend) noexcept {
+    const AsmReg dst,
+    const u32    frame_off,
+    const u32    size,
+    const bool   sign_extend) noexcept {
     this->assembler.text_ensure_space(16);
     const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(frame_off));
 
-    if (dst <= AsmReg::R15) {
+    if (dst.id() <= AsmReg::R15) {
         if (!sign_extend) {
             switch (size) {
-            case 1: ASMNC(MOVZXr32m8, AsmReg{dst}, mem); break;
-            case 2: ASMNC(MOVZXr32m16, AsmReg{dst}, mem); break;
-            case 4: ASMNC(MOV32rm, AsmReg{dst}, mem); break;
-            case 8: ASMNC(MOV64rm, AsmReg{dst}, mem); break;
+            case 1: ASMNC(MOVZXr32m8, dst, mem); break;
+            case 2: ASMNC(MOVZXr32m16, dst, mem); break;
+            case 4: ASMNC(MOV32rm, dst, mem); break;
+            case 8: ASMNC(MOV64rm, dst, mem); break;
             default: assert(0); __builtin_unreachable();
             }
         } else {
             switch (size) {
-            case 1: ASMNC(MOVSXr64m8, AsmReg{dst}, mem); break;
-            case 2: ASMNC(MOVSXr64m16, AsmReg{dst}, mem); break;
-            case 4: ASMNC(MOVSXr64m32, AsmReg{dst}, mem); break;
-            case 8: ASMNC(MOV64rm, AsmReg{dst}, mem); break;
+            case 1: ASMNC(MOVSXr64m8, dst, mem); break;
+            case 2: ASMNC(MOVSXr64m16, dst, mem); break;
+            case 4: ASMNC(MOVSXr64m32, dst, mem); break;
+            case 8: ASMNC(MOV64rm, dst, mem); break;
             default: assert(0); __builtin_unreachable();
             }
         }
@@ -496,10 +559,10 @@ void CompilerX64<Adaptor, Derived>::load_from_stack(
     assert(!sign_extend);
 
     switch (size) {
-    case 4: ASMNC(SSE_MOVD_G2Xrm, AsmReg{dst}, mem); break;
-    case 8: ASMNC(SSE_MOVQ_G2Xrm, AsmReg{dst}, mem); break;
+    case 4: ASMNC(SSE_MOVD_G2Xrm, dst, mem); break;
+    case 8: ASMNC(SSE_MOVQ_G2Xrm, dst, mem); break;
     case 16:
-        ASMNC(SSE_MOVUPDrm, AsmReg{dst}, mem);
+        ASMNC(SSE_MOVUPDrm, dst, mem);
         break;
         // TODO(ts): 32/64 with feature flag?
     case 1: assert(0);
@@ -509,13 +572,18 @@ void CompilerX64<Adaptor, Derived>::load_from_stack(
 }
 
 template <IRAdaptor Adaptor, typename Derived>
-void CompilerX64<Adaptor, Derived>::mov(const AsmReg::REG dst,
-                                        const AsmReg::REG src,
-                                        const bool        only_32) noexcept {
-    if (!only_32) {
-        ASM(MOV64rr, AsmReg{dst}, AsmReg{src});
+void CompilerX64<Adaptor, Derived>::mov(const AsmReg dst,
+                                        const AsmReg src,
+                                        const bool   only_32) noexcept {
+    if (dst.id() <= AsmReg::R15 && src.id() <= AsmReg::R15) {
+        if (!only_32) {
+            ASM(MOV64rr, dst, src);
+        } else {
+            ASM(MOV32rr, dst, src);
+        }
     } else {
-        ASM(MOV32rr, AsmReg{dst}, AsmReg{src});
+        assert(0);
+        exit(1);
     }
 }
 } // namespace tpde::x64
