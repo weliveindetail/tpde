@@ -25,6 +25,7 @@ bool TestIRCompilerX64::compile_inst(IRValueRef val_idx) noexcept {
         this->gen_func_epilog();
         return true;
     }
+    case alloca: return true;
     default: assert(0); __builtin_unreachable();
     }
 

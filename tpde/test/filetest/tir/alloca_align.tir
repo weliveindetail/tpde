@@ -1,0 +1,23 @@
+; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+;
+; SPDX-License-Identifier: LicenseRef-Proprietary
+
+; RUN: %tpde_test --run-until=ir --print-ir %s | FileCheck %s --dump-input always
+
+; CHECK-LABEL: Function test
+test() {
+; CHECK-NEXT: Block entry
+entry:
+; CHECK-NEXT: Alloca with size 0x8 and align 1: a
+  %a = alloca 8, align 1
+; CHECK-NEXT: Alloca with size 0x8 and align 2: b
+  %b = alloca 8, align 2
+; CHECK-NEXT: Alloca with size 0x8 and align 4: c
+  %c = alloca 8, align 4
+; CHECK-NEXT: Alloca with size 0x8 and align 8: d
+  %d = alloca 8, align 8
+; CHECK-NEXT: Alloca with size 0x8 and align 16: e
+  %e = alloca 8, align 16
+; CHECK-NEXT: Ret
+  terminate
+}

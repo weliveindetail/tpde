@@ -35,6 +35,8 @@ struct TestIR {
             u32 op_count;
         };
 
+        u32 alloca_align;
+
         u32 op_begin_idx, op_end_idx;
     };
 
@@ -567,6 +569,12 @@ struct TestIRAdaptor {
         const auto val_idx = static_cast<u32>(value);
         assert(ir->values[val_idx].type == TestIR::Value::Type::alloca);
         return ir->values[val_idx].alloca_size;
+    }
+
+    [[nodiscard]] u32 val_alloca_align(IRValueRef value) const noexcept {
+        const auto val_idx = static_cast<u32>(value);
+        assert(ir->values[val_idx].type == TestIR::Value::Type::alloca);
+        return ir->values[val_idx].alloca_align;
     }
 
     u32 val_part_count(IRValueRef) const noexcept { return 1; }

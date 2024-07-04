@@ -1,0 +1,160 @@
+; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+;
+; SPDX-License-Identifier: LicenseRef-Proprietary
+
+; RUN: rm -rf %t
+; RUN: mkdir %t
+
+; RUN: %tpde_test %s -o %t/out.o
+; RUN: objdump -Mintel-syntax --no-addresses --no-show-raw-insn --disassemble %t/out.o | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+
+; CHECK-LABEL: alloca1
+alloca1() {
+entry:
+; X64: sub rsp,0x10
+; X64-NEXT: lea rax,[rbp-0x8]
+  %a = alloca 8
+; X64-NEXT: add rsp,0x10
+  terminate %a
+}
+
+; CHECK-LABEL: alloca2
+alloca2() {
+entry:
+; X64: sub rsp,0x20
+; X64-NEXT: lea rax,[rbp-0x18]
+  %a = alloca 24
+; X64-NEXT: add rsp,0x20
+  terminate %a
+}
+
+; CHECK-LABEL: alloca3
+alloca3() {
+entry:
+; X64: sub rsp,0x20
+; X64-NEXT: lea rax,[rbp-0x18]
+  %a = alloca 22
+; X64-NEXT: add rsp,0x20
+  terminate %a
+}
+
+
+; CHECK-LABEL: alloca4
+alloca4() {
+entry:
+; X64: sub rsp,0x30
+; COM: stack allocations > 16 are aligned up to 16
+; X64-NEXT: lea rax,[rbp-0x28]
+  %a = alloca 24
+  %b = alloca 8
+; X64-NEXT: add rsp,0x30
+  terminate %b
+}
+
+; CHECK-LABEL: alloca5
+alloca5() {
+entry:
+; X64: sub rsp,0x30
+; X64-NEXT: lea rax,[rbp-0x18]
+  %a = alloca 24
+  %b = alloca 8
+; X64-NEXT: add rsp,0x30
+  terminate %a
+}
+
+
+; CHECK-LABEL: alloca6
+alloca6() {
+entry:
+; X64: sub rsp,0x10
+; X64-NEXT: lea rax,[rbp-0x1]
+  %a = alloca 1, align 1
+; X64-NEXT: add rsp,0x10
+  terminate %a
+}
+
+; CHECK-LABEL: alloca7
+alloca7() {
+entry:
+; X64: sub rsp,0x10
+; X64-NEXT: lea rax,[rbp-0x2]
+  %a = alloca 1, align 2
+; X64-NEXT: add rsp,0x10
+  terminate %a
+}
+
+; CHECK-LABEL: alloca8
+alloca8() {
+entry:
+; X64: sub rsp,0x10
+; X64-NEXT: lea rax,[rbp-0x4]
+  %a = alloca 1, align 4
+; X64-NEXT: add rsp,0x10
+  terminate %a
+}
+
+; CHECK-LABEL: alloca9
+alloca9() {
+entry:
+; X64: sub rsp,0x10
+; X64-NEXT: lea rax,[rbp-0x8]
+  %a = alloca 1, align 8
+; X64-NEXT: add rsp,0x10
+  terminate %a
+}
+
+; CHECK-LABEL: alloca10
+alloca10() {
+entry:
+; X64: sub rsp,0x10
+; X64-NEXT: lea rax,[rbp-0x10]
+  %a = alloca 1, align 16
+; X64-NEXT: add rsp,0x10
+  terminate %a
+}
+
+
+; CHECK-LABEL: alloca11
+alloca11() {
+entry:
+; X64: sub rsp,0x10
+; X64-NEXT: lea rax,[rbp-0x1]
+  %a = alloca 1, align 1
+  %b = alloca 1, align 1
+; X64-NEXT: add rsp,0x10
+  terminate %a
+}
+
+; CHECK-LABEL: alloca12
+alloca12() {
+entry:
+; X64: sub rsp,0x10
+  %a = alloca 1, align 1
+; X64-NEXT: lea rax,[rbp-0x2]
+  %b = alloca 1, align 1
+; X64-NEXT: add rsp,0x10
+  terminate %b
+}
+
+
+; CHECK-LABEL: alloca13
+alloca13() {
+entry:
+; X64: sub rsp,0x10
+  %a = alloca 1, align 1
+; X64-NEXT: lea rax,[rbp-0x8]
+  %b = alloca 4, align 4
+; X64-NEXT: add rsp,0x10
+  terminate %b
+}
+
+; CHECK-LABEL: alloca14
+alloca14() {
+entry:
+; X64: sub rsp,0x10
+  %a = alloca 1, align 1
+; X64-NEXT: lea rax,[rbp-0x4]
+  %b = alloca 2, align 2
+; X64-NEXT: add rsp,0x10
+  terminate %b
+}

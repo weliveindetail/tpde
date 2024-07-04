@@ -353,8 +353,8 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
                 line.remove_prefix(2);
             }
 
-            u32        size = 0;
-            const auto res  = std::from_chars(
+            u32        size = 0, align = 8;
+            const auto res = std::from_chars(
                 line.data(), line.data() + line.size(), size, base);
             if (res.ec != std::errc{}) {
                 TPDE_LOG_ERR("Failed to parse size for alloca '{}': '{}'",
@@ -363,11 +363,53 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
                 return false;
             }
 
-            TPDE_LOG_TRACE("Got alloca with size 0x{:X}", size);
             line.remove_prefix(res.ptr - line.data());
+            remove_whitespace(line);
+            if (line.starts_with(',')) {
+                line.remove_prefix(1);
+                remove_whitespace(line);
+                if (line.starts_with("align ")) {
+                    line.remove_prefix(6);
+                    remove_whitespace(line);
 
-            values[val_idx].type        = Value::Type::alloca;
-            values[val_idx].alloca_size = size;
+                    base = 10;
+                    if (line.starts_with("0x")) {
+                        base = 16;
+                        line.remove_prefix(2);
+                    }
+
+                    const auto res = std::from_chars(
+                        line.data(), line.data() + line.size(), align, base);
+                    if (res.ec != std::errc{}) {
+                        TPDE_LOG_ERR(
+                            "Failed to parse align for alloca '{}': '{}'",
+                            value_name,
+                            line);
+                        return false;
+                    }
+
+                    line.remove_prefix(res.ptr - line.data());
+
+                    if ((align & (align - 1)) != 0 || align > 16) {
+                        TPDE_LOG_ERR("Alignment must be power of two and not "
+                                     "bigger than 16 but is {}",
+                                     align);
+                        return false;
+                    }
+
+                } else {
+                    TPDE_LOG_ERR("Expected align after alloca but got '{}'",
+                                 line);
+                    return false;
+                }
+            }
+
+
+            TPDE_LOG_TRACE(
+                "Got alloca with size 0x{:X} and align", size, align);
+            values[val_idx].type         = Value::Type::alloca;
+            values[val_idx].alloca_size  = size;
+            values[val_idx].alloca_align = align;
 
         } else if (line.starts_with("phi")) {
             if (parse_state.block_finished_phis) {
@@ -966,10 +1008,12 @@ void tpde::test::TestIR::dump_debug() const noexcept {
                     exit(1);
                 }
                 case alloca: {
-                    TPDE_LOG_DBG("    Alloca {} with size 0x{:X}: {}",
-                                 val_idx,
-                                 values[val_idx].alloca_size,
-                                 values[val_idx].name);
+                    TPDE_LOG_DBG(
+                        "    Alloca {} with size 0x{:X} and align {}: {}",
+                        val_idx,
+                        values[val_idx].alloca_size,
+                        values[val_idx].alloca_align,
+                        values[val_idx].name);
                     break;
                 }
                 case phi: {
@@ -1052,8 +1096,9 @@ void tpde::test::TestIR::print() const noexcept {
                     exit(1);
                 }
                 case alloca: {
-                    fmt::println("    Alloca with size 0x{:X}: {}",
+                    fmt::println("    Alloca with size 0x{:X} and align {}: {}",
                                  values[val_idx].alloca_size,
+                                 values[val_idx].alloca_align,
                                  values[val_idx].name);
                     break;
                 }

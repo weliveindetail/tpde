@@ -297,6 +297,11 @@ concept IRAdaptor = requires(T a) {
         a.val_alloca_size(ARG(typename T::IRValueRef))
     } -> std::convertible_to<u32>;
 
+    /// Provides the alignment for an alloca
+    {
+        a.val_alloca_align(ARG(typename T::IRValueRef))
+    } -> std::convertible_to<u32>;
+
     /// Provides the number of parts for a value
     {
         a.val_part_count(ARG(typename T::IRValueRef))

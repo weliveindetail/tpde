@@ -711,9 +711,11 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
             continue;
         }
 
-        const auto size       = adaptor->val_alloca_size(alloca);
-        auto      *assignment = allocate_assignment(1, true);
-        auto       frame_off  = allocate_stack_slot(size);
+        auto size = adaptor->val_alloca_size(alloca);
+        size      = util::align_up(size, adaptor->val_alloca_align(alloca));
+
+        auto *assignment = allocate_assignment(1, true);
+        auto  frame_off  = allocate_stack_slot(size);
         if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
             frame_off += size;
         }

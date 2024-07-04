@@ -15,7 +15,7 @@ myfunc(%a) {
 ; CHECK-NEXT: Succ ret
 ; CHECK-NEXT: Succ other
   entry:
-; CHECK-NEXT: Alloca with size 0x10: alloca
+; CHECK-NEXT: Alloca with size 0x10 and align 8: alloca
     %alloca = alloca 16
 ; CHECK-NEXT: Value val
     %val =
