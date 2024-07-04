@@ -333,6 +333,10 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
                 a != nullptr) {
                 assignments.fixed_free_lists[free_list_idx] =
                     a->next_free_list_entry;
+
+                for (u32 i = 0; i < part_count; ++i) {
+                    a->parts[i] = 0;
+                }
                 return a;
             }
         } else {
@@ -340,6 +344,9 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
             if (it != assignments.dynamic_free_lists.end()) {
                 if (auto *a = it->second; a != nullptr) {
                     it->second = a->next_free_list_entry;
+                    for (u32 i = 0; i < part_count; ++i) {
+                        a->parts[i] = 0;
+                    }
                     return a;
                 }
                 // TODO(ts): remove if it->second is nullptr?
@@ -356,6 +363,9 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
         buf.cur_off += size;
 
         new (assignment) ValueAssignment{};
+        for (u32 i = 0; i < part_count; ++i) {
+            assignment->parts[i] = 0;
+        }
         return assignment;
     }
 
@@ -372,6 +382,9 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
     buf.cur_off      = size;
 
     new (assignment) ValueAssignment{};
+    for (u32 i = 0; i < part_count; ++i) {
+        assignment->parts[i] = 0;
+    }
     return assignment;
 }
 
@@ -427,6 +440,10 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
         assert(size > 0);
         max_part_size = std::max(max_part_size, size);
         ap.set_part_size(size);
+
+        if (part_idx != part_count - 1) {
+            ap.set_has_next_part(true);
+        }
     }
 
     const auto size      = max_part_size * part_count;
@@ -584,7 +601,9 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
         exit(1);
     }
 
-    return val_ref.alloc_reg(true);
+    const auto reg = val_ref.alloc_reg(true);
+    val_ref.lock();
+    return reg;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -598,7 +617,9 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
         exit(1);
     }
 
-    return val_ref.move_into_specific(reg);
+    const auto res = val_ref.move_into_specific(reg);
+    val_ref.lock();
+    return res;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -690,17 +711,23 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
             continue;
         }
 
-        auto *assignment = allocate_assignment(1, true);
-        auto  slot       = allocate_stack_slot(Derived::PLATFORM_POINTER_SIZE);
+        const auto size       = adaptor->val_alloca_size(alloca);
+        auto      *assignment = allocate_assignment(1, true);
+        auto       frame_off  = allocate_stack_slot(size);
+        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
+            frame_off += size;
+        }
 
-        assignment->initialize(slot,
-                               Derived::PLATFORM_POINTER_SIZE,
+        assignment->initialize(frame_off,
+                               size,
                                analyzer.liveness_info(local_idx).ref_count,
                                Derived::PLATFORM_POINTER_SIZE);
         assignments.value_ptrs[local_idx] = assignment;
 
-        // TODO(ts): initialize the part
-        assert(0);
+        auto ap = AssignmentPartRef{assignment, 0};
+        ap.set_bank(Config::GP_BANK);
+        ap.set_variable_ref(true);
+        ap.set_part_size(Derived::PLATFORM_POINTER_SIZE);
     }
 
     // TODO(ts): place function label

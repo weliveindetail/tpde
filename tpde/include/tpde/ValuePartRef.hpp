@@ -75,6 +75,9 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     /// specified register
     AsmReg reload_into_specific(AsmReg reg) noexcept;
 
+    void lock() noexcept;
+    void unlock() noexcept;
+
     ValLocalIdx local_idx() const noexcept {
         assert(!is_const);
         return state.v.local_idx;
@@ -183,8 +186,12 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     if (ap.register_valid()) {
         state.v.compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()});
     } else {
-        state.v.compiler->derived()->load_from_stack(
-            reg, ap.frame_off(), ap.part_size());
+        if (ap.variable_ref()) {
+            state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
+        } else {
+            state.v.compiler->derived()->load_from_stack(
+                reg, ap.frame_off(), ap.part_size());
+        }
         ap.set_register_valid(true);
     }
 
@@ -210,11 +217,48 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
         state.v.compiler->mov(reg.id(), ap.full_reg_id());
     } else {
-        state.v.compiler->load_from_stack(
-            reg.id(), ap.frame_off(), ap.part_size());
+        if (ap.variable_ref()) {
+            state.v.compiler->load_address_of_var_reference(reg, ap);
+        } else {
+            state.v.compiler->load_from_stack(
+                reg.id(), ap.frame_off(), ap.part_size());
+        }
     }
 
     return reg;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::lock() noexcept {
+    if (state.v.locked) {
+        return;
+    }
+
+    auto ap = assignment();
+    assert(ap.register_valid());
+
+    const auto reg = AsmReg{ap.full_reg_id()};
+    state.v.compiler->register_file.mark_fixed(reg);
+    state.v.compiler->register_file.inc_lock_count(reg);
+
+    state.v.locked = true;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::unlock() noexcept {
+    if (!state.v.locked) {
+        return;
+    }
+
+    auto ap = assignment();
+    assert(ap.register_valid());
+
+    const auto reg = AsmReg{ap.full_reg_id()};
+    if (state.v.compiler->register_file.dec_lock_count(reg) == 0) {
+        state.v.compiler->register_file.unmark_fixed(reg);
+    }
+
+    state.v.locked = false;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -224,15 +268,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
     }
 
     if (state.v.locked) {
-        auto ap = AssignmentPartRef{state.v.assignment, state.v.part};
-        assert(ap.register_valid());
-        auto reg = AsmRegBase{ap.full_reg_id()};
-        assert(state.v.compiler->register_file.is_fixed(reg));
-
-        if (state.v.compiler->register_file.dec_lock_count(reg) == 0) {
-            state.v.compiler->register_file.unmark_fixed(reg);
-        }
-        state.v.locked = false;
+        unlock();
     }
 
     if (state.v.assignment->references_left == 0) {
@@ -264,8 +300,6 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
                 .delayed_free_lists[static_cast<u32>(liveness.last)];
         state.v.assignment->next_delayed_free_entry = free_list_head;
         free_list_head                              = state.v.local_idx;
-
-        return;
     } else {
         state.v.compiler->free_assignment(state.v.local_idx);
     }

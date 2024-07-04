@@ -1,0 +1,31 @@
+; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+;
+; SPDX-License-Identifier: LicenseRef-Proprietary
+
+; RUN: rm -rf %t
+; RUN: mkdir %t
+
+; RUN: %tpde_test %s -o %t/simple_ret.o
+; RUN: objdump -Mintel-syntax --no-addresses --no-show-raw-insn --disassemble %t/simple_ret.o | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+
+; CHECK-LABEL: empty
+empty() {
+entry:
+; X64: push rbp
+; X64-NEXT: mov rbp,rsp
+; X64-NEXT: nop
+; X64: sub rsp,0x0
+; X64-NEXT: add rsp,0x0
+; X64-NEXT: pop rbp
+; X64-NEXT: ret
+  terminate
+}
+
+; CHECK-LABEL: simple_ret
+simple_ret(%a, %b) {
+entry:
+; X64: sub rsp,0x10
+; X64-NEXT: mov rax,rsi
+; X64: add rsp,0x10
+  terminate %b
+}

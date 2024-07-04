@@ -252,6 +252,8 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
     using IRBlockRef = typename Base::IRBlockRef;
     using IRFuncRef  = typename Base::IRFuncRef;
 
+    using AssignmentPartRef = typename Base::AssignmentPartRef;
+
     using Base::derived;
 
     static constexpr u32 PLATFORM_POINTER_SIZE = 8;
@@ -284,6 +286,9 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
                          u32    frame_off,
                          u32    size,
                          bool   sign_extend = false) noexcept;
+
+    void load_address_of_var_reference(AsmReg            dst,
+                                       AssignmentPartRef ap) noexcept;
 
     void mov(AsmReg dst, AsmReg src, bool only_32 = false) noexcept;
 };
@@ -569,6 +574,16 @@ void CompilerX64<Adaptor, Derived>::load_from_stack(
     case 2: assert(0);
     default: assert(0); __builtin_unreachable();
     }
+}
+
+template <IRAdaptor Adaptor, typename Derived>
+void CompilerX64<Adaptor, Derived>::load_address_of_var_reference(
+    const AsmReg dst, const AssignmentPartRef ap) noexcept {
+    // per-default, variable references are only used by allocas
+    ASM(LEA64rm,
+        dst,
+        FE_MEM(
+            FE_BP, 0, FE_NOREG, -static_cast<i32>(ap.assignment->frame_off)));
 }
 
 template <IRAdaptor Adaptor, typename Derived>
