@@ -97,6 +97,8 @@ struct AsmReg : AsmRegBase {
         // TODO(ts): optional support for AVX registers with compiler flag
     };
 
+    constexpr explicit AsmReg() noexcept : AsmRegBase(0xFF) {}
+
     constexpr AsmReg(const REG id) noexcept : AsmRegBase(id) {}
 
     constexpr AsmReg(const AsmRegBase base) noexcept : AsmRegBase(base) {}

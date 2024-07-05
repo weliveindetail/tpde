@@ -60,6 +60,16 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
             Assignment{.local_idx = local_idx, .part = part, .lock_count = 0};
     }
 
+    void update_reg_assignment(const Reg         reg,
+                               const ValLocalIdx local_idx,
+                               const u32         part) noexcept {
+        assert(is_used(reg));
+        assert(!is_fixed(reg));
+        assert(assignments[reg.id()].lock_count == 0);
+        assignments[reg.id()].local_idx = local_idx;
+        assignments[reg.id()].part      = part;
+    }
+
     void unmark_used(const Reg reg) noexcept {
         assert(reg.id() < 64);
         assert(is_used(reg));
@@ -110,15 +120,15 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     }
 
     [[nodiscard]] Reg
-        find_first_free_excluding(const Reg bank,
+        find_first_free_excluding(const u8  bank,
                                   const u64 exclusion_mask) const noexcept {
         // TODO(ts): implement preferred registers
         assert(bank <= 1);
         const u64 free_mask = ((0xFFFF'FFFF << bank) & free) & ~exclusion_mask;
         if (free_mask == 0) {
-            return Reg::INVALID;
+            return Reg::make_invalid();
         }
-        return Reg{util::cnt_tz(free_mask)};
+        return Reg{static_cast<u8>(util::cnt_tz(free_mask))};
     }
 
     [[nodiscard]] Reg
@@ -143,13 +153,13 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
             ((0xFFFF'FFFF << bank) & ((free | used) & ~fixed))
             & ~exclusion_mask;
         if (nonfixed_mask == 0) {
-            return Reg::INVALID;
+            return Reg::make_invalid();
         }
 
-        auto       clock  = clocks[bank];
-        const auto reg_id = (nonfixed_mask >> clock)
-                                ? util::cnt_tz(nonfixed_mask >> clock) + clock
-                                : util::cnt_tz(nonfixed_mask);
+        auto      clock  = clocks[bank];
+        const u64 reg_id = (nonfixed_mask >> clock)
+                               ? util::cnt_tz(nonfixed_mask >> clock) + clock
+                               : util::cnt_tz(nonfixed_mask);
 
         // always move clock to after the found reg_id
         clock = reg_id + 1;
@@ -158,7 +168,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
         }
         clocks[bank] = clock;
 
-        return Reg{reg_id};
+        return Reg{static_cast<u8>(reg_id)};
     }
 
     [[nodiscard]] static u8 reg_bank(const Reg reg) noexcept {

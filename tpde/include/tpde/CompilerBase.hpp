@@ -8,7 +8,6 @@
 #include "IRAdaptor.hpp"
 
 namespace tpde {
-
 // TODO(ts): formulate concept for full compiler so that there is *some* check
 // whether all the required derived methods are implemented?
 
@@ -54,7 +53,7 @@ struct CompilerBase {
     static constexpr ValLocalIdx INVALID_VAL_LOCAL_IDX =
         static_cast<ValLocalIdx>(~0u);
 
-    // disable Wpedantic here since these are compiler extensions
+// disable Wpedantic here since these are compiler extensions
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 
@@ -225,14 +224,33 @@ struct CompilerBase {
     ValuePartRef result_ref_lazy(ValLocalIdx local_idx, u32 part) noexcept;
     ValuePartRef result_ref_lazy(IRValueRef value, u32 part) noexcept;
     ValuePartRef result_ref_eager(ValLocalIdx local_idx, u32 part) noexcept;
+    ValuePartRef result_ref_eager(IRValueRef value, u32 part) noexcept;
     ValuePartRef result_ref_salvage(ValLocalIdx    local_idx,
                                     u32            part,
                                     ValuePartRef &&arg,
                                     u32            ref_adjust = 1) noexcept;
-    ValuePartRef result_ref_salvage_into_result(ValLocalIdx    local_idx,
-                                                u32            part,
-                                                ValuePartRef &&arg,
-                                                u32 ref_adjust = 1) noexcept;
+    ValuePartRef result_ref_salvage(IRValueRef     value,
+                                    u32            part,
+                                    ValuePartRef &&arg,
+                                    u32            ref_adjust = 1) noexcept;
+    ValuePartRef result_ref_must_salvage(ValLocalIdx    local_idx,
+                                         u32            part,
+                                         ValuePartRef &&arg,
+                                         u32 ref_adjust = 1) noexcept;
+    ValuePartRef result_ref_must_salvage(IRValueRef     value,
+                                         u32            part,
+                                         ValuePartRef &&arg,
+                                         u32 ref_adjust = 1) noexcept;
+    ValuePartRef result_ref_salvage_with_original(ValLocalIdx    local_idx,
+                                                  u32            part,
+                                                  ValuePartRef &&arg,
+                                                  AsmReg        &lhs_reg,
+                                                  u32 ref_adjust = 1);
+    ValuePartRef result_ref_salvage_with_original(IRValueRef     value,
+                                                  u32            part,
+                                                  ValuePartRef &&arg,
+                                                  AsmReg        &lhs_reg,
+                                                  u32 ref_adjust = 1);
     // TODO(ts): here we want smth that can output an operand that can house an
     // imm/mem or reg operand and maybe keep the overload that only outputs to a
     // reg? ValuePartRef result_ref_salvage_with_original(ValLocalIdx local_idx,
@@ -245,6 +263,14 @@ struct CompilerBase {
 
     bool compile_block(IRBlockRef block, u32 block_idx) noexcept;
 };
+} // namespace tpde
+
+#include "AssignmentPartRef.hpp"
+#include "RegisterFile.hpp"
+#include "ScratchReg.hpp"
+#include "ValuePartRef.hpp"
+
+namespace tpde {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValueAssignment::initialize(
@@ -646,11 +672,167 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::result_ref_eager(
+        ValLocalIdx local_idx, u32 part) noexcept {
+    assert(val_assignment(local_idx) != nullptr);
+    auto res_ref = ValuePartRef{this, local_idx, part};
+    res_ref.alloc_reg(false);
+    return res_ref;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::result_ref_eager(
+        IRValueRef value, u32 part) noexcept {
+    const auto local_idx =
+        static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
+
+    if (val_assignment(local_idx) == nullptr) {
+        init_assignment(value, local_idx);
+    }
+    assert(val_assignment(local_idx) != nullptr);
+
+    return result_ref_eager(local_idx, part);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::result_ref_must_salvage(
+        ValLocalIdx    local_idx,
+        u32            part,
+        ValuePartRef &&arg,
+        u32            ref_adjust) noexcept {
+    assert(val_assignment(local_idx) != nullptr);
+    auto res_ref = ValuePartRef{this, local_idx, part};
+    auto ap_res  = res_ref.assignment();
+    assert(ap_res.bank() == arg.bank());
+
+    if (arg.is_const) {
+        const auto reg = res_ref.alloc_reg(false);
+        (void)reg;
+        // TODO(ts): materialize constant
+        assert(0);
+        exit(1);
+    } else {
+        auto ap_arg = arg.assignment();
+
+        const auto &liveness = analyzer.liveness_info((u32)arg.local_idx());
+        if (ap_arg.register_valid() && arg.ref_count() <= ref_adjust
+            && (liveness.last < cur_block_idx
+                || (liveness.last == cur_block_idx && !liveness.last_full))) {
+            // can salvage
+            arg.unlock();
+
+            const auto reg = arg.cur_reg();
+            assert(!register_file.is_fixed(reg));
+            ap_arg.set_register_valid(false);
+            ap_res.set_full_reg_id(reg.id());
+            ap_res.set_register_valid(true);
+            register_file.update_reg_assignment(reg, local_idx, part);
+        } else {
+            const auto reg = res_ref.alloc_reg(false);
+            arg.reload_into_specific(reg);
+        }
+    }
+
+    res_ref.lock();
+    return res_ref;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::result_ref_must_salvage(
+        IRValueRef     value,
+        u32            part,
+        ValuePartRef &&arg,
+        u32            ref_adjust) noexcept {
+    const auto local_idx =
+        static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
+
+    if (val_assignment(local_idx) == nullptr) {
+        init_assignment(value, local_idx);
+    }
+    assert(val_assignment(local_idx) != nullptr);
+
+    return result_ref_must_salvage(local_idx, part, std::move(arg), ref_adjust);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::result_ref_salvage_with_original(
+        ValLocalIdx    local_idx,
+        u32            part,
+        ValuePartRef &&arg,
+        AsmReg        &lhs_reg,
+        u32            ref_adjust) {
+    assert(val_assignment(local_idx) != nullptr);
+
+    auto res_ref = ValuePartRef{this, local_idx, part};
+    auto ap_res  = res_ref.assignment();
+    assert(ap_res.bank() == arg.bank());
+
+    if (arg.is_const) {
+        lhs_reg = res_ref.alloc_reg(false);
+        // TODO(ts): materialize constant
+        assert(0);
+        exit(1);
+    } else {
+        lhs_reg     = arg.alloc_reg();
+        auto ap_arg = arg.assignment();
+
+        const auto &liveness = analyzer.liveness_info((u32)arg.local_idx());
+        if (arg.ref_count() <= ref_adjust
+            && (liveness.last < cur_block_idx
+                || (liveness.last == cur_block_idx && !liveness.last_full))) {
+            // can salvage
+            arg.unlock();
+
+            assert(!register_file.is_fixed(lhs_reg));
+            ap_arg.set_register_valid(false);
+            ap_res.set_full_reg_id(lhs_reg.id());
+            ap_res.set_register_valid(true);
+            register_file.update_reg_assignment(lhs_reg, local_idx, part);
+        } else {
+            res_ref.alloc_reg(false);
+        }
+    }
+
+    res_ref.lock();
+    return res_ref;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::result_ref_salvage_with_original(
+        IRValueRef     value,
+        u32            part,
+        ValuePartRef &&arg,
+        AsmReg        &lhs_reg,
+        u32            ref_adjust) {
+    const auto local_idx =
+        static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
+
+    if (val_assignment(local_idx) == nullptr) {
+        init_assignment(value, local_idx);
+    }
+    assert(val_assignment(local_idx) != nullptr);
+
+    return result_ref_salvage_with_original(
+        local_idx, part, std::move(arg), lhs_reg, ref_adjust);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::set_value(ValuePartRef &val_ref,
                                                        AsmReg reg) noexcept {
     auto ap = val_ref.assignment();
     if (ap.register_valid()) {
         auto cur_reg = AsmReg{ap.full_reg_id()};
+        if (cur_reg.id() == reg.id()) {
+            ap.set_modified(true);
+            return;
+        }
+        val_ref.unlock();
         assert(!register_file.is_fixed(cur_reg));
         register_file.unmark_used(cur_reg);
     }
@@ -778,8 +960,3 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
 }
 
 } // namespace tpde
-
-#include "AssignmentPartRef.hpp"
-#include "RegisterFile.hpp"
-#include "ScratchReg.hpp"
-#include "ValuePartRef.hpp"

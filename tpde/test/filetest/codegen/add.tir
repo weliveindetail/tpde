@@ -1,0 +1,34 @@
+; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+;
+; SPDX-License-Identifier: LicenseRef-Proprietary
+
+; RUN: rm -rf %t
+; RUN: mkdir %t
+
+; RUN: %tpde_test %s -o %t/out.o
+; RUN: objdump -Mintel-syntax --no-addresses --no-show-raw-insn --disassemble %t/out.o | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+
+; CHECK-LABEL: add1
+add1(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: add rdi,rsi
+  %res = add %a, %b
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+  terminate %res
+}
+
+; CHECK-LABEL: add2
+add2(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NOT: lea rdi
+; X64-NEXT: lea [[REG:r.*]],[rdi+rsi*1]
+  %tmp = add %a, %b
+; X64-NEXT: add rdi,[[REG]]
+  %res = add %a, %tmp
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+  terminate %res
+}

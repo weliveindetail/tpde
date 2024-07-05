@@ -9,7 +9,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 struct CompilerBase<Adaptor, Derived, Config>::ScratchReg {
     CompilerBase *compiler;
     // TODO(ts): get this using the CompilerConfig?
-    u8            cur_reg = 0xFF;
+    AsmReg        cur_reg = AsmReg::make_invalid();
 
     explicit ScratchReg(CompilerBase *compiler) : compiler(compiler) {}
 
@@ -42,14 +42,14 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ScratchReg::
         alloc_from_bank_excluding(u8 bank, u64 exclusion_mask) noexcept {
     auto &reg_file = compiler->register_file;
-    if (cur_reg != 0xFF) {
+    if (!cur_reg.invalid()) {
         if (bank == reg_file.reg_bank(cur_reg)
-            && (exclusion_mask & (1ull << cur_reg)) == 0) {
-            return AsmReg{cur_reg};
+            && (exclusion_mask & (1ull << cur_reg.id())) == 0) {
+            return cur_reg;
         }
         reg_file.unmark_fixed(cur_reg);
         reg_file.unmark_used(cur_reg);
-        cur_reg = 0xFF;
+        cur_reg = AsmReg::make_invalid();
     }
 
     auto reg = reg_file.find_first_free_excluding(bank, exclusion_mask);
@@ -71,18 +71,18 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
 
     reg_file.mark_used(reg, Adaptor::INVALID_VALUE_REF, 0);
     reg_file.mark_fixed(reg);
-    cur_reg = reg.id();
+    cur_reg = reg;
     return reg;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ScratchReg::reset() noexcept {
-    if (cur_reg == 0xFF) {
+    if (cur_reg.invalid()) {
         return;
     }
 
     compiler->register_file.unmark_fixed(cur_reg);
     compiler->register_file.unmark_used(cur_reg);
-    cur_reg = 0xFF;
+    cur_reg = AsmReg::make_invalid();
 }
 } // namespace tpde

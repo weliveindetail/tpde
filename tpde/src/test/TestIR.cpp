@@ -547,6 +547,11 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
                     line.remove_prefix(4);
                     values[val_idx].op = Value::Op::add;
                     required_op_count  = 2;
+                } else if (line.starts_with("sub ")) {
+                    op = line.substr(0, 3);
+                    line.remove_prefix(4);
+                    values[val_idx].op = Value::Op::sub;
+                    required_op_count  = 2;
                 }
             }
             if (values[val_idx].op != Value::Op::none) {

@@ -12,6 +12,8 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
 
     using IRValueRef   = typename Base::IRValueRef;
     using ValuePartRef = typename Base::ValuePartRef;
+    using ValLocalIdx  = typename Base::ValLocalIdx;
+    using ScratchReg   = typename Base::ScratchReg;
 
     explicit TestIRCompilerX64(TestIRAdaptor *adaptor) : Base{adaptor} {}
 
@@ -29,5 +31,10 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
     }
 
     [[nodiscard]] bool compile_inst(IRValueRef) noexcept;
+
+    TestIR *ir() noexcept { return this->adaptor->ir; }
+
+    bool compile_add(IRValueRef) noexcept;
+    bool compile_sub(IRValueRef) noexcept;
 };
 } // namespace tpde::test

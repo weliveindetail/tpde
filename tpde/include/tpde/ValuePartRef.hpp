@@ -9,7 +9,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     struct ConstantData {
         u64 const_parts[2];
-        u32 bank; // TODO(ts): multiple banks?
+        u32 bank;
     };
 
     struct ValueData {
@@ -56,6 +56,10 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     /// Spill the value part to the stack frame
     void spill() noexcept;
 
+    /// If it is known that the value part has a register, this function can be
+    /// used to quickly access it
+    AsmReg cur_reg() noexcept;
+
     /// Allocate a register for the value part and reload from the stack if this
     /// is desired
     AsmReg alloc_reg(bool reload = true) noexcept;
@@ -88,6 +92,15 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
         return state.v.part;
     }
 
+    u32 ref_count() const noexcept {
+        assert(!is_const);
+        return state.v.assignment->references_left;
+    }
+
+    u32 bank() const noexcept {
+        return is_const ? state.c.bank : assignment().bank();
+    }
+
     /// Reset the reference to the value part
     void reset() noexcept;
 };
@@ -116,13 +129,24 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::spill() noexcept {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
+    CompilerBase<Adaptor, Derived, Config>::ValuePartRef::cur_reg() noexcept {
+    assert(!is_const);
+
+    auto ap = assignment();
+    assert(ap.register_valid());
+
+    return AsmReg{ap.full_reg_id()};
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::alloc_reg(
         const bool reload) noexcept {
     assert(!is_const);
 
     auto pa = assignment();
     if (pa.register_valid()) {
-        return pa.full_reg_id();
+        return AsmReg{pa.full_reg_id()};
     }
 
     auto &reg_file = state.v.compiler->register_file;
@@ -141,7 +165,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
         AssignmentPartRef part{
             state.v.compiler->val_assignment(reg_file.reg_local_idx(reg)),
             reg_file.reg_part(reg)};
-        part.spill();
+        part.spill_if_needed(state.v.compiler);
         reg_file.unmark_used(reg);
     }
 
@@ -206,22 +230,21 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
         const AsmReg reg) noexcept {
     assert(!is_const);
 
-    auto  ap       = assignment();
-    auto &reg_file = state.v.compiler->register_file;
+    auto ap = assignment();
     if (ap.register_valid()) {
         if (ap.full_reg_id() == reg.id()) {
-            ap.spill_if_needed();
+            ap.spill_if_needed(state.v.compiler);
             ap.set_register_valid(false);
             return reg;
         }
 
-        state.v.compiler->mov(reg.id(), ap.full_reg_id());
+        state.v.compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()});
     } else {
         if (ap.variable_ref()) {
-            state.v.compiler->load_address_of_var_reference(reg, ap);
+            state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
         } else {
-            state.v.compiler->load_from_stack(
-                reg.id(), ap.frame_off(), ap.part_size());
+            state.v.compiler->derived()->load_from_stack(
+                reg, ap.frame_off(), ap.part_size());
         }
     }
 

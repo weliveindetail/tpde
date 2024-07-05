@@ -22,8 +22,9 @@ struct TestIR {
         enum class Op : u8 {
             none,
             add,
+            sub
         };
-        inline static constexpr const char *OP_NAMES[] = {"none", "add"};
+        inline static constexpr const char *OP_NAMES[] = {"none", "add", "sub"};
 
         std::string name;
         u32         local_idx;
