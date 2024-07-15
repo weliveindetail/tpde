@@ -23,6 +23,8 @@ struct CompilerBase {
     using IRBlockRef = typename Adaptor::IRBlockRef;
     using IRFuncRef  = typename Adaptor::IRFuncRef;
 
+    using BlockIndex = typename Analyzer<Adaptor>::BlockIndex;
+
     using Assembler = typename Config::Assembler;
     using AsmReg    = typename Config::AsmReg;
 
@@ -129,9 +131,12 @@ struct CompilerBase {
     struct RegisterFile;
     RegisterFile register_file;
 
-    Assembler                               assembler;
+    Assembler                                    assembler;
     // TODO(ts): smallvector?
-    std::vector<typename Assembler::SymRef> func_syms;
+    std::vector<typename Assembler::SymRef>      func_syms;
+    // TODO(ts): combine this with the block vectors in the analyzer to save on
+    // allocations
+    util::SmallVector<typename Assembler::Label> block_labels;
 
 
     struct ScratchReg;
@@ -221,31 +226,64 @@ struct CompilerBase {
     /// if it might be used later
     AsmReg val_as_specific_reg(ValuePartRef &val_ref, AsmReg reg) noexcept;
 
+    /// Get a defining reference to a value
     ValuePartRef result_ref_lazy(ValLocalIdx local_idx, u32 part) noexcept;
+
+    /// Get a defining reference to a value
     ValuePartRef result_ref_lazy(IRValueRef value, u32 part) noexcept;
+
+    /// Get a defining reference to a value which will already have a register
+    /// allocated that can be directly used as a result register
     ValuePartRef result_ref_eager(ValLocalIdx local_idx, u32 part) noexcept;
+
+    /// Get a defining reference to a value which will already have a register
+    /// allocated that can be directly used as a result register
     ValuePartRef result_ref_eager(IRValueRef value, u32 part) noexcept;
+
+    /// Get a defining reference to a value and try to salvage the register of
+    /// another value if possible, otherwise allocate a register
     ValuePartRef result_ref_salvage(ValLocalIdx    local_idx,
                                     u32            part,
                                     ValuePartRef &&arg,
                                     u32            ref_adjust = 1) noexcept;
+
+    /// Get a defining reference to a value and try to salvage the register of
+    /// another value if possible, otherwise allocate a register
     ValuePartRef result_ref_salvage(IRValueRef     value,
                                     u32            part,
                                     ValuePartRef &&arg,
                                     u32            ref_adjust = 1) noexcept;
+
+    /// Get a defining reference to a value that reuses a register of another
+    /// value and spills it if necessary. This is useful if the implemented
+    /// operation overwrites a register and therefore the original value cannot
+    /// be kept
     ValuePartRef result_ref_must_salvage(ValLocalIdx    local_idx,
                                          u32            part,
                                          ValuePartRef &&arg,
                                          u32 ref_adjust = 1) noexcept;
+
+    /// Get a defining reference to a value that reuses a register of another
+    /// value and spills it if necessary. This is useful if the implemented
+    /// operation overwrites a register and therefore the original value cannot
+    /// be kept
     ValuePartRef result_ref_must_salvage(IRValueRef     value,
                                          u32            part,
                                          ValuePartRef &&arg,
                                          u32 ref_adjust = 1) noexcept;
+
+    /// Get a defining reference to a value and try to salvage the register of
+    /// another value if possible, otherwise allocate a register. The register
+    /// where the other value is located is also returned
     ValuePartRef result_ref_salvage_with_original(ValLocalIdx    local_idx,
                                                   u32            part,
                                                   ValuePartRef &&arg,
                                                   AsmReg        &lhs_reg,
                                                   u32 ref_adjust = 1);
+
+    /// Get a defining reference to a value and try to salvage the register of
+    /// another value if possible, otherwise allocate a register. The register
+    /// where the other value is located is also returned
     ValuePartRef result_ref_salvage_with_original(IRValueRef     value,
                                                   u32            part,
                                                   ValuePartRef &&arg,
@@ -257,6 +295,23 @@ struct CompilerBase {
     // u32 part) noexcept;
 
     void set_value(ValuePartRef &val_ref, AsmReg reg) noexcept;
+
+
+    // TODO(ts): switch to a branch_spill_before naming style?
+    typename RegisterFile::RegBitSet spill_before_branch() noexcept;
+    void release_spilled_regs(typename RegisterFile::RegBitSet) noexcept;
+
+    /// When reaching a point in the function where no other blocks will be
+    /// reached anymore, use this function to release register assignments after
+    /// the end of that block so the compiler does not accidentally use
+    /// registers which don't contain any values
+    void release_regs_after_return() noexcept;
+
+    void move_to_phi_nodes(BlockIndex target) noexcept;
+
+    bool branch_needs_split(IRBlockRef target) noexcept;
+
+    BlockIndex next_block() const noexcept;
 
   protected:
     bool compile_func(IRFuncRef func, u32 func_idx) noexcept;
@@ -328,6 +383,7 @@ void CompilerBase<Adaptor, Derived, Config>::reset() {
 
     assembler.reset();
     func_syms.clear();
+    block_labels.clear();
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -460,7 +516,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
 
     u32 max_part_size = 0;
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
-        auto ap = AssignmentPartRef{assignment, part_count};
+        auto ap = AssignmentPartRef{assignment, part_idx};
         ap.set_bank(analyzer.adaptor->val_part_bank(value, part_idx));
         const u32 size = analyzer.adaptor->val_part_size(value, part_idx);
         assert(size > 0);
@@ -848,6 +904,473 @@ void CompilerBase<Adaptor, Derived, Config>::set_value(ValuePartRef &val_ref,
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
+    CompilerBase<Adaptor, Derived, Config>::spill_before_branch() noexcept {
+    // since we do not explicitly keep track of register assignments per block,
+    // whenever we might branch off to a block that we do not directly compile
+    // afterwards (i.e. the register assignments might change in between), we
+    // need to spill all registers which are not fixed and remove them from the
+    // register state.
+    //
+    // This leads to worse codegen but saves a significant overhead to
+    // store/manage the register assignment for each block (256 bytes/block for
+    // x64) and possible compiletime as there might be additional logic to move
+    // values around
+
+    // First, we consider the case that the current block only has one successor
+    // which is compiled directly after the current one, in which case we do not
+    // have to spill anything.
+    //
+    // Secondly, if the next block has multiple incoming edges, we always have
+    // to spill and remove from the register assignment. Otherwise, we
+    // only need to spill values if they are alive in any successor which is not
+    // the next block.
+    //
+    // Values which are only read from PHI-Nodes and have no extended lifetimes,
+    // do not need to be spilled as they die at the edge.
+
+    using RegBitSet = typename RegisterFile::RegBitSet;
+
+    const IRBlockRef cur_block_ref      = analyzer.block_ref(cur_block_idx);
+    auto             next_block_is_succ = false;
+    auto             next_block_has_multiple_incoming = false;
+    u32              succ_count                       = 0;
+    for (const IRBlockRef succ : adaptor->block_succs(cur_block_ref)) {
+        ++succ_count;
+        if (static_cast<u32>(analyzer.block_idx(succ))
+            == static_cast<u32>(cur_block_idx) + 1) {
+            next_block_is_succ = true;
+            if (analyzer.block_has_multiple_incoming(succ)) {
+                next_block_has_multiple_incoming = true;
+            }
+        }
+    }
+
+    if (succ_count == 1 && next_block_is_succ
+        && !next_block_has_multiple_incoming) {
+        return RegBitSet{};
+    }
+
+    /*if (!next_block_is_succ) {
+        // spill and remove from reg assignment
+        auto spilled = RegisterFile::RegBitSet{};
+        for (auto reg : register_file.used_regs()) {
+            auto local_idx = register_file.reg_local_idx(AsmReg{reg});
+            auto part      = register_file.reg_part(AsmReg{reg});
+            if (local_idx == INVALID_VAL_LOCAL_IDX) {
+                // TODO(ts): can this actually happen?
+                continue;
+            }
+            auto ap = AssignmentPartRef{val_assignment(local_idx), part};
+            ap.spill_if_needed(this);
+            spilled |= RegisterFile::RegBitSet{1ull} << reg;
+        }
+        return spilled;
+    }*/
+
+    u16 phi_ref_count[RegisterFile::MAX_ID + 1] = {};
+    for (const IRBlockRef succ : adaptor->block_succs(cur_block_ref)) {
+        for (const IRValueRef phi_val : adaptor->block_phis(succ)) {
+            const auto       phi_ref = adaptor->val_as_phi(phi_val);
+            const IRValueRef inc_val =
+                phi_ref.incoming_val_for_block(cur_block_ref);
+            auto *assignment = val_assignment(val_idx(inc_val));
+            u32   part_count = adaptor->val_part_count(inc_val);
+            for (u32 i = 0; i < part_count; ++i) {
+                auto ap = AssignmentPartRef{assignment, i};
+                if (ap.register_valid()) {
+                    ++phi_ref_count[ap.full_reg_id()];
+                }
+            }
+        }
+    }
+
+    const auto spill_reg_if_needed = [&](const auto reg) {
+        auto local_idx = register_file.reg_local_idx(AsmReg{reg});
+        auto part      = register_file.reg_part(AsmReg{reg});
+        if (local_idx == INVALID_VAL_LOCAL_IDX) {
+            // TODO(ts): can this actually happen?
+            assert(0);
+            return;
+        }
+        auto *assignment = val_assignment(local_idx);
+        auto  ap         = AssignmentPartRef{assignment, part};
+        if (!ap.modified()) {
+            // no need to spill if the value was not modified
+            return;
+        }
+
+        const auto &liveness =
+            analyzer.liveness_info(static_cast<u32>(local_idx));
+        if (assignment->references_left <= phi_ref_count[reg]
+            && liveness.last <= cur_block_idx) {
+            return;
+        }
+
+        if (!next_block_is_succ || next_block_has_multiple_incoming) {
+            ap.spill_if_needed(this);
+            return;
+        }
+
+        // spill if the value is alive in any successor that is not the next
+        // block
+        for (const IRBlockRef succ : adaptor->block_succs(cur_block_ref)) {
+            const auto block_idx = analyzer.block_idx(succ);
+            if (static_cast<u32>(block_idx)
+                == static_cast<u32>(cur_block_idx) + 1) {
+                continue;
+            }
+            if (block_idx >= liveness.first && block_idx <= liveness.last) {
+                ap.spill_if_needed(this);
+                return;
+            }
+        }
+    };
+
+    auto spilled = RegBitSet{};
+    for (auto reg : register_file.used_regs()) {
+        spill_reg_if_needed(reg);
+        // remove from register assignment if the next block cannot rely on the
+        // value being in the specific register
+        if (next_block_has_multiple_incoming || !next_block_is_succ) {
+            // TODO(ts): this needs to be changed if this is supposed to work
+            // with other RegisterFile implementations
+            spilled |= RegBitSet{1ull} << reg;
+        }
+    }
+
+    return spilled;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::release_spilled_regs(
+    typename RegisterFile::RegBitSet regs) noexcept {
+    // TODO(ts): needs changes for other RegisterFile impls
+    for (auto reg_id : util::BitSetIterator<>{regs}) {
+        auto reg = AsmReg{reg_id};
+        if (!register_file.is_used(reg)) {
+            continue;
+        }
+
+        auto local_idx = register_file.reg_local_idx(reg);
+        auto part      = register_file.reg_part(reg);
+        assert(local_idx != INVALID_VAL_LOCAL_IDX);
+        assert(!register_file.is_fixed(reg));
+        auto ap = AssignmentPartRef{val_assignment(local_idx), part};
+        ap.set_register_valid(false);
+        register_file.unmark_used(reg);
+    }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::
+    release_regs_after_return() noexcept {
+    // we essentially have to free all non-fixed registers
+    for (auto reg_id : register_file.used_nonfixed_regs()) {
+        auto reg       = AsmReg{reg_id};
+        auto local_idx = register_file.reg_local_idx(reg);
+        auto part      = register_file.reg_part(reg);
+        assert(local_idx != INVALID_VAL_LOCAL_IDX);
+        assert(!register_file.is_fixed(reg));
+        auto ap = AssignmentPartRef{val_assignment(local_idx), part};
+        ap.set_register_valid(false);
+        register_file.unmark_used(reg);
+    }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
+    BlockIndex target) noexcept {
+    // PHI-nodes are always moved to their stack-slot (unless they are fixed)
+    // which isn't implemented yet
+    // However, we need to take care of PHI-dependencies (cycles and chains)
+    // as to not overwrite values which might be needed.
+    //
+    // In most cases, we expect the number of PHIs to be small but we want to
+    // stay reasonably efficient even with larger numbers of PHIs
+
+    IRBlockRef target_ref = analyzer.block_ref(target);
+    IRBlockRef cur_ref    = analyzer.block_ref(cur_block_idx);
+
+    // collect all the nodes
+    struct NodeEntry {
+        IRValueRef val;
+        u32        ref_count;
+    };
+
+    util::SmallVector<NodeEntry, 16> nodes;
+    for (IRValueRef phi : adaptor->block_phis(target_ref)) {
+        nodes.push_back(NodeEntry{phi, 0});
+    }
+
+    if (nodes.empty()) {
+        return;
+    }
+
+    const auto move_to_phi = [this](IRValueRef phi, IRValueRef incoming_val) {
+        // TODO(ts): if phi==incoming_val, we should be able to elide the move
+        // even if the phi is in a fixed register, no?
+
+        u32        part_count = adaptor->val_part_count(incoming_val);
+        ScratchReg scratch(this);
+        for (u32 i = 0; i < part_count; ++i) {
+            // TODO(ts): just have this outside the loop and change the part
+            // index? :P
+            auto   phi_ref = val_ref(phi, i);
+            auto   val_ref = derived()->val_ref(incoming_val, i);
+            // TODO(ts): needs changes for fixed assignments
+            AsmReg reg{};
+            if (val_ref.is_const) {
+                // TODO(ts): materialize constant
+                assert(0);
+                exit(1);
+            } else if (val_ref.assignment().register_valid()) {
+                reg = AsmReg{val_ref.assignment().full_reg_id()};
+            } else {
+                reg = val_ref.reload_into_specific(scratch.alloc_from_bank(
+                    adaptor->val_part_bank(incoming_val, i)));
+            }
+
+            auto phi_ap = phi_ref.assignment();
+            derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
+            // TODO(ts): needs changes for fixed assignments
+            if (phi_ap.register_valid()) {
+                auto cur_reg = AsmReg{phi_ap.full_reg_id()};
+                assert(!register_file.is_fixed(cur_reg));
+                register_file.unmark_used(cur_reg);
+                phi_ap.set_register_valid(false);
+            }
+
+            if (i != part_count - 1) {
+                val_ref.inc_ref_count();
+                phi_ref.inc_ref_count();
+            }
+        }
+    };
+
+    if (nodes.size() == 1) {
+        move_to_phi(
+            nodes[0].val,
+            adaptor->val_as_phi(nodes[0].val).incoming_val_for_block(cur_ref));
+        return;
+    }
+
+    // sort so we can binary search later
+    std::sort(nodes.begin(), nodes.end(), [](const auto &lhs, const auto &rhs) {
+        return lhs.val < rhs.val;
+    });
+
+    // fill in the refcount
+    auto all_zero_ref = true;
+    for (auto &node : nodes) {
+        auto phi_ref      = adaptor->val_as_phi(node.val);
+        auto incoming_val = phi_ref.incoming_val_for_block(cur_ref);
+
+        // TODO(ts): special handling for self-references?
+        auto it =
+            std::lower_bound(nodes.begin(),
+                             nodes.end(),
+                             NodeEntry{.val = incoming_val},
+                             [](const NodeEntry &lhs, const NodeEntry &rhs) {
+                                 return lhs.val < rhs.val;
+                             });
+        if (it == nodes.end() || it->val != incoming_val) {
+            continue;
+        }
+        ++it->ref_count;
+        all_zero_ref = false;
+    }
+
+    if (all_zero_ref) {
+        // no cycles/chain that we need to take care of
+        for (auto &node : nodes) {
+            move_to_phi(
+                node.val,
+                adaptor->val_as_phi(node.val).incoming_val_for_block(cur_ref));
+        }
+        return;
+    }
+
+    // TODO(ts): this is rather inefficient...
+    util::SmallVector<u32, 32> ready_indices;
+    ready_indices.reserve(nodes.size());
+    util::SmallBitSet<256> waiting_nodes;
+    waiting_nodes.resize(nodes.size());
+    for (u32 i = 0; i < nodes.size(); ++i) {
+        if (nodes[i].ref_count) {
+            waiting_nodes.mark_set(i);
+        } else {
+            ready_indices.push_back(i);
+        }
+    }
+
+    u32        handled_count      = 0;
+    u32        cur_tmp_part_count = 0;
+    u32        cur_tmp_slot       = 0;
+    u32        cur_tmp_slot_size  = 0;
+    IRValueRef cur_tmp_val        = Adaptor::INVALID_VALUE_REF;
+    ScratchReg tmp_reg1{this}, tmp_reg2{this};
+
+    const auto move_from_tmp_phi = [&](IRValueRef target_phi) {
+        // ref-count the source val
+        auto inc_ref = val_ref(cur_tmp_val, 0);
+        inc_ref.reset();
+
+        ScratchReg scratch(this);
+        if (cur_tmp_part_count <= 2) {
+            auto phi_ref = val_ref(target_phi, 0);
+            auto ap      = phi_ref.assignment();
+            assert(!tmp_reg1.cur_reg.invalid());
+            derived()->spill_reg(
+                tmp_reg1.cur_reg, ap.frame_off(), ap.part_size());
+
+            if (cur_tmp_part_count == 2) {
+                phi_ref.inc_ref_count();
+                auto phi_ref_high = val_ref(target_phi, 1);
+                auto ap_high      = phi_ref_high.assignment();
+                assert(!tmp_reg2.cur_reg.invalid());
+                derived()->spill_reg(
+                    tmp_reg2.cur_reg, ap_high.frame_off(), ap_high.part_size());
+            }
+            return;
+        }
+
+        for (u32 i = 0; i < cur_tmp_part_count; ++i) {
+            // TODO(ts): just have this outside the loop and change the part
+            // index? :P
+            auto phi_ref = val_ref(target_phi, i);
+            auto phi_ap  = phi_ref.assignment();
+            auto reg     = tmp_reg1.alloc_from_bank(phi_ap.bank());
+            derived()->load_from_stack(
+                reg, cur_tmp_slot + phi_ap.part_off(), phi_ap.part_size());
+            derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
+
+            if (i != cur_tmp_part_count - 1) {
+                phi_ref.inc_ref_count();
+            }
+        }
+    };
+
+    while (handled_count != nodes.size()) {
+        if (ready_indices.empty()) {
+            // need to break a cycle
+            auto cur_idx = *waiting_nodes.first_set();
+            assert(nodes[cur_idx].ref_count == 1);
+            assert(cur_tmp_val == Adaptor::INVALID_VALUE_REF);
+
+            auto phi_val       = nodes[cur_idx].val;
+            cur_tmp_part_count = adaptor->val_part_count(phi_val);
+            cur_tmp_val        = phi_val;
+
+            if (cur_tmp_part_count > 2) {
+                // use a stack slot to store the temporaries
+                auto *assignment = val_assignment(
+                    static_cast<ValLocalIdx>(adaptor->val_local_idx(phi_val)));
+                cur_tmp_slot = allocate_stack_slot(assignment->size);
+
+                for (u32 i = 0; i < cur_tmp_part_count; ++i) {
+                    auto ap = AssignmentPartRef{assignment, i};
+                    if (ap.register_valid()) {
+                        auto reg = AsmReg{ap.full_reg_id()};
+                        derived()->spill_reg(
+                            reg, cur_tmp_slot + ap.part_off(), ap.part_size());
+                    } else {
+                        auto reg = tmp_reg1.alloc_from_bank(ap.bank());
+                        derived()->load_from_stack(
+                            reg, ap.frame_off(), ap.part_size());
+                        derived()->spill_reg(
+                            reg, cur_tmp_slot + ap.part_off(), ap.part_size());
+                    }
+                }
+            } else {
+                // TODO(ts): if the PHI is not fixed, then we can just reuse its
+                // register if it has one
+                auto phi_ref = val_ref(phi_val, 0);
+                phi_ref.inc_ref_count();
+
+                auto reg = tmp_reg1.alloc_from_bank(phi_ref.bank());
+                phi_ref.reload_into_specific(reg);
+
+                if (cur_tmp_part_count == 2) {
+                    // TODO(ts): just change the part ref on the lower ref?
+                    auto phi_ref_high = val_ref(phi_val, 1);
+                    phi_ref_high.inc_ref_count();
+
+                    auto reg_high =
+                        tmp_reg2.alloc_from_bank(phi_ref_high.bank());
+                    phi_ref_high.reload_into_specific(reg_high);
+                }
+            }
+
+            nodes[cur_idx].ref_count = 0;
+            ready_indices.push_back(cur_idx);
+        }
+
+        for (u32 i = 0; i < ready_indices.size(); ++i) {
+            ++handled_count;
+            auto       cur_idx = ready_indices[i];
+            auto       phi_val = nodes[cur_idx].val;
+            IRValueRef incoming_val =
+                adaptor->val_as_phi(phi_val).incoming_val_for_block(cur_ref);
+            if (incoming_val == cur_tmp_val) {
+                move_from_tmp_phi(phi_val);
+
+                if (cur_tmp_part_count > 2) {
+                    free_stack_slot(cur_tmp_slot, cur_tmp_slot_size);
+                    cur_tmp_slot      = 0xFFFF'FFFF;
+                    cur_tmp_slot_size = 0;
+                }
+                cur_tmp_val = Adaptor::INVALID_VALUE_REF;
+                // skip the code below as the ref count of the temp val is
+                // already 0 and we don't want to reinsert it into the ready
+                // list
+                continue;
+            }
+
+            move_to_phi(phi_val, incoming_val);
+
+            // check if the incoming val was another PHI
+            auto it = std::lower_bound(
+                nodes.begin(),
+                nodes.end(),
+                NodeEntry{.val = incoming_val},
+                [](const NodeEntry &lhs, const NodeEntry &rhs) {
+                    return lhs.val < rhs.val;
+                });
+            if (it == nodes.end() || it->val != incoming_val) {
+                continue;
+            }
+
+            assert(it->ref_count > 0);
+            if (--it->ref_count == 0) {
+                auto node_idx = static_cast<u32>(it - nodes.begin());
+                ready_indices.push_back(node_idx);
+                waiting_nodes.mark_unset(node_idx);
+            }
+        }
+        ready_indices.clear();
+    }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+bool CompilerBase<Adaptor, Derived, Config>::branch_needs_split(
+    IRBlockRef target) noexcept {
+    // for now, if the target has PHI-nodes, we split
+    for (auto phi : adaptor->block_phis(target)) {
+        (void)phi;
+        return true;
+    }
+
+    return false;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::BlockIndex
+    CompilerBase<Adaptor, Derived, Config>::next_block() const noexcept {
+    return static_cast<BlockIndex>(static_cast<u32>(cur_block_idx) + 1);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     const IRFuncRef func, const u32 func_idx) noexcept {
     // reset per-func data
@@ -882,6 +1405,12 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     derived()->reset_register_file();
 
     assembler.start_func(func_syms[func_idx]);
+
+    block_labels.clear();
+    block_labels.reserve(analyzer.block_layout.size());
+    for (u32 i = 0; i < analyzer.block_layout.size(); ++i) {
+        block_labels.push_back(assembler.label_create());
+    }
 
     for (const IRValueRef alloca : adaptor->cur_static_allocas()) {
         // TODO(ts): add a flag in the adaptor to not do this if it is
@@ -940,6 +1469,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
     const IRBlockRef block, const u32 block_idx) noexcept {
     cur_block_idx =
         static_cast<typename Analyzer<Adaptor>::BlockIndex>(block_idx);
+
+    assembler.label_place(block_labels[block_idx]);
     for (const IRValueRef value : adaptor->block_values(block)) {
         if (!derived()->compile_inst(value)) {
             return false;

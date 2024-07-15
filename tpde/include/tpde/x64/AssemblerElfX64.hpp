@@ -44,13 +44,17 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
 
     [[nodiscard]] bool label_is_pending(Label label) const noexcept;
 
+    void label_add_unresolved_jump_offset(Label, u32 text_imm32_off) noexcept;
+
+    void label_place(Label label) noexcept;
+
     void reset() noexcept;
 };
 
 inline AssemblerElfX64::Label AssemblerElfX64::label_create() noexcept {
     const auto label = static_cast<Label>(label_offsets.size());
     label_offsets.push_back(INVALID_LABEL_OFF);
-    unresolved_labels.push_back(false);
+    unresolved_labels.push_back(true);
     return label;
 }
 
@@ -69,6 +73,48 @@ inline bool
     const auto idx = static_cast<u32>(label);
     assert(idx < label_offsets.size());
     return unresolved_labels.is_set(idx);
+}
+
+inline void AssemblerElfX64::label_add_unresolved_jump_offset(
+    Label label, const u32 text_imm32_off) noexcept {
+    const auto idx = static_cast<u32>(label);
+    assert(label_is_pending(label));
+
+    auto pending_head = label_offsets[idx];
+    if (unresolved_next_free_entry != ~0u) {
+        auto entry                         = unresolved_next_free_entry;
+        unresolved_entries[entry].text_off = text_imm32_off;
+        unresolved_next_free_entry = unresolved_entries[entry].next_list_entry;
+        unresolved_entries[entry].next_list_entry = pending_head;
+        label_offsets[idx]                        = entry;
+    } else {
+        auto entry = static_cast<u32>(unresolved_entries.size());
+        unresolved_entries.push_back(UnresolvedEntry{
+            .text_off = text_imm32_off, .next_list_entry = pending_head});
+        label_offsets[idx] = entry;
+    }
+}
+
+inline void AssemblerElfX64::label_place(Label label) noexcept {
+    const auto idx = static_cast<u32>(label);
+    assert(label_is_pending(label));
+
+    auto text_off = text_cur_off();
+
+    auto cur_entry = label_offsets[idx];
+    while (cur_entry != ~0u) {
+        auto &entry = unresolved_entries[cur_entry];
+        // fix the jump immediate
+        *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off) =
+            (text_off - entry.text_off) - 4;
+        auto next                  = entry.next_list_entry;
+        entry.next_list_entry      = unresolved_next_free_entry;
+        unresolved_next_free_entry = cur_entry;
+        cur_entry                  = next;
+    }
+
+    label_offsets[idx] = text_off;
+    unresolved_labels.mark_unset(idx);
 }
 
 inline void AssemblerElfX64::reset() noexcept {

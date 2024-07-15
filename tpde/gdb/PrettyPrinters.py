@@ -17,6 +17,7 @@ class EnumClassPrettyPrinter(gdb.ValuePrinter):
 def register_tpde_printers():
     pp = gdb.printing.RegexpCollectionPrettyPrinter('tpde')
     pp.add_printer('blockIndex', '^tpde::Analyzer<.*>::BlockIndex', EnumClassPrettyPrinter)
+    pp.add_printer('valLocalIndex', '^tpde::CompilerBase<.*>::ValLocalIdx', EnumClassPrettyPrinter)
     pp.add_printer('testValueRef', '^tpde::test::TestIRAdaptor::IRValueRef', EnumClassPrettyPrinter)
     pp.add_printer('testBlockRef', '^tpde::test::TestIRAdaptor::IRBlockRef', EnumClassPrettyPrinter)
     pp.add_printer('testFuncRef', '^tpde::test::TestIRAdaptor::IRFuncRef', EnumClassPrettyPrinter)

@@ -82,6 +82,8 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     void lock() noexcept;
     void unlock() noexcept;
 
+    bool can_salvage(u32 ref_adjust = 1) const noexcept;
+
     ValLocalIdx local_idx() const noexcept {
         assert(!is_const);
         return state.v.local_idx;
@@ -166,6 +168,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
             state.v.compiler->val_assignment(reg_file.reg_local_idx(reg)),
             reg_file.reg_part(reg)};
         part.spill_if_needed(state.v.compiler);
+        part.set_register_valid(false);
         reg_file.unmark_used(reg);
     }
 
@@ -282,6 +285,25 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::unlock() noexcept {
     }
 
     state.v.locked = false;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::can_salvage(
+    const u32 ref_adjust) const noexcept {
+    if (is_const) {
+        return false;
+    }
+
+    const auto &liveness =
+        state.v.compiler->analyzer.liveness_info((u32)state.v.local_idx);
+    if (ref_count() <= ref_adjust
+        && (liveness.last < state.v.compiler->cur_block_idx
+            || (liveness.last == state.v.compiler->cur_block_idx
+                && !liveness.last_full))) {
+        return true;
+    }
+
+    return false;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

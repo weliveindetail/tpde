@@ -21,6 +21,11 @@ bool TestIRCompilerX64::compile_inst(IRValueRef val_idx) noexcept {
         default: assert(0); return false;
         }
     }
+    case phi: {
+        // ref-count
+        this->val_ref(val_idx, 0);
+        return true;
+    }
     case ret: {
         if (value.op_count == 1) {
             const auto op = static_cast<IRValueRef>(
@@ -33,9 +38,60 @@ bool TestIRCompilerX64::compile_inst(IRValueRef val_idx) noexcept {
             assert(value.op_count == 0);
         }
         this->gen_func_epilog();
+        this->release_regs_after_return();
         return true;
     }
     case alloca: return true;
+    case br: {
+        auto block_idx = ir()->value_operands[value.op_begin_idx];
+        auto spilled   = this->spill_before_branch();
+
+        this->generate_branch_to_block(
+            Jump::jmp, static_cast<IRBlockRef>(block_idx), false, true);
+
+        this->release_spilled_regs(spilled);
+        return true;
+    }
+    case condbr: {
+        auto val_idx =
+            static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx]);
+        auto true_block = static_cast<IRBlockRef>(
+            ir()->value_operands[value.op_begin_idx + 1]);
+        auto false_block = static_cast<IRBlockRef>(
+            ir()->value_operands[value.op_begin_idx + 2]);
+
+        auto val = this->val_ref(val_idx, 0);
+
+        auto true_needs_split  = this->branch_needs_split(true_block);
+        auto false_needs_split = this->branch_needs_split(false_block);
+
+        ScratchReg scratch{this};
+        auto       val_reg = this->val_as_reg(val, scratch);
+
+        auto spilled = this->spill_before_branch();
+
+        ASM(CMP64ri, val_reg, 0);
+        if (this->analyzer.block_ref(this->next_block()) == true_block) {
+            this->generate_branch_to_block(
+                Jump::je, false_block, false_needs_split, false);
+            this->generate_branch_to_block(Jump::jmp, true_block, false, true);
+        } else if (this->analyzer.block_ref(this->next_block())
+                   == false_block) {
+            this->generate_branch_to_block(
+                Jump::jne, true_block, true_needs_split, false);
+            this->generate_branch_to_block(Jump::jmp, false_block, false, true);
+        } else if (!true_needs_split) {
+            this->generate_branch_to_block(Jump::jne, true_block, false, false);
+            this->generate_branch_to_block(Jump::jmp, false_block, false, true);
+        } else {
+            this->generate_branch_to_block(
+                Jump::je, false_block, false_needs_split, false);
+            this->generate_branch_to_block(Jump::jmp, true_block, false, true);
+        }
+
+        this->release_spilled_regs(spilled);
+        return true;
+    }
     default: assert(0); __builtin_unreachable();
     }
 

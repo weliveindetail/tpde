@@ -10,12 +10,17 @@ struct AsmRegBase {
 
     explicit constexpr AsmRegBase(const u8 id) noexcept : reg_id(id) {}
 
+    explicit constexpr AsmRegBase(const u64 id) noexcept
+        : reg_id(static_cast<u8>(id)) {
+        assert(id <= 255);
+    }
+
     constexpr u8 id() const noexcept { return reg_id; }
 
     constexpr bool invalid() noexcept { return reg_id == 0xFF; }
 
     constexpr static AsmRegBase make_invalid() noexcept {
-        return AsmRegBase{0xFF};
+        return AsmRegBase{(u8)0xFF};
     }
 };
 
@@ -24,7 +29,10 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     // later add the possibility for more than 64 registers
     // for architectures that require it
 
-    using Reg = typename Config::AsmReg;
+    using Reg       = typename Config::AsmReg;
+    using RegBitSet = u64;
+
+    static constexpr size_t MAX_ID = 63;
 
     u64 used, free, fixed, clobbered;
     u32 clocks[2];
@@ -119,6 +127,14 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
         return assignments[reg.id()].part;
     }
 
+    [[nodiscard]] util::BitSetIterator<> used_regs() const noexcept {
+        return util::BitSetIterator<>{used};
+    }
+
+    [[nodiscard]] util::BitSetIterator<> used_nonfixed_regs() const noexcept {
+        return util::BitSetIterator<>{used & ~fixed};
+    }
+
     [[nodiscard]] Reg
         find_first_free_excluding(const u8  bank,
                                   const u64 exclusion_mask) const noexcept {
@@ -140,7 +156,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
             ((0xFFFF'FFFF << bank) & ((free | used) & ~fixed))
             & ~exclusion_mask;
         if (nonfixed_mask == 0) {
-            return Reg::INVALID;
+            return Reg::make_invalid();
         }
         return Reg{util::cnt_tz(nonfixed_mask)};
     }

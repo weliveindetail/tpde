@@ -101,9 +101,10 @@ concept IRAdaptor = requires(T a) {
 
     /// An invalid value reference
     { T::INVALID_VALUE_REF } -> SameBaseAs<typename T::IRValueRef>;
-    requires requires(typename T::IRValueRef r) {
+    requires requires(typename T::IRValueRef r, typename T::IRValueRef w) {
         { r == T::INVALID_VALUE_REF } -> std::convertible_to<bool>;
         { r != T::INVALID_VALUE_REF } -> std::convertible_to<bool>;
+        { r < w } -> std::convertible_to<bool>;
     };
 
 
@@ -303,6 +304,8 @@ concept IRAdaptor = requires(T a) {
     } -> std::convertible_to<u32>;
 
     /// Provides the number of parts for a value
+    // TODO(ts): move this into the derived Compiler since it's dependent on the
+    // platform?
     {
         a.val_part_count(ARG(typename T::IRValueRef))
     } -> std::convertible_to<u32>;

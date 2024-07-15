@@ -116,6 +116,10 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
         }
     }
 
+    [[nodiscard]] u32 part_off() const noexcept {
+        return assignment->max_part_size * part;
+    }
+
     void spill_if_needed(CompilerBase *compiler) noexcept;
 };
 
@@ -137,6 +141,5 @@ void CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef::spill_if_needed(
         AsmReg{this->full_reg_id()}, this->frame_off(), this->part_size());
 
     this->set_modified(false);
-    this->set_register_valid(false);
 }
 } // namespace tpde

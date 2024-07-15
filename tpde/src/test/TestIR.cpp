@@ -18,8 +18,12 @@
 //     %<valName> = alloca <size>
 // ; No operands
 //     %<valName> =
-//     %<valName> = %<valName>, %<valName>, ...
+//     %<valName> = [operation] %<valName>, %<valName>, ...
 //     jump %<blockName>, %<blockName>, ...
+//     <or>
+//     br %<blockName>
+//     <or>
+//     condbr %<valName>, %<trueTarget>, %<falseTarget>
 //
 // <blockName>:
 //     %<valName> = phi [%<blockName>, %<valName>], [%<blockName>, %<valName>], ...
@@ -163,8 +167,9 @@ bool tpde::test::TestIR::parse_func(
 
         const auto arg_idx = values.size();
         values.push_back(Value{
-            .name = std::string(arg_name),
-            .type = Value::Type::arg,
+            .name     = std::string(arg_name),
+            .type     = Value::Type::arg,
+            .op_count = 0,
         });
         TPDE_LOG_TRACE(
             "Got argument with name '{}' and idx {}", arg_name, arg_idx);
@@ -280,8 +285,10 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
     }
     TPDE_LOG_TRACE("Parsing line '{}'", line);
 
-    const auto func_idx = parse_state.func_idx;
     if (line[0] == '%') {
+        return parse_value_line(line, parse_state);
+    } else if (line.starts_with("jump") || line.starts_with("terminate")
+               || line.starts_with("br") || line.starts_with("condbr")) {
         if (parse_state.block_finished) {
             TPDE_LOG_ERR("Trying to add instruction after terminating "
                          "instruction for block '{}'",
@@ -289,368 +296,14 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
             return false;
         }
 
-        // value
-        line.remove_prefix(1);
+        const auto block_idx             = parse_state.cur_block;
+        blocks[block_idx].succ_begin_idx = block_succs.size();
+        const auto block_name = std::string_view{blocks[block_idx].name};
 
-        const auto value_name = parse_name(line);
-        if (value_name.empty()) {
-            TPDE_LOG_ERR("Failed to parse value name. Got '{}'", line);
-            return false;
-        }
-
-        if (parse_state.value_map.contains(value_name)) {
-            TPDE_LOG_ERR("Got duplicate value definition for '{}'", value_name);
-            return false;
-        }
-
-        remove_whitespace(line);
-        if (line.empty() || line[0] != '=') {
-            TPDE_LOG_ERR("Expected '=' after value name but got '{}'", line);
-            return false;
-        }
-
-        line.remove_prefix(1);
-        remove_whitespace(line);
-
-        const u32 val_idx = values.size();
-        values.push_back(
-            Value{.name         = std::string(value_name),
-                  .type         = Value::Type::normal,
-                  .op_count     = 0,
-                  .op_begin_idx = static_cast<u32>(value_operands.size())});
-        TPDE_LOG_TRACE(
-            "Got value definition for '{}' with idx {}", value_name, val_idx);
-
-        parse_state.value_map[value_name] = val_idx;
-        if (parse_state.pending_value_resolves.contains(value_name)) {
-            for (const auto &[target_val_idx, op_idx] :
-                 parse_state.pending_value_resolves[value_name]) {
-                const auto idx = values[target_val_idx].op_begin_idx + op_idx;
-                assert(idx < values[target_val_idx].op_end_idx);
-                TPDE_LOG_TRACE("  Fixing pending resolve at {}+{}",
-                               target_val_idx,
-                               op_idx);
-                value_operands[idx] = val_idx;
-            }
-            parse_state.pending_value_resolves.erase(value_name);
-        }
-
-        if (line.starts_with("alloca")) {
-            parse_state.block_finished_phis = true;
-            if (functions[func_idx].block_begin_idx != parse_state.cur_block) {
-                TPDE_LOG_ERR("Encountered alloca '{}' in non-entry block '{}'",
-                             value_name,
-                             blocks[parse_state.cur_block].name);
-                return false;
-            }
-
-            line.remove_prefix(6);
-            remove_whitespace(line);
-
-            int base = 10;
-            if (line.starts_with("0x")) {
-                base = 16;
-                line.remove_prefix(2);
-            }
-
-            u32        size = 0, align = 8;
-            const auto res = std::from_chars(
-                line.data(), line.data() + line.size(), size, base);
-            if (res.ec != std::errc{}) {
-                TPDE_LOG_ERR("Failed to parse size for alloca '{}': '{}'",
-                             value_name,
-                             line);
-                return false;
-            }
-
-            line.remove_prefix(res.ptr - line.data());
-            remove_whitespace(line);
-            if (line.starts_with(',')) {
-                line.remove_prefix(1);
-                remove_whitespace(line);
-                if (line.starts_with("align ")) {
-                    line.remove_prefix(6);
-                    remove_whitespace(line);
-
-                    base = 10;
-                    if (line.starts_with("0x")) {
-                        base = 16;
-                        line.remove_prefix(2);
-                    }
-
-                    const auto res = std::from_chars(
-                        line.data(), line.data() + line.size(), align, base);
-                    if (res.ec != std::errc{}) {
-                        TPDE_LOG_ERR(
-                            "Failed to parse align for alloca '{}': '{}'",
-                            value_name,
-                            line);
-                        return false;
-                    }
-
-                    line.remove_prefix(res.ptr - line.data());
-
-                    if ((align & (align - 1)) != 0 || align > 16) {
-                        TPDE_LOG_ERR("Alignment must be power of two and not "
-                                     "bigger than 16 but is {}",
-                                     align);
-                        return false;
-                    }
-
-                } else {
-                    TPDE_LOG_ERR("Expected align after alloca but got '{}'",
-                                 line);
-                    return false;
-                }
-            }
-
-
-            TPDE_LOG_TRACE(
-                "Got alloca with size 0x{:X} and align", size, align);
-            values[val_idx].type         = Value::Type::alloca;
-            values[val_idx].alloca_size  = size;
-            values[val_idx].alloca_align = align;
-
-        } else if (line.starts_with("phi")) {
-            if (parse_state.block_finished_phis) {
-                TPDE_LOG_ERR("Got phi '{}' in block after non-phi instruction",
-                             value_name);
-                return false;
-            }
-
-            line.remove_prefix(3);
-            remove_whitespace(line);
-
-            TPDE_LOG_TRACE("Got phi");
-            values[val_idx].op_count = 0;
-            values[val_idx].type     = Value::Type::phi;
-            auto had_arg             = false;
-            while (!line.empty()) {
-                remove_whitespace(line);
-                if (line.empty()) {
-                    break;
-                }
-
-                if (line[0] == ',') {
-                    if (had_arg) {
-                        line.remove_prefix(1);
-                        remove_whitespace(line);
-                    } else {
-                        TPDE_LOG_ERR(
-                            "Failed to parse operand for phi '{}'. Got "
-                            "unexpected ',' for first operand at '{}'",
-                            value_name,
-                            line);
-                        return false;
-                    }
-                }
-                had_arg = true;
-
-                if (line.empty() || line[0] != '[') {
-                    TPDE_LOG_ERR("Failed to parse operand for phi '{}'. "
-                                 "Expected '[', got '{}'",
-                                 value_name,
-                                 line);
-                    return false;
-                }
-                line.remove_prefix(1);
-
-                const auto operand   = line.substr(0, line.find(']'));
-                const auto split_pos = operand.find(',');
-                if (split_pos == std::string::npos) {
-                    TPDE_LOG_ERR("Failed to parse operand for phi '{}'. "
-                                 "Expected comma in operand but got '{}'",
-                                 value_name,
-                                 operand);
-                    return false;
-                }
-
-                auto block_name        = operand.substr(0, split_pos);
-                auto incoming_val_name = operand.substr(split_pos + 1);
-                remove_whitespace(block_name);
-                remove_whitespace(incoming_val_name);
-
-                if (block_name.empty() || incoming_val_name.empty()
-                    || block_name[0] != '%' || incoming_val_name[0] != '%') {
-                    TPDE_LOG_ERR(
-                        "Failed to parse operand for phi '{}'. Block or value "
-                        "name not prefixed with '%'. Got '{}'",
-                        value_name,
-                        operand);
-                    return false;
-                }
-
-                block_name.remove_prefix(1);
-                incoming_val_name.remove_prefix(1);
-
-                const auto parsed_block_name = parse_name(block_name);
-                const auto parsed_val_name   = parse_name(incoming_val_name);
-
-                if (parsed_block_name.empty() || parsed_val_name.empty()) {
-                    TPDE_LOG_ERR(
-                        "Failed to parse operand for phi '{}'. Expected "
-                        "name but got '{}'",
-                        value_name,
-                        operand);
-                    return false;
-                }
-
-                TPDE_LOG_TRACE("Got phi argument '{}' from block '{}'",
-                               parsed_val_name,
-                               parsed_block_name);
-
-                if (parse_state.block_map.contains(parsed_block_name)) {
-                    TPDE_LOG_TRACE("  Block '{}' has idx {}",
-                                   parsed_block_name,
-                                   parse_state.block_map[parsed_block_name]);
-                    value_operands.push_back(
-                        parse_state.block_map[parsed_block_name]);
-                } else {
-                    value_operands.push_back(~0u);
-                    parse_state.pending_block_resolves[parsed_block_name]
-                        .push_back(PendingBlockEntry{
-                            .type      = PendingBlockEntry::Type::value,
-                            .value_idx = val_idx,
-                            .op_idx    = values[val_idx].op_count * 2});
-                }
-
-                if (parse_state.value_map.contains(parsed_val_name)) {
-                    TPDE_LOG_TRACE("  Value '{}' has idx {}",
-                                   parsed_val_name,
-                                   parse_state.value_map[parsed_val_name]);
-                    value_operands.push_back(
-                        parse_state.value_map[parsed_val_name]);
-                } else {
-                    value_operands.push_back(~0u);
-                    parse_state.pending_value_resolves[parsed_val_name]
-                        .emplace_back(val_idx,
-                                      values[val_idx].op_count * 2 + 1);
-                }
-
-                ++values[val_idx].op_count;
-
-                line.remove_prefix(operand.size() + 1);
-            }
-        } else {
-            parse_state.block_finished_phis = true;
-
-            values[val_idx].op_count = 0;
-            values[val_idx].op       = Value::Op::none;
-
-            remove_whitespace(line);
-
-            u32              required_op_count = ~0u;
-            std::string_view op                = {};
-            if (!line.empty()) {
-                if (line.starts_with("add ")) {
-                    op = line.substr(0, 3);
-                    line.remove_prefix(4);
-                    values[val_idx].op = Value::Op::add;
-                    required_op_count  = 2;
-                } else if (line.starts_with("sub ")) {
-                    op = line.substr(0, 3);
-                    line.remove_prefix(4);
-                    values[val_idx].op = Value::Op::sub;
-                    required_op_count  = 2;
-                }
-            }
-            if (values[val_idx].op != Value::Op::none) {
-                TPDE_LOG_TRACE("  Value {} has op {}", val_idx, op);
-            }
-
-            auto had_arg = false;
-            while (!line.empty()) {
-                remove_whitespace(line);
-                if (line.empty()) {
-                    break;
-                }
-
-                if (line[0] == ',') {
-                    if (had_arg) {
-                        line.remove_prefix(1);
-                        remove_whitespace(line);
-                    } else {
-                        TPDE_LOG_ERR(
-                            "Failed to parse operand for value '{}'. Got "
-                            "unexpected ',' for first operand at '{}'",
-                            value_name,
-                            line);
-                        return false;
-                    }
-                }
-                had_arg = true;
-
-                if (line.empty() || line[0] != '%') {
-                    TPDE_LOG_ERR("Failed to parse operand for value '{}'. "
-                                 "Expected '%', got '{}'",
-                                 value_name,
-                                 line);
-                    return false;
-                }
-                line.remove_prefix(1);
-
-                const auto op_name = parse_name(line);
-                if (op_name.empty()) {
-                    TPDE_LOG_ERR(
-                        "Failed to parse operand for value '{}'. Expected "
-                        "name but got '{}'",
-                        value_name,
-                        line);
-                    return false;
-                }
-
-                if (parse_state.value_map.contains(op_name)) {
-                    value_operands.push_back(parse_state.value_map[op_name]);
-                    TPDE_LOG_TRACE("Got value op '{}' with idx {}",
-                                   op_name,
-                                   parse_state.value_map[op_name]);
-                } else {
-                    TPDE_LOG_TRACE(
-                        "Got value op '{}' with unknown idx at {}+{}",
-                        op_name,
-                        val_idx,
-                        values[val_idx].op_count);
-                    value_operands.push_back(~0u);
-                    parse_state.pending_value_resolves[op_name].emplace_back(
-                        val_idx, values[val_idx].op_count);
-                }
-
-                ++values[val_idx].op_count;
-            }
-
-            if (required_op_count != ~0u
-                && required_op_count != values[val_idx].op_count) {
-                TPDE_LOG_ERR("Invalid op count {} for op {}",
-                             values[val_idx].op_count,
-                             op);
-                return false;
-            }
-        }
-
-        values[val_idx].op_end_idx = static_cast<u32>(value_operands.size());
-
-        remove_whitespace(line);
-        if (!line.empty()) {
-            TPDE_LOG_ERR(
-                "Got garbage after parsing value '{}': '{}'", value_name, line);
-            return false;
-        }
-
-        return true;
-    } else if (line.starts_with("jump") || line.starts_with("terminate")) {
-        if (parse_state.block_finished) {
-            TPDE_LOG_ERR("Trying to add instruction after terminating "
-                         "instruction for block '{}'",
-                         blocks[parse_state.cur_block].name);
-            return false;
-        }
-
-        const auto block_idx = parse_state.cur_block;
         if (line.starts_with("jump")) {
             TPDE_LOG_TRACE("Got jump in block {}", block_idx);
 
             line.remove_prefix(4);
-            blocks[block_idx].succ_begin_idx = block_succs.size();
             const auto block_name = std::string_view{blocks[block_idx].name};
 
             auto had_arg    = false;
@@ -716,11 +369,7 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
                 ++succ_count;
             }
 
-            blocks[block_idx].succ_end_idx = block_succs.size();
-        } else {
-            blocks[block_idx].succ_begin_idx = blocks[block_idx].succ_end_idx =
-                block_succs.size();
-
+        } else if (line.starts_with("terminate")) {
             TPDE_LOG_TRACE("Got terminating instruction for block {}",
                            block_idx);
             line.remove_prefix(9);
@@ -771,8 +420,160 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
 
             values[val_idx].op_end_idx =
                 static_cast<u32>(value_operands.size());
+        } else if (line.starts_with("br")) {
+            line.remove_prefix(2);
+            remove_whitespace(line);
+
+            if (line.empty() || line[0] != '%') {
+                TPDE_LOG_ERR("Expected block name after br but got '{}'", line);
+                return false;
+            }
+
+            line.remove_prefix(1);
+            const auto op_name = parse_name(line);
+            if (op_name.empty()) {
+                TPDE_LOG_ERR("Failed to parse operand for br in block "
+                             "'{}'. Expected "
+                             "name but got '{}'",
+                             block_name,
+                             line);
+                return false;
+            }
+
+            const u32 val_idx = values.size();
+            values.push_back(
+                Value{.name         = std::string(),
+                      .type         = Value::Type::br,
+                      .op_count     = 0,
+                      .op_begin_idx = static_cast<u32>(value_operands.size())});
+            TPDE_LOG_TRACE("Got br with idx {}", val_idx);
+
+            if (parse_state.block_map.contains(op_name)) {
+                TPDE_LOG_TRACE("Got br to block '{}' with idx {}",
+                               op_name,
+                               parse_state.block_map[op_name]);
+                block_succs.push_back(parse_state.block_map[op_name]);
+                value_operands.push_back(parse_state.block_map[op_name]);
+            } else {
+                block_succs.push_back(~0u);
+                value_operands.push_back(~0u);
+                parse_state.pending_block_resolves[op_name].push_back(
+                    PendingBlockEntry{.type = PendingBlockEntry::Type::succ,
+                                      .block_idx = block_idx,
+                                      .succ_idx  = 0});
+
+                parse_state.pending_block_resolves[op_name].push_back(
+                    PendingBlockEntry{.type = PendingBlockEntry::Type::value,
+                                      .value_idx = val_idx,
+                                      .op_idx    = 0});
+                TPDE_LOG_TRACE(
+                    "Got br to block '{}' at {}", op_name, block_idx);
+            }
+
+            values[val_idx].op_end_idx =
+                static_cast<u32>(value_operands.size());
+            values[val_idx].op_count = 1;
+        } else {
+            assert(line.starts_with("condbr"));
+            line.remove_prefix(6);
+            remove_whitespace(line);
+
+            if (line.empty() || line[0] != '%') {
+                TPDE_LOG_ERR("Expected value name after condbr but got '{}'",
+                             line);
+                return false;
+            }
+            line.remove_prefix(1);
+
+            const auto val_name = parse_name(line);
+            if (val_name.empty()) {
+                TPDE_LOG_ERR("Expected value name after condbr but got '{}'",
+                             line);
+                return false;
+            }
+
+            std::string_view block_names[2];
+
+            for (u32 i = 0; i < 2; ++i) {
+                remove_whitespace(line);
+                if (line.empty() || line[0] != ',') {
+                    TPDE_LOG_ERR(
+                        "Expected two block names after condbr but got '{}'",
+                        line);
+                    return false;
+                }
+                line.remove_prefix(1);
+                remove_whitespace(line);
+                if (line.empty() || line[0] != '%') {
+                    TPDE_LOG_ERR(
+                        "Expected two block names after condbr but got '{}'",
+                        line);
+                    return false;
+                }
+                line.remove_prefix(1);
+
+                const auto block_name = parse_name(line);
+                if (block_name.empty()) {
+                    TPDE_LOG_ERR("Invalid block name. Got '{}'", line);
+                    return false;
+                }
+
+                block_names[i] = block_name;
+            }
+
+            const u32 val_idx = values.size();
+            values.push_back(
+                Value{.name         = std::string(),
+                      .type         = Value::Type::condbr,
+                      .op_count     = 0,
+                      .op_begin_idx = static_cast<u32>(value_operands.size())});
+            TPDE_LOG_TRACE("Got condbr with idx {}", val_idx);
+
+            if (parse_state.value_map.contains(val_name)) {
+                TPDE_LOG_TRACE("Got condbr value operand with idx {}",
+                               parse_state.value_map[val_name]);
+                value_operands.push_back(parse_state.value_map[val_name]);
+            } else {
+                TPDE_LOG_TRACE("Got condbr value operand with name '{}'",
+                               val_name);
+                value_operands.push_back(~0u);
+                parse_state.pending_value_resolves[val_name].push_back(
+                    std::make_pair(val_idx, 0));
+            }
+
+            for (u32 i = 0; i < 2; ++i) {
+                auto name = block_names[i];
+                if (parse_state.block_map.contains(name)) {
+                    TPDE_LOG_TRACE("Got condbr block operand at {} with idx {}",
+                                   i,
+                                   parse_state.block_map[name]);
+                    value_operands.push_back(parse_state.block_map[name]);
+                    block_succs.push_back(parse_state.block_map[name]);
+                } else {
+                    TPDE_LOG_TRACE(
+                        "Got condbr block operand at {} with name '{}'",
+                        i,
+                        name);
+                    value_operands.push_back(~0u);
+                    block_succs.push_back(~0u);
+                    parse_state.pending_block_resolves[name].push_back(
+                        PendingBlockEntry{.type =
+                                              PendingBlockEntry::Type::value,
+                                          .value_idx = val_idx,
+                                          .op_idx    = 1 + i});
+                    parse_state.pending_block_resolves[name].push_back(
+                        PendingBlockEntry{.type = PendingBlockEntry::Type::succ,
+                                          .block_idx = block_idx,
+                                          .succ_idx  = i});
+                }
+            }
+
+            values[val_idx].op_end_idx =
+                static_cast<u32>(value_operands.size());
+            values[val_idx].op_count = 3;
         }
 
+        blocks[block_idx].succ_end_idx = block_succs.size();
         remove_whitespace(line);
         if (!line.empty()) {
             TPDE_LOG_ERR("Got garbage after terminating instruction for block "
@@ -799,6 +600,353 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
 
         return parse_block(line, parse_state, false);
     }
+}
+
+bool tpde::test::TestIR::parse_value_line(
+    std::string_view line, BodyParseState &parse_state) noexcept {
+    if (parse_state.block_finished) {
+        TPDE_LOG_ERR("Trying to add instruction after terminating "
+                     "instruction for block '{}'",
+                     blocks[parse_state.cur_block].name);
+        return false;
+    }
+
+    // value
+    line.remove_prefix(1);
+
+    const auto value_name = parse_name(line);
+    if (value_name.empty()) {
+        TPDE_LOG_ERR("Failed to parse value name. Got '{}'", line);
+        return false;
+    }
+
+    if (parse_state.value_map.contains(value_name)) {
+        TPDE_LOG_ERR("Got duplicate value definition for '{}'", value_name);
+        return false;
+    }
+
+    remove_whitespace(line);
+    if (line.empty() || line[0] != '=') {
+        TPDE_LOG_ERR("Expected '=' after value name but got '{}'", line);
+        return false;
+    }
+
+    line.remove_prefix(1);
+    remove_whitespace(line);
+
+    const u32 val_idx = values.size();
+    values.push_back(
+        Value{.name         = std::string(value_name),
+              .type         = Value::Type::normal,
+              .op_count     = 0,
+              .op_begin_idx = static_cast<u32>(value_operands.size())});
+    TPDE_LOG_TRACE(
+        "Got value definition for '{}' with idx {}", value_name, val_idx);
+
+    parse_state.value_map[value_name] = val_idx;
+    if (parse_state.pending_value_resolves.contains(value_name)) {
+        for (const auto &[target_val_idx, op_idx] :
+             parse_state.pending_value_resolves[value_name]) {
+            const auto idx = values[target_val_idx].op_begin_idx + op_idx;
+            assert(idx < values[target_val_idx].op_end_idx);
+            TPDE_LOG_TRACE(
+                "  Fixing pending resolve at {}+{}", target_val_idx, op_idx);
+            value_operands[idx] = val_idx;
+        }
+        parse_state.pending_value_resolves.erase(value_name);
+    }
+
+    if (line.starts_with("alloca")) {
+        parse_state.block_finished_phis = true;
+        if (functions[parse_state.func_idx].block_begin_idx
+            != parse_state.cur_block) {
+            TPDE_LOG_ERR("Encountered alloca '{}' in non-entry block '{}'",
+                         value_name,
+                         blocks[parse_state.cur_block].name);
+            return false;
+        }
+
+        line.remove_prefix(6);
+        remove_whitespace(line);
+
+        int base = 10;
+        if (line.starts_with("0x")) {
+            base = 16;
+            line.remove_prefix(2);
+        }
+
+        u32        size = 0, align = 8;
+        const auto res =
+            std::from_chars(line.data(), line.data() + line.size(), size, base);
+        if (res.ec != std::errc{}) {
+            TPDE_LOG_ERR(
+                "Failed to parse size for alloca '{}': '{}'", value_name, line);
+            return false;
+        }
+
+        line.remove_prefix(res.ptr - line.data());
+        remove_whitespace(line);
+        if (line.starts_with(',')) {
+            line.remove_prefix(1);
+            remove_whitespace(line);
+            if (line.starts_with("align ")) {
+                line.remove_prefix(6);
+                remove_whitespace(line);
+
+                base = 10;
+                if (line.starts_with("0x")) {
+                    base = 16;
+                    line.remove_prefix(2);
+                }
+
+                const auto res = std::from_chars(
+                    line.data(), line.data() + line.size(), align, base);
+                if (res.ec != std::errc{}) {
+                    TPDE_LOG_ERR("Failed to parse align for alloca '{}': '{}'",
+                                 value_name,
+                                 line);
+                    return false;
+                }
+
+                line.remove_prefix(res.ptr - line.data());
+
+                if ((align & (align - 1)) != 0 || align > 16) {
+                    TPDE_LOG_ERR("Alignment must be power of two and not "
+                                 "bigger than 16 but is {}",
+                                 align);
+                    return false;
+                }
+
+            } else {
+                TPDE_LOG_ERR("Expected align after alloca but got '{}'", line);
+                return false;
+            }
+        }
+
+
+        TPDE_LOG_TRACE("Got alloca with size 0x{:X} and align", size, align);
+        values[val_idx].type         = Value::Type::alloca;
+        values[val_idx].alloca_size  = size;
+        values[val_idx].alloca_align = align;
+
+    } else if (line.starts_with("phi")) {
+        if (parse_state.block_finished_phis) {
+            TPDE_LOG_ERR("Got phi '{}' in block after non-phi instruction",
+                         value_name);
+            return false;
+        }
+
+        line.remove_prefix(3);
+        remove_whitespace(line);
+
+        TPDE_LOG_TRACE("Got phi");
+        values[val_idx].op_count = 0;
+        values[val_idx].type     = Value::Type::phi;
+        auto had_arg             = false;
+        while (!line.empty()) {
+            remove_whitespace(line);
+            if (line.empty()) {
+                break;
+            }
+
+            if (line[0] == ',') {
+                if (had_arg) {
+                    line.remove_prefix(1);
+                    remove_whitespace(line);
+                } else {
+                    TPDE_LOG_ERR("Failed to parse operand for phi '{}'. Got "
+                                 "unexpected ',' for first operand at '{}'",
+                                 value_name,
+                                 line);
+                    return false;
+                }
+            }
+            had_arg = true;
+
+            if (line.empty() || line[0] != '[') {
+                TPDE_LOG_ERR("Failed to parse operand for phi '{}'. "
+                             "Expected '[', got '{}'",
+                             value_name,
+                             line);
+                return false;
+            }
+            line.remove_prefix(1);
+
+            const auto operand   = line.substr(0, line.find(']'));
+            const auto split_pos = operand.find(',');
+            if (split_pos == std::string::npos) {
+                TPDE_LOG_ERR("Failed to parse operand for phi '{}'. "
+                             "Expected comma in operand but got '{}'",
+                             value_name,
+                             operand);
+                return false;
+            }
+
+            auto block_name        = operand.substr(0, split_pos);
+            auto incoming_val_name = operand.substr(split_pos + 1);
+            remove_whitespace(block_name);
+            remove_whitespace(incoming_val_name);
+
+            if (block_name.empty() || incoming_val_name.empty()
+                || block_name[0] != '%' || incoming_val_name[0] != '%') {
+                TPDE_LOG_ERR(
+                    "Failed to parse operand for phi '{}'. Block or value "
+                    "name not prefixed with '%'. Got '{}'",
+                    value_name,
+                    operand);
+                return false;
+            }
+
+            block_name.remove_prefix(1);
+            incoming_val_name.remove_prefix(1);
+
+            const auto parsed_block_name = parse_name(block_name);
+            const auto parsed_val_name   = parse_name(incoming_val_name);
+
+            if (parsed_block_name.empty() || parsed_val_name.empty()) {
+                TPDE_LOG_ERR("Failed to parse operand for phi '{}'. Expected "
+                             "name but got '{}'",
+                             value_name,
+                             operand);
+                return false;
+            }
+
+            TPDE_LOG_TRACE("Got phi argument '{}' from block '{}'",
+                           parsed_val_name,
+                           parsed_block_name);
+
+            if (parse_state.block_map.contains(parsed_block_name)) {
+                TPDE_LOG_TRACE("  Block '{}' has idx {}",
+                               parsed_block_name,
+                               parse_state.block_map[parsed_block_name]);
+                value_operands.push_back(
+                    parse_state.block_map[parsed_block_name]);
+            } else {
+                value_operands.push_back(~0u);
+                parse_state.pending_block_resolves[parsed_block_name].push_back(
+                    PendingBlockEntry{.type = PendingBlockEntry::Type::value,
+                                      .value_idx = val_idx,
+                                      .op_idx = values[val_idx].op_count * 2});
+            }
+
+            if (parse_state.value_map.contains(parsed_val_name)) {
+                TPDE_LOG_TRACE("  Value '{}' has idx {}",
+                               parsed_val_name,
+                               parse_state.value_map[parsed_val_name]);
+                value_operands.push_back(
+                    parse_state.value_map[parsed_val_name]);
+            } else {
+                value_operands.push_back(~0u);
+                parse_state.pending_value_resolves[parsed_val_name]
+                    .emplace_back(val_idx, values[val_idx].op_count * 2 + 1);
+            }
+
+            ++values[val_idx].op_count;
+
+            line.remove_prefix(operand.size() + 1);
+        }
+    } else {
+        parse_state.block_finished_phis = true;
+
+        values[val_idx].op_count = 0;
+        values[val_idx].op       = Value::Op::none;
+
+        remove_whitespace(line);
+
+        u32              required_op_count = ~0u;
+        std::string_view op                = {};
+        if (!line.empty()) {
+            if (line.starts_with("add ")) {
+                op = line.substr(0, 3);
+                line.remove_prefix(4);
+                values[val_idx].op = Value::Op::add;
+                required_op_count  = 2;
+            } else if (line.starts_with("sub ")) {
+                op = line.substr(0, 3);
+                line.remove_prefix(4);
+                values[val_idx].op = Value::Op::sub;
+                required_op_count  = 2;
+            }
+        }
+        if (values[val_idx].op != Value::Op::none) {
+            TPDE_LOG_TRACE("  Value {} has op {}", val_idx, op);
+        }
+
+        auto had_arg = false;
+        while (!line.empty()) {
+            remove_whitespace(line);
+            if (line.empty()) {
+                break;
+            }
+
+            if (line[0] == ',') {
+                if (had_arg) {
+                    line.remove_prefix(1);
+                    remove_whitespace(line);
+                } else {
+                    TPDE_LOG_ERR("Failed to parse operand for value '{}'. Got "
+                                 "unexpected ',' for first operand at '{}'",
+                                 value_name,
+                                 line);
+                    return false;
+                }
+            }
+            had_arg = true;
+
+            if (line.empty() || line[0] != '%') {
+                TPDE_LOG_ERR("Failed to parse operand for value '{}'. "
+                             "Expected '%', got '{}'",
+                             value_name,
+                             line);
+                return false;
+            }
+            line.remove_prefix(1);
+
+            const auto op_name = parse_name(line);
+            if (op_name.empty()) {
+                TPDE_LOG_ERR("Failed to parse operand for value '{}'. Expected "
+                             "name but got '{}'",
+                             value_name,
+                             line);
+                return false;
+            }
+
+            if (parse_state.value_map.contains(op_name)) {
+                value_operands.push_back(parse_state.value_map[op_name]);
+                TPDE_LOG_TRACE("Got value op '{}' with idx {}",
+                               op_name,
+                               parse_state.value_map[op_name]);
+            } else {
+                TPDE_LOG_TRACE("Got value op '{}' with unknown idx at {}+{}",
+                               op_name,
+                               val_idx,
+                               values[val_idx].op_count);
+                value_operands.push_back(~0u);
+                parse_state.pending_value_resolves[op_name].emplace_back(
+                    val_idx, values[val_idx].op_count);
+            }
+
+            ++values[val_idx].op_count;
+        }
+
+        if (required_op_count != ~0u
+            && required_op_count != values[val_idx].op_count) {
+            TPDE_LOG_ERR(
+                "Invalid op count {} for op {}", values[val_idx].op_count, op);
+            return false;
+        }
+    }
+
+    values[val_idx].op_end_idx = static_cast<u32>(value_operands.size());
+
+    remove_whitespace(line);
+    if (!line.empty()) {
+        TPDE_LOG_ERR(
+            "Got garbage after parsing value '{}': '{}'", value_name, line);
+        return false;
+    }
+
+    return true;
 }
 
 bool tpde::test::TestIR::parse_block(std::string_view line,
@@ -1044,6 +1192,27 @@ void tpde::test::TestIR::dump_debug() const noexcept {
                         TPDE_LOG_DBG(
                             "      Op {}: {}", op_idx, values[op_idx].name);
                     }
+                    break;
+                }
+                case br: {
+                    TPDE_LOG_DBG("    Br {} to {}({})",
+                                 val_idx,
+                                 value_operands[val.op_begin_idx],
+                                 blocks[value_operands[val.op_begin_idx]].name);
+                    break;
+                }
+                case condbr: {
+                    TPDE_LOG_DBG("    Condbr {}", val_idx);
+
+                    auto *ops = &value_operands[val.op_begin_idx];
+                    TPDE_LOG_DBG(
+                        "      Value: {} ({})", ops[0], values[ops[0]].name);
+                    TPDE_LOG_DBG(
+                        "      TrueSucc: {} ({})", ops[1], blocks[ops[1]].name);
+                    TPDE_LOG_DBG("      FalseSucc: {} ({})",
+                                 ops[2],
+                                 blocks[ops[2]].name);
+                    break;
                 }
                 }
             }
@@ -1127,6 +1296,19 @@ void tpde::test::TestIR::print() const noexcept {
                         const auto op_idx = value_operands[op];
                         fmt::println("      Op {}", values[op_idx].name);
                     }
+                    break;
+                }
+                case br: {
+                    fmt::println("    Br to {}",
+                                 blocks[value_operands[val.op_begin_idx]].name);
+                    break;
+                }
+                case condbr: {
+                    fmt::println("    Condbr");
+                    auto *ops = &value_operands[val.op_begin_idx];
+                    fmt::println("      Value: {}", values[ops[0]].name);
+                    fmt::println("      TrueSucc: {}", blocks[ops[1]].name);
+                    fmt::println("      FalseSucc: {}", blocks[ops[2]].name);
                     break;
                 }
                 }

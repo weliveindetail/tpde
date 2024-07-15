@@ -33,6 +33,7 @@ concept Assembler = requires(T a) {
     { a.label_create() } -> std::same_as<typename T::Label>;
     { a.label_is_pending(ARG(typename T::Label)) } -> std::convertible_to<bool>;
     { a.label_offset(ARG(typename T::Label)) } -> std::convertible_to<u32>;
+    { a.label_place(ARG(typename T::Label)) };
 
     /// Predefine a function symbol
     /// args: func, local, weak

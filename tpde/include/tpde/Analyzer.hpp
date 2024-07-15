@@ -15,10 +15,6 @@ namespace tpde {
 
 template <IRAdaptor Adaptor>
 struct Analyzer {
-    // TODO(ts): maybe rename this to ValueTracker or smth since it not only
-    // does the analysis but also manages and stores the value assignments and
-    // block order
-
     // some forwards for the IR type defs
     using IRValueRef = typename Adaptor::IRValueRef;
     using IRBlockRef = typename Adaptor::IRBlockRef;
@@ -100,9 +96,21 @@ struct Analyzer {
         return block_layout[static_cast<u32>(idx)];
     }
 
+    BlockIndex block_idx(IRBlockRef block_ref) const noexcept {
+        return static_cast<BlockIndex>(adaptor->block_info(block_ref));
+    }
+
     const LivenessInfo &liveness_info(const u32 val_idx) const noexcept {
         assert(val_idx < liveness.size());
         return liveness[val_idx];
+    }
+
+    bool block_has_multiple_incoming(const BlockIndex idx) const noexcept {
+        return block_has_multiple_incoming(block_ref(idx));
+    }
+
+    bool block_has_multiple_incoming(IRBlockRef block_ref) const noexcept {
+        return adaptor->block_info2(block_ref) == 2;
     }
 
   protected:
@@ -435,10 +443,7 @@ void Analyzer<Adaptor>::build_rpo_block_order(
         const auto cur_node = stack.back();
         stack.pop_back();
 
-// visit the current node
-#ifdef TPDE_ASSERTS
-        adaptor->block_set_info2(cur_node, adaptor->block_info2(cur_node) | 2);
-#endif
+        // visit the current node
         adaptor->block_set_info(cur_node, out.size());
         out.push_back(cur_node);
 
@@ -446,20 +451,14 @@ void Analyzer<Adaptor>::build_rpo_block_order(
         // push the successors onto the stack to visit them
         for (const auto succ : adaptor->block_succs(cur_node)) {
             assert(succ != adaptor->cur_entry_block());
-#ifdef TPDE_ASSERTS
-            if ((adaptor->block_info2(succ) & 1) != 0) {
-#else
-            if (adaptor->block_info2(succ) != 0) {
-#endif
+            if (const u32 info = adaptor->block_info2(succ); info != 0) {
+                if (info == 1) {
+                    // note that succ has more than one incoming edge
+                    adaptor->block_set_info2(succ, 2);
+                }
                 // we have already visited the block
                 continue;
             }
-
-#ifdef TPDE_ASSERTS
-            // when we have not yet seen the block, we cannot have given it an
-            // RPO index
-            assert((adaptor->block_info2(succ) & 2) == 0);
-#endif
 
             // TODO(ts): if we just do a post-order traversal and reverse
             // everything at the end we could use only block_info to check

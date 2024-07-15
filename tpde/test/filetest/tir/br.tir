@@ -1,0 +1,48 @@
+; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+;
+; SPDX-License-Identifier: LicenseRef-Proprietary
+
+; RUN: %tpde_test --run-until=ir --print-ir %s | FileCheck %s --dump-input always
+
+; CHECK: Printing IR
+
+; CHECK-LABEL: Function br1
+br1() {
+; CHECK-NEXT: Block entry
+; CHECK-NEXT: Succ secBlock
+entry:
+; CHECK-NEXT: Br to secBlock
+  br %secBlock
+; CHECK-NEXT: Block secBlock
+; CHECK-NEXT: Succ retBlock
+secBlock:
+; CHECK-NEXT: Br to retBlock
+  br %retBlock
+; CHECK-NEXT: Block retBlock
+retBlock:
+; CHECK-NEXT: Ret
+  terminate
+}
+
+; CHECK-LABEL: Function condbr1
+condbr1() {
+; CHECK-NEXT: Block entry
+; CHECK-NEXT: Succ ret1
+; CHECK-NEXT: Succ ret2
+entry:
+; CHECK-NEXT: Value val
+  %val =
+; CHECK-NEXT: Condbr
+; CHECK-NEXT: Value: val
+; CHECK-NEXT: TrueSucc: ret1
+; CHECK-NEXT: FalseSucc: ret2
+  condbr %val, %ret1, %ret2
+; CHECK-NEXT: Block ret1
+ret1:
+; CHECK-NEXT: Ret
+  terminate
+; CHECK-NEXT: Block ret2
+ret2:
+; CHECK-NEXT: Ret
+  terminate
+}

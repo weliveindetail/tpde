@@ -17,6 +17,8 @@ struct TestIR {
             alloca,
             phi,
             ret,
+            br,
+            condbr,
         };
 
         enum class Op : u8 {
@@ -27,32 +29,32 @@ struct TestIR {
         inline static constexpr const char *OP_NAMES[] = {"none", "add", "sub"};
 
         std::string name;
-        u32         local_idx;
+        u32         local_idx = 0;
         Type        type;
-        Op          op;
+        Op          op = Op::none;
 
         union {
             u32 alloca_size;
-            u32 op_count;
+            u32 op_count = 0;
         };
 
-        u32 alloca_align;
+        u32 alloca_align = 0;
 
-        u32 op_begin_idx, op_end_idx;
+        u32 op_begin_idx = 0, op_end_idx = 0;
     };
 
     struct Block {
         std::string name;
-        u32         succ_begin_idx, succ_end_idx;
-        u32         inst_begin_idx, inst_end_idx;
+        u32         succ_begin_idx = 0, succ_end_idx = 0;
+        u32         inst_begin_idx = 0, inst_end_idx = 0;
         bool        has_sibling = false;
-        u32         block_info, block_info2;
+        u32         block_info = 0, block_info2 = 0;
     };
 
     struct Function {
         std::string name;
-        u32         block_begin_idx, block_end_idx;
-        u32         arg_begin_idx, arg_end_idx;
+        u32         block_begin_idx = 0, block_end_idx = 0;
+        u32         arg_begin_idx = 0, arg_end_idx = 0;
     };
 
     std::vector<Value>    values;
@@ -100,6 +102,9 @@ struct TestIR {
                                        BodyParseState  &parse_state) noexcept;
     [[nodiscard]] bool parse_body_line(std::string_view line,
                                        BodyParseState  &parse_state) noexcept;
+    [[nodiscard]] bool parse_value_line(std::string_view line,
+                                        BodyParseState  &parse_state) noexcept;
+
     [[nodiscard]] bool parse_block(std::string_view line,
                                    BodyParseState  &parse_state,
                                    bool             is_entry) noexcept;
@@ -121,6 +126,12 @@ struct TestIRAdaptor {
 
     enum class IRValueRef : u32 {
     };
+
+    /*constexpr friend bool operator<(const IRValueRef &lhs,
+                                    const IRValueRef &rhs) {
+        return static_cast<u32>(lhs) < static_cast<u32>(rhs);
+    }*/
+
     enum class IRBlockRef : u32 {
     };
     enum class IRFuncRef : u32 {
@@ -403,7 +414,7 @@ struct TestIRAdaptor {
                 bool operator!=(const Iter &other) const noexcept {
                     assert(other.self == self);
                     assert(other.val_idx_end == val_idx_end);
-                    return other.val == val;
+                    return other.val != val;
                 }
 
                 IRValueRef operator*() const noexcept {
@@ -505,6 +516,9 @@ struct TestIRAdaptor {
                    || info.type == TestIR::Value::Type::ret) {
             return Range(
                 false, data + info.op_begin_idx, data + info.op_end_idx);
+        } else if (info.type == TestIR::Value::Type::condbr) {
+            return Range(
+                false, data + info.op_begin_idx, data + info.op_begin_idx + 1);
         } else {
             return Range{false, nullptr, nullptr};
         }

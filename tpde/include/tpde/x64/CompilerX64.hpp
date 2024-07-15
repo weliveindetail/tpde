@@ -57,6 +57,20 @@
         this->assembler.text_write_ptr += inst_len;                            \
     } while (false)
 
+
+// generate an instruction without checking that enough space is available and a
+// flag
+#define ASMNCF(op, flag, ...)                                                  \
+    do {                                                                       \
+        u32 inst_len =                                                         \
+            fe64_##op(this->assembler.text_write_ptr, flag, __VA_ARGS__);      \
+        assert(inst_len != 0);                                                 \
+        assert(this->assembler.text_reserve_end                                \
+                   - this->assembler.text_write_ptr                            \
+               >= inst_len);                                                   \
+        this->assembler.text_write_ptr += inst_len;                            \
+    } while (false)
+
 namespace tpde::x64 {
 
 struct AsmReg : AsmRegBase {
@@ -97,13 +111,17 @@ struct AsmReg : AsmRegBase {
         // TODO(ts): optional support for AVX registers with compiler flag
     };
 
-    constexpr explicit AsmReg() noexcept : AsmRegBase(0xFF) {}
+    constexpr explicit AsmReg() noexcept : AsmRegBase((u8)0xFF) {}
 
-    constexpr AsmReg(const REG id) noexcept : AsmRegBase(id) {}
+    constexpr AsmReg(const REG id) noexcept : AsmRegBase((u8)id) {}
 
     constexpr AsmReg(const AsmRegBase base) noexcept : AsmRegBase(base) {}
 
     constexpr explicit AsmReg(const u8 id) noexcept : AsmRegBase(id) {
+        assert(id <= R15 || (id >= XMM0 && id <= XMM15));
+    }
+
+    constexpr explicit AsmReg(const u64 id) noexcept : AsmRegBase(id) {
         assert(id <= R15 || (id >= XMM0 && id <= XMM15));
     }
 
@@ -256,6 +274,8 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
 
     using AssignmentPartRef = typename Base::AssignmentPartRef;
 
+    using Assembler = typename PlatformConfig::Assembler;
+
     using Base::derived;
 
     static constexpr u32 PLATFORM_POINTER_SIZE = 8;
@@ -293,6 +313,32 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
                                        AssignmentPartRef ap) noexcept;
 
     void mov(AsmReg dst, AsmReg src, bool only_32 = false) noexcept;
+
+
+    enum class Jump {
+        ja,
+        jae,
+        jb,
+        jbe,
+        je,
+        jg,
+        jge,
+        jl,
+        jle,
+        jmp,
+        jne,
+        jno,
+        jo,
+    };
+
+    Jump invert_jump(Jump jmp) noexcept;
+
+    void generate_branch_to_block(Jump       jmp,
+                                  IRBlockRef target,
+                                  bool       needs_split,
+                                  bool       last_inst) noexcept;
+
+    void generate_raw_jump(Jump jmp, Assembler::Label target) noexcept;
 };
 
 template <typename Adaptor, typename Derived>
@@ -603,4 +649,98 @@ void CompilerX64<Adaptor, Derived>::mov(const AsmReg dst,
         exit(1);
     }
 }
+
+template <IRAdaptor Adaptor, typename Derived>
+typename CompilerX64<Adaptor, Derived>::Jump
+    CompilerX64<Adaptor, Derived>::invert_jump(Jump jmp) noexcept {
+    switch (jmp) {
+    case Jump::ja: return Jump::jbe;
+    case Jump::jae: return Jump::jb;
+    case Jump::jb: return Jump::jae;
+    case Jump::jbe: return Jump::ja;
+    case Jump::je: return Jump::jne;
+    case Jump::jg: return Jump::jle;
+    case Jump::jge: return Jump::jl;
+    case Jump::jl: return Jump::jge;
+    case Jump::jle: return Jump::jg;
+    case Jump::jmp: return Jump::jmp;
+    case Jump::jne: return Jump::je;
+    case Jump::jno: return Jump::jo;
+    case Jump::jo: return Jump::jno;
+    }
+}
+
+template <IRAdaptor Adaptor, typename Derived>
+void CompilerX64<Adaptor, Derived>::generate_branch_to_block(
+    const Jump jmp,
+    IRBlockRef target,
+    const bool needs_split,
+    const bool last_inst) noexcept {
+    const auto target_idx = this->analyzer.block_idx(target);
+    if (!needs_split || jmp == Jump::jmp) {
+        this->derived()->move_to_phi_nodes(target_idx);
+
+        if (!last_inst
+            || this->analyzer.block_idx(target) != this->next_block()) {
+            generate_raw_jump(jmp, this->block_labels[(u32)target_idx]);
+        }
+    } else {
+        auto tmp_label = this->assembler.label_create();
+        generate_raw_jump(invert_jump(jmp), tmp_label);
+
+        this->derived()->move_to_phi_nodes(target_idx);
+
+        generate_raw_jump(Jump::jmp, this->block_labels[(u32)target_idx]);
+
+        this->assembler.label_place(tmp_label);
+    }
+}
+
+template <IRAdaptor Adaptor, typename Derived>
+void CompilerX64<Adaptor, Derived>::generate_raw_jump(
+    Jump jmp, Assembler::Label target_label) noexcept {
+    if (this->assembler.label_is_pending(target_label)) {
+        this->assembler.text_ensure_space(6);
+        auto *target = this->assembler.text_write_ptr;
+        switch (jmp) {
+        case Jump::ja: ASMNCF(JA, FE_JMPL, target); break;
+        case Jump::jae: ASMNCF(JNC, FE_JMPL, target); break;
+        case Jump::jb: ASMNCF(JC, FE_JMPL, target); break;
+        case Jump::jbe: ASMNCF(JBE, FE_JMPL, target); break;
+        case Jump::je: ASMNCF(JZ, FE_JMPL, target); break;
+        case Jump::jg: ASMNCF(JG, FE_JMPL, target); break;
+        case Jump::jge: ASMNCF(JGE, FE_JMPL, target); break;
+        case Jump::jl: ASMNCF(JL, FE_JMPL, target); break;
+        case Jump::jle: ASMNCF(JLE, FE_JMPL, target); break;
+        case Jump::jmp: ASMNCF(JMP, FE_JMPL, target); break;
+        case Jump::jne: ASMNCF(JNZ, FE_JMPL, target); break;
+        case Jump::jno: ASMNCF(JNO, FE_JMPL, target); break;
+        case Jump::jo: ASMNCF(JO, FE_JMPL, target); break;
+        }
+
+        this->assembler.label_add_unresolved_jump_offset(
+            target_label, this->assembler.text_cur_off() - 4);
+    } else {
+        this->assembler.text_ensure_space(6);
+        auto *target = this->assembler.sec_text.data.data()
+                       + this->assembler.label_offset(target_label);
+        switch (jmp) {
+        case Jump::ja: ASMNC(JA, target); break;
+        case Jump::jae: ASMNC(JNC, target); break;
+        case Jump::jb: ASMNC(JC, target); break;
+        case Jump::jbe: ASMNC(JBE, target); break;
+        case Jump::je: ASMNC(JZ, target); break;
+        case Jump::jg: ASMNC(JG, target); break;
+        case Jump::jge: ASMNC(JGE, target); break;
+        case Jump::jl: ASMNC(JL, target); break;
+        case Jump::jle: ASMNC(JLE, target); break;
+        case Jump::jmp: ASMNC(JMP, target); break;
+        case Jump::jne: ASMNC(JNZ, target); break;
+        case Jump::jno: ASMNC(JNO, target); break;
+        case Jump::jo: ASMNC(JO, target); break;
+        }
+    }
+}
+
+
 } // namespace tpde::x64

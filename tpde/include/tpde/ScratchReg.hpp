@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
-#include "RegisterFile.hpp"
 
 namespace tpde {
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -65,11 +64,12 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
         AssignmentPartRef part{
             compiler->val_assignment(reg_file.reg_local_idx(reg)),
             reg_file.reg_part(reg)};
-        part.spill();
+        part.spill_if_needed(compiler);
+        part.set_register_valid(false);
         reg_file.unmark_used(reg);
     }
 
-    reg_file.mark_used(reg, Adaptor::INVALID_VALUE_REF, 0);
+    reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
     reg_file.mark_fixed(reg);
     cur_reg = reg;
     return reg;

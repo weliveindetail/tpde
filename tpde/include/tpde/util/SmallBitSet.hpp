@@ -99,5 +99,15 @@ struct SmallBitSet {
         const u64 bit       = 1ull << (idx & 63);
         data[elem_idx]     &= ~bit;
     }
+
+    std::optional<u32> first_set() noexcept {
+        for (u32 i = 0; i < data.size(); ++i) {
+            if (data[i] == 0) {
+                continue;
+            }
+            return i + util::cnt_tz(data[i]);
+        }
+        return {};
+    }
 };
 } // namespace tpde::util

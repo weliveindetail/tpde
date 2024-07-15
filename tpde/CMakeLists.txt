@@ -113,8 +113,10 @@ else ()
     target_compile_options(tpde PRIVATE -Wall -Wextra -Wpedantic -Werror)
     # disable RTTI and exceptions
     target_compile_options(tpde PRIVATE -fno-rtti -fno-exceptions)
-endif ()
 
+    # this is annoying
+    target_compile_options(tpde PRIVATE -Wno-missing-field-initializers)
+endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(tpde PUBLIC TPDE_DEBUG)
@@ -165,6 +167,9 @@ if (MSVC)
     target_compile_options(tpde_test PRIVATE /W4 /WX)
 else ()
     target_compile_options(tpde_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+
+    # this is annoying
+    target_compile_options(tpde_test PRIVATE -Wno-missing-field-initializers)
 endif ()
 
 target_compile_definitions(tpde_test PUBLIC TPDE_TESTING)
