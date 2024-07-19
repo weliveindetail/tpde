@@ -19,6 +19,7 @@ struct TestIR {
             ret,
             br,
             condbr,
+            call,
         };
 
         enum class Op : u8 {
@@ -38,7 +39,10 @@ struct TestIR {
             u32 op_count = 0;
         };
 
-        u32 alloca_align = 0;
+        union {
+            u32 alloca_align = 0;
+            u32 call_func_idx;
+        };
 
         u32 op_begin_idx = 0, op_end_idx = 0;
     };
@@ -53,6 +57,8 @@ struct TestIR {
 
     struct Function {
         std::string name;
+        bool        declaration     = false;
+        bool        local_only      = false;
         u32         block_begin_idx = 0, block_end_idx = 0;
         u32         arg_begin_idx = 0, arg_end_idx = 0;
     };
@@ -92,12 +98,17 @@ struct TestIR {
             pending_value_resolves;
         std::unordered_map<std::string_view, std::vector<PendingBlockEntry>>
             pending_block_resolves;
+        // val_idx
+        std::unordered_map<std::string_view, std::vector<u32>>
+            *pending_call_resolves;
     };
 
     [[nodiscard]] bool parse_ir(std::string_view text) noexcept;
     [[nodiscard]] bool
                        parse_func(std::string_view                     &text,
-                                  std::unordered_set<std::string_view> &func_names) noexcept;
+                                  std::unordered_set<std::string_view> &func_names,
+                                  std::unordered_map<std::string_view, std::vector<u32>>
+                                      &pending_call_resolves) noexcept;
     [[nodiscard]] bool parse_func_body(std::string_view body,
                                        BodyParseState  &parse_state) noexcept;
     [[nodiscard]] bool parse_body_line(std::string_view line,
@@ -186,12 +197,12 @@ struct TestIRAdaptor {
         return ir->functions[static_cast<u32>(func)].name;
     }
 
-    [[nodiscard]] bool func_extern(const IRFuncRef) const noexcept {
-        return false;
+    [[nodiscard]] bool func_extern(const IRFuncRef func) const noexcept {
+        return ir->functions[static_cast<u32>(func)].declaration;
     }
 
-    [[nodiscard]] bool func_only_local(const IRFuncRef) const noexcept {
-        return true;
+    [[nodiscard]] bool func_only_local(const IRFuncRef func) const noexcept {
+        return ir->functions[static_cast<u32>(func)].local_only;
     }
 
     [[nodiscard]] bool func_has_weak_linkage(const IRFuncRef) const noexcept {
@@ -513,7 +524,8 @@ struct TestIRAdaptor {
             return Range(
                 true, data + info.op_begin_idx + 1, data + info.op_end_idx + 1);
         } else if (info.type == TestIR::Value::Type::normal
-                   || info.type == TestIR::Value::Type::ret) {
+                   || info.type == TestIR::Value::Type::ret
+                   || info.type == TestIR::Value::Type::call) {
             return Range(
                 false, data + info.op_begin_idx, data + info.op_end_idx);
         } else if (info.type == TestIR::Value::Type::condbr) {

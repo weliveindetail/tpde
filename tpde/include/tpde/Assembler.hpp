@@ -36,11 +36,15 @@ concept Assembler = requires(T a) {
     { a.label_place(ARG(typename T::Label)) };
 
     /// Predefine a function symbol
-    /// args: func, local, weak
+    /// args: func_link_name, local, weak
     {
         a.sym_predef_func(
-            ARG(typename Adaptor::IRFuncRef), ARG(bool), ARG(bool))
+            ARG(std::string_view), ARG(bool), ARG(bool))
     } -> std::same_as<typename T::SymRef>;
+
+    /// Add an undefined symbol
+    /// args: name, local
+    { a.sym_add_undef(ARG(std::string_view), ARG(bool)) };
 };
 
 }

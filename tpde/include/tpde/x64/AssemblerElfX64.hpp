@@ -48,6 +48,18 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
 
     void label_place(Label label) noexcept;
 
+
+    // relocs
+    void reloc_text_plt32(SymRef, u32 text_imm32_off) noexcept;
+
+    void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend) noexcept;
+
+    void reloc_sec(DataSection &sec,
+                   SymRef       sym,
+                   u32          type,
+                   u64          offset,
+                   i64          addend) noexcept;
+
     void reset() noexcept;
 };
 
@@ -115,6 +127,34 @@ inline void AssemblerElfX64::label_place(Label label) noexcept {
 
     label_offsets[idx] = text_off;
     unresolved_labels.mark_unset(idx);
+}
+
+inline void
+    AssemblerElfX64::reloc_text_plt32(const SymRef sym,
+                                      const u32    text_imm32_off) noexcept {
+    reloc_text(sym, R_X86_64_PLT32, text_imm32_off, -4);
+}
+
+inline void AssemblerElfX64::reloc_text(const SymRef sym,
+                                        const u32    type,
+                                        const u64    offset,
+                                        const i64    addend) noexcept {
+    reloc_sec(sec_text, sym, type, offset, addend);
+}
+
+inline void AssemblerElfX64::reloc_sec(DataSection &sec,
+                                       const SymRef sym,
+                                       const u32    type,
+                                       const u64    offset,
+                                       const i64    addend) noexcept {
+    Elf64_Rela rel{};
+    rel.r_offset = offset;
+    rel.r_info   = ELF64_R_INFO(sym_idx(sym), type);
+    rel.r_addend = addend;
+    sec.relocs.push_back(rel);
+    if (!sym_is_local(sym)) {
+        sec.relocs_to_patch.push_back(sec.relocs.size() - 1);
+    }
 }
 
 inline void AssemblerElfX64::reset() noexcept {

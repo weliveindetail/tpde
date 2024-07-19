@@ -342,16 +342,29 @@ bool CompilerBase<Adaptor, Derived, Config>::compile() {
 
     assert(func_syms.empty());
     for (const IRFuncRef func : adaptor->funcs()) {
-        func_syms.push_back(derived()->assembler.sym_predef_func(
-            adaptor->func_link_name(func),
-            adaptor->func_only_local(func),
-            adaptor->func_has_weak_linkage(func)));
+        derived()->define_func_idx(func, func_syms.size());
+        if (adaptor->func_extern(func)) {
+            func_syms.push_back(derived()->assembler.sym_add_undef(
+                adaptor->func_link_name(func), false));
+        } else {
+            func_syms.push_back(derived()->assembler.sym_predef_func(
+                adaptor->func_link_name(func),
+                adaptor->func_only_local(func),
+                adaptor->func_has_weak_linkage(func)));
+        }
     }
 
     // TODO(ts): create function labels?
 
     u32 func_idx = 0;
     for (const IRFuncRef func : adaptor->funcs()) {
+        if (adaptor->func_extern(func)) {
+            TPDE_LOG_TRACE("Skipping compilation of func {}",
+                           adaptor->func_link_name(func));
+            ++func_idx;
+            continue;
+        }
+
         TPDE_LOG_TRACE("Compiling func {}", adaptor->func_link_name(func));
         if (!derived()->compile_func(func, func_idx)) {
             return false;
@@ -649,7 +662,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
 
     // TODO(ts): use an overload with the IRValueRef?
     if (auto ref = derived()->val_ref_special(local_idx, part); ref) {
-        return *ref;
+        return std::move(*ref);
     }
 
     if (val_assignment(local_idx) == nullptr) {

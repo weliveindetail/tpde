@@ -57,6 +57,16 @@
         this->assembler.text_write_ptr += inst_len;                            \
     } while (false)
 
+// generate an instruction with a custom compiler ptr
+#define ASMC(compiler, op, ...)                                                \
+    do {                                                                       \
+        compiler->assembler.text_ensure_space(16);                             \
+        u32 inst_len =                                                         \
+            fe64_##op(compiler->assembler.text_write_ptr, 0, __VA_ARGS__);     \
+        assert(inst_len != 0);                                                 \
+        compiler->assembler.text_write_ptr += inst_len;                        \
+    } while (false)
+
 
 // generate an instruction without checking that enough space is available and a
 // flag
@@ -207,6 +217,12 @@ struct CallingConv {
         }
     }
 
+    [[nodiscard]] constexpr u64 arg_regs_mask() const noexcept {
+        switch (ty) {
+        case SYSV_CC: return SysV::arg_regs_mask;
+        }
+    }
+
     [[nodiscard]] constexpr u64 initial_free_regs() const noexcept {
         switch (ty) {
         case SYSV_CC: return SysV::initial_free_regs;
@@ -215,6 +231,27 @@ struct CallingConv {
 
     template <typename Adaptor, typename Derived>
     void handle_func_args(CompilerX64<Adaptor, Derived> *) const noexcept;
+
+    template <typename Adaptor, typename Derived>
+    u32 calculate_call_stack_space(
+        CompilerX64<Adaptor, Derived> *,
+        std::span<typename CompilerX64<Adaptor, Derived>::CallArg>
+            arguments) noexcept;
+
+    /// returns the number of vector arguments
+    template <typename Adaptor, typename Derived>
+    u32 handle_call_args(
+        CompilerX64<Adaptor, Derived> *,
+        std::span<typename CompilerX64<Adaptor, Derived>::CallArg>
+            arguments) noexcept;
+
+    template <typename Adaptor, typename Derived>
+    void fill_call_results(
+        CompilerX64<Adaptor, Derived> *,
+        std::span<std::variant<
+            typename CompilerX64<Adaptor, Derived>::ValuePartRef,
+            std::pair<typename CompilerX64<Adaptor, Derived>::ScratchReg, u8>>>
+            results) noexcept;
 
     struct SysV {
         constexpr static std::array<AsmReg, 6> arg_regs_gp{AsmReg::DI,
@@ -253,6 +290,9 @@ struct CallingConv {
 
         constexpr static u64 callee_saved_mask =
             create_bitmask(callee_saved_regs);
+
+        constexpr static u64 arg_regs_mask =
+            create_bitmask(arg_regs_gp) | create_bitmask(arg_regs_vec);
     };
 };
 
@@ -273,8 +313,11 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
     using IRFuncRef  = typename Base::IRFuncRef;
 
     using AssignmentPartRef = typename Base::AssignmentPartRef;
+    using ScratchReg        = typename Base::ScratchReg;
+    using ValuePartRef      = typename Base::ValuePartRef;
 
-    using Assembler = typename PlatformConfig::Assembler;
+    using Assembler    = typename PlatformConfig::Assembler;
+    using RegisterFile = typename Base::RegisterFile;
 
     using Base::derived;
 
@@ -339,6 +382,49 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
                                   bool       last_inst) noexcept;
 
     void generate_raw_jump(Jump jmp, Assembler::Label target) noexcept;
+
+    void spill_before_call(CallingConv calling_conv, u64 except_mask = 0);
+
+    struct CallArg {
+        enum class Flag : u8 {
+            none,
+            zext,
+            sext,
+            byval
+        };
+
+        explicit CallArg(IRValueRef value,
+                         Flag       flags       = Flag::none,
+                         u32        byval_align = 0,
+                         u32        byval_size  = 0)
+            : value(value),
+              flag(flags),
+              byval_align(byval_align),
+              byval_size(byval_size) {}
+
+        IRValueRef value;
+        Flag       flag;
+        u32        byval_align;
+        u32        byval_size;
+    };
+
+    /// Generate a function call
+    ///
+    /// This will get the arguments into the correct registers according to the
+    /// calling convention, clear non-callee-saved registers from the register
+    /// file (make sure you do not have any fixed assignments left over) and
+    /// fill the result registers (the u8 in the ScratchReg pair indicates the
+    /// register bank)
+    ///
+    /// Targets can be a symbol (call to PLT with relocation), or an indirect
+    /// call to a ScratchReg/Value
+    void generate_call(
+        std::variant<Assembler::SymRef, ScratchReg, ValuePartRef> &&target,
+        std::span<CallArg>                                          arguments,
+        std::span<std::variant<ValuePartRef, std::pair<ScratchReg, u8>>>
+                    results,
+        CallingConv calling_conv,
+        bool        variable_args);
 };
 
 template <typename Adaptor, typename Derived>
@@ -391,6 +477,303 @@ void CallingConv::handle_func_args(
     }
 }
 
+template <typename Adaptor, typename Derived>
+u32 CallingConv::calculate_call_stack_space(
+    CompilerX64<Adaptor, Derived> *compiler,
+    std::span<typename CompilerX64<Adaptor, Derived>::CallArg>
+        arguments) noexcept {
+    using CallArg = typename CompilerX64<Adaptor, Derived>::CallArg;
+
+    u32 gp_reg_count = 0, xmm_reg_count = 0, stack_space = 0;
+
+    const auto gp_regs  = arg_regs_gp();
+    const auto xmm_regs = arg_regs_vec();
+
+    for (auto &arg : arguments) {
+        if (arg.flag == CallArg::Flag::byval) {
+            stack_space += util::align_up(arg.byval_size, 8);
+            assert(arg.byval_align <= 16);
+            assert((arg.byval_align & (arg.byval_align - 1)) == 0);
+            if (arg.byval_align == 16) {
+                stack_space = util::align_up(stack_space, 16);
+            }
+
+            if (gp_reg_count < gp_regs.size()) {
+                ++gp_reg_count;
+            } else {
+                stack_space += 8;
+            }
+            continue;
+        }
+
+        const u32 part_count = compiler->adaptor->val_part_count(arg.value);
+
+        if (compiler->derived()->arg_is_int128(arg.value)) {
+            if (gp_reg_count + 1 >= gp_regs.size()) {
+                gp_reg_count = gp_regs.size();
+            }
+        }
+
+        for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
+            auto ref = compiler->val_ref(arg.value, part_idx);
+
+            if (ref.bank() == 0) {
+                if (gp_reg_count < gp_regs.size()) {
+                    ++gp_reg_count;
+                } else {
+                    stack_space += 8;
+                }
+            } else {
+                assert(ref.bank() == 1);
+                if (xmm_reg_count < xmm_regs.size()) {
+                    ++xmm_reg_count;
+                } else {
+                    stack_space += ref.part_size();
+                }
+            }
+
+            ref.reset_without_refcount();
+        }
+    }
+
+    return stack_space;
+}
+
+template <typename Adaptor, typename Derived>
+u32 CallingConv::handle_call_args(
+    CompilerX64<Adaptor, Derived> *compiler,
+    std::span<typename CompilerX64<Adaptor, Derived>::CallArg>
+        arguments) noexcept {
+    using CallArg    = typename CompilerX64<Adaptor, Derived>::CallArg;
+    using ScratchReg = typename CompilerX64<Adaptor, Derived>::ScratchReg;
+
+    u32 gp_reg_count = 0, xmm_reg_count = 0;
+    i32 stack_off = 0;
+
+    const auto gp_regs  = arg_regs_gp();
+    const auto xmm_regs = arg_regs_vec();
+
+    util::SmallVector<ScratchReg, 8> arg_scratchs;
+
+
+    for (auto &arg : arguments) {
+        if (arg.flag == CallArg::Flag::byval) {
+            ScratchReg scratch1(compiler), scratch2(compiler);
+            auto       ptr_ref = compiler->val_ref(arg.value, 0);
+            assert(!ptr_ref.is_const);
+            AsmReg ptr_reg;
+            if (gp_reg_count < gp_regs.size()) {
+                ptr_reg = ptr_ref.reload_into_specific(gp_regs[gp_reg_count++]);
+                scratch1.alloc_specific(ptr_reg);
+                arg_scratchs.push_back(std::move(scratch1));
+            } else {
+                ptr_reg = ptr_ref.reload_into_specific(scratch1.alloc_gp());
+            }
+
+            auto tmp_reg = scratch2.alloc_gp();
+
+            auto size = arg.byval_size;
+            assert(arg.byval_align <= 16);
+            stack_off = util::align_up(stack_off, arg.byval_align);
+
+            i32 off = 0;
+            while (size > 0) {
+                if (size >= 8) {
+                    ASMC(compiler,
+                         MOV64rm,
+                         tmp_reg,
+                         FE_MEM(ptr_reg, 0, FE_NOREG, off));
+                    ASMC(compiler,
+                         MOV64mr,
+                         FE_MEM(FE_SP, 0, FE_NOREG, (i32)(stack_off + off)),
+                         tmp_reg);
+                    off  += 8;
+                    size -= 8;
+                    continue;
+                }
+                if (size >= 4) {
+                    ASMC(compiler,
+                         MOV32rm,
+                         tmp_reg,
+                         FE_MEM(ptr_reg, 0, FE_NOREG, off));
+                    ASMC(compiler,
+                         MOV32mr,
+                         FE_MEM(FE_SP, 0, FE_NOREG, (i32)(stack_off + off)),
+                         tmp_reg);
+                    off  += 4;
+                    size -= 4;
+                    continue;
+                }
+                if (size >= 2) {
+                    ASMC(compiler,
+                         MOVZXr32m16,
+                         tmp_reg,
+                         FE_MEM(ptr_reg, 0, FE_NOREG, off));
+                    ASMC(compiler,
+                         MOV16mr,
+                         FE_MEM(FE_SP, 0, FE_NOREG, (i32)(stack_off + off)),
+                         tmp_reg);
+                    off  += 2;
+                    size -= 2;
+                    continue;
+                }
+                ASMC(compiler,
+                     MOVZXr32m8,
+                     tmp_reg,
+                     FE_MEM(ptr_reg, 0, FE_NOREG, off));
+                ASMC(compiler,
+                     MOV8mr,
+                     FE_MEM(FE_SP, 0, FE_NOREG, (i32)(stack_off + off)),
+                     tmp_reg);
+                off  += 1;
+                size -= 1;
+            }
+
+            stack_off += util::align_up(arg.byval_size, 8);
+            continue;
+        }
+
+        const u32 part_count = compiler->adaptor->val_part_count(arg.value);
+
+        if (compiler->derived()->arg_is_int128(arg.value)) {
+            if (gp_reg_count + 1 >= gp_regs.size()) {
+                gp_reg_count = gp_regs.size();
+            }
+        }
+
+        for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
+            auto       ref = compiler->val_ref(arg.value, part_idx);
+            ScratchReg scratch(compiler);
+
+            if (ref.bank() == 0) {
+                const auto ext_reg = [&](AsmReg reg) {
+                    if (arg.flag == CallArg::Flag::zext) {
+                        switch (ref.part_size()) {
+                        case 1: ASMC(compiler, MOVZXr32r8, reg, reg); break;
+                        case 2: ASMC(compiler, MOVZXr32r16, reg, reg); break;
+                        case 4: ASMC(compiler, MOV32rr, reg, reg); break;
+                        default: break;
+                        }
+                    } else if (arg.flag == CallArg::Flag::sext) {
+                        switch (ref.part_size()) {
+                        case 1: ASMC(compiler, MOVSXr64r8, reg, reg); break;
+                        case 2: ASMC(compiler, MOVSXr64r16, reg, reg); break;
+                        case 4: ASMC(compiler, MOVSXr64r32, reg, reg); break;
+                        default: break;
+                        }
+                    }
+                };
+
+                if (gp_reg_count < gp_regs.size()) {
+                    scratch.alloc_specific(
+                        ref.reload_into_specific(gp_regs[gp_reg_count++]));
+                    ext_reg(scratch.cur_reg);
+                    arg_scratchs.push_back(std::move(scratch));
+                } else {
+                    auto reg = ref.reload_into_specific(scratch.alloc_gp());
+                    ext_reg(reg);
+                    ASMC(compiler,
+                         MOV64mr,
+                         FE_MEM(FE_SP, 0, FE_NOREG, stack_off),
+                         reg);
+                    stack_off += 8;
+                }
+            } else {
+                assert(ref.bank() == 1);
+                if (xmm_reg_count < xmm_regs.size()) {
+                    scratch.alloc_specific(
+                        ref.reload_into_specific(xmm_regs[xmm_reg_count++]));
+                    arg_scratchs.push_back(std::move(scratch));
+                } else {
+                    auto reg = compiler->val_as_reg(ref, scratch);
+                    switch (ref.part_size()) {
+                    case 4:
+                        ASMC(compiler,
+                             SSE_MOVD_X2Gmr,
+                             FE_MEM(FE_SP, 0, FE_NOREG, stack_off),
+                             reg);
+                        stack_off += 8;
+                        break;
+                    case 8:
+                        ASMC(compiler,
+                             SSE_MOVQ_X2Gmr,
+                             FE_MEM(FE_SP, 0, FE_NOREG, stack_off),
+                             reg);
+                        stack_off += 8;
+                        break;
+                    case 16: {
+                        stack_off = util::align_up(stack_off, 16);
+                        ASMC(compiler,
+                             SSE_MOVUPDmr,
+                             FE_MEM(FE_SP, 0, FE_NOREG, stack_off),
+                             reg);
+                        stack_off += 16;
+                        break;
+                    }
+                        // can't guarantee the alignment on the stack
+                    default: assert(0); exit(1);
+                    }
+                }
+            }
+
+            if (part_idx != part_count - 1) {
+                ref.reset_without_refcount();
+            }
+        }
+    }
+
+    return xmm_reg_count;
+}
+
+template <typename Adaptor, typename Derived>
+void CallingConv::fill_call_results(
+    CompilerX64<Adaptor, Derived> *compiler,
+    std::span<std::variant<
+        typename CompilerX64<Adaptor, Derived>::ValuePartRef,
+        std::pair<typename CompilerX64<Adaptor, Derived>::ScratchReg, u8>>>
+        results) noexcept {
+    using ValuePartRef = typename CompilerX64<Adaptor, Derived>::ValuePartRef;
+    using ScratchReg   = typename CompilerX64<Adaptor, Derived>::ScratchReg;
+
+    u32 gp_reg_count = 0, xmm_reg_count = 0;
+
+    const auto gp_regs  = ret_regs_gp();
+    const auto xmm_regs = ret_regs_vec();
+
+    for (auto &res : results) {
+        if (std::holds_alternative<ValuePartRef>(res)) {
+            auto &ref = std::get<ValuePartRef>(res);
+            assert(!ref.is_const);
+            if (ref.bank() == 0) {
+                assert(gp_reg_count < gp_regs.size());
+                compiler->set_value(ref, gp_regs[gp_reg_count++]);
+            } else {
+                assert(ref.bank() == 1);
+                assert(xmm_reg_count < xmm_regs.size());
+                compiler->set_value(ref, xmm_regs[xmm_reg_count++]);
+            }
+        } else {
+            auto &[reg, bank] = std::get<std::pair<ScratchReg, u8>>(res);
+            reg.reset();
+
+            if (bank == 0) {
+                assert(gp_reg_count < gp_regs.size());
+                reg.cur_reg = gp_regs[gp_reg_count++];
+            } else {
+                assert(bank == 1);
+                assert(xmm_reg_count < xmm_regs.size());
+                reg.cur_reg = xmm_regs[xmm_reg_count++];
+            }
+
+            compiler->register_file.mark_used(
+                reg.cur_reg,
+                CompilerX64<Adaptor, Derived>::INVALID_VAL_LOCAL_IDX,
+                0);
+            compiler->register_file.mark_fixed(reg.cur_reg);
+        }
+    }
+}
+
 template <IRAdaptor Adaptor, typename Derived>
 void CompilerX64<Adaptor, Derived>::gen_func_prolog_and_args() noexcept {
     // prologue:
@@ -398,13 +781,15 @@ void CompilerX64<Adaptor, Derived>::gen_func_prolog_and_args() noexcept {
     // mov rbp, rsp
     // optionally create vararg save-area
     // reserve space for callee-saved regs
-    //   = 1 byte for each of the lower 8 regs and 2 bytes for the higher 8 regs
+    //   = 1 byte for each of the lower 8 regs and 2
+    //   bytes for the higher 8 regs
     // sub rsp, #<frame_size>+<largest_call_frame_usage>
 
-    // TODO(ts): technically we only need rbp if there is a dynamic alloca
-    // but then we need to make the frame indexing dynamic in CompilerBase
-    // and the unwind info needs to take the dynamic sub rsp for calls into
-    // account
+    // TODO(ts): technically we only need rbp if there
+    // is a dynamic alloca but then we need to make the
+    // frame indexing dynamic in CompilerBase and the
+    // unwind info needs to take the dynamic sub rsp for
+    // calls into account
 
     func_ret_offs.clear();
     func_start_off = this->assembler.text_cur_off();
@@ -421,7 +806,8 @@ void CompilerX64<Adaptor, Derived>::gen_func_prolog_and_args() noexcept {
 
         u32 reg_save_size = 0u;
         for (const auto reg : call_conv.callee_saved_regs()) {
-            // need special handling for xmm saves if they are needed
+            // need special handling for xmm saves if
+            // they are needed
             assert(reg.id() <= AsmReg::R15);
             reg_save_size += (reg.id() < AsmReg::R8) ? 1 : 2;
         }
@@ -534,12 +920,13 @@ void CompilerX64<Adaptor, Derived>::gen_func_epilog() noexcept {
     // add rsp, #<frame_size>+<largest_call_frame_usage>
     // optionally create vararg save-area
     // reserve space for callee-saved regs
-    //   = 1 byte for each of the lower 8 regs and 2 bytes for the higher 8 regs
+    //   = 1 byte for each of the lower 8 regs and 2
+    //   bytes for the higher 8 regs
     // pop rbp
     // ret
     //
-    // however, since we will later patch this, we only reserve the space for
-    // now
+    // however, since we will later patch this, we only
+    // reserve the space for now
 
     func_ret_offs.push_back(this->assembler.text_cur_off());
 
@@ -627,7 +1014,8 @@ void CompilerX64<Adaptor, Derived>::load_from_stack(
 template <IRAdaptor Adaptor, typename Derived>
 void CompilerX64<Adaptor, Derived>::load_address_of_var_reference(
     const AsmReg dst, const AssignmentPartRef ap) noexcept {
-    // per-default, variable references are only used by allocas
+    // per-default, variable references are only used by
+    // allocas
     ASM(LEA64rm,
         dst,
         FE_MEM(
@@ -740,6 +1128,133 @@ void CompilerX64<Adaptor, Derived>::generate_raw_jump(
         case Jump::jo: ASMNC(JO, target); break;
         }
     }
+}
+
+template <IRAdaptor Adaptor, typename Derived>
+void CompilerX64<Adaptor, Derived>::spill_before_call(
+    const CallingConv calling_conv, const u64 except_mask) {
+    for (auto reg_id : util::BitSetIterator<>{
+             this->register_file.used & ~calling_conv.callee_saved_mask()
+             & ~except_mask}) {
+        auto reg = AsmReg{reg_id};
+        assert(!this->register_file.is_fixed(reg));
+        assert(this->register_file.reg_local_idx(reg)
+               != Base::INVALID_VAL_LOCAL_IDX);
+
+        auto ap = AssignmentPartRef{
+            this->val_assignment(this->register_file.reg_local_idx(reg)),
+            this->register_file.reg_part(reg)};
+        assert(ap.register_valid());
+        assert(ap.full_reg_id() == reg_id);
+
+        ap.spill_if_needed(this);
+        this->register_file.unmark_used(reg);
+        ap.set_register_valid(false);
+    }
+}
+
+template <IRAdaptor Adaptor, typename Derived>
+void CompilerX64<Adaptor, Derived>::generate_call(
+    std::variant<Assembler::SymRef, ScratchReg, ValuePartRef>      &&target,
+    std::span<CallArg>                                               arguments,
+    std::span<std::variant<ValuePartRef, std::pair<ScratchReg, u8>>> results,
+    CallingConv calling_conv,
+    const bool  variable_args) {
+    if (std::holds_alternative<ScratchReg>(target)) {
+        assert(((1ull << std::get<ScratchReg>(target).cur_reg.id())
+                & calling_conv.arg_regs_mask())
+               == 0);
+    }
+
+    // in case results are locked, we unlock them here
+    // TODO(ts): can that actually happen?
+    for (auto &res : results) {
+        if (std::holds_alternative<ValuePartRef>(res)) {
+            std::get<ValuePartRef>(res).unlock();
+        } else {
+            std::get<std::pair<ScratchReg, u8>>(res).first.reset();
+        }
+    }
+
+    const auto stack_space_used = util::align_up(
+        calling_conv.calculate_call_stack_space(this, arguments), 16);
+
+    if (stack_space_used) {
+        ASM(SUB64ri, FE_SP, stack_space_used);
+    }
+
+    const auto vec_arg_count = calling_conv.handle_call_args(this, arguments);
+
+    u64 except_mask = 0;
+    if (std::holds_alternative<ScratchReg>(target)) {
+        except_mask = (1ull << std::get<ScratchReg>(target).cur_reg.id());
+    } else if (std::holds_alternative<ValuePartRef>(target)) {
+        auto &ref = std::get<ValuePartRef>(target);
+        if (ref.assignment().register_valid()) {
+            except_mask = (1ull << ref.assignment().full_reg_id());
+        }
+    }
+    spill_before_call(calling_conv, except_mask);
+
+    if (variable_args) {
+        ASM(MOV32ri, FE_AX, vec_arg_count);
+    }
+
+    if (std::holds_alternative<Assembler::SymRef>(target)) {
+        this->assembler.text_ensure_space(8);
+        auto *target_ptr = this->assembler.text_write_ptr;
+        ASMNC(CALL, target_ptr);
+        this->assembler.reloc_text_plt32(std::get<Assembler::SymRef>(target),
+                                         this->assembler.text_cur_off() - 4);
+    } else if (std::holds_alternative<ScratchReg>(target)) {
+        auto &reg = std::get<ScratchReg>(target);
+        assert(!reg.cur_reg.invalid());
+        ASM(CALLr, reg.cur_reg);
+
+        if (((1ull << reg.cur_reg.id()) & calling_conv.callee_saved_mask())
+            == 0) {
+            reg.reset();
+        }
+    } else {
+        assert(std::holds_alternative<ValuePartRef>(target));
+        auto &ref = std::get<ValuePartRef>(target);
+        assert(((1ull << AsmReg::R10)
+                & (calling_conv.callee_saved_mask()
+                   | calling_conv.arg_regs_mask()))
+               == 0);
+        if (ref.is_const) {
+            this->register_file.clobbered |= (1ull << AsmReg::R10);
+            ASM(CALLr, ref.reload_into_specific(AsmReg::R10));
+        } else {
+            auto ap = ref.assignment();
+            if (ap.register_valid()) {
+                auto reg = AsmReg{ap.full_reg_id()};
+                ASM(CALLr, reg);
+            } else if (!ap.variable_ref()) {
+                ASM(CALLm, FE_MEM(FE_BP, 0, FE_NOREG, (i32)-ap.frame_off()));
+            } else {
+                this->register_file.clobbered |= (1ull << AsmReg::R10);
+                ASM(CALLr, ref.reload_into_specific(AsmReg::R10));
+            }
+
+            if (ap.register_valid()
+                && ((1ull << ap.full_reg_id())
+                    & calling_conv.callee_saved_mask())
+                       == 0) {
+                ref.spill();
+                ref.unlock();
+                auto reg = AsmReg{ap.full_reg_id()};
+                this->register_file.unmark_used(reg);
+                ap.set_register_valid(false);
+            }
+        }
+    }
+
+    if (stack_space_used) {
+        ASM(ADD64ri, FE_SP, stack_space_used);
+    }
+
+    calling_conv.fill_call_results(this, results);
 }
 
 

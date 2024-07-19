@@ -92,6 +92,28 @@ bool TestIRCompilerX64::compile_inst(IRValueRef val_idx) noexcept {
         this->release_spilled_regs(spilled);
         return true;
     }
+    case call: {
+        const auto func_idx = value.call_func_idx;
+        auto       operands = std::span<IRValueRef>{
+            reinterpret_cast<IRValueRef *>(ir()->value_operands.data()
+                                           + value.op_begin_idx),
+            value.op_count};
+
+        std::variant<ValuePartRef, std::pair<ScratchReg, u8>> res =
+            this->result_ref_lazy(val_idx, 0);
+
+        util::SmallVector<CallArg, 8> arguments{};
+        for (auto op : operands) {
+            arguments.push_back(CallArg{op});
+        }
+
+        this->generate_call(this->func_syms[func_idx],
+                            arguments,
+                            std::span{&res, 1},
+                            CallingConv::SYSV_CC,
+                            false);
+        return true;
+    }
     default: assert(0); __builtin_unreachable();
     }
 

@@ -1,0 +1,28 @@
+; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+;
+; SPDX-License-Identifier: LicenseRef-Proprietary
+
+; RUN: rm -rf %t
+; RUN: mkdir %t
+
+; RUN: %tpde_test %s -o %t/out.o
+; RUN: objdump -Mintel-syntax --no-addresses --no-show-raw-insn --disassemble %t/out.o | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+
+ext_func(%a, %b)!
+
+; CHECK-LABEL: impl_func
+impl_func(%p) {
+; X64: sub rsp
+entry:
+; X64-NEXT: mov QWORD PTR [rbp-0x8],rdi
+; X64-NEXT: call
+  %a = call %ext_func2
+; X64-NEXT: mov rdi,rax
+; X64-NEXT: mov rsi,QWORD PTR [rbp-0x8]
+; X64-NEXT: call
+  %b = call %ext_func, %a, %p
+; X64-NEXT: add rsp
+  terminate %b
+}
+
+ext_func2()!

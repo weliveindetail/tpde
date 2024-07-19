@@ -59,3 +59,14 @@ ret(%a) {
 entry:
   terminate %a
 }
+
+; CHECK: Liveness for call
+; CHECK-NEXT: 0: 2 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT: 1: 2 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT: 2: 1 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT: End Liveness
+call(%a) {
+entry:
+  %b = call %ret, %a
+  terminate %b
+}

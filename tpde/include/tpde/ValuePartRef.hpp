@@ -10,6 +10,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     struct ConstantData {
         u64 const_parts[2];
         u32 bank;
+        u32 size;
     };
 
     struct ValueData {
@@ -43,7 +44,32 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
         }
     }, is_const(false) {}
 
+    explicit ValuePartRef(const ValuePartRef &) = delete;
+
+    ValuePartRef(ValuePartRef &&other) noexcept {
+        this->state                  = other.state;
+        this->is_const               = other.is_const;
+        other.is_const               = true;
+        other.state.c.bank           = 0;
+        other.state.c.const_parts[0] = 0;
+        other.state.c.const_parts[1] = 0;
+    }
+
     ~ValuePartRef() noexcept { reset(); }
+
+    ValuePartRef &operator=(const ValuePartRef &) = delete;
+
+    ValuePartRef &operator=(ValuePartRef &&other) noexcept {
+        if (this == &other) {
+            return *this;
+        }
+        reset();
+        this->state                  = other.state;
+        this->is_const               = other.is_const;
+        other.state.c.bank           = 0;
+        other.state.c.const_parts[0] = 0;
+        other.state.c.const_parts[1] = 0;
+    }
 
     [[nodiscard]] AssignmentPartRef assignment() const noexcept {
         assert(!is_const);
@@ -103,8 +129,14 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
         return is_const ? state.c.bank : assignment().bank();
     }
 
+    u32 part_size() const noexcept {
+        return is_const ? state.c.size : assignment().part_size();
+    }
+
     /// Reset the reference to the value part
     void reset() noexcept;
+
+    void reset_without_refcount() noexcept;
 };
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -126,7 +158,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::spill() noexcept {
         return;
     }
 
-    ap.spill();
+    ap.spill_if_needed(state.v.compiler);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -178,8 +210,12 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     ap.set_register_valid(true);
 
     if (reload) {
-        state.v.compiler->derived()->load_from_stack(
-            reg, ap.frame_off(), ap.part_size());
+        if (ap.variable_ref()) {
+            state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
+        } else {
+            state.v.compiler->derived()->load_from_stack(
+                reg, ap.frame_off(), ap.part_size());
+        }
     }
 
     return reg;
@@ -231,7 +267,11 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reload_into_specific(
         const AsmReg reg) noexcept {
-    assert(!is_const);
+    if (is_const) {
+        // TODO(ts): materialize constant
+        assert(0);
+        exit(1);
+    }
 
     auto ap = assignment();
     if (ap.register_valid()) {
@@ -347,6 +387,24 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
         free_list_head                              = state.v.local_idx;
     } else {
         state.v.compiler->free_assignment(state.v.local_idx);
+    }
+
+    is_const = true;
+    state.c  = ConstantData{
+         {0, 0},
+         0
+    };
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
+    reset_without_refcount() noexcept {
+    if (is_const) {
+        return;
+    }
+
+    if (state.v.locked) {
+        unlock();
     }
 
     is_const = true;

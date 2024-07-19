@@ -50,13 +50,16 @@ bool tpde::test::TestIR::parse_ir(std::string_view text) noexcept {
     functions.clear();
 
     std::unordered_set<std::string_view> func_names;
+    std::unordered_map<std::string_view, std::vector<u32>>
+        pending_call_resolves;
 
     while (!text.empty()) {
-        if (!parse_func(text, func_names)) {
+        if (!parse_func(text, func_names, pending_call_resolves)) {
             TPDE_LOG_ERR("Failed to parse function");
             return false;
         }
     }
+
 
     TPDE_LOG_TRACE("Finished parsing IR");
     dump_debug();
@@ -66,7 +69,9 @@ bool tpde::test::TestIR::parse_ir(std::string_view text) noexcept {
 
 bool tpde::test::TestIR::parse_func(
     std::string_view                     &text,
-    std::unordered_set<std::string_view> &func_names) noexcept {
+    std::unordered_set<std::string_view> &func_names,
+    std::unordered_map<std::string_view, std::vector<u32>>
+        &pending_call_resolves) noexcept {
     TPDE_LOG_TRACE("Parsing function");
     remove_whitespace(text);
 
@@ -114,7 +119,8 @@ bool tpde::test::TestIR::parse_func(
     TPDE_LOG_TRACE("Parsing func args");
     auto           args = text.substr(0, arg_end_off);
     BodyParseState parse_state;
-    parse_state.func_idx = func_idx;
+    parse_state.func_idx              = func_idx;
+    parse_state.pending_call_resolves = &pending_call_resolves;
 
     functions[func_idx].arg_begin_idx = values.size();
     auto had_arg                      = false;
@@ -183,6 +189,36 @@ bool tpde::test::TestIR::parse_func(
     text.remove_prefix(arg_end_off + 1);
 
     remove_whitespace(text);
+
+    if (pending_call_resolves.contains(name)) {
+        for (auto &val_idx : pending_call_resolves[name]) {
+            if (values[val_idx].op_count
+                != (functions[func_idx].arg_end_idx
+                    - functions[func_idx].arg_begin_idx)) {
+                TPDE_LOG_ERR("Call '{}' to function {} has incorrect number of "
+                             "arguments",
+                             values[val_idx].name,
+                             functions[func_idx].name);
+                return false;
+            }
+
+            values[val_idx].call_func_idx = func_idx;
+        }
+        pending_call_resolves.erase(name);
+    }
+
+    if (!text.empty() && text.starts_with("local")) {
+        functions[func_idx].local_only = true;
+        text.remove_prefix(5);
+        remove_whitespace(text);
+        TPDE_LOG_TRACE("Function is local");
+    } else if (!text.empty() && text.starts_with("!")) {
+        functions[func_idx].declaration = true;
+        text.remove_prefix(1);
+        TPDE_LOG_TRACE("Function is extern");
+        TPDE_LOG_TRACE("Finished parsing function '{}'", name);
+        return true;
+    }
 
     if (text.empty() || text[0] != '{') {
         TPDE_LOG_ERR("Failed to parse function '{}'. Expected opening brace "
@@ -866,10 +902,60 @@ bool tpde::test::TestIR::parse_value_line(
                 line.remove_prefix(4);
                 values[val_idx].op = Value::Op::sub;
                 required_op_count  = 2;
+            } else if (line.starts_with("call ")) {
+                op = line.substr(0, 4);
+                line.remove_prefix(5);
+                values[val_idx].type = Value::Type::call;
             }
         }
         if (values[val_idx].op != Value::Op::none) {
             TPDE_LOG_TRACE("  Value {} has op {}", val_idx, op);
+        }
+
+        if (values[val_idx].type == Value::Type::call) {
+            remove_whitespace(line);
+            if (line.empty() || line[0] != '%') {
+                TPDE_LOG_ERR("Expected function name for call but got EOL");
+                return false;
+            }
+
+            line.remove_prefix(1);
+            const auto func_name = parse_name(line);
+            if (func_name.empty()) {
+                TPDE_LOG_ERR(
+                    "Failed to parse function name for call '{}'. Expected "
+                    "name but got '{}'",
+                    value_name,
+                    line);
+                return false;
+            }
+
+            if (auto it = std::find_if(
+                    functions.begin(),
+                    functions.end(),
+                    [&](const auto &func) { return func.name == func_name; });
+                it != functions.end()) {
+                values[val_idx].call_func_idx =
+                    static_cast<u32>(it - functions.begin());
+                TPDE_LOG_TRACE("Got call to func '{}' with idx {}",
+                               func_name,
+                               values[val_idx].call_func_idx);
+
+                const auto &func  = functions[values[val_idx].call_func_idx];
+                required_op_count = func.arg_end_idx - func.arg_begin_idx;
+            } else {
+                TPDE_LOG_TRACE("Got call to func '{}' with unknown idx at {}",
+                               func_name,
+                               val_idx);
+                values[val_idx].call_func_idx = ~0u;
+                (*parse_state.pending_call_resolves)[func_name].emplace_back(
+                    val_idx);
+            }
+
+            remove_whitespace(line);
+            if (!line.empty() && line[0] == ',') {
+                line.remove_prefix(1);
+            }
         }
 
         auto had_arg = false;
@@ -1106,12 +1192,23 @@ void tpde::test::TestIR::dump_debug() const noexcept {
 
     for (u32 i = 0; i < functions.size(); ++i) {
         const auto &func = functions[i];
-        TPDE_LOG_DBG("Function {}: {}", i, func.name);
+        if (func.declaration) {
+            TPDE_LOG_DBG("Extern function {}: {}", i, func.name);
+        } else if (func.local_only) {
+            TPDE_LOG_DBG("Local function {}: {}", i, func.name);
+        } else {
+            TPDE_LOG_DBG("Function {}: {}", i, func.name);
+        }
+
         TPDE_LOG_TRACE("  Arg {}->{}", func.arg_begin_idx, func.arg_end_idx);
         for (auto arg_idx = func.arg_begin_idx; arg_idx < func.arg_end_idx;
              ++arg_idx) {
             assert(values[arg_idx].type == Value::Type::arg);
             TPDE_LOG_DBG("  Arg {}: {}", arg_idx, values[arg_idx].name);
+        }
+
+        if (func.declaration) {
+            continue;
         }
 
         TPDE_LOG_TRACE(
@@ -1214,6 +1311,21 @@ void tpde::test::TestIR::dump_debug() const noexcept {
                                  blocks[ops[2]].name);
                     break;
                 }
+                case call: {
+                    TPDE_LOG_DBG("    Call {}: {} to {}: {}",
+                                 val_idx,
+                                 val.name,
+                                 val.call_func_idx,
+                                 functions[val.call_func_idx].name);
+
+                    for (auto op = val.op_begin_idx; op < val.op_end_idx;
+                         ++op) {
+                        const auto op_idx = value_operands[op];
+                        TPDE_LOG_DBG(
+                            "      Op {}: {}", op_idx, values[op_idx].name);
+                    }
+                    break;
+                }
                 }
             }
         }
@@ -1225,11 +1337,22 @@ void tpde::test::TestIR::print() const noexcept {
 
     for (u32 i = 0; i < functions.size(); ++i) {
         const auto &func = functions[i];
-        fmt::println("Function {}", func.name);
+        if (func.declaration) {
+            fmt::println("Extern function {}", func.name);
+        } else if (func.local_only) {
+            fmt::println("Local function {}", func.name);
+        } else {
+            fmt::println("Function {}", func.name);
+        }
+
         for (auto arg_idx = func.arg_begin_idx; arg_idx < func.arg_end_idx;
              ++arg_idx) {
             assert(values[arg_idx].type == Value::Type::arg);
             fmt::println("  Argument {}", values[arg_idx].name);
+        }
+
+        if (func.declaration) {
+            continue;
         }
 
         for (auto block_idx = func.block_begin_idx;
@@ -1309,6 +1432,18 @@ void tpde::test::TestIR::print() const noexcept {
                     fmt::println("      Value: {}", values[ops[0]].name);
                     fmt::println("      TrueSucc: {}", blocks[ops[1]].name);
                     fmt::println("      FalseSucc: {}", blocks[ops[2]].name);
+                    break;
+                }
+                case call: {
+                    fmt::println("    Call {} to {}",
+                                 val.name,
+                                 functions[val.call_func_idx].name);
+
+                    for (auto op = val.op_begin_idx; op < val.op_end_idx;
+                         ++op) {
+                        const auto op_idx = value_operands[op];
+                        fmt::println("      Op {}", values[op_idx].name);
+                    }
                     break;
                 }
                 }

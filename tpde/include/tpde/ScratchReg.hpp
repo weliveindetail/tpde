@@ -12,8 +12,15 @@ struct CompilerBase<Adaptor, Derived, Config>::ScratchReg {
 
     explicit ScratchReg(CompilerBase *compiler) : compiler(compiler) {}
 
+    explicit ScratchReg(const ScratchReg &) = delete;
+    ScratchReg(ScratchReg &&) noexcept;
+
     ~ScratchReg() noexcept { reset(); }
 
+    ScratchReg &operator=(const ScratchReg &) = delete;
+    ScratchReg &operator=(ScratchReg &&) noexcept;
+
+    AsmReg               alloc_specific(AsmReg reg) noexcept;
     [[nodiscard]] AsmReg alloc_gp() noexcept;
     [[nodiscard]] AsmReg alloc_from_bank(u8 bank) noexcept;
 
@@ -22,6 +29,51 @@ struct CompilerBase<Adaptor, Derived, Config>::ScratchReg {
 
     void reset() noexcept;
 };
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+CompilerBase<Adaptor, Derived, Config>::ScratchReg::ScratchReg(
+    ScratchReg &&other) noexcept {
+    this->compiler = other.compiler;
+    this->cur_reg  = other.cur_reg;
+    other.cur_reg  = AsmReg::make_invalid();
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ScratchReg &
+    CompilerBase<Adaptor, Derived, Config>::ScratchReg::operator=(
+        ScratchReg &&other) noexcept {
+    if (this == &other) {
+        return *this;
+    }
+
+    reset();
+    this->compiler = other.compiler;
+    this->cur_reg  = other.cur_reg;
+    other.cur_reg  = AsmReg::make_invalid();
+    return *this;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::AsmReg
+    CompilerBase<Adaptor, Derived, Config>::ScratchReg::alloc_specific(
+        AsmReg reg) noexcept {
+    assert(!compiler->register_file.is_fixed(reg));
+    reset();
+
+    if (compiler->register_file.is_used(reg)) {
+        AssignmentPartRef part{compiler->val_assignment(
+                                   compiler->register_file.reg_local_idx(reg)),
+                               compiler->register_file.reg_part(reg)};
+        part.spill_if_needed(compiler);
+        part.set_register_valid(false);
+        compiler->register_file.unmark_used(reg);
+    }
+
+    compiler->register_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
+    compiler->register_file.mark_fixed(reg);
+    cur_reg = reg;
+    return reg;
+}
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 CompilerBase<Adaptor, Derived, Config>::AsmReg
