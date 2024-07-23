@@ -66,6 +66,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
         reset();
         this->state                  = other.state;
         this->is_const               = other.is_const;
+        other.is_const               = true;
         other.state.c.bank           = 0;
         other.state.c.const_parts[0] = 0;
         other.state.c.const_parts[1] = 0;

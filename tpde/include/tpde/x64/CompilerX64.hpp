@@ -333,6 +333,8 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
     explicit CompilerX64(Adaptor *adaptor) : Base{adaptor, true} {}
 
     void gen_func_prolog_and_args() noexcept;
+
+    // note: this has to call assembler->end_func
     void finish_func() noexcept;
 
     void reset_register_file() noexcept;
@@ -855,8 +857,9 @@ void CompilerX64<Adaptor, Derived>::finish_func() noexcept {
     const CallingConv conv = Base::derived()->cur_calling_convention();
 
     auto *write_ptr = this->assembler.sec_text.data.data() + func_reg_save_off;
-    for (auto reg : util::BitSetIterator{this->register_file.clobbered
-                                         & conv.callee_saved_mask()}) {
+    const u64 saved_regs =
+        this->register_file.clobbered & conv.callee_saved_mask();
+    for (auto reg : util::BitSetIterator{saved_regs}) {
         assert(reg <= AsmReg::R15);
         write_ptr +=
             fe64_PUSHr(write_ptr, 0, AsmReg{static_cast<AsmReg::REG>(reg)});
@@ -871,6 +874,7 @@ void CompilerX64<Adaptor, Derived>::finish_func() noexcept {
         fe64_NOP(write_ptr, nop_len);
     }
 
+    this->assembler.end_func(saved_regs);
 
     if (func_ret_offs.empty()) {
         return;

@@ -27,7 +27,7 @@ concept Assembler = requires(T a) {
     { T(ARG(bool)) };
 
     { a.start_func(ARG(typename T::SymRef)) };
-    { a.end_func() };
+    // { a.end_func() };
 
     /// Create a (pending) label
     { a.label_create() } -> std::same_as<typename T::Label>;
@@ -38,15 +38,18 @@ concept Assembler = requires(T a) {
     /// Predefine a function symbol
     /// args: func_link_name, local, weak
     {
-        a.sym_predef_func(
-            ARG(std::string_view), ARG(bool), ARG(bool))
+        a.sym_predef_func(ARG(std::string_view), ARG(bool), ARG(bool))
     } -> std::same_as<typename T::SymRef>;
 
     /// Add an undefined symbol
     /// args: name, local
     { a.sym_add_undef(ARG(std::string_view), ARG(bool)) };
+
+#ifdef TPDE_ASSERTS
+    { a.func_was_ended() } -> std::same_as<bool>;
+#endif
 };
 
-}
+} // namespace tpde
 
 #undef ARG

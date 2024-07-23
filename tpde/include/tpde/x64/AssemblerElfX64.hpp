@@ -16,6 +16,9 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
     static constexpr u8         ELF_OS_ABI  = ELFOSABI_SYSV;
     static constexpr Elf64_Half ELF_MACHINE = EM_X86_64;
 
+    // fake register number for the return address
+    static constexpr u8 DWARF_EH_RETURN_ADDR_REGISTER = dwarf::x64::DW_reg_ra;
+
     // TODO(ts): maybe move Labels into the compiler since they are kind of more
     // arch specific and probably don't change if u compile Elf/PE/Mach-O? then
     // we could just turn the assemblers into "ObjectWriters"
@@ -38,6 +41,8 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
 
     explicit AssemblerElfX64(const bool gen_obj) : Base{gen_obj} {}
 
+    void end_func(u64 saved_regs) noexcept;
+
     [[nodiscard]] Label label_create() noexcept;
 
     [[nodiscard]] u32 label_offset(Label label) const noexcept;
@@ -52,16 +57,43 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
     // relocs
     void reloc_text_plt32(SymRef, u32 text_imm32_off) noexcept;
 
-    void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend) noexcept;
-
-    void reloc_sec(DataSection &sec,
-                   SymRef       sym,
-                   u32          type,
-                   u64          offset,
-                   i64          addend) noexcept;
+    void eh_write_initial_cie_instrs() noexcept;
 
     void reset() noexcept;
 };
+
+inline void AssemblerElfX64::end_func(const u64 saved_regs) noexcept {
+    Base::end_func();
+
+    const auto fde_off = eh_write_fde_start();
+
+    // relocate the func_start to the function
+    // relocate against .text so we don't have to fix up any relocations
+    const auto func_off = sym_ptr(cur_func)->st_value;
+    this->reloc_sec(sec_eh_frame,
+                    TEXT_SYM_REF,
+                    R_X86_64_PC32,
+                    fde_off + dwarf::EH_FDE_FUNC_START_OFF,
+                    static_cast<u32>(func_off));
+
+    // write out the saved registers
+
+    // register saves start at CFA - 24
+    u32 cur_off = 24;
+    for (auto reg_id : util::BitSetIterator<>(saved_regs)) {
+        if (reg_id >= 32) {
+            reg_id -= 15; // vector register ids start at 32 but dwarf encodes
+                          // them starting at 17
+        }
+        // cfa_offset reg, cur_off (reg = CFA - cur_off)
+        eh_write_inst(dwarf::DW_CFA_offset, reg_id, cur_off);
+        // TODO(ts): this does not cope with register saves of xmm regs > 8
+        // bytes
+        cur_off += 8;
+    }
+
+    this->eh_write_fde_len(fde_off);
+}
 
 inline AssemblerElfX64::Label AssemblerElfX64::label_create() noexcept {
     const auto label = static_cast<Label>(label_offsets.size());
@@ -135,26 +167,15 @@ inline void
     reloc_text(sym, R_X86_64_PLT32, text_imm32_off, -4);
 }
 
-inline void AssemblerElfX64::reloc_text(const SymRef sym,
-                                        const u32    type,
-                                        const u64    offset,
-                                        const i64    addend) noexcept {
-    reloc_sec(sec_text, sym, type, offset, addend);
-}
+inline void AssemblerElfX64::eh_write_initial_cie_instrs() noexcept {
+    // we always emit a frame-setup so we can encode that in the CIE
 
-inline void AssemblerElfX64::reloc_sec(DataSection &sec,
-                                       const SymRef sym,
-                                       const u32    type,
-                                       const u64    offset,
-                                       const i64    addend) noexcept {
-    Elf64_Rela rel{};
-    rel.r_offset = offset;
-    rel.r_info   = ELF64_R_INFO(sym_idx(sym), type);
-    rel.r_addend = addend;
-    sec.relocs.push_back(rel);
-    if (!sym_is_local(sym)) {
-        sec.relocs_to_patch.push_back(sec.relocs.size() - 1);
-    }
+    // def_cfa rbp, 16 (CFA = rbp + 16)
+    eh_write_inst(dwarf::DW_CFA_def_cfa, dwarf::x64::DW_reg_rbp, 16);
+    // cfa_offset ra, 8 (ra = CFA - 8)
+    eh_write_inst(dwarf::DW_CFA_offset, dwarf::x64::DW_reg_ra, 8);
+    // cfa_offset rbp, 16 (rbp = CFA - 16)
+    eh_write_inst(dwarf::DW_CFA_offset, dwarf::x64::DW_reg_rbp, 16);
 }
 
 inline void AssemblerElfX64::reset() noexcept {
