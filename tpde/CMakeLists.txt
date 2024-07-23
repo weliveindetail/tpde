@@ -121,6 +121,9 @@ endif ()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(tpde PUBLIC TPDE_DEBUG)
     target_compile_definitions(tpde PUBLIC TPDE_ASSERTS)
+
+    target_compile_options(tpde PRIVATE -fsanitize=address)
+    target_link_options(tpde PRIVATE -fsanitize=address)
 endif ()
 
 # depend on spdlog if logging is enabled
@@ -172,6 +175,10 @@ else ()
     target_compile_options(tpde_test PRIVATE -Wno-missing-field-initializers)
 endif ()
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(tpde_test PRIVATE -fsanitize=address)
+    target_link_options(tpde_test PRIVATE -fsanitize=address)
+endif ()
 target_compile_definitions(tpde_test PUBLIC TPDE_TESTING)
 
 #------------------------------------------------------------------------------
