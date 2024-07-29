@@ -13,3 +13,7 @@
 	path = deps/fadec
 	url = git@gitlab.db.in.tum.de:tpde/fadec.git
 	branch = master
+[submodule "deps/hopscotch-map"]
+	path = deps/hopscotch-map
+	url = https://github.com/Tessil/hopscotch-map.git
+	branch = master

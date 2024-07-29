@@ -121,6 +121,7 @@ endif ()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(tpde PUBLIC TPDE_DEBUG)
     target_compile_definitions(tpde PUBLIC TPDE_ASSERTS)
+    set(TPDE_ASSERTS TRUE)
 
     target_compile_options(tpde PRIVATE -fsanitize=address)
     target_link_options(tpde PRIVATE -fsanitize=address)
