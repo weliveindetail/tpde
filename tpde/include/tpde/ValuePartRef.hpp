@@ -95,7 +95,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     /// reflect that
     ///
     /// \warning Do not overwrite the register content as it is not saved
-    /// \note The target register may not be fixed
+    /// \note The target register or the current value part may not be fixed
     AsmReg move_into_specific(AsmReg reg) noexcept;
 
     /// Load the value into the specific register *without* updating the
@@ -180,6 +180,11 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     assert(!is_const);
 
     auto pa = assignment();
+    if (pa.fixed_assignment()) {
+        assert(!pa.variable_ref());
+        return AsmReg{pa.full_reg_id()};
+    }
+
     if (pa.register_valid()) {
         return AsmReg{pa.full_reg_id()};
     }
@@ -211,6 +216,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     ap.set_register_valid(true);
 
     if (reload) {
+        reg_file.mark_clobbered(reg);
         if (ap.variable_ref()) {
             state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
         } else {
@@ -228,7 +234,8 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
         const AsmReg reg) noexcept {
     assert(!is_const);
 
-    auto  ap       = assignment();
+    auto ap = assignment();
+    assert(!ap.fixed_assignment());
     auto &reg_file = state.v.compiler->register_file;
     if (ap.register_valid()) {
         if (ap.full_reg_id() == reg.id()) {
@@ -261,6 +268,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
     ap.set_full_reg_id(reg.id());
     reg_file.mark_used(reg, state.v.local_idx, state.v.part);
+    reg_file.mark_clobbered(reg);
     return reg;
 }
 
@@ -284,6 +292,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
         state.v.compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()});
     } else {
+        assert(!ap.fixed_assignment());
         if (ap.variable_ref()) {
             state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
         } else {
@@ -292,6 +301,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
         }
     }
 
+    state.v.compiler->register_file.mark_clobbered(reg);
     return reg;
 }
 
@@ -321,7 +331,8 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::unlock() noexcept {
     assert(ap.register_valid());
 
     const auto reg = AsmReg{ap.full_reg_id()};
-    if (state.v.compiler->register_file.dec_lock_count(reg) == 0) {
+    if (state.v.compiler->register_file.dec_lock_count(reg) == 0
+        && !ap.fixed_assignment()) {
         state.v.compiler->register_file.unmark_fixed(reg);
     }
 

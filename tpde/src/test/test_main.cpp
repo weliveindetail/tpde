@@ -45,6 +45,12 @@ int main(int argc, char *argv[]) {
                               "Print the liveness information",
                               {"print-liveness"});
 
+    args::Flag no_fixed_assignments(
+        parser,
+        "no_fixed_assignments",
+        "Prevent fixed assignments from occuring unless they are forced",
+        {"no-fixed-assignments"});
+
     std::unordered_map<std::string_view, RunTestUntil> run_map{
         {    "full",          RunTestUntil::full},
         {      "ir",    RunTestUntil::ir_parsing},
@@ -173,7 +179,7 @@ int main(int argc, char *argv[]) {
     // TODO(ts): multiple arch select
     {
         test::TestIRAdaptor     adaptor{&ir};
-        test::TestIRCompilerX64 compiler{&adaptor};
+        test::TestIRCompilerX64 compiler{&adaptor, no_fixed_assignments};
 
         compiler.analyzer.test_run_until          = run_until.Get();
         compiler.analyzer.test_print_rpo          = print_rpo;

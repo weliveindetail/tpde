@@ -223,6 +223,12 @@ struct CallingConv {
         }
     }
 
+    [[nodiscard]] constexpr u64 result_regs_mask() const noexcept {
+        switch (ty) {
+        case SYSV_CC: return SysV::result_regs_mask;
+        }
+    }
+
     [[nodiscard]] constexpr u64 initial_free_regs() const noexcept {
         switch (ty) {
         case SYSV_CC: return SysV::initial_free_regs;
@@ -293,6 +299,9 @@ struct CallingConv {
 
         constexpr static u64 arg_regs_mask =
             create_bitmask(arg_regs_gp) | create_bitmask(arg_regs_vec);
+
+        constexpr static u64 result_regs_mask =
+            create_bitmask(ret_regs_gp) | create_bitmask(ret_regs_vec);
     };
 };
 
@@ -302,6 +311,8 @@ struct PlatformConfig : CompilerConfigDefault {
 
     static constexpr u8   GP_BANK                 = 0;
     static constexpr bool FRAME_INDEXING_NEGATIVE = true;
+    static constexpr u32  PLATFORM_POINTER_SIZE   = 8;
+    static constexpr u32  NUM_BANKS               = 2;
 };
 
 template <IRAdaptor Adaptor, typename Derived>
@@ -321,8 +332,15 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
 
     using Base::derived;
 
-    static constexpr u32 PLATFORM_POINTER_SIZE = 8;
 
+    // TODO(ts): make this dependent on the number of callee-saved regs of the
+    // current function or if there is a call in the function?
+    static constexpr u32 NUM_FIXED_ASSIGNMENTS[PlatformConfig::NUM_BANKS] = {5,
+                                                                             6};
+
+    // When handling function arguments, we need to prevent argument registers
+    // from being handed out as fixed registers
+    u64 fixed_assignment_nonallocatable_mask = 0u;
     u32 func_start_off = 0u, func_reg_save_off = 0u, func_reg_save_alloc = 0u,
         func_reg_restore_alloc                        = 0u;
     /// Offset to the `sub rsp, XXX` instruction that sets up the frame
@@ -350,7 +368,7 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
                    const u32    size) noexcept;
 
     void load_from_stack(AsmReg dst,
-                         u32    frame_off,
+                         i32    frame_off,
                          u32    size,
                          bool   sign_extend = false) noexcept;
 
@@ -359,6 +377,7 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
 
     void mov(AsmReg dst, AsmReg src, bool only_32 = false) noexcept;
 
+    AsmReg select_fixed_assignment_reg(u32 bank, IRValueRef) noexcept;
 
     enum class Jump {
         ja,
@@ -433,12 +452,20 @@ template <typename Adaptor, typename Derived>
 void CallingConv::handle_func_args(
     CompilerX64<Adaptor, Derived> *compiler) const noexcept {
     using IRValueRef = typename Adaptor::IRValueRef;
+    using ScratchReg = typename CompilerX64<Adaptor, Derived>::ScratchReg;
 
     u32 scalar_reg_count = 0, xmm_reg_count = 0;
-    // u32 frame_off = 16;
+    i32 frame_off = 16;
 
     const auto gp_regs  = arg_regs_gp();
     const auto xmm_regs = arg_regs_vec();
+
+    // not the most prettiest but it's okay for now
+    // TODO(ts): we definitely want to see if writing some custom machinery to
+    // give arguments their own register as a fixed assignment (if there are no
+    // calls) gives perf benefits on C/C++ codebases with a lot of smaller
+    // getters
+    compiler->fixed_assignment_nonallocatable_mask = arg_regs_mask();
 
     for (const IRValueRef arg : compiler->adaptor->cur_args()) {
         const u32 part_count = compiler->adaptor->val_part_count(arg);
@@ -456,19 +483,53 @@ void CallingConv::handle_func_args(
                 if (scalar_reg_count < gp_regs.size()) {
                     compiler->set_value(part_ref, gp_regs[scalar_reg_count++]);
                 } else {
-                    // const auto size =
-                    //     compiler->adaptor->val_part_size(arg, part_idx);
+                    const auto size =
+                        compiler->adaptor->val_part_size(arg, part_idx);
                     //  TODO(ts): maybe allow negative frame offsets for value
                     //  assignments so we can simply reference this?
                     //  but this probably doesn't work with multi-part values
                     //  since the offsets are different
-                    assert(0);
+                    auto ap = part_ref.assignment();
+                    if (ap.fixed_assignment()) {
+                        compiler->load_from_stack(
+                            AsmReg{ap.full_reg_id()}, -frame_off, size);
+                        ap.set_modified(true);
+                    } else {
+                        ScratchReg scratch{compiler};
+                        auto       tmp_reg = scratch.alloc_gp();
+                        compiler->load_from_stack(tmp_reg, -frame_off, size);
+                        compiler->spill_reg(tmp_reg, ap.frame_off(), size);
+                    }
+                    frame_off += 8;
                 }
             } else {
                 if (xmm_reg_count < xmm_regs.size()) {
                     compiler->set_value(part_ref, xmm_regs[xmm_reg_count++]);
                 } else {
-                    assert(0);
+                    auto ap   = part_ref.assignment();
+                    auto size = ap.part_size();
+                    assert(size <= 16);
+                    if (size == 16) {
+                        // TODO(ts): I'm correct that 16 byte vector regs get
+                        // aligned?
+                        frame_off = util::align_up(frame_off, 16);
+                    }
+
+                    if (ap.fixed_assignment()) {
+                        compiler->load_from_stack(
+                            AsmReg{ap.full_reg_id()}, -frame_off, size);
+                        ap.set_modified(true);
+                    } else {
+                        ScratchReg scratch{compiler};
+                        auto       tmp_reg = scratch.alloc_from_bank(1);
+                        compiler->load_from_stack(tmp_reg, -frame_off, size);
+                        compiler->spill_reg(tmp_reg, ap.frame_off(), size);
+                    }
+
+                    frame_off += 8;
+                    if (size > 8) {
+                        frame_off += 8;
+                    }
                 }
             }
 
@@ -477,6 +538,8 @@ void CallingConv::handle_func_args(
             }
         }
     }
+
+    compiler->fixed_assignment_nonallocatable_mask = 0;
 }
 
 template <typename Adaptor, typename Derived>
@@ -896,6 +959,14 @@ void CompilerX64<Adaptor, Derived>::finish_func() noexcept {
         write_ptr += fe64_POPr(write_ptr, 0, FE_BP);
         write_ptr += fe64_RET(write_ptr, 0);
         ret_size   = write_ptr - ret_start;
+
+#if defined(TPDE_ASSERTS) || defined(TPDE_TESTING)
+        // write CCs in TPDE_TEST/ASSERT mode for better disassembly
+        const u32 epilogue_size =
+            7 + 1 + 1 + func_reg_restore_alloc; // add + pop + ret
+        std::memset(write_ptr, 0xCC, epilogue_size - ret_size);
+        ret_size = epilogue_size;
+#endif
     }
 
     for (u32 i = 1; i < func_ret_offs.size(); ++i) {
@@ -973,7 +1044,7 @@ void CompilerX64<Adaptor, Derived>::spill_reg(const AsmReg reg,
 template <IRAdaptor Adaptor, typename Derived>
 void CompilerX64<Adaptor, Derived>::load_from_stack(
     const AsmReg dst,
-    const u32    frame_off,
+    const i32    frame_off,
     const u32    size,
     const bool   sign_extend) noexcept {
     this->assembler.text_ensure_space(16);
@@ -1040,6 +1111,83 @@ void CompilerX64<Adaptor, Derived>::mov(const AsmReg dst,
         assert(0);
         exit(1);
     }
+}
+
+template <IRAdaptor Adaptor, typename Derived>
+AsmReg CompilerX64<Adaptor, Derived>::select_fixed_assignment_reg(
+    const u32 bank, IRValueRef) noexcept {
+    assert(bank <= 1);
+    u64 reg_mask = (1ull << 32) - 1;
+    if (bank != 0) {
+        reg_mask = ~reg_mask;
+    }
+    reg_mask &= ~fixed_assignment_nonallocatable_mask;
+
+    const auto find_possible_regs =
+        [this, reg_mask](const u64 preferred_regs) -> u64 {
+        // try to first get an unused reg, otherwise an unfixed reg
+        u64 possible_regs =
+            this->register_file.free & preferred_regs & reg_mask;
+        if (possible_regs == 0) {
+            possible_regs =
+                (this->register_file.used & ~this->register_file.fixed)
+                & preferred_regs & reg_mask;
+        }
+        return possible_regs;
+    };
+
+    u64        possible_regs;
+    const auto call_conv = derived()->cur_calling_convention();
+    if (derived()->cur_func_may_emit_calls()) {
+        // we can only allocated fixed assignments from the callee-saved regs
+        const u64 preferred_regs = call_conv.callee_saved_mask();
+        possible_regs            = find_possible_regs(preferred_regs);
+    } else {
+        // try allocating any non-callee saved register first, except the result
+        // registers
+        u64 preferred_regs =
+            ~call_conv.result_regs_mask() & ~call_conv.callee_saved_mask();
+        possible_regs = find_possible_regs(preferred_regs);
+        if (possible_regs == 0) {
+            // otherwise fallback to callee-saved regs
+            preferred_regs =
+                derived()->cur_calling_convention().callee_saved_mask();
+            possible_regs = find_possible_regs(preferred_regs);
+        }
+    }
+
+    if (possible_regs == 0) {
+        return AsmReg::make_invalid();
+    }
+
+    // try to first get an unused reg, otherwise an unfixed reg
+    if ((possible_regs & this->register_file.free) != 0) {
+        return AsmReg{util::cnt_tz(possible_regs)};
+    }
+
+    for (const auto reg_id : util::BitSetIterator<>{possible_regs}) {
+        const auto reg = AsmReg{reg_id};
+
+        if (this->register_file.is_fixed(reg)) {
+            continue;
+        }
+
+        const auto local_idx = this->register_file.reg_local_idx(reg);
+        const auto part      = this->register_file.reg_part(reg);
+
+        if (local_idx == Base::INVALID_VAL_LOCAL_IDX) {
+            continue;
+        }
+        auto *assignment = this->val_assignment(local_idx);
+        auto  ap         = AssignmentPartRef{assignment, part};
+        if (ap.modified()) {
+            continue;
+        }
+
+        return reg;
+    }
+
+    return AsmReg::make_invalid();
 }
 
 template <IRAdaptor Adaptor, typename Derived>

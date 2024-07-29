@@ -12,7 +12,7 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
 
     // note for how parts are structured:
     // |15|14|13|12|11|10|09|08|07|06|05|04|03|02|01|00|
-    // |NP|   PS   |RV|VR|IM|  |  bank  |    reg_id    |
+    // |NP|   PS   |RV|VR|IM|FA|  bank  |    reg_id    |
     //                         |      full_reg_id      |
     //
     // NP: Is there a part following this one
@@ -22,6 +22,7 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
     // VR: Variable Reference (i.e. is this a reference to a stack-slot/global
     //     that does not need to be spilled)
     // IM: Is the current register value not on the stack?
+    // FA: Is the assignment a fixed assignment?
     //
 
     AssignmentPartRef(ValueAssignment *assignment, const u32 part)
@@ -56,6 +57,18 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
             assignment->parts[part] |= (1u << 9);
         } else {
             assignment->parts[part] &= ~(1u << 9);
+        }
+    }
+
+    [[nodiscard]] bool fixed_assignment() const noexcept {
+        return (assignment->parts[part] & (1u << 8)) != 0;
+    }
+
+    void set_fixed_assignment(const bool val) noexcept {
+        if (val) {
+            assignment->parts[part] |= (1u << 8);
+        } else {
+            assignment->parts[part] &= ~(1u << 8);
         }
     }
 

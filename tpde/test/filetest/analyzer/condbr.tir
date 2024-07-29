@@ -6,8 +6,8 @@
 
 ; CHECK: Liveness for condbr1
 ; CHECK-NEXT: 0: 2 refs, 0->0 (entry->entry), lf: false
-; CHECK-NEXT: 1: 1 refs, 0->0 (entry->entry), lf: false
-; CHECK-NEXT: 2: 1 refs, 1->1 (ret->ret), lf: false
+; CHECK-NEXT: 1: 0 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT: 2: 0 refs, 0->0 (entry->entry), lf: false
 ; CHECK-NEXT: End Liveness
 condbr1(%a) {
 entry:

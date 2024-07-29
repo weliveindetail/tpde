@@ -15,14 +15,36 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
     using ValuePartRef = typename Base::ValuePartRef;
     using ValLocalIdx  = typename Base::ValLocalIdx;
     using ScratchReg   = typename Base::ScratchReg;
+    using AsmReg       = typename Base::AsmReg;
 
-    explicit TestIRCompilerX64(TestIRAdaptor *adaptor) : Base{adaptor} {}
+    bool no_fixed_assignments;
+
+    explicit TestIRCompilerX64(TestIRAdaptor *adaptor,
+                               bool           no_fixed_assignments)
+        : Base{adaptor}, no_fixed_assignments(no_fixed_assignments) {}
 
     [[nodiscard]] static x64::CallingConv cur_calling_convention() noexcept {
         return x64::CallingConv::SYSV_CC;
     }
 
     static bool arg_is_int128(IRValueRef) noexcept { return false; }
+
+    bool cur_func_may_emit_calls() const noexcept {
+        return this->ir()->functions[this->adaptor->cur_func].has_call;
+    }
+
+    AsmReg select_fixed_assignment_reg(const u32        bank,
+                                       const IRValueRef value) noexcept {
+        if (no_fixed_assignments && !try_force_fixed_assignment(value)) {
+            return AsmReg::make_invalid();
+        }
+
+        return Base::select_fixed_assignment_reg(bank, value);
+    }
+
+    bool try_force_fixed_assignment(const IRValueRef value) const noexcept {
+        return ir()->values[static_cast<u32>(value)].force_fixed_assignment;
+    }
 
     std::optional<ValuePartRef> val_ref_special(ValLocalIdx local_idx,
                                                 u32         part) noexcept {
@@ -38,6 +60,8 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
     [[nodiscard]] bool compile_inst(IRValueRef) noexcept;
 
     TestIR *ir() noexcept { return this->adaptor->ir; }
+
+    const TestIR *ir() const noexcept { return this->adaptor->ir; }
 
     bool compile_add(IRValueRef) noexcept;
     bool compile_sub(IRValueRef) noexcept;

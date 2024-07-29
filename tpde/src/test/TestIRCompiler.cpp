@@ -33,10 +33,15 @@ bool TestIRCompilerX64::compile_inst(IRValueRef val_idx) noexcept {
 
             ValuePartRef val_ref   = this->val_ref(op, 0);
             const auto   call_conv = this->cur_calling_convention();
-            val_ref.move_into_specific(call_conv.ret_regs_gp()[0]);
+            if (val_ref.assignment().fixed_assignment()) {
+                val_ref.reload_into_specific(call_conv.ret_regs_gp()[0]);
+            } else {
+                val_ref.move_into_specific(call_conv.ret_regs_gp()[0]);
+            }
         } else {
             assert(value.op_count == 0);
         }
+
         this->gen_func_epilog();
         this->release_regs_after_return();
         return true;

@@ -280,6 +280,12 @@ concept IRAdaptor = requires(T a) {
         a.val_ignore_in_liveness_analysis(ARG(typename T::IRValueRef))
     } -> std::convertible_to<bool>;
 
+    /// Does the value produce a definition? For example, stores do not produce
+    /// a result
+    {
+        a.val_produces_result(ARG(typename T::IRValueRef))
+    } -> std::convertible_to<bool>;
+
     /// Is the specified value an argument of the current function
     { a.val_is_arg(ARG(typename T::IRValueRef)) } -> std::convertible_to<bool>;
 

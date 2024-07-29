@@ -32,7 +32,8 @@ struct TestIR {
         std::string name;
         u32         local_idx = 0;
         Type        type;
-        Op          op = Op::none;
+        Op          op                     = Op::none;
+        bool        force_fixed_assignment = false;
 
         union {
             u32 alloca_size;
@@ -59,6 +60,7 @@ struct TestIR {
         std::string name;
         bool        declaration     = false;
         bool        local_only      = false;
+        bool        has_call        = false;
         u32         block_begin_idx = 0, block_end_idx = 0;
         u32         arg_begin_idx = 0, arg_end_idx = 0;
     };
@@ -540,6 +542,20 @@ struct TestIRAdaptor {
         val_ignore_in_liveness_analysis(IRValueRef value) const noexcept {
         return ir->values[static_cast<u32>(value)].type
                == TestIR::Value::Type::alloca;
+    }
+
+    [[nodiscard]] bool val_produces_result(IRValueRef value) const noexcept {
+        switch (ir->values[static_cast<u32>(value)].type) {
+            using enum TestIR::Value::Type;
+        case normal: [[fallthrough]];
+        case arg: [[fallthrough]];
+        case alloca: [[fallthrough]];
+        case phi: return true;
+        case ret: [[fallthrough]];
+        case br: [[fallthrough]];
+        case condbr: return false;
+        case call: return true;
+        }
     }
 
     [[nodiscard]] bool val_is_arg(IRValueRef value) const noexcept {

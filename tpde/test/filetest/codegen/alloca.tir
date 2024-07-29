@@ -5,7 +5,7 @@
 ; RUN: rm -rf %t
 ; RUN: mkdir %t
 
-; RUN: %tpde_test %s -o %t/out.o
+; RUN: %tpde_test %s --no-fixed-assignments -o %t/out.o
 ; RUN: objdump -Mintel-syntax --no-addresses --no-show-raw-insn --disassemble %t/out.o | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
 
 ; CHECK-LABEL: alloca1

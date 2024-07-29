@@ -18,6 +18,8 @@
 //     %<valName> = alloca <size>
 // ; No operands
 //     %<valName> =
+// ; Force fixed assignment if there is space
+//     %<valName>! =
 //     %<valName> = [operation] %<valName>, %<valName>, ...
 //     jump %<blockName>, %<blockName>, ...
 //     <or>
@@ -179,6 +181,13 @@ bool tpde::test::TestIR::parse_func(
         });
         TPDE_LOG_TRACE(
             "Got argument with name '{}' and idx {}", arg_name, arg_idx);
+
+        remove_whitespace(args);
+        if (!args.empty() && args[0] == '!') {
+            TPDE_LOG_TRACE("Force fixed assignment for value {}", arg_idx);
+            values[arg_idx].force_fixed_assignment = true;
+            args.remove_prefix(1);
+        }
 
         parse_state.value_map[arg_name] = arg_idx;
     }
@@ -662,6 +671,14 @@ bool tpde::test::TestIR::parse_value_line(
     }
 
     remove_whitespace(line);
+
+    auto force_fixed_assignment = false;
+    if (!line.empty() && line[0] == '!') {
+        force_fixed_assignment = true;
+        line.remove_prefix(1);
+        remove_whitespace(line);
+    }
+
     if (line.empty() || line[0] != '=') {
         TPDE_LOG_ERR("Expected '=' after value name but got '{}'", line);
         return false;
@@ -672,9 +689,10 @@ bool tpde::test::TestIR::parse_value_line(
 
     const u32 val_idx = values.size();
     values.push_back(
-        Value{.name         = std::string(value_name),
-              .type         = Value::Type::normal,
-              .op_count     = 0,
+        Value{.name                   = std::string(value_name),
+              .type                   = Value::Type::normal,
+              .force_fixed_assignment = force_fixed_assignment,
+              .op_count               = 0,
               .op_begin_idx = static_cast<u32>(value_operands.size())});
     TPDE_LOG_TRACE(
         "Got value definition for '{}' with idx {}", value_name, val_idx);
@@ -905,7 +923,8 @@ bool tpde::test::TestIR::parse_value_line(
             } else if (line.starts_with("call ")) {
                 op = line.substr(0, 4);
                 line.remove_prefix(5);
-                values[val_idx].type = Value::Type::call;
+                values[val_idx].type                     = Value::Type::call;
+                functions[parse_state.func_idx].has_call = true;
             }
         }
         if (values[val_idx].op != Value::Op::none) {

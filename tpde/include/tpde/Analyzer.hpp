@@ -51,6 +51,8 @@ struct Analyzer {
         // for building the loop tree, we accumulate the number of blocks here
         u32 num_blocks = 0;
         // TODO(ts): add skip_target?
+
+        u32 definitions = 0, definitions_in_childs = 0;
     };
 
     util::SmallVector<Loop, 16> loops = {};
@@ -103,6 +105,14 @@ struct Analyzer {
     const LivenessInfo &liveness_info(const u32 val_idx) const noexcept {
         assert(val_idx < liveness.size());
         return liveness[val_idx];
+    }
+
+    u32 block_loop_idx(const BlockIndex idx) const noexcept {
+        return block_loop_map[static_cast<u32>(idx)];
+    }
+
+    const Loop &loop_from_idx(const u32 idx) const noexcept {
+        return loops[idx];
     }
 
     bool block_has_multiple_incoming(const BlockIndex idx) const noexcept {
@@ -682,6 +692,13 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
         }
 
         auto &liveness = liveness_maybe(value);
+#ifdef TPDE_ASSERTS
+        if (liveness.ref_count == ~0u) {
+            // value without a definition used
+            assert(0);
+        }
+#endif
+
         if (liveness.ref_count == 0) {
             TPDE_LOG_TRACE("    initializing liveness info, lcl is {}",
                            block_loop_map[block_idx]);
@@ -861,6 +878,7 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
         TPDE_LOG_TRACE("Analyzing block {} ('{}')",
                        block_idx,
                        adaptor->block_fmt_ref(block_layout[block_idx]));
+        const auto block_loop_idx = block_loop_map[block_idx];
 
         for (const IRValueRef value :
              adaptor->block_values(block_layout[block_idx])) {
@@ -896,8 +914,17 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
                 // mark the PHI-value as used in the current block
                 visit(value, block_idx);
             } else {
-                // mark the value as used in the current block
-                visit(value, block_idx);
+                if (adaptor->val_produces_result(value)) {
+                    // mark the value as used in the current block
+                    visit(value, block_idx);
+                    ++loops[block_loop_idx].definitions;
+                } else {
+#ifdef TPDE_ASSERTS
+                    // make sure no other value then uses the value
+                    auto &liveness     = liveness_maybe(value);
+                    liveness.ref_count = ~0u;
+#endif
+                }
 
                 // visit the operands
                 for (const IRValueRef operand : adaptor->val_operands(value)) {
@@ -906,6 +933,23 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
             }
         }
     }
+
+    // fill out the definitions_in_childs counters
+    // (skip 0 since it has itself as a parent)
+    for (u32 idx = loops.size() - 1; idx != 0; --idx) {
+        auto &loop = loops[idx];
+        loops[loop.parent].definitions_in_childs +=
+            loop.definitions_in_childs + loop.definitions;
+    }
+
+#ifdef TPDE_ASSERTS
+    // reset the incorrect ref_counts in the liveness infos
+    for (auto &entry : liveness) {
+        if (entry.ref_count == ~0u) {
+            entry.ref_count = 0;
+        }
+    }
+#endif
 
     TPDE_LOG_TRACE("Finished Liveness Analysis");
 }

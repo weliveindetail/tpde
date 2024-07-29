@@ -114,8 +114,9 @@ struct CompilerBase {
     // TODO(ts): think about different ways to store this that are maybe more
     // compact?
     struct {
-        util::SmallVector<AssignmentBuffer, 8> buffers = {};
-        u32                                    cur_buf = 0;
+        util::SmallVector<AssignmentBuffer, 8> buffers    = {};
+        u32                                    cur_buf    = 0;
+        u32 cur_fixed_assignment_count[Config::NUM_BANKS] = {};
         util::SmallVector<ValueAssignment *, Analyzer<Adaptor>::SMALL_VALUE_NUM>
             value_ptrs;
 
@@ -296,6 +297,7 @@ struct CompilerBase {
 
     void set_value(ValuePartRef &val_ref, AsmReg reg) noexcept;
 
+    void salvage_reg_for_values(ValuePartRef &to, ValuePartRef &from) noexcept;
 
     // TODO(ts): switch to a branch_spill_before naming style?
     typename RegisterFile::RegBitSet spill_before_branch() noexcept;
@@ -312,6 +314,8 @@ struct CompilerBase {
     bool branch_needs_split(IRBlockRef target) noexcept;
 
     BlockIndex next_block() const noexcept;
+
+    bool try_force_fixed_assignment(IRValueRef) const noexcept { return false; }
 
   protected:
     bool compile_func(IRFuncRef func, u32 func_idx) noexcept;
@@ -524,7 +528,8 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
     assert(val_assignment(local_idx) == nullptr);
 
     const u32 part_count = analyzer.adaptor->val_part_count(value);
-    auto     *assignment = allocate_assignment(part_count);
+    assert(part_count > 0);
+    auto *assignment = allocate_assignment(part_count);
     assignments.value_ptrs[static_cast<u32>(local_idx)] = assignment;
 
     u32 max_part_size = 0;
@@ -538,6 +543,65 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
 
         if (part_idx != part_count - 1) {
             ap.set_has_next_part(true);
+        }
+    }
+
+    // if there is only one part, try to hand out a fixed assignment
+    // if the value is used for longer than one block and there aren't too many
+    // definitions in child loops this could interfere with
+    // TODO(ts): try out only fixed assignments if the value is live for more
+    // than two blocks?
+    // TODO(ts): move this to ValuePartRef::alloc_reg to be able to defer this
+    // for results?
+    if (part_count == 1) {
+        const auto &cur_loop =
+            analyzer.loop_from_idx(analyzer.block_loop_idx(cur_block_idx));
+        const auto &liveness =
+            analyzer.liveness_info(static_cast<u32>(local_idx));
+        auto ap = AssignmentPartRef{assignment, 0};
+
+        auto try_fixed =
+            liveness.last > cur_block_idx
+            && cur_loop.definitions_in_childs
+                       + assignments.cur_fixed_assignment_count[ap.bank()]
+                   < Derived::NUM_FIXED_ASSIGNMENTS[ap.bank()];
+        if (derived()->try_force_fixed_assignment(value)) {
+            try_fixed = assignments.cur_fixed_assignment_count[ap.bank()]
+                        < Derived::NUM_FIXED_ASSIGNMENTS[ap.bank()];
+        }
+
+        if (try_fixed) {
+            // check if there is a fixed register available
+            AsmReg reg =
+                derived()->select_fixed_assignment_reg(ap.bank(), value);
+            TPDE_LOG_TRACE("Trying to assign fixed reg to value {}",
+                           static_cast<u32>(local_idx));
+
+            if (!reg.invalid()) {
+                if (register_file.is_used(reg)) {
+                    assert(!register_file.is_fixed(reg));
+                    auto *spill_assignment =
+                        val_assignment(register_file.reg_local_idx(reg));
+                    auto spill_ap = AssignmentPartRef{
+                        spill_assignment, register_file.reg_part(reg)};
+                    assert(!spill_ap.fixed_assignment());
+                    assert(spill_ap.variable_ref() || !spill_ap.modified());
+                    spill_ap.set_register_valid(false);
+                    register_file.unmark_used(reg);
+                }
+
+                TPDE_LOG_TRACE(
+                    "Assigning fixed assignment to reg {} for value {}",
+                    reg.id(),
+                    static_cast<u32>(local_idx));
+                ap.set_full_reg_id(reg.id());
+                ap.set_register_valid(true);
+                ap.set_fixed_assignment(true);
+                register_file.mark_used(reg, local_idx, 0);
+                register_file.mark_fixed(reg);
+                register_file.mark_clobbered(reg);
+                ++assignments.cur_fixed_assignment_count[ap.bank()];
+            }
         }
     }
 
@@ -567,7 +631,17 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
     u32 part_idx = 0;
     while (true) {
         auto ap = AssignmentPartRef{assignment, part_idx};
-        if (ap.register_valid()) {
+        if (ap.fixed_assignment()) {
+            const auto reg = AsmReg{ap.full_reg_id()};
+            assert(register_file.is_fixed(reg));
+            assert(register_file.reg_local_idx(reg) == local_idx);
+            assert(register_file.reg_part(reg) == part_idx);
+            register_file.unmark_fixed(reg);
+            register_file.unmark_used(reg);
+            ap.set_fixed_assignment(false);
+            ap.set_register_valid(false);
+            --assignments.cur_fixed_assignment_count[ap.bank()];
+        } else if (ap.register_valid()) {
             const auto reg = AsmReg{ap.full_reg_id()};
             assert(!register_file.is_fixed(reg));
             register_file.unmark_used(reg);
@@ -712,6 +786,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
         exit(1);
     }
 
+    assert(!val_ref.assignment().fixed_assignment());
     const auto res = val_ref.move_into_specific(reg);
     val_ref.lock();
     return res;
@@ -792,13 +867,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
                 || (liveness.last == cur_block_idx && !liveness.last_full))) {
             // can salvage
             arg.unlock();
-
-            const auto reg = arg.cur_reg();
-            assert(!register_file.is_fixed(reg));
-            ap_arg.set_register_valid(false);
-            ap_res.set_full_reg_id(reg.id());
-            ap_res.set_register_valid(true);
-            register_file.update_reg_assignment(reg, local_idx, part);
+            salvage_reg_for_values(res_ref, arg);
         } else {
             const auto reg = res_ref.alloc_reg(false);
             arg.reload_into_specific(reg);
@@ -847,8 +916,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
         assert(0);
         exit(1);
     } else {
-        lhs_reg     = arg.alloc_reg();
-        auto ap_arg = arg.assignment();
+        lhs_reg = arg.alloc_reg();
 
         const auto &liveness = analyzer.liveness_info((u32)arg.local_idx());
         if (arg.ref_count() <= ref_adjust
@@ -857,11 +925,8 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
             // can salvage
             arg.unlock();
 
-            assert(!register_file.is_fixed(lhs_reg));
-            ap_arg.set_register_valid(false);
-            ap_res.set_full_reg_id(lhs_reg.id());
-            ap_res.set_register_valid(true);
-            register_file.update_reg_assignment(lhs_reg, local_idx, part);
+            salvage_reg_for_values(res_ref, arg);
+            lhs_reg = res_ref.cur_reg();
         } else {
             res_ref.alloc_reg(false);
         }
@@ -895,6 +960,22 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::set_value(ValuePartRef &val_ref,
                                                        AsmReg reg) noexcept {
     auto ap = val_ref.assignment();
+
+    if (ap.fixed_assignment()) {
+        auto cur_reg = AsmReg{ap.full_reg_id()};
+        assert(register_file.is_used(cur_reg));
+        assert(register_file.is_fixed(cur_reg));
+        assert(register_file.reg_local_idx(cur_reg) == val_ref.local_idx());
+
+        if (cur_reg.id() != reg.id()) {
+            derived()->mov(cur_reg, reg);
+        }
+
+        ap.set_register_valid(true);
+        ap.set_modified(true);
+        return;
+    }
+
     if (ap.register_valid()) {
         auto cur_reg = AsmReg{ap.full_reg_id()};
         if (cur_reg.id() == reg.id()) {
@@ -906,14 +987,61 @@ void CompilerBase<Adaptor, Derived, Config>::set_value(ValuePartRef &val_ref,
         register_file.unmark_used(cur_reg);
     }
 
-    // TODO(ts): needs special handling for fixed assignments
-
     assert(!register_file.is_used(reg));
 
     register_file.mark_used(reg, val_ref.local_idx(), val_ref.part());
+    register_file.mark_clobbered(reg);
     ap.set_full_reg_id(reg.id());
     ap.set_register_valid(true);
     ap.set_modified(true);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::salvage_reg_for_values(
+    ValuePartRef &to, ValuePartRef &from) noexcept {
+    assert(!to.is_const);
+    assert(!from.is_const);
+
+    const auto from_reg = from.cur_reg();
+    auto       ap_from  = from.assignment();
+    auto       ap_to    = to.assignment();
+
+    if (ap_from.fixed_assignment()) {
+        --assignments.cur_fixed_assignment_count[ap_from.bank()];
+
+        // take the register from the argument value
+        // with some special handling in case the result has a fixed
+        // assignment
+        if (ap_to.fixed_assignment()) {
+            // free the register of `to` since we reuse `from`'s register
+            const AsmReg res_reg = AsmReg{ap_to.full_reg_id()};
+            register_file.unmark_fixed(res_reg);
+            register_file.unmark_used(res_reg);
+        } else {
+            assert(!ap_to.register_valid());
+            register_file.unmark_fixed(from_reg);
+        }
+
+        ap_from.set_fixed_assignment(false);
+        ap_from.set_register_valid(false);
+        ap_to.set_register_valid(true);
+        ap_to.set_full_reg_id(from_reg.id());
+        register_file.update_reg_assignment(
+            from_reg, to.local_idx(), to.part());
+    } else if (ap_to.fixed_assignment()) {
+        // cannot salvage if result has a fixed assignment but the
+        // source has not since this might cause non-callee-saved regs
+        // to become fixed which would cause issues for calls
+        const AsmReg to_reg = AsmReg{ap_to.full_reg_id()};
+        derived()->mov(to_reg, from_reg);
+    } else {
+        assert(!register_file.is_fixed(from_reg));
+        ap_from.set_register_valid(false);
+        ap_to.set_full_reg_id(from_reg.id());
+        ap_to.set_register_valid(true);
+        register_file.update_reg_assignment(
+            from_reg, to.local_idx(), to.part());
+    }
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -1004,25 +1132,30 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
         if (local_idx == INVALID_VAL_LOCAL_IDX) {
             // TODO(ts): can this actually happen?
             assert(0);
-            return;
+            return false;
         }
         auto *assignment = val_assignment(local_idx);
         auto  ap         = AssignmentPartRef{assignment, part};
+        if (ap.fixed_assignment()) {
+            // fixed registers do not need to be spilled
+            return true;
+        }
+
         if (!ap.modified()) {
             // no need to spill if the value was not modified
-            return;
+            return false;
         }
 
         const auto &liveness =
             analyzer.liveness_info(static_cast<u32>(local_idx));
         if (assignment->references_left <= phi_ref_count[reg]
             && liveness.last <= cur_block_idx) {
-            return;
+            return false;
         }
 
         if (!next_block_is_succ || next_block_has_multiple_incoming) {
             ap.spill_if_needed(this);
-            return;
+            return false;
         }
 
         // spill if the value is alive in any successor that is not the next
@@ -1035,17 +1168,21 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
             }
             if (block_idx >= liveness.first && block_idx <= liveness.last) {
                 ap.spill_if_needed(this);
-                return;
+                return false;
             }
         }
+
+        return false;
     };
 
     auto spilled = RegBitSet{};
+    // TODO(ts): just use register_file.used_nonfixed_regs()?
     for (auto reg : register_file.used_regs()) {
-        spill_reg_if_needed(reg);
+        const auto reg_fixed = spill_reg_if_needed(reg);
         // remove from register assignment if the next block cannot rely on the
         // value being in the specific register
-        if (next_block_has_multiple_incoming || !next_block_is_succ) {
+        if (!reg_fixed
+            && (next_block_has_multiple_incoming || !next_block_is_succ)) {
             // TODO(ts): this needs to be changed if this is supposed to work
             // with other RegisterFile implementations
             spilled |= RegBitSet{1ull} << reg;
@@ -1095,7 +1232,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
     BlockIndex target) noexcept {
     // PHI-nodes are always moved to their stack-slot (unless they are fixed)
-    // which isn't implemented yet
+    //
     // However, we need to take care of PHI-dependencies (cycles and chains)
     // as to not overwrite values which might be needed.
     //
@@ -1129,15 +1266,16 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
         for (u32 i = 0; i < part_count; ++i) {
             // TODO(ts): just have this outside the loop and change the part
             // index? :P
-            auto   phi_ref = val_ref(phi, i);
-            auto   val_ref = derived()->val_ref(incoming_val, i);
-            // TODO(ts): needs changes for fixed assignments
+            auto phi_ref = val_ref(phi, i);
+            auto val_ref = derived()->val_ref(incoming_val, i);
+
             AsmReg reg{};
             if (val_ref.is_const) {
                 // TODO(ts): materialize constant
                 assert(0);
                 exit(1);
-            } else if (val_ref.assignment().register_valid()) {
+            } else if (val_ref.assignment().register_valid()
+                       || val_ref.assignment().fixed_assignment()) {
                 reg = AsmReg{val_ref.assignment().full_reg_id()};
             } else {
                 reg = val_ref.reload_into_specific(scratch.alloc_from_bank(
@@ -1145,9 +1283,14 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
             }
 
             auto phi_ap = phi_ref.assignment();
-            derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
-            // TODO(ts): needs changes for fixed assignments
-            if (phi_ap.register_valid()) {
+            if (phi_ap.fixed_assignment()) {
+                derived()->mov(AsmReg{phi_ap.full_reg_id()}, reg);
+            } else {
+                derived()->spill_reg(
+                    reg, phi_ap.frame_off(), phi_ap.part_size());
+            }
+
+            if (phi_ap.register_valid() && !phi_ap.fixed_assignment()) {
                 auto cur_reg = AsmReg{phi_ap.full_reg_id()};
                 assert(!register_file.is_fixed(cur_reg));
                 register_file.unmark_used(cur_reg);
@@ -1234,13 +1377,18 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
             auto phi_ref = val_ref(target_phi, 0);
             auto ap      = phi_ref.assignment();
             assert(!tmp_reg1.cur_reg.invalid());
-            derived()->spill_reg(
-                tmp_reg1.cur_reg, ap.frame_off(), ap.part_size());
+            if (ap.fixed_assignment()) {
+                derived()->mov(AsmReg{ap.full_reg_id()}, tmp_reg1.cur_reg);
+            } else {
+                derived()->spill_reg(
+                    tmp_reg1.cur_reg, ap.frame_off(), ap.part_size());
+            }
 
             if (cur_tmp_part_count == 2) {
                 phi_ref.inc_ref_count();
                 auto phi_ref_high = val_ref(target_phi, 1);
                 auto ap_high      = phi_ref_high.assignment();
+                assert(!ap_high.fixed_assignment());
                 assert(!tmp_reg2.cur_reg.invalid());
                 derived()->spill_reg(
                     tmp_reg2.cur_reg, ap_high.frame_off(), ap_high.part_size());
@@ -1253,7 +1401,9 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
             // index? :P
             auto phi_ref = val_ref(target_phi, i);
             auto phi_ap  = phi_ref.assignment();
-            auto reg     = tmp_reg1.alloc_from_bank(phi_ap.bank());
+            assert(!phi_ap.fixed_assignment());
+
+            auto reg = tmp_reg1.alloc_from_bank(phi_ap.bank());
             derived()->load_from_stack(
                 reg, cur_tmp_slot + phi_ap.part_off(), phi_ap.part_size());
             derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
@@ -1283,6 +1433,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
 
                 for (u32 i = 0; i < cur_tmp_part_count; ++i) {
                     auto ap = AssignmentPartRef{assignment, i};
+                    assert(!ap.fixed_assignment());
                     if (ap.register_valid()) {
                         auto reg = AsmReg{ap.full_reg_id()};
                         derived()->spill_reg(
@@ -1415,6 +1566,9 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
             std::make_unique<u8[]>(ASSIGNMENT_BUF_SIZE), 0);
     }
 
+    cur_block_idx =
+        static_cast<BlockIndex>(analyzer.block_idx(adaptor->cur_entry_block()));
+
     derived()->reset_register_file();
 
     assembler.start_func(func_syms[func_idx]);
@@ -1447,13 +1601,13 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
         assignment->initialize(frame_off,
                                size,
                                analyzer.liveness_info(local_idx).ref_count,
-                               Derived::PLATFORM_POINTER_SIZE);
+                               Config::PLATFORM_POINTER_SIZE);
         assignments.value_ptrs[local_idx] = assignment;
 
         auto ap = AssignmentPartRef{assignment, 0};
         ap.set_bank(Config::GP_BANK);
         ap.set_variable_ref(true);
-        ap.set_part_size(Derived::PLATFORM_POINTER_SIZE);
+        ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
     }
 
     // TODO(ts): place function label

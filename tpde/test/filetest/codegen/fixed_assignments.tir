@@ -1,0 +1,139 @@
+; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+;
+; SPDX-License-Identifier: LicenseRef-Proprietary
+
+; RUN: rm -rf %t
+; RUN: mkdir %t
+
+; RUN: %tpde_test %s --no-fixed-assignments -o %t/out.o
+; RUN: objdump -Mintel-syntax --no-addresses --no-show-raw-insn --disassemble %t/out.o | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+
+; TODO: various fixed assignment edge-case tests
+
+; COM: Fixed assignments in functions without calls for arguments may not use the argument registers
+; CHECK-LABEL: arg_special_case
+arg_special_case(%a!, %b!, %c!, %d!, %e!, %f!) {
+entry:
+; X64: push
+; X64: sub rsp
+; X64-NEXT: mov r10,rdi
+; X64-NEXT: mov r11,rsi
+; COM: moves into rbx because all the other arguments are dead
+; X64-NEXT: mov rbx,rdx
+; X64-NEXT: mov rbx,rcx
+; X64-NEXT: mov rbx,r8
+; X64-NEXT: mov rbx,r9
+; X64-NEXT: cmp r10,0
+; X64-NEXT: je
+  condbr %a, %ret1, %ret2
+ret1:
+; X64-NEXT: mov rax,r10
+; X64-NEXT: add rsp
+  terminate %a
+ret2:
+; X64: mov rax,r11
+; X64-NEXT: add rsp
+  terminate %b
+}
+
+; CHECK-LABEL: fixed_stack_arg
+fixed_stack_arg(%a, %b, %c, %d, %e, %f, %g!) {
+entry:
+; X64: sub rsp
+; X64-NEXT: mov r10,QWORD PTR [rbp+0x10]
+; X64-NEXT: cmp rdi,0x0
+; X64-NEXT: je
+  condbr %a, %ret1, %ret2
+ret1:
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+  terminate %a
+ret2:
+; X64: mov rax,r10
+; X64-NEXT: add rsp
+  terminate %g
+}
+
+extern_func(%a)!
+
+; CHECK-LABEL: fixed_with_call
+fixed_with_call(%a!) {
+entry:
+; X64: push rbx
+; X64: sub rsp
+; X64-NEXT: mov rbx,rdi
+; X64-NEXT: mov rdi,rbx
+; X64-NEXT: call
+  %b = call %extern_func, %a
+; X64-NEXT: add rsp
+; X64-NEXT: pop rbx
+  terminate %b
+}
+
+; CHECK-LABEL: salvage_from_fixed_to_nonfixed
+salvage_from_fixed_to_nonfixed(%a!, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: mov r10,rdi
+; X64-NEXT: add r10,rsi
+  %c = add %a, %b
+
+; COM: %c should be spilled since it does not have a fixed assignment
+; X64-NEXT: mov QWORD PTR [rbp-0x18],r10
+; X64-NEXT: cmp rsi,0x0
+; X64-NEXT: je
+  condbr %b, %ret1, %ret2
+ret1:
+; COM: %c kept around since it has only one predecessor
+; X64-NEXT: mov rax,r10
+; X64-NEXT: add rsp
+  terminate %c
+ret2:
+; X64: mov rax,QWORD PTR [rbp-0x18]
+; X64-NEXT: add rsp
+  terminate %c
+}
+
+; CHECK-LABEL: salvage_from_fixed_to_fixed
+salvage_from_fixed_to_fixed(%a!, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: mov r10,rdi
+; X64-NEXT: add r10,rsi
+  %c! = add %a, %b
+
+; COM: no spilling since c is fixed
+; X64-NEXT: cmp rsi,0x0
+; X64-NEXT: je
+  condbr %b, %ret1, %ret2
+ret1:
+; X64-NEXT: mov rax,r10
+; X64-NEXT: add rsp
+  terminate %c
+ret2:
+; X64: mov rax,r10
+; X64-NEXT: add rsp
+  terminate %c
+}
+
+; CHECK-LABEL: salvage_from_nonfixed_to_fixed
+salvage_from_nonfixed_to_fixed(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: mov rcx,rdi
+; X64-NEXT: add rcx,rsi
+  %c! = add %a, %b
+
+; COM: no spilling since c is fixed
+; X64-NEXT: cmp rsi,0x0
+; X64-NEXT: je
+  condbr %b, %ret1, %ret2
+ret1:
+; X64-NEXT: mov rax,rcx
+; X64-NEXT: add rsp
+  terminate %c
+ret2:
+; X64: mov rax,rcx
+; X64-NEXT: add rsp
+  terminate %c
+}

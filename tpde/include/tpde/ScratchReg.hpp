@@ -70,6 +70,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     }
 
     compiler->register_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
+    compiler->register_file.mark_clobbered(reg);
     compiler->register_file.mark_fixed(reg);
     cur_reg = reg;
     return reg;
@@ -122,6 +123,7 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
     }
 
     reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
+    reg_file.mark_clobbered(reg);
     reg_file.mark_fixed(reg);
     cur_reg = reg;
     return reg;

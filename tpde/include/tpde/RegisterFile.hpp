@@ -72,7 +72,6 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
                                const ValLocalIdx local_idx,
                                const u32         part) noexcept {
         assert(is_used(reg));
-        assert(!is_fixed(reg));
         assert(assignments[reg.id()].lock_count == 0);
         assignments[reg.id()].local_idx = local_idx;
         assignments[reg.id()].part      = part;

@@ -75,7 +75,7 @@ struct BitSetIterator {
 
         Iter &operator++() noexcept {
             if constexpr (Reverse) {
-                set = set & ~(1ull << (64 - cnt_lz(set)));
+                set = set & ~(1ull << (63 - cnt_lz(set)));
             } else {
                 set = set & (set - 1);
             }
@@ -85,7 +85,7 @@ struct BitSetIterator {
         [[nodiscard]] u64 operator*() const noexcept {
             assert(set != 0);
             if constexpr (Reverse) {
-                return 64 - cnt_lz(set);
+                return 63 - cnt_lz(set);
             } else {
                 return cnt_tz(set);
             }
