@@ -620,12 +620,6 @@ struct TestIRAdaptor {
         return ir->values[val_idx].alloca_align;
     }
 
-    u32 val_part_count(IRValueRef) const noexcept { return 1; }
-
-    u32 val_part_size(IRValueRef, u32) const noexcept { return 8; }
-
-    u8 val_part_bank(IRValueRef, u32) const noexcept { return 0; }
-
     void start_compile() const noexcept {}
 
     void end_compile() const noexcept {}

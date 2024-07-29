@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
 #pragma once
+#include "CompilerConfig.hpp"
 #include "base.hpp"
 #include <concepts>
 #include <string_view>
@@ -24,10 +25,6 @@ concept CanBeFormatted = requires(T a) {
 
 template <bool B>
 concept IsFalse = (B == false);
-
-template <typename T, typename Base>
-concept SameBaseAs =
-    std::is_same_v<std::remove_const_t<std::remove_reference_t<T>>, Base>;
 
 /// Concept describing an iterator over some range
 ///
@@ -308,23 +305,6 @@ concept IRAdaptor = requires(T a) {
     {
         a.val_alloca_align(ARG(typename T::IRValueRef))
     } -> std::convertible_to<u32>;
-
-    /// Provides the number of parts for a value
-    // TODO(ts): move this into the derived Compiler since it's dependent on the
-    // platform?
-    {
-        a.val_part_count(ARG(typename T::IRValueRef))
-    } -> std::convertible_to<u32>;
-
-    /// Provides the size in bytes of a value part (must be a power of two)
-    {
-        a.val_part_size(ARG(typename T::IRValueRef), ARG(u32))
-    } -> std::convertible_to<u32>;
-
-    /// Provides the bank for a value part
-    {
-        a.val_part_bank(ARG(typename T::IRValueRef), ARG(u32))
-    } -> std::convertible_to<u8>;
 
 
     // compilation lifecycle

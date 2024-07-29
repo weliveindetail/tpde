@@ -62,7 +62,7 @@ set(TPDE_HEADERS
     include/tpde/Analyzer.hpp
     include/tpde/Assembler.hpp
     include/tpde/base.hpp
-    include/tpde/CompilerBase.hpp
+    include/tpde/Compiler.hpp
     include/tpde/CompilerBase.hpp
     include/tpde/AssemblerElf.hpp
     include/tpde/IRAdaptor.hpp

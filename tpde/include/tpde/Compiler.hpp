@@ -1,0 +1,92 @@
+// SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+//
+// SPDX-License-Identifier: LicenseRef-Proprietary
+#pragma once
+
+#include "CompilerConfig.hpp"
+#include "base.hpp"
+#include <concepts>
+
+#ifdef ARG
+    #error ARG is used as a temporary preprocessor macro
+#endif
+
+#define ARG(x) std::declval<x>()
+
+namespace tpde {
+
+template <typename T, typename Config>
+concept Compiler = CompilerConfig<Config> && requires(T a) {
+    // mostly platform things
+    { T::NUM_FIXED_ASSIGNMENTS } -> SameBaseAs<u32[Config::NUM_BANKS]>;
+
+    { a.gen_func_prolog_and_args() };
+
+    // This has to call assembler->finish_func
+    { a.finish_func() };
+
+    { a.reset_register_file() };
+
+    // (reg_to_spill, frame_off, size)
+    { a.spill_reg(ARG(typename Config::AsmReg), ARG(u32), ARG(u32)) };
+
+    // (dst_reg, frame_off, size)
+    { a.load_from_stack(ARG(typename Config::AsmReg), ARG(u32), ARG(u32)) };
+
+    // (dst_reg, ap_ref)
+    {
+        a.load_address_of_var_reference(ARG(typename Config::AsmReg),
+                                        ARG(typename T::AssignmentPartRef))
+    };
+
+    // (dst_reg, src_reg)
+    { a.mov(ARG(typename Config::AsmReg), ARG(typename Config::AsmReg)) };
+
+    {
+        a.select_fixed_assignment_reg(ARG(u32), ARG(typename T::IRValueRef))
+    } -> std::same_as<typename Config::AsmReg>;
+
+
+    // mostly implementor stuff
+
+    { a.cur_func_may_emit_calls() } -> std::convertible_to<bool>;
+
+    {
+        a.try_force_fixed_assignment(ARG(typename T::IRValueRef))
+    } -> std::convertible_to<bool>;
+
+    /// Provides the number of parts for a value
+    {
+        a.val_part_count(ARG(typename T::IRValueRef))
+    } -> std::convertible_to<u32>;
+
+    /// Provides the size in bytes of a value part (must be a power of two)
+    {
+        a.val_part_size(ARG(typename T::IRValueRef), ARG(u32))
+    } -> std::convertible_to<u32>;
+
+    /// Provides the bank for a value part
+    {
+        a.val_part_bank(ARG(typename T::IRValueRef), ARG(u32))
+    } -> std::convertible_to<u8>;
+
+    /// Provides the implementation to return special ValuePartRefs, e.g. for
+    /// constants/globals
+    ///
+    /// (local_idx, part)
+    {
+        a.val_ref_special(ARG(typename T::ValLocalIdx), ARG(u32))
+    } -> std::same_as<std::optional<typename T::ValuePartRef>>;
+
+    /// The compiler numbers functions and this gives the derived implementation
+    /// a chance to save that mapping
+    ///
+    /// (func_ref, idx)
+    { a.define_func_idx(ARG(typename T::IRFuncRef), ARG(u32)) };
+
+    {
+        a.compile_inst(ARG(typename T::IRValueRef))
+    } -> std::convertible_to<bool>;
+};
+
+} // namespace tpde

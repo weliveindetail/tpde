@@ -315,6 +315,17 @@ struct PlatformConfig : CompilerConfigDefault {
     static constexpr u32  NUM_BANKS               = 2;
 };
 
+namespace concepts {
+template <typename T, typename Config>
+concept Compiler = tpde::Compiler<T, Config> && requires(T a) {
+    {
+        a.arg_is_int128(std::declval<typename T::IRValueRef>())
+    } -> std::convertible_to<bool>;
+
+    { a.cur_calling_convention() } -> SameBaseAs<CallingConv>;
+};
+} // namespace concepts
+
 template <IRAdaptor Adaptor, typename Derived>
 struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
     using Base = CompilerBase<Adaptor, Derived, PlatformConfig>;
@@ -348,7 +359,10 @@ struct CompilerX64 : CompilerBase<Adaptor, Derived, PlatformConfig> {
     util::SmallVector<u32, 8> func_ret_offs           = {};
 
     // for now, always generate an object
-    explicit CompilerX64(Adaptor *adaptor) : Base{adaptor, true} {}
+    explicit CompilerX64(Adaptor *adaptor) : Base{adaptor, true} {
+        static_assert(std::is_base_of_v<CompilerX64, Derived>);
+        static_assert(concepts::Compiler<Derived, PlatformConfig>);
+    }
 
     void gen_func_prolog_and_args() noexcept;
 
@@ -468,7 +482,7 @@ void CallingConv::handle_func_args(
     compiler->fixed_assignment_nonallocatable_mask = arg_regs_mask();
 
     for (const IRValueRef arg : compiler->adaptor->cur_args()) {
-        const u32 part_count = compiler->adaptor->val_part_count(arg);
+        const u32 part_count = compiler->derived()->val_part_count(arg);
 
         if (compiler->derived()->arg_is_int128(arg)) {
             if (scalar_reg_count + 1 >= gp_regs.size()) {
@@ -479,12 +493,12 @@ void CallingConv::handle_func_args(
         for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
             auto part_ref = compiler->result_ref_lazy(arg, part_idx);
 
-            if (compiler->adaptor->val_part_bank(arg, part_idx) == 0) {
+            if (compiler->derived()->val_part_bank(arg, part_idx) == 0) {
                 if (scalar_reg_count < gp_regs.size()) {
                     compiler->set_value(part_ref, gp_regs[scalar_reg_count++]);
                 } else {
                     const auto size =
-                        compiler->adaptor->val_part_size(arg, part_idx);
+                        compiler->derived()->val_part_size(arg, part_idx);
                     //  TODO(ts): maybe allow negative frame offsets for value
                     //  assignments so we can simply reference this?
                     //  but this probably doesn't work with multi-part values
@@ -571,7 +585,7 @@ u32 CallingConv::calculate_call_stack_space(
             continue;
         }
 
-        const u32 part_count = compiler->adaptor->val_part_count(arg.value);
+        const u32 part_count = compiler->derived()->val_part_count(arg.value);
 
         if (compiler->derived()->arg_is_int128(arg.value)) {
             if (gp_reg_count + 1 >= gp_regs.size()) {
@@ -698,7 +712,7 @@ u32 CallingConv::handle_call_args(
             continue;
         }
 
-        const u32 part_count = compiler->adaptor->val_part_count(arg.value);
+        const u32 part_count = compiler->derived()->val_part_count(arg.value);
 
         if (compiler->derived()->arg_is_int128(arg.value)) {
             if (gp_reg_count + 1 >= gp_regs.size()) {
