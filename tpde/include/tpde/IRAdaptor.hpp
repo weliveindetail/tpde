@@ -175,11 +175,12 @@ concept IRAdaptor = requires(T a) {
     { a.cur_is_vararg() } -> std::convertible_to<bool>;
 
     /// Provides the highest value index in the current function.
-    /// Only needs to be implemented if TPDE_FUNC_VAL_COUNT_ESTIMATE is true
-    requires IsFalse<T::TPDE_FUNC_VAL_COUNT_ESTIMATE> || requires {
+    /// Only needs to be implemented if TPDE_PROVIDES_HIGHEST_VAL_IDX is true
+    requires IsFalse<T::TPDE_PROVIDES_HIGHEST_VAL_IDX> || requires {
         { a.cur_highest_val_idx() } -> std::convertible_to<u32>;
     };
 
+#if 0
     /// Provides the personality function for the current function or
     /// INVALID_FUNC_REF otherwise
     { a.cur_personality_func() } -> std::same_as<typename T::IRFuncRef>;
@@ -242,11 +243,11 @@ concept IRAdaptor = requires(T a) {
     /// Set the block info
     { a.block_set_info2(ARG(typename T::IRBlockRef), ARG(u32)) };
 
-#ifdef TPDE_LOGGING
+    #ifdef TPDE_LOGGING
     /// If logging is enabled, we want to be able to print blocks and want to
     /// give the adaptor the opportunity to dictate how that is done
     { a.block_fmt_ref(ARG(typename T::IRBlockRef)) } -> CanBeFormatted;
-#endif
+    #endif
 
 
     // information about values
@@ -321,6 +322,7 @@ concept IRAdaptor = requires(T a) {
     /// The compiler is being resetted. If there is any data remaining that
     /// would cause problems with recompiling it should be cleared
     { a.reset() };
+#endif
 };
 
 #undef ARG

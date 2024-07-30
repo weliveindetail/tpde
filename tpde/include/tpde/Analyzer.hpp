@@ -210,6 +210,9 @@ void Analyzer<Adaptor>::build_block_layout(IRFuncRef func) {
     util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> block_rpo{};
     build_rpo_block_order(block_rpo);
 
+    // may be unused if TPDE_TESTING is not set
+    (void)func;
+
 #ifdef TPDE_TESTING
     if (test_print_rpo) {
         fmt::println("RPO for func {}", adaptor->func_link_name(func));

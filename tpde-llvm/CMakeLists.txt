@@ -13,8 +13,8 @@ project(tpde_llvm)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(tpde_llvm)
-add_library(tpde::tpde_llvm ALIAS tpde_llvm)
+add_executable(tpde_llvm)
+add_executable(tpde::tpde_llvm ALIAS tpde_llvm)
 
 #------------------------------------------------------------------------------
 # options
@@ -39,7 +39,7 @@ else ()
 endif ()
 
 # tpde
-add_subdirectory(../tpde ${CMAKE_CURRENT_BINARY_DIR}/tpde_llvm/tpde)
+add_subdirectory(../tpde ${PROJECT_BINARY_DIR}/tpde)
 
 # hopscotch-map (disable warnings)
 target_include_directories(tpde_llvm SYSTEM PRIVATE ../deps/hopscotch-map/include)
@@ -76,12 +76,15 @@ set(TPDE_LLVM_HEADERS_PUBLIC
 )
 
 set(TPDE_LLVM_SOURCES
-    # dummy target for autocomplete
-    src/x64/LLVMCompilerX64.cpp
+    src/main.cpp
 )
 
 set(TPDE_LLVM_X64_HEADERS
+    src/x64/LLVMCompilerX64.hpp
+)
 
+set(TPDE_LLVM_X64_SOURCES
+    src/x64/LLVMCompilerX64.cpp
 )
 
 
@@ -95,7 +98,7 @@ target_include_directories(tpde_llvm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_sources(tpde_llvm PRIVATE ${TPDE_LLVM_SOURCES} ${TPDE_LLVM_HEADERS})
 
 if (TPDE_LLVM_X64)
-    target_sources(tpde_llvm PRIVATE ${TPDE_LLVM_X64_HEADERS})
+    target_sources(tpde_llvm PRIVATE ${TPDE_LLVM_X64_SOURCES} ${TPDE_LLVM_X64_HEADERS})
 endif ()
 
 set_target_properties(tpde_llvm PROPERTIES

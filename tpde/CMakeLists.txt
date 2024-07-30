@@ -180,6 +180,9 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(tpde_test PRIVATE -fsanitize=address)
     target_link_options(tpde_test PRIVATE -fsanitize=address)
 endif ()
+
+#target_compile_options(tpde_test PRIVATE -ferror-limit=1000)
+
 target_compile_definitions(tpde_test PUBLIC TPDE_TESTING)
 
 #------------------------------------------------------------------------------

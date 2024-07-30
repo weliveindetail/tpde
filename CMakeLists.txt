@@ -9,4 +9,4 @@ project(tpde2)
 
 # *sigh*, why can't CLion just support this workflow...
 # add_subdirectory(tpde "${PROJECT_BINARY_DIR}/tpde")
-add_subdirectory(tpde-llvm "${PROJECT_BINARY_DIR}/tpde_llvm")
+add_subdirectory(tpde-llvm)
