@@ -129,6 +129,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_link_options(tpde_llvm PRIVATE -fsanitize=address)
 endif ()
 
+target_compile_definitions(tpde_llvm PUBLIC TPDE_TESTING)
+
 # link tpde
 target_link_libraries(tpde_llvm PUBLIC tpde::tpde)
 # link llvm

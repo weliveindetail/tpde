@@ -374,10 +374,13 @@ struct LLVMAdaptor {
         val_ignore_in_liveness_analysis(const IRValueRef idx) const noexcept {
         const auto *inst = llvm::dyn_cast<llvm::Instruction>(values[idx].val);
         if (!inst) {
+            if (llvm::isa<llvm::Argument>(values[idx].val)) {
+                return false;
+            }
             // should handle constants and globals
             return true;
         }
-        return inst->getOpcode() != llvm::Instruction::Alloca;
+        return inst->getOpcode() == llvm::Instruction::Alloca;
     }
 
     [[nodiscard]] bool
@@ -688,6 +691,13 @@ struct LLVMAdaptor {
         const auto it = value_lookup.find(val);
         assert(it != value_lookup.end());
         return it->second;
+    }
+
+    [[nodiscard]] u32 inst_lookup_idx(llvm::Instruction *inst) const noexcept {
+        const auto idx = val_idx_for_inst(inst);
+        assert(value_lookup.find(inst) != value_lookup.end()
+               && value_lookup.find(inst)->second == idx);
+        return idx;
     }
 
     // internal helpers
@@ -1165,13 +1175,6 @@ struct LLVMAdaptor {
                                  .argument = false,
                                  .complex_part_tys_idx = complex_part_idx});
         return true;
-    }
-
-    [[nodiscard]] u32 inst_lookup_idx(llvm::Instruction *inst) const noexcept {
-        const auto idx = val_idx_for_inst(inst);
-        assert(value_lookup.find(inst) != value_lookup.end()
-               && value_lookup.find(inst)->second == idx);
-        return idx;
     }
 };
 

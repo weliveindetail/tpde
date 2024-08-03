@@ -25,6 +25,11 @@ int main(int argc, char *argv[]) {
 
     args::Flag print_ir(parser, "print_ir", "Print LLVM-IR", {"print-ir"});
 
+    args::Flag print_liveness(parser,
+                              "print_liveness",
+                              "Print the liveness information",
+                              {"print-liveness"});
+
     args::Flag input_is_bitcode(
         parser, "bitcode", "Is the input LLVM-Bitcode?", {"bitcode"});
 
@@ -110,13 +115,14 @@ int main(int argc, char *argv[]) {
 
     if (obj_out_path) {
         if (!tpde_llvm::x64::compile_llvm(
-                *context, *mod, obj_out_path.Get().c_str())) {
+                *context, *mod, obj_out_path.Get().c_str(), print_liveness)) {
             std::cerr << std::format("Failed to compile\n");
             return 1;
         }
     } else {
         std::vector<uint8_t> out_buf;
-        if (!tpde_llvm::x64::compile_llvm(*context, *mod, out_buf)) {
+        if (!tpde_llvm::x64::compile_llvm(
+                *context, *mod, out_buf, print_liveness)) {
             std::cerr << std::format("Failed to compile\n");
             return 1;
         }

@@ -35,10 +35,27 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
         return false;
     }
 
+    IRValueRef llvm_val_idx(llvm::Value *) const noexcept;
+    IRValueRef llvm_val_idx(llvm::Instruction *) const noexcept;
+
     bool compile_inst(IRValueRef) noexcept;
 
     bool compile_ret(IRValueRef, llvm::Instruction *) noexcept;
 };
+
+template <typename Adaptor, typename Derived, typename Config>
+typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef
+    LLVMCompilerBase<Adaptor, Derived, Config>::llvm_val_idx(
+        llvm::Value *val) const noexcept {
+    return this->adaptor->val_lookup_idx(val);
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef
+    LLVMCompilerBase<Adaptor, Derived, Config>::llvm_val_idx(
+        llvm::Instruction *inst) const noexcept {
+    return this->adaptor->inst_lookup_idx(inst);
+}
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
@@ -63,7 +80,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ret(
     IRValueRef, llvm::Instruction *ret) noexcept {
     assert(llvm::isa<llvm::ReturnInst>(ret));
 
-    assert(ret->getNumOperands() == 0);
+    if (ret->getNumOperands() != 0) {
+        assert(ret->getNumOperands() == 1);
+        derived()->move_val_to_ret_regs(ret->getOperand(0));
+    }
 
     derived()->gen_func_epilog();
     this->release_regs_after_return();

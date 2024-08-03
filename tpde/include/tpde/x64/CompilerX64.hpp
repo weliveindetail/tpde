@@ -1185,6 +1185,9 @@ void CompilerX64<Adaptor, Derived, BaseTy>::mov(const AsmReg dst,
         } else {
             ASM(MOV32rr, dst, src);
         }
+    } else if (dst.id() >= AsmReg::XMM0 && src.id() >= AsmReg::XMM0) {
+        // TODO(ts): I think this function needs a size argument
+        ASM(SSE_MOVUPDrr, dst, src);
     } else {
         assert(0);
         exit(1);
