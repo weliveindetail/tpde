@@ -30,15 +30,11 @@ struct LLVMCompilerX64
 
     static bool arg_is_int128(IRValueRef) noexcept { return false; }
 
-    bool cur_func_may_emit_calls() const noexcept { return true; }
-
     u32 val_part_count(IRValueRef) const noexcept { return 1; }
 
     u32 val_part_size(IRValueRef, u32) const noexcept { return 8; }
 
     u8 val_part_bank(IRValueRef, u32) const noexcept { return 0; }
-
-    bool try_force_fixed_assignment(IRValueRef) const noexcept { return false; }
 
     std::optional<ValuePartRef> val_ref_special(ValLocalIdx local_idx,
                                                 u32         part) noexcept {
@@ -71,4 +67,22 @@ extern bool compile_llvm(llvm::LLVMContext &ctx,
 
     return true;
 }
+
+extern bool compile_llvm(llvm::LLVMContext &ctx,
+                         llvm::Module      &mod,
+                         std::vector<u8>   &out_buf) {
+    auto adaptor  = std::make_unique<LLVMAdaptor>(ctx, mod);
+    auto compiler = std::make_unique<LLVMCompilerX64>(std::move(adaptor));
+
+
+    if (!compiler->compile()) {
+        return false;
+    }
+
+    std::vector<u8> data = compiler->assembler.build_object_file();
+    out_buf              = std::move(data);
+
+    return true;
+}
+
 } // namespace tpde_llvm::x64

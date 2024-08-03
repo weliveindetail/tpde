@@ -28,9 +28,45 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
         return static_cast<Derived *>(this);
     }
 
-    bool compile_inst(IRValueRef) noexcept {
-        bool c = false;
-        return c;
+    // TODO(ts): check if it helps to check this
+    static bool cur_func_may_emit_calls() noexcept { return true; }
+
+    static bool try_force_fixed_assignment(IRValueRef) noexcept {
+        return false;
     }
+
+    bool compile_inst(IRValueRef) noexcept;
+
+    bool compile_ret(IRValueRef, llvm::Instruction *) noexcept;
 };
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
+    IRValueRef val_idx) noexcept {
+    auto *i =
+        llvm::dyn_cast<llvm::Instruction>(this->adaptor->values[val_idx].val);
+    const auto opcode = i->getOpcode();
+    switch (opcode) {
+    case llvm::Instruction::Ret: return compile_ret(val_idx, i);
+    default: {
+        TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
+                     opcode,
+                     i->getOpcodeName());
+        assert(0);
+        exit(1);
+    }
+    }
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ret(
+    IRValueRef, llvm::Instruction *ret) noexcept {
+    assert(llvm::isa<llvm::ReturnInst>(ret));
+
+    assert(ret->getNumOperands() == 0);
+
+    derived()->gen_func_epilog();
+    this->release_regs_after_return();
+    return true;
+}
 } // namespace tpde_llvm

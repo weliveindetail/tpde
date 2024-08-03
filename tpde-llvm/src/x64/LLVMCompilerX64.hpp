@@ -9,4 +9,9 @@ namespace tpde_llvm::x64 {
 extern bool compile_llvm(llvm::LLVMContext &ctx,
                          llvm::Module      &mod,
                          const char        *out_path);
-}
+
+
+extern bool compile_llvm(llvm::LLVMContext    &ctx,
+                         llvm::Module         &mod,
+                         std::vector<uint8_t> &out_path);
+} // namespace tpde_llvm::x64

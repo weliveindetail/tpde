@@ -1,59 +1,128 @@
 // SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
 //
 // SPDX-License-Identifier: LicenseRef-Proprietary
+#include <llvm/AsmParser/Parser.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/SourceMgr.h>
 
 #include "x64/LLVMCompilerX64.hpp"
 
 #include <format>
 #include <iostream>
 #include <memory>
+#include <stdio.h>
+
+#define ARGS_NOEXCEPT
+#include <args/args.hxx>
 
 int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        return 1;
+    args::ArgumentParser parser("TPDE for LLVM");
+    args::HelpFlag       help(parser, "help", "Display help", {'h', "help"});
+
+    args::Flag print_ir(parser, "print_ir", "Print LLVM-IR", {"print-ir"});
+
+    args::Flag input_is_bitcode(
+        parser, "bitcode", "Is the input LLVM-Bitcode?", {"bitcode"});
+
+    args::ValueFlag<std::string> obj_out_path(
+        parser,
+        "obj_path",
+        "Path where the output object file should be written",
+        {'o', "obj-out"},
+        args::Options::None);
+
+    args::Positional<std::string> ir_path(
+        parser, "ir_path", "Path to the input IR file");
+
+    parser.ParseCLI(argc, argv);
+    if (parser.GetError() == args::Error::Help) {
+        std::cout << parser;
+        return 0;
     }
 
-    const char *bitcode_path = argv[1];
-    const char *output_path  = argv[2];
-    bool        print_ir     = false;
-    if (const char *env_p = std::getenv("TPDE_LLVM_PRINT_IR");
-        env_p && strcmp(env_p, "true") == 0) {
-        print_ir = true;
-    }
-
-    auto bitcode = llvm::MemoryBuffer::getFile(bitcode_path);
-    if (!bitcode) {
-        std::cerr << std::format("Failed to read bitcode file: '{}'\n",
-                                 bitcode.getError().message());
+    if (parser.GetError() != args::Error::None) {
+        std::cerr << "Error parsing arguments: " << parser.GetErrorMsg()
+                  << '\n';
         return 1;
     }
 
     std::unique_ptr<llvm::MemoryBuffer> bitcode_buf;
-    bitcode_buf.swap(bitcode.get());
+    if (ir_path) {
+        auto bitcode = llvm::MemoryBuffer::getFile(ir_path.Get());
+        if (!bitcode) {
+            std::cerr << std::format("Failed to read bitcode file: '{}'\n",
+                                     bitcode.getError().message());
+            return 1;
+        }
 
-    auto context = std::make_unique<llvm::LLVMContext>();
+        bitcode_buf.swap(bitcode.get());
+    } else {
+        auto bitcode = llvm::MemoryBuffer::getSTDIN();
+        if (!bitcode) {
+            std::cerr << std::format("Failed to read bitcode file: '{}'\n",
+                                     bitcode.getError().message());
+            return 1;
+        }
 
-    auto mod_res = llvm::parseBitcodeFile(*bitcode_buf, *context);
-    if (auto E = mod_res.takeError()) {
-        std::cerr << std::format("Failed to parse bitcode: '{}'\n",
-                                 llvm::toString(std::move(E)));
-        return 1;
+        bitcode_buf.swap(bitcode.get());
     }
 
-    std::unique_ptr<llvm::Module> mod;
-    mod.swap(*mod_res);
+    auto context = std::make_unique<llvm::LLVMContext>();
+    auto mod     = std::unique_ptr<llvm::Module>();
+
+    if (input_is_bitcode) {
+        if (auto E =
+                llvm::parseBitcodeFile(*bitcode_buf, *context).moveInto(mod)) {
+            std::cerr << std::format("Failed to parse bitcode: '{}'\n",
+                                     llvm::toString(std::move(E)));
+            return 1;
+        }
+    } else {
+        auto diag = llvm::SMDiagnostic{};
+        mod       = llvm::parseAssembly(*bitcode_buf, diag, *context);
+        if (!mod) {
+            std::string              buf;
+            llvm::raw_string_ostream os{buf};
+
+            diag.print(nullptr, os);
+            std::cerr << "Failed to parse IR:\n";
+            std::cerr << buf << '\n';
+            return 1;
+        }
+
+        {
+            std::string              buf;
+            llvm::raw_string_ostream os{buf};
+            if (llvm::verifyModule(*mod, &os)) {
+                std::cerr << "Invalid LLVM module supplied:\n" << buf << '\n';
+                return 1;
+            }
+        }
+    }
 
     if (print_ir) {
         mod->print(llvm::outs(), nullptr);
     }
 
-    if (!tpde_llvm::x64::compile_llvm(*context, *mod, output_path)) {
-        std::cerr << std::format("Failed to compile\n");
-        return 1;
+    if (obj_out_path) {
+        if (!tpde_llvm::x64::compile_llvm(
+                *context, *mod, obj_out_path.Get().c_str())) {
+            std::cerr << std::format("Failed to compile\n");
+            return 1;
+        }
+    } else {
+        std::vector<uint8_t> out_buf;
+        if (!tpde_llvm::x64::compile_llvm(*context, *mod, out_buf)) {
+            std::cerr << std::format("Failed to compile\n");
+            return 1;
+        }
+
+        // very hacky
+        fwrite(out_buf.data(), 1, out_buf.size(), stdout);
     }
 
     if (print_ir) {

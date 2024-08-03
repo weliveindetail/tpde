@@ -13,8 +13,6 @@
 #include "base.hpp"
 #include "tpde/util/SmallVector.hpp"
 
-using namespace tpde;
-
 namespace tpde_llvm {
 
 #pragma GCC diagnostic push
@@ -83,25 +81,25 @@ struct LLVMAdaptor {
         BlockAux          aux;
     };
 
-    util::SmallVector<ValInfo, 128>             values;
-    tsl::hopscotch_map<llvm::Value *, u32>      value_lookup;
-    tsl::hopscotch_map<llvm::BasicBlock *, u32> block_lookup;
-    util::SmallVector<LLVMBasicValType, 32>     complex_part_types;
+    tpde::util::SmallVector<ValInfo, 128>         values;
+    tsl::hopscotch_map<llvm::Value *, u32>        value_lookup;
+    tsl::hopscotch_map<llvm::BasicBlock *, u32>   block_lookup;
+    tpde::util::SmallVector<LLVMBasicValType, 32> complex_part_types;
 
     // helpers for faster lookup
-    util::SmallVector<u32, 16> funcs_as_operands;
-    util::SmallVector<u32, 8>  func_arg_indices;
-    util::SmallVector<u32, 16> initial_stack_slot_indices;
+    tpde::util::SmallVector<u32, 16> funcs_as_operands;
+    tpde::util::SmallVector<u32, 8>  func_arg_indices;
+    tpde::util::SmallVector<u32, 16> initial_stack_slot_indices;
 
     llvm::Function *cur_func                          = nullptr;
     bool            globals_init                      = false;
     u32             global_idx_end                    = 0;
     u32             global_complex_part_types_end_idx = 0;
 
-    util::SmallVector<llvm::Constant *, 32>     block_constants;
-    util::SmallVector<BlockInfo, 128>           blocks;
-    util::SmallVector<u32, 256>                 block_succ_indices;
-    util::SmallVector<std::pair<u32, u32>, 128> block_succ_ranges;
+    tpde::util::SmallVector<llvm::Constant *, 32>     block_constants;
+    tpde::util::SmallVector<BlockInfo, 128>           blocks;
+    tpde::util::SmallVector<u32, 256>                 block_succ_indices;
+    tpde::util::SmallVector<std::pair<u32, u32>, 128> block_succ_ranges;
 
     LLVMAdaptor(llvm::LLVMContext &ctx, llvm::Module &mod)
         : context(ctx), mod(mod) {}
@@ -925,7 +923,7 @@ struct LLVMAdaptor {
 
             if (split_indices_size != 0) {
                 auto replaced_it = false;
-                auto idx_vec     = util::SmallVector<llvm::Value *, 8>{};
+                auto idx_vec     = tpde::util::SmallVector<llvm::Value *, 8>{};
 
                 auto  begin     = gep->idx_begin();
                 auto *ty        = gep->getSourceElementType();
