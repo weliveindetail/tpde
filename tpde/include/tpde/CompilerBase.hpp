@@ -970,7 +970,7 @@ void CompilerBase<Adaptor, Derived, Config>::set_value(ValuePartRef &val_ref,
         assert(register_file.reg_local_idx(cur_reg) == val_ref.local_idx());
 
         if (cur_reg.id() != reg.id()) {
-            derived()->mov(cur_reg, reg);
+            derived()->mov(cur_reg, reg, ap.part_size());
         }
 
         ap.set_register_valid(true);
@@ -1035,7 +1035,8 @@ void CompilerBase<Adaptor, Derived, Config>::salvage_reg_for_values(
         // source has not since this might cause non-callee-saved regs
         // to become fixed which would cause issues for calls
         const AsmReg to_reg = AsmReg{ap_to.full_reg_id()};
-        derived()->mov(to_reg, from_reg);
+        assert(ap_from.part_size() >= ap_to.part_size());
+        derived()->mov(to_reg, from_reg, ap_to.part_size());
     } else {
         assert(!register_file.is_fixed(from_reg));
         ap_from.set_register_valid(false);
@@ -1286,7 +1287,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
 
             auto phi_ap = phi_ref.assignment();
             if (phi_ap.fixed_assignment()) {
-                derived()->mov(AsmReg{phi_ap.full_reg_id()}, reg);
+                derived()->mov(
+                    AsmReg{phi_ap.full_reg_id()}, reg, phi_ap.part_size());
             } else {
                 derived()->spill_reg(
                     reg, phi_ap.frame_off(), phi_ap.part_size());
@@ -1380,7 +1382,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
             auto ap      = phi_ref.assignment();
             assert(!tmp_reg1.cur_reg.invalid());
             if (ap.fixed_assignment()) {
-                derived()->mov(AsmReg{ap.full_reg_id()}, tmp_reg1.cur_reg);
+                derived()->mov(
+                    AsmReg{ap.full_reg_id()}, tmp_reg1.cur_reg, ap.part_size());
             } else {
                 derived()->spill_reg(
                     tmp_reg1.cur_reg, ap.frame_off(), ap.part_size());

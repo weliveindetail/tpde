@@ -443,7 +443,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, PlatformConfig> {
     void load_address_of_var_reference(AsmReg            dst,
                                        AssignmentPartRef ap) noexcept;
 
-    void mov(AsmReg dst, AsmReg src, bool only_32 = false) noexcept;
+    void mov(AsmReg dst, AsmReg src, u32 size) noexcept;
 
     AsmReg select_fixed_assignment_reg(u32 bank, IRValueRef) noexcept;
 
@@ -1216,19 +1216,68 @@ template <IRAdaptor Adaptor,
           typename BaseTy>
 void CompilerX64<Adaptor, Derived, BaseTy>::mov(const AsmReg dst,
                                                 const AsmReg src,
-                                                const bool   only_32) noexcept {
+                                                const u32    size) noexcept {
     if (dst.id() <= AsmReg::R15 && src.id() <= AsmReg::R15) {
-        if (!only_32) {
+        if (size > 4) {
             ASM(MOV64rr, dst, src);
         } else {
             ASM(MOV32rr, dst, src);
         }
     } else if (dst.id() >= AsmReg::XMM0 && src.id() >= AsmReg::XMM0) {
-        // TODO(ts): I think this function needs a size argument
-        ASM(SSE_MOVUPDrr, dst, src);
+        if (size <= 16) {
+            if (dst.id() > AsmReg::XMM15 || src.id() > AsmReg::XMM15) {
+                assert(has_cpu_feats(CPU_AVX512F));
+                ASM(VMOVUPD128rr, dst, src);
+            } else {
+                ASM(SSE_MOVUPDrr, dst, src);
+            }
+        } else if (size <= 32) {
+            assert(has_cpu_feats(CPU_AVX));
+            assert((dst.id() <= AsmReg::XMM15 && src.id() <= AsmReg::XMM15)
+                   || has_cpu_feats(CPU_AVX512F));
+            ASM(VMOVUPD256rr, dst, src);
+        } else {
+            assert(size <= 64);
+            assert(has_cpu_feats(CPU_AVX512F));
+            ASM(VMOVUPD512rr, dst, src);
+        }
+    } else if (dst.id() <= AsmReg::R15) {
+        // gp<-xmm
+        assert(src.id() >= AsmReg::XMM0);
+        assert(size <= 8);
+        if (src.id() > AsmReg::XMM15) {
+            assert(has_cpu_feats(CPU_AVX512F));
+            if (size <= 4) {
+                ASM(VMOVD_X2Grr, dst, src);
+            } else {
+                ASM(VMOVQ_X2Grr, dst, src);
+            }
+        } else {
+            if (size <= 4) {
+                ASM(SSE_MOVD_X2Grr, dst, src);
+            } else {
+                ASM(SSE_MOVQ_X2Grr, dst, src);
+            }
+        }
     } else {
-        assert(0);
-        exit(1);
+        // xmm<-gp
+        assert(src.id() <= AsmReg::R15);
+        assert(dst.id() >= AsmReg::XMM0);
+        assert(size <= 8);
+        if (dst.id() > AsmReg::XMM15) {
+            assert(has_cpu_feats(CPU_AVX512F));
+            if (size <= 4) {
+                ASM(VMOVD_G2Xrr, dst, src);
+            } else {
+                ASM(VMOVQ_G2Xrr, dst, src);
+            }
+        } else {
+            if (size <= 4) {
+                ASM(SSE_MOVD_G2Xrr, dst, src);
+            } else {
+                ASM(SSE_MOVQ_G2Xrr, dst, src);
+            }
+        }
     }
 }
 

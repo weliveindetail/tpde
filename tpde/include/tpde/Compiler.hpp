@@ -39,8 +39,12 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
                                         ARG(typename T::AssignmentPartRef))
     };
 
-    // (dst_reg, src_reg)
-    { a.mov(ARG(typename Config::AsmReg), ARG(typename Config::AsmReg)) };
+    // (dst_reg, src_reg, size)
+    {
+        a.mov(ARG(typename Config::AsmReg),
+              ARG(typename Config::AsmReg),
+              ARG(u32))
+    };
 
     {
         a.select_fixed_assignment_reg(ARG(u32), ARG(typename T::IRValueRef))

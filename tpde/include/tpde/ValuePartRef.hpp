@@ -255,7 +255,8 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     }
 
     if (ap.register_valid()) {
-        state.v.compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()});
+        state.v.compiler->derived()->mov(
+            reg, AsmReg{ap.full_reg_id()}, ap.part_size());
     } else {
         if (ap.variable_ref()) {
             state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
@@ -290,7 +291,8 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
             return reg;
         }
 
-        state.v.compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()});
+        state.v.compiler->derived()->mov(
+            reg, AsmReg{ap.full_reg_id()}, ap.part_size());
     } else {
         assert(!ap.fixed_assignment());
         if (ap.variable_ref()) {

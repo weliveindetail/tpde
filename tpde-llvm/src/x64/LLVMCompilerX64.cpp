@@ -28,7 +28,7 @@ struct LLVMCompilerX64
         return tpde::x64::CallingConv::SYSV_CC;
     }
 
-    bool arg_is_int128(IRValueRef val_idx) const noexcept {
+    bool arg_is_int128(const IRValueRef val_idx) const noexcept {
         return this->adaptor->values[val_idx].type == LLVMBasicValType::i128;
     }
 

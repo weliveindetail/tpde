@@ -11,14 +11,11 @@ define i8 @ret_i8(i8 %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    mov rax, rdi
+; X64:    mov eax, edi
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:     ...
 entry:
   ret i8 %a
 }
@@ -29,13 +26,13 @@ define signext i8 @ret_i8_sext(i8 %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    mov rax, rdi
+; X64:    mov eax, edi
 ; X64:    movsx rax, al
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
 entry:
   ret i8 %a
 }
@@ -46,13 +43,14 @@ define zeroext i8 @ret_i8_zext(i8 %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    mov rax, rdi
+; X64:    mov eax, edi
 ; X64:    movzx eax, al
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   ret i8 %a
 }
@@ -64,14 +62,11 @@ define i16 @ret_i16(i16 %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    mov rax, rdi
+; X64:    mov eax, edi
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:     ...
 entry:
   ret i16 %a
 }
@@ -82,13 +77,13 @@ define signext i16 @ret_i16_sext(i16 %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    mov rax, rdi
+; X64:    mov eax, edi
 ; X64:    movsx rax, ax
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
 entry:
   ret i16 %a
 }
@@ -99,13 +94,14 @@ define zeroext i16 @ret_i16_zext(i16 %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    mov rax, rdi
+; X64:    mov eax, edi
 ; X64:    movzx eax, ax
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   ret i16 %a
 }
@@ -117,14 +113,11 @@ define i32 @ret_i32(i32 %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    mov rax, rdi
+; X64:    mov eax, edi
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:     ...
 entry:
   ret i32 %a
 }
@@ -135,13 +128,14 @@ define signext i32 @ret_i32_sext(i32 %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    mov rax, rdi
+; X64:    mov eax, edi
 ; X64:    movsxd rax, eax
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   ret i32 %a
 }
@@ -152,14 +146,14 @@ define zeroext i32 @ret_i32_zext(i32 %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    mov rax, rdi
+; X64:    mov eax, edi
 ; X64:    mov eax, eax
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
 entry:
   ret i32 %a
 }
@@ -206,12 +200,13 @@ define zeroext i24 @ret_i24_zext(i24 %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    mov rax, rdi
+; X64:    mov eax, edi
 ; X64:    and eax, 0xffffff
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   ret i24 %a
 }
@@ -222,13 +217,13 @@ define signext i24 @ret_i24_sext(i24 %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    mov rax, rdi
+; X64:    mov eax, edi
 ; X64:    shl eax, 0x8
 ; X64:    sar eax, 0x8
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
 entry:
   ret i24 %a
 }
