@@ -369,6 +369,38 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, PlatformConfig> {
     static constexpr u32 NUM_FIXED_ASSIGNMENTS[PlatformConfig::NUM_BANKS] = {5,
                                                                              6};
 
+    enum CPU_FEATURES : u32 {
+        CPU_BASELINE   = 0, // x86-64-v1
+        CPU_CMPXCHG16B = (1 << 0),
+        CPU_POPCNT     = (1 << 1),
+        CPU_SSE3       = (1 << 2),
+        CPU_SSSE3      = (1 << 3),
+        CPU_SSE4_1     = (1 << 4),
+        CPU_SSE4_2     = (1 << 5),
+        CPU_AVX        = (1 << 6),
+        CPU_AVX2       = (1 << 7),
+        CPU_BMI1       = (1 << 8),
+        CPU_BMI2       = (1 << 9),
+        CPU_F16C       = (1 << 10),
+        CPU_FMA        = (1 << 11),
+        CPU_LZCNT      = (1 << 12),
+        CPU_MOVBE      = (1 << 13),
+        CPU_AVX512F    = (1 << 14),
+        CPU_AVX512BW   = (1 << 15),
+        CPU_AVX512CD   = (1 << 16),
+        CPU_AVX512DQ   = (1 << 17),
+        CPU_AVX512VL   = (1 << 18),
+
+        CPU_V2 = CPU_BASELINE | CPU_CMPXCHG16B | CPU_POPCNT | CPU_SSE3
+                 | CPU_SSSE3 | CPU_SSE4_1 | CPU_SSE4_2,
+        CPU_V3 = CPU_V2 | CPU_AVX | CPU_AVX2 | CPU_BMI1 | CPU_BMI2 | CPU_F16C
+                 | CPU_FMA | CPU_LZCNT | CPU_MOVBE,
+        CPU_V4 = CPU_V3 | CPU_AVX512F | CPU_AVX512BW | CPU_AVX512CD
+                 | CPU_AVX512DQ | CPU_AVX512VL,
+    };
+
+    CPU_FEATURES cpu_feats = CPU_BASELINE;
+
     // When handling function arguments, we need to prevent argument registers
     // from being handed out as fixed registers
     u64 fixed_assignment_nonallocatable_mask = 0u;
@@ -379,7 +411,9 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, PlatformConfig> {
     util::SmallVector<u32, 8> func_ret_offs           = {};
 
     // for now, always generate an object
-    explicit CompilerX64(Adaptor *adaptor) : Base{adaptor, true} {
+    explicit CompilerX64(Adaptor           *adaptor,
+                         const CPU_FEATURES cpu_features = CPU_BASELINE)
+        : Base{adaptor, true}, cpu_feats(cpu_features) {
         static_assert(std::is_base_of_v<CompilerX64, Derived>);
         static_assert(concepts::Compiler<Derived, PlatformConfig>);
     }
@@ -480,6 +514,10 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, PlatformConfig> {
                     results,
         CallingConv calling_conv,
         bool        variable_args);
+
+    bool has_cpu_feats(CPU_FEATURES feats) const noexcept {
+        return ((cpu_feats & feats) == feats);
+    }
 };
 
 template <typename Adaptor,
