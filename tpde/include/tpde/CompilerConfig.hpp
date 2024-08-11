@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <type_traits>
+
 #include "base.hpp"
 
 namespace tpde {

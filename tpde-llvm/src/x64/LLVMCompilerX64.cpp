@@ -6,14 +6,18 @@
 
 #include "LLVMAdaptor.hpp"
 #include "LLVMCompilerBase.hpp"
+#include "enc_funcs.hpp"
 #include "tpde/x64/CompilerX64.hpp"
 
 namespace tpde_llvm::x64 {
 
 struct LLVMCompilerX64
-    : tpde::x64::CompilerX64<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase> {
+    : tpde::x64::CompilerX64<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase>,
+      EncodeCompiler<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase> {
     using Base =
         tpde::x64::CompilerX64<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase>;
+    using EncCompiler =
+        EncodeCompiler<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase>;
 
     std::unique_ptr<LLVMAdaptor> adaptor;
 
@@ -256,7 +260,10 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
         break;
     }
     case f32:
-    case f64: {
+    case f64:
+    case v32:
+    case v64:
+    case v128: {
         assert(val_info.type != LLVMBasicValType::f32
                || val->getType()->isFloatTy());
         assert(val_info.type != LLVMBasicValType::f64
@@ -271,9 +278,6 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
         }
         break;
     }
-    case v32:
-    case v64:
-    case v128:
     case v256:
     case v512: {
         TPDE_LOG_ERR("Vector types not yet supported");
@@ -291,10 +295,10 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
     }
 }
 
-extern bool compile_llvm(llvm::LLVMContext &ctx,
-                         llvm::Module      &mod,
-                         const char        *out_path,
-                         bool               print_liveness) {
+extern bool compile_llvm(llvm::LLVMContext    &ctx,
+                         llvm::Module         &mod,
+                         const char           *out_path,
+                         [[maybe_unused]] bool print_liveness) {
     auto adaptor  = std::make_unique<LLVMAdaptor>(ctx, mod);
     auto compiler = std::make_unique<LLVMCompilerX64>(std::move(adaptor));
 #ifdef TPDE_TESTING
@@ -313,10 +317,10 @@ extern bool compile_llvm(llvm::LLVMContext &ctx,
     return true;
 }
 
-extern bool compile_llvm(llvm::LLVMContext &ctx,
-                         llvm::Module      &mod,
-                         std::vector<u8>   &out_buf,
-                         bool               print_liveness) {
+extern bool compile_llvm(llvm::LLVMContext    &ctx,
+                         llvm::Module         &mod,
+                         std::vector<u8>      &out_buf,
+                         [[maybe_unused]] bool print_liveness) {
     auto adaptor  = std::make_unique<LLVMAdaptor>(ctx, mod);
     auto compiler = std::make_unique<LLVMCompilerX64>(std::move(adaptor));
 

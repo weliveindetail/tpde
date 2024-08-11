@@ -17,6 +17,7 @@
         #include <cassert>
     #endif
 #else
+    #undef assert
     #define assert(x) (void)(x)
 #endif
 

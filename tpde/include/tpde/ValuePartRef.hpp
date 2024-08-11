@@ -70,6 +70,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
         other.state.c.bank           = 0;
         other.state.c.const_parts[0] = 0;
         other.state.c.const_parts[1] = 0;
+        return *this;
     }
 
     [[nodiscard]] AssignmentPartRef assignment() const noexcept {
@@ -110,6 +111,10 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     void unlock() noexcept;
 
     bool can_salvage(u32 ref_adjust = 1) const noexcept;
+
+    // only call when can_salvage returns true and a register is known to be
+    // allocated
+    AsmReg salvage() noexcept;
 
     ValLocalIdx local_idx() const noexcept {
         assert(!is_const);
@@ -358,6 +363,27 @@ bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::can_salvage(
     }
 
     return false;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::AsmReg
+    CompilerBase<Adaptor, Derived, Config>::ValuePartRef::salvage() noexcept {
+    assert(can_salvage());
+    auto ap = assignment();
+    assert(ap.register_valid());
+    auto cur_reg = AsmReg{ap.full_reg_id()};
+
+    unlock();
+    assert(ap.fixed_assignment()
+           || !state.v.compiler->register_file.is_fixed(cur_reg));
+    if (ap.fixed_assignment()) {
+        state.v.compiler->register_file.unmark_fixed(cur_reg);
+    }
+    state.v.compiler->register_file.unmark_used(cur_reg);
+
+    ap.set_register_valid(false);
+    ap.set_fixed_assignment(false);
+    return cur_reg;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

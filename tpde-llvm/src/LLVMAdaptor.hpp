@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <format>
+
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
@@ -512,9 +514,8 @@ struct LLVMAdaptor {
             // reserve a constant size and optimize for smaller functions
             value_lookup.reserve(512);
             for (auto it = mod.global_begin(); it != mod.global_end(); ++it) {
-                llvm::GlobalVariable *gv  = &*it;
-                auto                  lit = value_lookup.find(gv);
-                assert(lit == value_lookup.end());
+                llvm::GlobalVariable *gv = &*it;
+                assert(value_lookup.find(gv) == value_lookup.end());
                 value_lookup.insert_or_assign(gv, values.size());
                 const auto [ty, complex_part_idx] =
                     val_basic_type_uncached(gv, true);
@@ -527,9 +528,8 @@ struct LLVMAdaptor {
             }
 
             for (auto it = mod.alias_begin(); it != mod.alias_end(); ++it) {
-                llvm::GlobalAlias *ga  = &*it;
-                auto               lit = value_lookup.find(ga);
-                assert(lit == value_lookup.end());
+                llvm::GlobalAlias *ga = &*it;
+                assert(value_lookup.find(ga) == value_lookup.end());
                 value_lookup.insert_or_assign(ga, values.size());
                 const auto [ty, complex_part_idx] =
                     val_basic_type_uncached(ga, true);
@@ -780,10 +780,10 @@ struct LLVMAdaptor {
                 const auto *part_ty = type->getContainedType(i);
                 const auto  ty_id   = part_ty->getTypeID();
                 auto tpde_ty = llvm_ty_to_basic_ty_simple(part_ty, ty_id);
-                if (tpde_ty == LLVMBasicValType::i128) {
-                    // TODO(ts): just split into more parts?
-                    tpde_ty = LLVMBasicValType::invalid;
-                }
+                // if (tpde_ty == LLVMBasicValType::i128) {
+                //     // TODO(ts): just split into more parts?
+                //     tpde_ty = LLVMBasicValType::invalid;
+                // }
                 if (tpde_ty == LLVMBasicValType::invalid) {
                     llvm::errs() << "Full Type: " << type << "\n";
                     llvm::errs() << "Part Type: " << part_ty;
@@ -1114,10 +1114,10 @@ struct LLVMAdaptor {
                     // ty0 and ty1 being int or ptr
                     auto *ty = aggr->getType();
                     assert(aggr->getNumOperands() == 2);
-                    auto *el0 = aggr->getAggregateElement(0u);
-                    auto *el1 = aggr->getAggregateElement(1);
-                    auto *ty0 = el0->getType();
-                    auto *ty1 = el1->getType();
+                    auto                  *el0 = aggr->getAggregateElement(0u);
+                    auto                  *el1 = aggr->getAggregateElement(1);
+                    [[maybe_unused]] auto *ty0 = el0->getType();
+                    [[maybe_unused]] auto *ty1 = el1->getType();
                     assert(ty0->isIntegerTy() || ty0->isPointerTy());
                     assert(ty1->isIntegerTy() || ty1->isPointerTy());
 

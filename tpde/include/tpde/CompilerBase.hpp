@@ -298,6 +298,7 @@ struct CompilerBase {
     // u32 part) noexcept;
 
     void set_value(ValuePartRef &val_ref, AsmReg reg) noexcept;
+    void set_value(ValuePartRef &val_ref, ScratchReg &scratch) noexcept;
 
     void salvage_reg_for_values(ValuePartRef &to, ValuePartRef &from) noexcept;
 
@@ -989,6 +990,49 @@ void CompilerBase<Adaptor, Derived, Config>::set_value(ValuePartRef &val_ref,
         register_file.unmark_used(cur_reg);
     }
 
+    assert(!register_file.is_used(reg));
+
+    register_file.mark_used(reg, val_ref.local_idx(), val_ref.part());
+    register_file.mark_clobbered(reg);
+    ap.set_full_reg_id(reg.id());
+    ap.set_register_valid(true);
+    ap.set_modified(true);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::set_value(
+    ValuePartRef &val_ref, ScratchReg &scratch) noexcept {
+    auto ap = val_ref.assignment();
+    assert(!scratch.cur_reg.invalid());
+    auto reg = scratch.cur_reg;
+
+    if (ap.fixed_assignment()) {
+        auto cur_reg = AsmReg{ap.full_reg_id()};
+        assert(register_file.is_used(cur_reg));
+        assert(register_file.is_fixed(cur_reg));
+        assert(register_file.reg_local_idx(cur_reg) == val_ref.local_idx());
+
+        if (cur_reg.id() != reg.id()) {
+            derived()->mov(cur_reg, reg, ap.part_size());
+        }
+
+        ap.set_register_valid(true);
+        ap.set_modified(true);
+        return;
+    }
+
+    if (ap.register_valid()) {
+        auto cur_reg = AsmReg{ap.full_reg_id()};
+        if (cur_reg.id() == reg.id()) {
+            ap.set_modified(true);
+            return;
+        }
+        val_ref.unlock();
+        assert(!register_file.is_fixed(cur_reg));
+        register_file.unmark_used(cur_reg);
+    }
+
+    scratch.reset();
     assert(!register_file.is_used(reg));
 
     register_file.mark_used(reg, val_ref.local_idx(), val_ref.part());

@@ -139,7 +139,8 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
                                   const u64 exclusion_mask) const noexcept {
         // TODO(ts): implement preferred registers
         assert(bank <= 1);
-        const u64 free_mask = ((0xFFFF'FFFF << bank) & free) & ~exclusion_mask;
+        const u64 free_mask =
+            ((0xFFFF'FFFFull << (bank * 32)) & free) & ~exclusion_mask;
         if (free_mask == 0) {
             return Reg::make_invalid();
         }
@@ -152,7 +153,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
         // TODO(ts): implement preferred registers
         assert(bank <= 1);
         const u64 nonfixed_mask =
-            ((0xFFFF'FFFF << bank) & ((free | used) & ~fixed))
+            ((0xFFFF'FFFFull << (bank * 32)) & ((free | used) & ~fixed))
             & ~exclusion_mask;
         if (nonfixed_mask == 0) {
             return Reg::make_invalid();
@@ -165,7 +166,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
                                         const u64 exclusion_mask) noexcept {
         assert(bank <= 1);
         const u64 nonfixed_mask =
-            ((0xFFFF'FFFF << bank) & ((free | used) & ~fixed))
+            ((0xFFFF'FFFFull << (bank * 32)) & ((free | used) & ~fixed))
             & ~exclusion_mask;
         if (nonfixed_mask == 0) {
             return Reg::make_invalid();

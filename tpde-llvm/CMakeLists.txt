@@ -84,6 +84,7 @@ set(TPDE_LLVM_SOURCES
 
 set(TPDE_LLVM_X64_HEADERS
     src/x64/LLVMCompilerX64.hpp
+    src/x64/enc_funcs.hpp
 )
 
 set(TPDE_LLVM_X64_SOURCES
@@ -127,9 +128,10 @@ endif ()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(tpde_llvm PRIVATE -fsanitize=address)
     target_link_options(tpde_llvm PRIVATE -fsanitize=address)
+
+    target_compile_definitions(tpde_llvm PUBLIC TPDE_TESTING)
 endif ()
 
-target_compile_definitions(tpde_llvm PUBLIC TPDE_TESTING)
 
 # link tpde
 target_link_libraries(tpde_llvm PUBLIC tpde::tpde)
