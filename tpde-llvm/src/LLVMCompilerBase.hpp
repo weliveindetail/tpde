@@ -14,8 +14,10 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     // TODO
     using Base = tpde::CompilerBase<LLVMAdaptor, Derived, Config>;
 
-    using IRValueRef = typename Base::IRValueRef;
-    using ScratchReg = typename Base::ScratchReg;
+    using IRValueRef   = typename Base::IRValueRef;
+    using ScratchReg   = typename Base::ScratchReg;
+    using ValuePartRef = typename Base::ValuePartRef;
+    using ValLocalIdx  = typename Base::ValLocalIdx;
 
     // using AsmOperand = typename Derived::AsmOperand;
 
@@ -38,6 +40,9 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
         return false;
     }
 
+    std::optional<ValuePartRef> val_ref_special(ValLocalIdx local_idx,
+                                                u32         part) noexcept;
+
     IRValueRef llvm_val_idx(llvm::Value *) const noexcept;
     IRValueRef llvm_val_idx(llvm::Instruction *) const noexcept;
 
@@ -46,6 +51,199 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_ret(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_load(IRValueRef, llvm::Instruction *) noexcept;
 };
+
+template <typename Adaptor, typename Derived, typename Config>
+std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
+    LLVMCompilerBase<Adaptor, Derived, Config>::val_ref_special(
+        ValLocalIdx local_idx, u32 part) noexcept {
+    const auto *val = this->adaptor->values[static_cast<u32>(local_idx)].val;
+    const auto *const_val = llvm::dyn_cast<llvm::Constant>(val);
+
+    if (const_val == nullptr || llvm::isa<llvm::GlobalValue>(val)) {
+        return {};
+    }
+
+    const auto val_ref_simple =
+        [](const llvm::Constant  *const_val,
+           const LLVMBasicValType ty,
+           const u32              part) -> std::optional<ValuePartRef> {
+        if (const auto *const_int =
+                llvm::dyn_cast<llvm::ConstantInt>(const_val);
+            const_int != nullptr) {
+            switch (ty) {
+                using enum LLVMBasicValType;
+            case i1:
+            case i8:
+                return ValuePartRef(static_cast<u8>(const_int->getZExtValue()),
+                                    Config::GP_BANK,
+                                    1);
+            case i16:
+                return ValuePartRef(static_cast<u16>(const_int->getZExtValue()),
+                                    Config::GP_BANK,
+                                    2);
+            case i32:
+                return ValuePartRef(static_cast<u32>(const_int->getZExtValue()),
+                                    Config::GP_BANK,
+                                    4);
+            case i64:
+            case ptr:
+                return ValuePartRef(
+                    const_int->getZExtValue(), Config::GP_BANK, 8);
+            case i128:
+                return ValuePartRef(
+                    const_int->getValue().extractBitsAsZExtValue(64, 64 * part),
+                    Config::GP_BANK,
+                    8);
+            default: assert(0); exit(1);
+            }
+        }
+
+        if (const auto *const_ptr =
+                llvm::dyn_cast<llvm::ConstantPointerNull>(const_val);
+            const_ptr != nullptr) {
+            return ValuePartRef(0, Config::GP_BANK, 8);
+        }
+
+        if (const auto *const_fp = llvm::dyn_cast<llvm::ConstantFP>(const_val);
+            const_fp != nullptr) {
+            switch (ty) {
+                using enum LLVMBasicValType;
+            case f32:
+            case v32:
+                return ValuePartRef(
+                    static_cast<u32>(
+                        const_fp->getValue().bitcastToAPInt().getZExtValue()),
+                    Config::FP_BANK,
+                    4);
+            case f64:
+            case v64:
+                return ValuePartRef(
+                    const_fp->getValue().bitcastToAPInt().getZExtValue(),
+                    Config::FP_BANK,
+                    8);
+                // TODO(ts): support the rest
+            default: assert(0); exit(1);
+            }
+        }
+
+        if (llvm::isa<llvm::PoisonValue>(const_val)
+            || llvm::isa<llvm::UndefValue>(const_val)
+            || llvm::isa<llvm::ConstantAggregateZero>(const_val)) {
+            switch (ty) {
+                using enum LLVMBasicValType;
+            case i1:
+            case i8: return ValuePartRef(0, Config::GP_BANK, 1);
+            case i16: return ValuePartRef(0, Config::GP_BANK, 2);
+            case i32: return ValuePartRef(0, Config::GP_BANK, 4);
+            case ptr:
+            case i128:
+            case i64: return ValuePartRef(0, Config::GP_BANK, 8);
+            case f32:
+            case v32: return ValuePartRef(0, Config::FP_BANK, 4);
+            case f64:
+            case v64:
+                return ValuePartRef(0, Config::FP_BANK, 8);
+                // TODO(ts): support larger constants
+            default: assert(0); exit(1);
+            }
+        }
+
+        return {};
+    };
+
+    const auto ty = this->adaptor->values[static_cast<u32>(local_idx)].type;
+    if (auto opt = val_ref_simple(const_val, ty, part); opt) {
+        return opt;
+    }
+
+    if (ty == LLVMBasicValType::complex
+        && (llvm::isa<llvm::PoisonValue>(const_val)
+            || llvm::isa<llvm::UndefValue>(const_val)
+            || llvm::isa<llvm::ConstantAggregateZero>(const_val))) {
+        u32        size = 0, bank = 0;
+        const auto part_ty =
+            this->adaptor
+                ->complex_part_types[this->adaptor
+                                         ->values[static_cast<u32>(local_idx)]
+                                         .complex_part_tys_idx
+                                     + part];
+        switch (part_ty) {
+            using enum LLVMBasicValType;
+        case i1:
+        case i8: size = 1; break;
+        case i16: size = 2; break;
+        case i32: size = 4; break;
+        case i64:
+        case ptr:
+        case i128: size = 8; break;
+        case f32:
+        case v32:
+            size = 4;
+            bank = Config::FP_BANK;
+            break;
+        case f64:
+        case v64:
+            size = 8;
+            bank = Config::FP_BANK;
+            break;
+        // TODO(ts): support larger constants
+        default: assert(0); exit(1);
+        }
+
+        return ValuePartRef(0, bank, size);
+    }
+
+
+    if (llvm::isa<llvm::ConstantVector>(const_val)) {
+        // TODO(ts): check how to handle this
+        assert(0);
+        exit(1);
+    }
+
+    if (const auto *const_agg =
+            llvm::dyn_cast<llvm::ConstantAggregate>(const_val);
+        const_agg != nullptr) {
+        assert(this->adaptor->values[static_cast<u32>(local_idx)].type
+               == LLVMBasicValType::complex);
+        auto complex_part_idx =
+            this->adaptor->values[static_cast<u32>(local_idx)]
+                .complex_part_tys_idx;
+        u32       cur_val_part = 0;
+        const u32 num_ops      = const_agg->getNumOperands();
+        for (; complex_part_idx < num_ops; ++complex_part_idx) {
+            if (cur_val_part == part) {
+                const auto part_ty =
+                    this->adaptor->complex_part_types[complex_part_idx];
+                auto opt = val_ref_simple(
+                    const_agg->getOperand(complex_part_idx), part_ty, 0);
+                assert(opt);
+                return opt;
+            }
+
+            if (this->adaptor->complex_part_types[complex_part_idx]
+                == LLVMBasicValType::i128) {
+                ++cur_val_part;
+
+                if (cur_val_part == part) {
+                    auto opt =
+                        val_ref_simple(const_agg->getOperand(complex_part_idx),
+                                       LLVMBasicValType::i128,
+                                       1);
+                    assert(opt);
+                    return opt;
+                }
+            }
+            ++cur_val_part;
+        }
+
+        assert(0);
+        exit(1);
+    }
+
+    TPDE_LOG_ERR("Encountered unknown constant type");
+    assert(0);
+    exit(1);
+}
 
 template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef

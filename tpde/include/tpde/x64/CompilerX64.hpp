@@ -327,6 +327,7 @@ struct PlatformConfig : CompilerConfigDefault {
     using AsmReg    = tpde::x64::AsmReg;
 
     static constexpr u8   GP_BANK                 = 0;
+    static constexpr u8   FP_BANK                 = 1;
     static constexpr bool FRAME_INDEXING_NEGATIVE = true;
     static constexpr u32  PLATFORM_POINTER_SIZE   = 8;
     static constexpr u32  NUM_BANKS               = 2;
@@ -444,6 +445,9 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, PlatformConfig> {
                                        AssignmentPartRef ap) noexcept;
 
     void mov(AsmReg dst, AsmReg src, u32 size) noexcept;
+
+    void materialize_constant(ValuePartRef &val_ref, AsmReg dst) noexcept;
+    void materialize_constant(ValuePartRef &val_ref, ScratchReg &dst) noexcept;
 
     AsmReg select_fixed_assignment_reg(u32 bank, IRValueRef) noexcept;
 
@@ -1279,6 +1283,70 @@ void CompilerX64<Adaptor, Derived, BaseTy>::mov(const AsmReg dst,
             }
         }
     }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
+    ValuePartRef &val_ref, AsmReg dst) noexcept {
+    assert(val_ref.is_const);
+    const auto &data = val_ref.state.c;
+    if (data.bank == 0) {
+        assert(data.size <= 8);
+        if (data.const_u64 == 0) {
+            ASM(XOR32rr, dst, dst);
+            return;
+        }
+
+        if (data.size <= 4) {
+            ASM(MOV32ri, dst, data.const_u64);
+        } else {
+            ASM(MOV64ri, dst, data.const_u64);
+        }
+        return;
+    }
+
+    assert(data.bank == 1);
+    if (data.size == 4) {
+        ScratchReg tmp{derived()};
+        auto       tmp_reg = tmp.alloc_from_bank(0);
+        ASM(MOV32ri, tmp_reg, data.const_u64);
+        if (has_cpu_feats(CPU_AVX)) {
+            ASM(VMOVD_G2Xrr, dst, tmp_reg);
+        } else {
+            // TODO(ts): change to MOVD once the encoding is fixed
+            ASM(SSE_MOVQ_G2Xrr, dst, tmp_reg);
+        }
+        return;
+    }
+
+    if (data.size == 8) {
+        ScratchReg tmp{derived()};
+        auto       tmp_reg = tmp.alloc_from_bank(0);
+        ASM(MOV64ri, tmp_reg, data.const_u64);
+        if (has_cpu_feats(CPU_AVX)) {
+            ASM(VMOVQ_G2Xrr, dst, tmp_reg);
+        } else {
+            ASM(SSE_MOVQ_G2Xrr, dst, tmp_reg);
+        }
+        return;
+    }
+
+    // TODO(ts): have some facility to use a constant pool
+    assert(0);
+    exit(1);
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
+    ValuePartRef &val_ref, ScratchReg &dst) noexcept {
+    assert(val_ref.is_const);
+    materialize_constant(val_ref, dst.alloc_from_bank(val_ref.state.c.bank));
 }
 
 template <IRAdaptor Adaptor,

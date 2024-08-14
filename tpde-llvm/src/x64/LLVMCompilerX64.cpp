@@ -42,13 +42,6 @@ struct LLVMCompilerX64
 
     u8 val_part_bank(IRValueRef, u32) const noexcept;
 
-    std::optional<ValuePartRef> val_ref_special(ValLocalIdx local_idx,
-                                                u32         part) noexcept {
-        (void)local_idx;
-        (void)part;
-        return {};
-    }
-
     void define_func_idx(IRFuncRef func, const u32 idx) noexcept {
         (void)func;
         (void)idx;
@@ -178,14 +171,18 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
     case i64:
     case ptr: {
         assert(val->getType()->isIntegerTy());
-        auto val_ref = this->val_ref(val_idx, 0);
-
+        auto       val_ref    = this->val_ref(val_idx, 0);
         const auto call_conv  = this->cur_calling_convention();
         const auto target_reg = call_conv.ret_regs_gp()[0];
-        if (val_ref.assignment().fixed_assignment()) {
-            val_ref.reload_into_specific(call_conv.ret_regs_gp()[0]);
+
+        if (val_ref.is_const) {
+            this->materialize_constant(val_ref, target_reg);
         } else {
-            val_ref.move_into_specific(call_conv.ret_regs_gp()[0]);
+            if (val_ref.assignment().fixed_assignment()) {
+                val_ref.reload_into_specific(target_reg);
+            } else {
+                val_ref.move_into_specific(target_reg);
+            }
         }
 
         if (val_info.type == LLVMBasicValType::ptr) {
@@ -193,7 +190,7 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
         }
 
         auto *fn = this->adaptor->cur_func;
-        if (fn->hasRetAttribute(llvm::Attribute::ZExt)) {
+        if (!val_ref.is_const && fn->hasRetAttribute(llvm::Attribute::ZExt)) {
             const auto bit_width = val->getType()->getIntegerBitWidth();
             // TODO(ts): add zext/sext to ValuePartRef
             // reload/move_into_specific?
@@ -246,6 +243,14 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
         auto val_ref_high = this->val_ref(val_idx, 1);
 
         const auto call_conv = this->cur_calling_convention();
+        if (val_ref.is_const) {
+            assert(val_ref_high.is_const);
+            this->materialize_constant(val_ref, call_conv.ret_regs_gp()[0]);
+            this->materialize_constant(val_ref_high,
+                                       call_conv.ret_regs_gp()[1]);
+            break;
+        }
+
         if (val_ref.assignment().fixed_assignment()) {
             val_ref.reload_into_specific(call_conv.ret_regs_gp()[0]);
         } else {
@@ -271,6 +276,11 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
         auto val_ref = this->val_ref(val_idx, 0);
 
         const auto call_conv = this->cur_calling_convention();
+        if (val_ref.is_const) {
+            this->materialize_constant(val_ref, call_conv.ret_regs_vec()[0]);
+            break;
+        }
+
         if (val_ref.assignment().fixed_assignment()) {
             val_ref.reload_into_specific(call_conv.ret_regs_vec()[0]);
         } else {

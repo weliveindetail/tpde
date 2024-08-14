@@ -72,7 +72,14 @@ struct CompilerBase {
     // for arbitrarily many parts since that comes with a 1-3% cost in
     // compile-time
     struct ValueAssignment {
-        u32 frame_off;
+        union {
+            u32 frame_off;
+            /// For variable-references, frame_off is unused so it can be used
+            /// to store an index into a custom structure in case there is
+            /// special handling for variable references
+            u32 var_ref_custom_idx;
+        };
+
         u32 size;
 
         // we want tight packing and with this construct we get a base size of

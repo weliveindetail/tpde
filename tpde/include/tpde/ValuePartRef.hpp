@@ -8,7 +8,14 @@ namespace tpde {
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     struct ConstantData {
-        u64 const_parts[2];
+        // TODO(ts): limit this to a maximum of 64 bits of inline constant data
+        // and otherwise use a constant array in the compiler and just store an
+        // index here?
+        union {
+            u64 const_u64;
+            u8  const_data[64];
+        };
+
         u32 bank;
         u32 size;
     };
@@ -33,7 +40,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
             ConstantData{0, 0, 0}
     }, is_const(true) {}
 
-    ValuePartRef(CompilerBase *compiler, ValLocalIdx local_idx, u32 part)
+    ValuePartRef(CompilerBase *compiler, ValLocalIdx local_idx, u32 part) noexcept
         : state {
         .v = ValueData {
             .local_idx = local_idx,
@@ -44,15 +51,22 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
         }
     }, is_const(false) {}
 
+    ValuePartRef(u64 const_u64, u32 bank, u32 size) noexcept : state { .c = ConstantData { .const_u64 = const_u64, .bank = bank, .size = size } }, is_const(true) {
+        assert(size <= 8);
+        assert(bank < Config::NUM_BANKS);
+    }
+
     explicit ValuePartRef(const ValuePartRef &) = delete;
 
     ValuePartRef(ValuePartRef &&other) noexcept {
-        this->state                  = other.state;
-        this->is_const               = other.is_const;
-        other.is_const               = true;
-        other.state.c.bank           = 0;
-        other.state.c.const_parts[0] = 0;
-        other.state.c.const_parts[1] = 0;
+        this->state        = other.state;
+        this->is_const     = other.is_const;
+        other.is_const     = true;
+        other.state.c.bank = 0;
+#ifdef TPDE_ASSERTS
+        std::memset(
+            other.state.c.const_data, 0, sizeof(other.state.c.const_data));
+#endif
     }
 
     ~ValuePartRef() noexcept { reset(); }
@@ -64,12 +78,14 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
             return *this;
         }
         reset();
-        this->state                  = other.state;
-        this->is_const               = other.is_const;
-        other.is_const               = true;
-        other.state.c.bank           = 0;
-        other.state.c.const_parts[0] = 0;
-        other.state.c.const_parts[1] = 0;
+        this->state        = other.state;
+        this->is_const     = other.is_const;
+        other.is_const     = true;
+        other.state.c.bank = 0;
+#ifdef TPDE_ASSERTS
+        std::memset(
+            other.state.c.const_data, 0, sizeof(other.state.c.const_data));
+#endif
         return *this;
     }
 
@@ -399,19 +415,13 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
     if (state.v.assignment->references_left == 0) {
         assert(assignment().variable_ref());
         is_const = true;
-        state.c  = ConstantData{
-             {0, 0},
-             0
-        };
+        state.c  = ConstantData{.const_u64 = 0, .bank = 0, .size = 0};
         return;
     }
 
     if (--state.v.assignment->references_left != 0) {
         is_const = true;
-        state.c  = ConstantData{
-             {0, 0},
-             0
-        };
+        state.c  = ConstantData{.const_u64 = 0, .bank = 0, .size = 0};
         return;
     }
 
@@ -430,10 +440,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
     }
 
     is_const = true;
-    state.c  = ConstantData{
-         {0, 0},
-         0
-    };
+    state.c  = ConstantData{.const_u64 = 0, .bank = 0, .size = 0};
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -448,9 +455,6 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
     }
 
     is_const = true;
-    state.c  = ConstantData{
-         {0, 0},
-         0
-    };
+    state.c  = ConstantData{.const_u64 = 0, .bank = 0, .size = 0};
 }
 } // namespace tpde
