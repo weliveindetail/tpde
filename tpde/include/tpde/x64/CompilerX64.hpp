@@ -1316,8 +1316,7 @@ void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
         if (has_cpu_feats(CPU_AVX)) {
             ASM(VMOVD_G2Xrr, dst, tmp_reg);
         } else {
-            // TODO(ts): change to MOVD once the encoding is fixed
-            ASM(SSE_MOVQ_G2Xrr, dst, tmp_reg);
+            ASM(SSE_MOVD_G2Xrr, dst, tmp_reg);
         }
         return;
     }

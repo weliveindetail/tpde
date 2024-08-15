@@ -601,10 +601,11 @@ define float @ret_f32_const() {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x0
 ; X64:    mov eax, 0x3f800000
-; X64:    movq xmm0, rax
+; X64:    movd xmm0, eax
 ; X64:    add rsp, 0x0
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   ret float 1.0
 }
