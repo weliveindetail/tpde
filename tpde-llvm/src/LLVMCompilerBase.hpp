@@ -43,13 +43,14 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     std::optional<ValuePartRef> val_ref_special(ValLocalIdx local_idx,
                                                 u32         part) noexcept;
 
-    IRValueRef llvm_val_idx(llvm::Value *) const noexcept;
-    IRValueRef llvm_val_idx(llvm::Instruction *) const noexcept;
+    IRValueRef llvm_val_idx(const llvm::Value *) const noexcept;
+    IRValueRef llvm_val_idx(const llvm::Instruction *) const noexcept;
 
     bool compile_inst(IRValueRef) noexcept;
 
     bool compile_ret(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_load(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_store(IRValueRef, llvm::Instruction *) noexcept;
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -248,14 +249,14 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
 template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef
     LLVMCompilerBase<Adaptor, Derived, Config>::llvm_val_idx(
-        llvm::Value *val) const noexcept {
+        const llvm::Value *val) const noexcept {
     return this->adaptor->val_lookup_idx(val);
 }
 
 template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef
     LLVMCompilerBase<Adaptor, Derived, Config>::llvm_val_idx(
-        llvm::Instruction *inst) const noexcept {
+        const llvm::Instruction *inst) const noexcept {
     return this->adaptor->inst_lookup_idx(inst);
 }
 
@@ -269,6 +270,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     switch (opcode) {
     case llvm::Instruction::Ret: return compile_ret(val_idx, i);
     case llvm::Instruction::Load: return compile_load(val_idx, i);
+    case llvm::Instruction::Store: return compile_store(val_idx, i);
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
                      opcode,
@@ -296,18 +298,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ret(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
-    IRValueRef, llvm::Instruction *inst) noexcept {
+    const IRValueRef load_idx, llvm::Instruction *inst) noexcept {
     assert(llvm::isa<llvm::LoadInst>(inst));
     auto *load = llvm::cast<llvm::LoadInst>(inst);
     assert(!load->isAtomic());
 
-    auto       ptr_ref  = this->val_ref(llvm_val_idx(load->getOperand(0)), 0);
-    const auto load_idx = llvm_val_idx(load);
+    auto ptr_ref = this->val_ref(llvm_val_idx(load->getPointerOperand()), 0);
 
     auto res = this->result_ref_lazy(load_idx, 0);
 
     ScratchReg res_scratch{this};
-    switch (this->adaptor->values[llvm_val_idx(load)].type) {
+    switch (this->adaptor->values[load_idx].type) {
         using enum LLVMBasicValType;
     case i1:
     case i8:
@@ -407,11 +408,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
             case i16:
             case i32:
             case i64: {
-                assert(
-                    load->getType()->getContainedType(part_idx)->isIntegerTy());
-                const auto bit_width = load->getType()
-                                           ->getContainedType(part_idx)
-                                           ->getIntegerBitWidth();
+                assert(load_ty->getContainedType(part_idx)->isIntegerTy());
+                const auto bit_width =
+                    load_ty->getContainedType(part_idx)->getIntegerBitWidth();
                 switch (bit_width) {
                 case 1:
                 case 8: derived()->encode_load8(part_addr, res_scratch); break;
@@ -484,6 +483,182 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     }
 
     this->set_value(res, res_scratch);
+
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
+    const IRValueRef, llvm::Instruction *inst) noexcept {
+    assert(llvm::isa<llvm::StoreInst>(inst));
+    auto *store = llvm::cast<llvm::StoreInst>(inst);
+    assert(!store->isAtomic());
+
+    auto ptr_ref = this->val_ref(llvm_val_idx(store->getPointerOperand()), 0);
+
+    const auto *op_val = store->getValueOperand();
+    const auto  op_idx = llvm_val_idx(op_val);
+    auto        op_ref = this->val_ref(op_idx, 0);
+
+
+    switch (this->adaptor->values[op_idx].type) {
+        using enum LLVMBasicValType;
+    case i1:
+    case i8:
+    case i16:
+    case i32:
+    case i64: {
+        assert(op_val->getType()->isIntegerTy());
+        const auto bit_width = op_val->getType()->getIntegerBitWidth();
+        switch (bit_width) {
+        case 1:
+        case 8:
+            derived()->encode_store8(std::move(ptr_ref), std::move(op_ref));
+            break;
+        case 16:
+            derived()->encode_store16(std::move(ptr_ref), std::move(op_ref));
+            break;
+        case 24:
+            derived()->encode_store24(std::move(ptr_ref), std::move(op_ref));
+            break;
+        case 32:
+            derived()->encode_store32(std::move(ptr_ref), std::move(op_ref));
+            break;
+        case 40:
+            derived()->encode_store40(std::move(ptr_ref), std::move(op_ref));
+            break;
+        case 48:
+            derived()->encode_store48(std::move(ptr_ref), std::move(op_ref));
+            break;
+        case 56:
+            derived()->encode_store56(std::move(ptr_ref), std::move(op_ref));
+            break;
+        case 64:
+            derived()->encode_store64(std::move(ptr_ref), std::move(op_ref));
+            break;
+        default: assert(0); return false;
+        }
+        break;
+    }
+    case ptr:
+        derived()->encode_store64(std::move(ptr_ref), std::move(op_ref));
+        break;
+    case i128: {
+        op_ref.inc_ref_count();
+        auto op_ref_high = this->val_ref(op_idx, 1);
+
+        derived()->encode_store128(
+            std::move(ptr_ref), std::move(op_ref), std::move(op_ref_high));
+        break;
+    }
+    case v32:
+    case f32:
+        derived()->encode_storef32(std::move(ptr_ref), std::move(op_ref));
+        break;
+    case v64:
+    case f64:
+        derived()->encode_storef64(std::move(ptr_ref), std::move(op_ref));
+        break;
+    case v128:
+        derived()->encode_storev128(std::move(ptr_ref), std::move(op_ref));
+        break;
+    case v256:
+        if (!derived()->encode_storev256(std::move(ptr_ref),
+                                         std::move(op_ref))) {
+            return false;
+        }
+        break;
+    case v512:
+        if (!derived()->encode_storev512(std::move(ptr_ref),
+                                         std::move(op_ref))) {
+            return false;
+        }
+        break;
+    case complex: {
+        op_ref.reset_without_refcount();
+
+        // TODO: suffering, postponed, think about hwo to represent
+        // parts that need multiple parts in complex types
+        auto *store_ty = op_val->getType();
+        assert(store_ty->isAggregateType());
+        const auto *ty_sl = this->adaptor->mod.getDataLayout().getStructLayout(
+            llvm::cast<llvm::StructType>(store_ty));
+
+        const auto part_count = store_ty->getNumContainedTypes();
+        const auto ty_idx = this->adaptor->values[op_idx].complex_part_tys_idx;
+        u32        res_part_idx = 0;
+
+        ScratchReg ptr_scratch{derived()};
+        auto       ptr_reg = this->val_as_reg(ptr_ref, ptr_scratch);
+        for (u32 part_idx = 0; part_idx < part_count;
+             ++part_idx, ++res_part_idx) {
+            const auto part_ty =
+                this->adaptor->complex_part_types[ty_idx + part_idx];
+
+            auto part_addr = typename Derived::AsmOperand::Address{
+                ptr_reg,
+                static_cast<tpde::i32>(
+                    ty_sl->getElementOffset(part_idx).getFixedValue())};
+
+            auto part_ref = this->val_ref(op_idx, res_part_idx);
+            switch (part_ty) {
+            case i1:
+            case i8:
+            case i16:
+            case i32:
+            case i64: {
+                assert(store_ty->getContainedType(part_idx)->isIntegerTy());
+                const auto bit_width =
+                    store_ty->getContainedType(part_idx)->getIntegerBitWidth();
+                switch (bit_width) {
+                case 1:
+                case 8: derived()->encode_store8(part_addr, part_ref); break;
+                case 16: derived()->encode_store16(part_addr, part_ref); break;
+                case 24: derived()->encode_store24(part_addr, part_ref); break;
+                case 32: derived()->encode_store32(part_addr, part_ref); break;
+                case 40: derived()->encode_store40(part_addr, part_ref); break;
+                case 48: derived()->encode_store48(part_addr, part_ref); break;
+                case 56: derived()->encode_store56(part_addr, part_ref); break;
+                case 64: derived()->encode_store64(part_addr, part_ref); break;
+                default: assert(0); return false;
+                }
+                break;
+            }
+            case ptr: derived()->encode_store64(part_addr, part_ref); break;
+            case i128: {
+                auto part_ref_high = this->val_ref(op_idx, ++res_part_idx);
+                derived()->encode_store128(part_addr, part_ref, part_ref_high);
+
+                part_ref_high.reset_without_refcount();
+                break;
+            }
+            case v32:
+            case f32: derived()->encode_storef32(part_addr, part_ref); break;
+            case v64:
+            case f64: derived()->encode_storef64(part_addr, part_ref); break;
+            case v128: derived()->encode_storev128(part_addr, part_ref); break;
+            case v256:
+                if (!derived()->encode_storev256(part_addr, part_ref)) {
+                    return false;
+                }
+                break;
+            case v512:
+                if (!derived()->encode_storev512(part_addr, part_ref)) {
+                    return false;
+                }
+                break;
+            default: assert(0); return false;
+            }
+
+            if (part_idx != part_count - 1) {
+                part_ref.reset_without_refcount();
+            }
+        }
+        return true;
+    }
+    default: assert(0); return false;
+    }
+
 
     return true;
 }

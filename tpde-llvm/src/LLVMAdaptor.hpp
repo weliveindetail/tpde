@@ -28,6 +28,13 @@ static u32 &val_idx_for_inst(llvm::Instruction *inst) noexcept {
     // static_assert(sizeof(llvm::Instruction) == 64);
 }
 
+static u32 val_idx_for_inst(const llvm::Instruction *inst) noexcept {
+    return *reinterpret_cast<const u32 *>(
+        reinterpret_cast<const u8 *>(inst)
+        + offsetof(llvm::Instruction, DebugMarker) - 4);
+    // static_assert(sizeof(llvm::Instruction) == 64);
+}
+
 static u32 &block_embedded_idx(llvm::BasicBlock *block) noexcept {
     return *reinterpret_cast<u32 *>(
         reinterpret_cast<u8 *>(block)
@@ -84,7 +91,7 @@ struct LLVMAdaptor {
     };
 
     tpde::util::SmallVector<ValInfo, 128>         values;
-    tsl::hopscotch_map<llvm::Value *, u32>        value_lookup;
+    tsl::hopscotch_map<const llvm::Value *, u32>  value_lookup;
     tsl::hopscotch_map<llvm::BasicBlock *, u32>   block_lookup;
     tpde::util::SmallVector<LLVMBasicValType, 32> complex_part_types;
 
@@ -683,7 +690,7 @@ struct LLVMAdaptor {
         values[idx].fused = fused;
     }
 
-    [[nodiscard]] u32 val_lookup_idx(llvm::Value *val) const noexcept {
+    [[nodiscard]] u32 val_lookup_idx(const llvm::Value *val) const noexcept {
         if (auto *inst = llvm::dyn_cast<llvm::Instruction>(val); inst) {
             const auto idx = inst_lookup_idx(inst);
             return idx;
@@ -693,7 +700,8 @@ struct LLVMAdaptor {
         return it->second;
     }
 
-    [[nodiscard]] u32 inst_lookup_idx(llvm::Instruction *inst) const noexcept {
+    [[nodiscard]] u32
+        inst_lookup_idx(const llvm::Instruction *inst) const noexcept {
         const auto idx = val_idx_for_inst(inst);
         assert(value_lookup.find(inst) != value_lookup.end()
                && value_lookup.find(inst)->second == idx);

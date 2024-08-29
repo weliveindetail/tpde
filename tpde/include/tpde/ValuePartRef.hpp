@@ -12,8 +12,8 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
         // and otherwise use a constant array in the compiler and just store an
         // index here?
         union {
-            u64 const_u64;
-            u8  const_data[64];
+            u64                const_u64;
+            std::array<u8, 64> const_data;
         };
 
         u32 bank;
@@ -64,8 +64,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
         other.is_const     = true;
         other.state.c.bank = 0;
 #ifdef TPDE_ASSERTS
-        std::memset(
-            other.state.c.const_data, 0, sizeof(other.state.c.const_data));
+        other.state.c.const_data = {};
 #endif
     }
 
@@ -83,8 +82,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
         other.is_const     = true;
         other.state.c.bank = 0;
 #ifdef TPDE_ASSERTS
-        std::memset(
-            other.state.c.const_data, 0, sizeof(other.state.c.const_data));
+        other.state.c.const_data = {};
 #endif
         return *this;
     }

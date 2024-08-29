@@ -448,6 +448,10 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, PlatformConfig> {
 
     void materialize_constant(ValuePartRef &val_ref, AsmReg dst) noexcept;
     void materialize_constant(ValuePartRef &val_ref, ScratchReg &dst) noexcept;
+    void materialize_constant(const std::array<u8, 64> &data,
+                              u32                       bank,
+                              u32                       size,
+                              AsmReg                    dst) noexcept;
 
     AsmReg select_fixed_assignment_reg(u32 bank, IRValueRef) noexcept;
 
@@ -1290,29 +1294,52 @@ template <IRAdaptor Adaptor,
           template <typename, typename, typename>
           class BaseTy>
 void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
-    ValuePartRef &val_ref, AsmReg dst) noexcept {
+    ValuePartRef &val_ref, const AsmReg dst) noexcept {
     assert(val_ref.is_const);
     const auto &data = val_ref.state.c;
-    if (data.bank == 0) {
-        assert(data.size <= 8);
-        if (data.const_u64 == 0) {
+    materialize_constant(data.const_data, data.bank, data.size, dst);
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
+    ValuePartRef &val_ref, ScratchReg &dst) noexcept {
+    assert(val_ref.is_const);
+    materialize_constant(val_ref, dst.alloc_from_bank(val_ref.state.c.bank));
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
+    const std::array<u8, 64> &data,
+    const u32                 bank,
+    const u32                 size,
+    AsmReg                    dst) noexcept {
+    const auto const_u64 = *reinterpret_cast<const u64 *>(data.data());
+    if (bank == 0) {
+        assert(size <= 8);
+        if (const_u64 == 0) {
             ASM(XOR32rr, dst, dst);
             return;
         }
 
-        if (data.size <= 4) {
-            ASM(MOV32ri, dst, data.const_u64);
+        if (size <= 4) {
+            ASM(MOV32ri, dst, const_u64);
         } else {
-            ASM(MOV64ri, dst, data.const_u64);
+            ASM(MOV64ri, dst, const_u64);
         }
         return;
     }
 
-    assert(data.bank == 1);
-    if (data.size == 4) {
+    assert(bank == 1);
+    if (size == 4) {
         ScratchReg tmp{derived()};
         auto       tmp_reg = tmp.alloc_from_bank(0);
-        ASM(MOV32ri, tmp_reg, data.const_u64);
+        ASM(MOV32ri, tmp_reg, const_u64);
         if (has_cpu_feats(CPU_AVX)) {
             ASM(VMOVD_G2Xrr, dst, tmp_reg);
         } else {
@@ -1321,10 +1348,10 @@ void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
         return;
     }
 
-    if (data.size == 8) {
+    if (size == 8) {
         ScratchReg tmp{derived()};
         auto       tmp_reg = tmp.alloc_from_bank(0);
-        ASM(MOV64ri, tmp_reg, data.const_u64);
+        ASM(MOV64ri, tmp_reg, const_u64);
         if (has_cpu_feats(CPU_AVX)) {
             ASM(VMOVQ_G2Xrr, dst, tmp_reg);
         } else {
@@ -1336,16 +1363,6 @@ void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
     // TODO(ts): have some facility to use a constant pool
     assert(0);
     exit(1);
-}
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
-    ValuePartRef &val_ref, ScratchReg &dst) noexcept {
-    assert(val_ref.is_const);
-    materialize_constant(val_ref, dst.alloc_from_bank(val_ref.state.c.bank));
 }
 
 template <IRAdaptor Adaptor,
