@@ -216,6 +216,91 @@ struct EncodeCompiler {
                                         AsmOperand value) noexcept;
     [[nodiscard]] bool encode_storev512(AsmOperand ptr,
                                         AsmOperand value) noexcept;
+
+    void encode_add32(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_add64(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_sub32(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_sub64(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_mul32(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_mul64(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_udiv32(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_udiv64(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_sdiv32(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_sdiv64(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_urem32(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_urem64(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_srem32(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_srem64(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_land32(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_land64(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_lor32(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_lor64(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_lxor32(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_lxor64(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_shl32(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_shl64(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_shr32(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_shr64(AsmOperand  lhs,
+                      AsmOperand  rhs,
+                      ScratchReg &result) noexcept;
+    void encode_ashr32(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+    void encode_ashr64(AsmOperand  lhs,
+                       AsmOperand  rhs,
+                       ScratchReg &result) noexcept;
+
+    void encode_sext_8_to_32(AsmOperand op, ScratchReg &result) noexcept;
+    void encode_sext_16_to_32(AsmOperand op, ScratchReg &result) noexcept;
+    void encode_sext_32_to_64(AsmOperand op, ScratchReg &result) noexcept;
+    void encode_sext_smaller32(AsmOperand op, ScratchReg &result) noexcept;
+    void encode_sext_smaller64(AsmOperand op, ScratchReg &result) noexcept;
 };
 
 template <typename Adaptor,
@@ -2417,6 +2502,774 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storev512(
     // nothing to do
 
     return true;
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_add32(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $edi, $esi
+    //  %1:gr32 = COPY killed $esi
+    //  %0:gr32 = COPY killed $edi
+    //  %2:gr32 = ADD32rr killed %1:gr32(tied-def 0), killed %0:gr32, implicit-def dead $eflags; example.cpp:18:14
+    //  $eax = COPY killed %2:gr32; example.cpp:18:5
+    //  RET 0, killed $eax; example.cpp:18:5
+    // clang-format on
+
+    //  %1:gr32 = COPY killed $esi
+    // pseudo op, $esi is killed so map rhs to %1
+
+    //  %0:gr32 = COPY killed $edi
+    // pseudo op, $edi is killed so map lhs to %0
+
+
+    //  %2:gr32 = ADD32rr killed %1:gr32(tied-def 0), killed %0:gr32,
+    //  implicit-def dead $eflags; example.cpp:18:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // ADD32rr has a preferred encoding as ADD32ri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = rhs.imm();
+
+        ASMD(ADD32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
+    } else if (lhs.encodable_as_imm32_sext()) {
+        // ADD32rr is commutable and preferred encoding as ADD32ri
+        rhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = lhs.imm();
+
+        ASMD(ADD32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(ADD32rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $eax = COPY killed %2:gr32; example.cpp:18:5
+    //  RET 0, killed $eax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_add64(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $rdi, $rsi
+    //  %1:gr64 = COPY killed $rsi
+    //  %0:gr64 = COPY killed $rdi
+    //  %2:gr64 = ADD64rr killed %1:gr64(tied-def 0), killed %0:gr64, implicit-def dead $eflags; example.cpp:18:14
+    //  $rax = COPY killed %2:gr64; example.cpp:18:5
+    //  RET 0, killed $rax; example.cpp:18:5
+    // clang-format on
+
+
+    //  %1:gr64 = COPY killed $rsi
+    // pseudo op, $rsi is killed so map rhs to %1
+
+    //  %0:gr64 = COPY killed $rdi
+    // pseudo op, $rdi is killed so map lhs to %0
+
+
+    //  %2:gr64 = ADD64rr killed %1:gr64(tied-def 0), killed %0:gr64,
+    //  implicit-def dead $eflags; example.cpp:18:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // ADD64rr has a preferred encoding as ADD64ri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = rhs.imm();
+
+        ASMD(ADD64ri, op2_dst_reg, data.const_u64);
+    } else if (lhs.encodable_as_imm32_sext()) {
+        // ADD64rr is commutable and preferred encoding as ADD64ri
+        rhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = lhs.imm();
+
+        ASMD(ADD64ri, op2_dst_reg, data.const_u64);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(ADD64rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $rax = COPY killed %2:gr64; example.cpp:18:5
+    //  RET 0, killed $rax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sub32(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $edi, $esi
+    //  %1:gr32 = COPY killed $esi
+    //  %0:gr32 = COPY killed $edi
+    //  %2:gr32 = SUB32rr killed %0:gr32(tied-def 0), killed %1:gr32, implicit-def dead $eflags; example.cpp:20:14
+    //  $eax = COPY killed %2:gr32; example.cpp:20:5
+    //  RET 0, killed $eax; example.cpp:20:5
+    // clang-format on
+
+
+    //  %1:gr32 = COPY killed $esi
+    // pseudo op, $esi is killed so map rhs to %1
+
+    //  %0:gr32 = COPY killed $edi
+    // pseudo op, $edi is killed so map lhs to %0
+
+
+    //  %2:gr32 = SUB32rr killed %0:gr32(tied-def 0), killed %1:gr32,
+    //  implicit-def dead $eflags; example.cpp:20:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // SUB32rr has a preferred encoding as SUB32ri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = rhs.imm();
+
+        ASMD(SUB32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(SUB32rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $eax = COPY killed %2:gr32; example.cpp:18:5
+    //  RET 0, killed $eax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sub64(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $rdi, $rsi
+    //  %1:gr64 = COPY killed $rsi
+    //  %0:gr64 = COPY killed $rdi
+    //  %2:gr64 = SUB64rr killed %0:gr64(tied-def 0), killed %1:gr64, implicit-def dead $eflags; example.cpp:20:14
+    //  $rax = COPY killed %2:gr64; example.cpp:20:5
+    //  RET 0, killed $rax; example.cpp:20:5
+    // clang-format on
+
+
+    //  %1:gr64 = COPY killed $rsi
+    // pseudo op, $rsi is killed so map rhs to %1
+
+    //  %0:gr64 = COPY killed $rdi
+    // pseudo op, $rdi is killed so map lhs to %0
+
+
+    //  %2:gr64 = SUB64rr killed %0:gr64(tied-def 0), killed %1:gr64,
+    //  implicit-def dead $eflags; example.cpp:20:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // SUB64rr has a preferred encoding as SUB64ri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = rhs.imm();
+
+        ASMD(SUB64ri, op2_dst_reg, data.const_u64);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(SUB64rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $rax = COPY killed %2:gr64; example.cpp:18:5
+    //  RET 0, killed $rax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mul32(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $edi, $esi
+    //  %1:gr32 = COPY killed $esi
+    //  %0:gr32 = COPY killed $edi
+    //  %2:gr32 = IMUL32rr killed %1:gr32(tied-def 0), killed %0:gr32, implicit-def dead $eflags; example.cpp:20:14
+    //  $eax = COPY killed %2:gr32; example.cpp:20:5
+    //  RET 0, killed $eax; example.cpp:20:5
+    // clang-format on
+
+
+    //  %1:gr32 = COPY killed $esi
+    // pseudo op, $esi is killed so map rhs to %1
+
+    //  %0:gr32 = COPY killed $edi
+    // pseudo op, $edi is killed so map lhs to %0
+
+
+    //  %2:gr32 = IMUL32rr killed %1:gr32(tied-def 0), killed %0:gr32,
+    //  implicit-def dead $eflags; example.cpp:20:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // IMUL32rr has a preferred encoding as IMUL32rri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage(op2_dst_reg, op2_dst_reg_scratch, 0);
+        const auto &data = rhs.imm();
+
+        ASMD(IMUL32rri,
+             op2_dst_reg,
+             lhs.as_reg(this),
+             data.const_u64 & 0xFFFF'FFFF);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(IMUL32rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $eax = COPY killed %2:gr32; example.cpp:18:5
+    //  RET 0, killed $eax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mul64(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $rdi, $rsi
+    //  %1:gr64 = COPY killed $rsi
+    //  %0:gr64 = COPY killed $rdi
+    //  %2:gr64 = IMUL64rr killed %1:gr64(tied-def 0), killed %0:gr64, implicit-def dead $eflags; example.cpp:20:14
+    //  $rax = COPY killed %2:gr64; example.cpp:20:5
+    //  RET 0, killed $rax; example.cpp:20:5
+    // clang-format on
+
+
+    //  %1:gr64 = COPY killed $rsi
+    // pseudo op, $rsi is killed so map rhs to %1
+
+    //  %0:gr64 = COPY killed $rdi
+    // pseudo op, $rdi is killed so map lhs to %0
+
+
+    //  %2:gr64 = IMUL64rr killed %1:gr64(tied-def 0), killed %0:gr64,
+    //  implicit-def dead $eflags; example.cpp:20:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // IMUL64rr has a preferred encoding as IMUL64rri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage(op2_dst_reg, op2_dst_reg_scratch, 0);
+        const auto &data = rhs.imm();
+
+        ASMD(IMUL64rri, op2_dst_reg, lhs.as_reg(this), data.const_u64);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(IMUL64rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $rax = COPY killed %2:gr64; example.cpp:18:5
+    //  RET 0, killed $rax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_land32(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $edi, $esi
+    //  %1:gr32 = COPY killed $esi
+    //  %0:gr32 = COPY killed $edi
+    //  %2:gr32 = AND32rr killed %1:gr32(tied-def 0), killed %0:gr32, implicit-def dead $eflags; example.cpp:20:14
+    //  $eax = COPY killed %2:gr32; example.cpp:20:5
+    //  RET 0, killed $eax; example.cpp:20:5
+    // clang-format on
+
+
+    //  %1:gr32 = COPY killed $esi
+    // pseudo op, $esi is killed so map rhs to %1
+
+    //  %0:gr32 = COPY killed $edi
+    // pseudo op, $edi is killed so map lhs to %0
+
+
+    //  %2:gr32 = AND32rr killed %1:gr32(tied-def 0), killed %0:gr32,
+    //  implicit-def dead $eflags; example.cpp:20:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // AND32rr has a preferred encoding as AND32ri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = rhs.imm();
+
+        ASMD(AND32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
+    } else if (lhs.encodable_as_imm32_sext()) {
+        // AND32rr is commutable and preferred encoding as AND32ri
+        rhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = lhs.imm();
+
+        ASMD(AND32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(AND32rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $eax = COPY killed %2:gr32; example.cpp:18:5
+    //  RET 0, killed $eax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_land64(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $rdi, $rsi
+    //  %1:gr64 = COPY killed $rsi
+    //  %0:gr64 = COPY killed $rdi
+    //  %2:gr64 = AND64rr killed %1:gr64(tied-def 0), killed %0:gr64, implicit-def dead $eflags; example.cpp:20:14
+    //  $rax = COPY killed %2:gr64; example.cpp:20:5
+    //  RET 0, killed $rax; example.cpp:20:5
+    // clang-format on
+
+
+    //  %1:gr64 = COPY killed $rsi
+    // pseudo op, $rsi is killed so map rhs to %1
+
+    //  %0:gr64 = COPY killed $rdi
+    // pseudo op, $rdi is killed so map lhs to %0
+
+
+    //  %2:gr64 = AND64rr killed %1:gr64(tied-def 0), killed %0:gr64,
+    //  implicit-def dead $eflags; example.cpp:20:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // AND64rr has a preferred encoding as AND64ri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = rhs.imm();
+
+        ASMD(AND64ri, op2_dst_reg, data.const_u64);
+    } else if (lhs.encodable_as_imm32_sext()) {
+        // AND64rr is commutable and preferred encoding as AND64ri
+        rhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = lhs.imm();
+
+        ASMD(AND64ri, op2_dst_reg, data.const_u64);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(AND64rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $rax = COPY killed %2:gr64; example.cpp:18:5
+    //  RET 0, killed $rax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lor32(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $edi, $esi
+    //  %1:gr32 = COPY killed $esi
+    //  %0:gr32 = COPY killed $edi
+    //  %2:gr32 = OR32rr killed %1:gr32(tied-def 0), killed %0:gr32, implicit-def dead $eflags; example.cpp:20:14
+    //  $eax = COPY killed %2:gr32; example.cpp:20:5
+    //  RET 0, killed $eax; example.cpp:20:5
+    // clang-format on
+
+
+    //  %1:gr32 = COPY killed $esi
+    // pseudo op, $esi is killed so map rhs to %1
+
+    //  %0:gr32 = COPY killed $edi
+    // pseudo op, $edi is killed so map lhs to %0
+
+
+    //  %2:gr32 = OR32rr killed %1:gr32(tied-def 0), killed %0:gr32,
+    //  implicit-def dead $eflags; example.cpp:20:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // OR32rr has a preferred encoding as OR32ri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = rhs.imm();
+
+        ASMD(OR32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
+    } else if (lhs.encodable_as_imm32_sext()) {
+        // OR32rr is commutable and preferred encoding as OR32ri
+        rhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = lhs.imm();
+
+        ASMD(OR32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(OR32rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $eax = COPY killed %2:gr32; example.cpp:18:5
+    //  RET 0, killed $eax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lor64(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $rdi, $rsi
+    //  %1:gr64 = COPY killed $rsi
+    //  %0:gr64 = COPY killed $rdi
+    //  %2:gr64 = OR64rr killed %1:gr64(tied-def 0), killed %0:gr64, implicit-def dead $eflags; example.cpp:20:14
+    //  $rax = COPY killed %2:gr64; example.cpp:20:5
+    //  RET 0, killed $rax; example.cpp:20:5
+    // clang-format on
+
+
+    //  %1:gr64 = COPY killed $rsi
+    // pseudo op, $rsi is killed so map rhs to %1
+
+    //  %0:gr64 = COPY killed $rdi
+    // pseudo op, $rdi is killed so map lhs to %0
+
+
+    //  %2:gr64 = OR64rr killed %1:gr64(tied-def 0), killed %0:gr64,
+    //  implicit-def dead $eflags; example.cpp:20:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // OR64rr has a preferred encoding as OR64ri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = rhs.imm();
+
+        ASMD(OR64ri, op2_dst_reg, data.const_u64);
+    } else if (lhs.encodable_as_imm32_sext()) {
+        // OR64rr is commutable and preferred encoding as OR64ri
+        rhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = lhs.imm();
+
+        ASMD(OR64ri, op2_dst_reg, data.const_u64);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(OR64rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $rax = COPY killed %2:gr64; example.cpp:18:5
+    //  RET 0, killed $rax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxor32(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $edi, $esi
+    //  %1:gr32 = COPY killed $esi
+    //  %0:gr32 = COPY killed $edi
+    //  %2:gr32 = XOR32rr killed %1:gr32(tied-def 0), killed %0:gr32, implicit-def dead $eflags; example.cpp:20:14
+    //  $eax = COPY killed %2:gr32; example.cpp:20:5
+    //  RET 0, killed $eax; example.cpp:20:5
+    // clang-format on
+
+
+    //  %1:gr32 = COPY killed $esi
+    // pseudo op, $esi is killed so map rhs to %1
+
+    //  %0:gr32 = COPY killed $edi
+    // pseudo op, $edi is killed so map lhs to %0
+
+
+    //  %2:gr32 = XOR32rr killed %1:gr32(tied-def 0), killed %0:gr32,
+    //  implicit-def dead $eflags; example.cpp:20:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // XOR32rr has a preferred encoding as XOR32ri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = rhs.imm();
+
+        ASMD(XOR32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
+    } else if (lhs.encodable_as_imm32_sext()) {
+        // XOR32rr is commutable and preferred encoding as XOR32ri
+        rhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = lhs.imm();
+
+        ASMD(XOR32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(XOR32rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $eax = COPY killed %2:gr32; example.cpp:18:5
+    //  RET 0, killed $eax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxor64(
+    AsmOperand lhs, AsmOperand rhs, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $rdi, $rsi
+    //  %1:gr64 = COPY killed $rsi
+    //  %0:gr64 = COPY killed $rdi
+    //  %2:gr64 = XOR64rr killed %1:gr64(tied-def 0), killed %0:gr64, implicit-def dead $eflags; example.cpp:20:14
+    //  $rax = COPY killed %2:gr64; example.cpp:20:5
+    //  RET 0, killed $rax; example.cpp:20:5
+    // clang-format on
+
+
+    //  %1:gr64 = COPY killed $rsi
+    // pseudo op, $rsi is killed so map rhs to %1
+
+    //  %0:gr64 = COPY killed $rdi
+    // pseudo op, $rdi is killed so map lhs to %0
+
+
+    //  %2:gr64 = XOR64rr killed %1:gr64(tied-def 0), killed %0:gr64,
+    //  implicit-def dead $eflags; example.cpp:20:14
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // XOR64rr has a preferred encoding as XOR64ri if possible
+    if (rhs.encodable_as_imm32_sext()) {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = rhs.imm();
+
+        ASMD(XOR64ri, op2_dst_reg, data.const_u64);
+    } else if (lhs.encodable_as_imm32_sext()) {
+        // XOR64rr is commutable and preferred encoding as XOR64ri
+        rhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        const auto &data = lhs.imm();
+
+        ASMD(XOR64ri, op2_dst_reg, data.const_u64);
+    } else {
+        lhs.try_salvage_or_materialize(
+            this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
+        ASMD(XOR64rr, op2_dst_reg, rhs.as_reg());
+    }
+
+    // lhs is dead after this point
+    lhs.reset();
+    // rhs is dead after this point
+    rhs.reset();
+
+
+    //  $rax = COPY killed %2:gr64; example.cpp:18:5
+    //  RET 0, killed $rax; example.cpp:18:5
+
+    // move op2_dst_reg into result
+    result = std::move(op2_dst_reg_scratch);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_8_to_32(
+    AsmOperand op, ScratchReg &result) noexcept {
+    // clang-format off
+    //bb.0.entry:
+    //  liveins: $edi
+    //  %0:gr32 = COPY killed $edi
+    //  %1:gr8 = COPY killed %0.sub_8bit:gr32; example.cpp:24:21
+    //  %2:gr32 = MOVSX32rr8 killed %1:gr8; example.cpp:24:21
+    //  $eax = COPY killed %2:gr32; example.cpp:24:5
+    //  RET 0, killed $eax; example.cpp:24:5
+    // clang-format on
+
+
+    //  %0:gr32 = COPY killed $edi
+    // pseudo op, $edi is killed so map lhs to %0
+
+
+    //  %1:gr8 = COPY killed %0.sub_8bit:gr32; example.cpp:24:21
+    // pseudo op, %0 is killed so map %0 to %1
+
+
+    //  %2:gr32 = MOVSX32rr8 killed %1:gr8; example.cpp:24:21
+    AsmReg     op2_dst_reg;
+    ScratchReg op2_dst_reg_scratch{derived()};
+
+    // MOVSX32rr8 has a preferred encoding as MOVSXr32m8 if possible
+    if (op.is_addr()) {
+        const auto &addr       = op.addr();
+        FeMem       op2_mem_op = FE_MEM(addr.base,
+                                  addr.scale,
+                                  addr.scale ? addr.index : FE_NOREG,
+                                  addr.disp);
+        op2_dst_reg            = op2_dst_reg_scratch.alloc_from_bank(0);
+        ASMD(MOVSXr32m8, op2_dst_reg, op2_mem_op);
+    } else {
+        op.try_salvage(op2_dst_reg, op2_dst_reg_scratch, 0);
+        ASMD(MOVSXr32r8, op2_dst_reg, op.as_reg());
+    }
+
+    // op is dead after this point
+    op.reset();
+
+
+    //  $eax = COPY killed %2:gr32; example.cpp:24:5
+    //  RET 0, killed $eax; example.cpp:24:5
+    result = std::move(op2_dst_reg_scratch);
 }
 
 

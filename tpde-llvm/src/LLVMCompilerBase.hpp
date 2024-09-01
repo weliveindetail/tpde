@@ -19,6 +19,22 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     using ValuePartRef = typename Base::ValuePartRef;
     using ValLocalIdx  = typename Base::ValLocalIdx;
 
+    enum class IntBinaryOp {
+        add,
+        sub,
+        mul,
+        udiv,
+        sdiv,
+        urem,
+        srem,
+        land,
+        lor,
+        lxor,
+        shl,
+        shr,
+        ashr,
+    };
+
     // using AsmOperand = typename Derived::AsmOperand;
 
     LLVMCompilerBase(LLVMAdaptor *adaptor, const bool generate_obj)
@@ -51,6 +67,9 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_ret(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_load(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_store(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_int_binary_op(IRValueRef,
+                               llvm::Instruction *,
+                               IntBinaryOp op) noexcept;
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -271,6 +290,33 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::Ret: return compile_ret(val_idx, i);
     case llvm::Instruction::Load: return compile_load(val_idx, i);
     case llvm::Instruction::Store: return compile_store(val_idx, i);
+    case llvm::Instruction::Add:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::add);
+    case llvm::Instruction::Sub:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::sub);
+    case llvm::Instruction::Mul:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::mul);
+    case llvm::Instruction::UDiv:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::udiv);
+    case llvm::Instruction::SDiv:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::sdiv);
+    case llvm::Instruction::URem:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::urem);
+    case llvm::Instruction::SRem:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::srem);
+    case llvm::Instruction::And:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::land);
+    case llvm::Instruction::Or:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::lor);
+    case llvm::Instruction::Xor:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::lxor);
+    case llvm::Instruction::Shl:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::shl);
+    case llvm::Instruction::LShr:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::shr);
+    case llvm::Instruction::AShr:
+        return compile_int_binary_op(val_idx, i, IntBinaryOp::ashr);
+
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
                      opcode,
@@ -659,6 +705,144 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     default: assert(0); return false;
     }
 
+
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
+    IRValueRef         inst_idx,
+    llvm::Instruction *inst,
+    const IntBinaryOp  op) noexcept {
+    using AsmOperand = typename Derived::AsmOperand;
+
+    auto *inst_ty = inst->getType();
+
+    if (inst_ty->isVectorTy()) {
+        assert(0);
+        exit(1);
+    }
+
+    assert(inst_ty->isIntegerTy());
+
+    const auto int_width = inst_ty->getIntegerBitWidth();
+    if (int_width == 128) {
+        assert(0);
+        exit(1);
+    }
+
+    // encode functions for 32/64 bit operations
+    std::array<
+        std::array<void (Derived::*)(AsmOperand, AsmOperand, ScratchReg &), 2>,
+        13>
+        encode_ptrs = {
+            {
+             {&Derived::encode_add32, &Derived::encode_add64},
+             {&Derived::encode_sub32, &Derived::encode_sub64},
+             {&Derived::encode_mul32, &Derived::encode_mul64},
+             {&Derived::encode_udiv32, &Derived::encode_udiv64},
+             {&Derived::encode_sdiv32, &Derived::encode_sdiv64},
+             {&Derived::encode_urem32, &Derived::encode_urem64},
+             {&Derived::encode_srem32, &Derived::encode_srem64},
+             {&Derived::encode_land32, &Derived::encode_land64},
+             {&Derived::encode_lor32, &Derived::encode_lor64},
+             {&Derived::encode_lxor32, &Derived::encode_lxor64},
+             {&Derived::encode_shl32, &Derived::encode_shl64},
+             {&Derived::encode_shr32, &Derived::encode_shr64},
+             {&Derived::encode_ashr32, &Derived::encode_ashr64},
+             }
+    };
+
+    const auto is_64          = int_width > 32;
+    const auto is_exact_width = int_width == 32 || int_width == 64;
+
+    auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+
+    auto lhs_op = AsmOperand{std::move(lhs)};
+    auto rhs_op = AsmOperand{std::move(rhs)};
+    if (!is_exact_width
+        && (op == IntBinaryOp::udiv || op == IntBinaryOp::sdiv
+            || op == IntBinaryOp::urem || op == IntBinaryOp::srem
+            || op == IntBinaryOp::shl || op == IntBinaryOp::shr
+            || op == IntBinaryOp::ashr)) {
+        if (op == IntBinaryOp::sdiv || op == IntBinaryOp::srem
+            || op == IntBinaryOp::ashr) {
+            // need to sign-extend lhs
+            ScratchReg tmp{derived()};
+            if (int_width == 8) {
+                derived()->encode_sext_8_to_32(std::move(lhs_op), tmp);
+            } else if (int_width == 16) {
+                derived()->encode_sext_16_to_32(std::move(lhs_op), tmp);
+            } else if (int_width < 32) {
+                derived()->encode_sext_smaller32(std::move(lhs_op), tmp);
+            } else {
+                derived()->encode_sext_smaller64(std::move(lhs_op), tmp);
+            }
+            lhs_op = std::move(tmp);
+        } else if (op == IntBinaryOp::udiv || op == IntBinaryOp::urem) {
+            // need to zero-extend lhs (if it is not an immediate)
+            if (!lhs.is_const) {
+                ScratchReg tmp{derived()};
+                u64        mask = (1ull << int_width) - 1;
+                if (int_width <= 32) {
+                    derived()->encode_land32(
+                        std::move(lhs_op),
+                        ValuePartRef{mask, Config::GP_BANK, 4},
+                        tmp);
+                } else {
+                    derived()->encode_land64(
+                        std::move(lhs_op),
+                        ValuePartRef{mask, Config::GP_BANK, 8},
+                        tmp);
+                }
+                lhs_op = std::move(tmp);
+            }
+        }
+
+        if (op == IntBinaryOp::sdiv || op == IntBinaryOp::srem) {
+            // need to sign-extend rhs
+            ScratchReg tmp{derived()};
+            if (int_width == 8) {
+                derived()->encode_sext_8_to_32(std::move(rhs_op), tmp);
+            } else if (int_width == 16) {
+                derived()->encode_sext_16_to_32(std::move(rhs_op), tmp);
+            } else if (int_width < 32) {
+                derived()->encode_sext_smaller32(std::move(rhs_op), tmp);
+            } else {
+                derived()->encode_sext_smaller64(std::move(rhs_op), tmp);
+            }
+            rhs_op = std::move(tmp);
+        } else {
+            // need to zero-extend rhs (if it is not an immediate since then
+            // this is guaranteed by LLVM)
+            if (!rhs.is_const) {
+                ScratchReg tmp{derived()};
+                u64        mask = (1ull << int_width) - 1;
+                if (int_width <= 32) {
+                    derived()->encode_land32(
+                        std::move(rhs_op),
+                        ValuePartRef{mask, Config::GP_BANK, 4},
+                        tmp);
+                } else {
+                    derived()->encode_land64(
+                        std::move(rhs_op),
+                        ValuePartRef{mask, Config::GP_BANK, 8},
+                        tmp);
+                }
+                rhs_op = std::move(tmp);
+            }
+        }
+    }
+
+    auto res = this->result_ref_lazy(inst_idx, 0);
+
+    auto res_scratch = ScratchReg{derived()};
+
+    (derived()->*(encode_ptrs[static_cast<u32>(op)][is_64 ? 1 : 0]))(
+        std::move(lhs_op), std::move(rhs_op), res_scratch);
+
+    this->set_value(res, res_scratch);
 
     return true;
 }
