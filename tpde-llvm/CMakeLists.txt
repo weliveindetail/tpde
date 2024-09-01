@@ -41,6 +41,9 @@ endif ()
 # tpde
 add_subdirectory(../tpde ${PROJECT_BINARY_DIR}/tpde)
 
+# tpde-encodegen
+add_subdirectory(../tpde-encodegen ${PROJECT_BINARY_DIR}/tpde-encodegen)
+
 # hopscotch-map (disable warnings)
 target_include_directories(tpde_llvm SYSTEM PRIVATE ../deps/hopscotch-map/include)
 
