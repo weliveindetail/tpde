@@ -170,9 +170,8 @@ struct EncodeCompiler {
 
         [[nodiscard]] bool encodable_as_imm32_sext() const noexcept;
         AsmReg             as_reg(EncodeCompiler *compiler) noexcept;
-        bool try_salvage(AsmReg &, ScratchReg &, u8 bank) noexcept;
+        bool try_salvage(ScratchReg &, u8 bank) noexcept;
         void try_salvage_or_materialize(EncodeCompiler *compiler,
-                                        AsmReg         &dst,
                                         ScratchReg     &dst_scratch,
                                         u8              bank,
                                         u32             size) noexcept;
@@ -266,13 +265,12 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy>
 bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
-    AsmReg &dst, ScratchReg &dst_scratch, const u8 bank) noexcept {
+    ScratchReg &dst_scratch, const u8 bank) noexcept {
     if (std::holds_alternative<ScratchReg>(state)) {
         assert(std::get<ScratchReg>(state).compiler->register_file.reg_bank(
                    std::get<ScratchReg>(state).cur_reg)
                == bank);
         dst_scratch = std::move(std::get<ScratchReg>(state));
-        dst         = dst_scratch.cur_reg;
         return true;
     }
     if (std::holds_alternative<ValuePartRef>(state)) {
@@ -281,14 +279,13 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
         if (ref.can_salvage()) {
             auto reg = ref.salvage();
             dst_scratch.alloc_specific(reg);
-            dst = reg;
             return true;
         }
         // dst = std::get<ValuePartRef>(state).alloc_reg();
         // return;
     }
 
-    dst = dst_scratch.alloc_from_bank(bank);
+    dst_scratch.alloc_from_bank(bank);
     return false;
 }
 
@@ -298,25 +295,24 @@ template <typename Adaptor,
           class BaseTy>
 void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
     try_salvage_or_materialize(EncodeCompiler *compiler,
-                               AsmReg         &dst,
                                ScratchReg     &dst_scratch,
                                u8              bank,
                                u32             size) noexcept {
     AsmReg val = this->as_reg(compiler);
-    if (!this->try_salvage(dst, dst_scratch, bank)) {
+    if (!this->try_salvage(dst_scratch, bank)) {
         if (bank == 0) {
             if (size <= 4) {
-                ASMC(compiler->derived(), MOV32rr, dst, val);
+                ASMC(compiler->derived(), MOV32rr, dst.cur_reg, val);
             } else {
-                ASMC(compiler->derived(), MOV64rr, dst, val);
+                ASMC(compiler->derived(), MOV64rr, dst.cur_reg, val);
             }
         } else {
             // TODO
             assert(0);
-            exit(1);
+                exit(1);
+            }
         }
     }
-}
 
 template <typename Adaptor,
           typename Derived,

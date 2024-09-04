@@ -139,6 +139,9 @@ int main(const int argc, char *argv[]) {
 
     mod.swap(*mod_res);
 
+    // TODO(ts): switch all functions to regcall so that the code does not try
+    // to spill for the calling convention when it wouldn't have to in the
+    // generated code
     const auto regcall_prefix = std::string_view{"__regcall3__"};
     for (llvm::Function &f : *mod) {
         const auto func_name = f.getName().str();
