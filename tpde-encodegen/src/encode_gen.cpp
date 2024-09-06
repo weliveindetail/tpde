@@ -3,18 +3,31 @@
 //
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
+#include "encode_gen.hpp"
+
+
 #include <format>
 #include <iostream>
 #include <string>
 #include <unordered_set>
 
+#include <llvm/CodeGen/AsmPrinter.h>
 #include <llvm/CodeGen/LivePhysRegs.h>
 #include <llvm/CodeGen/MachineRegisterInfo.h>
-
-#include "encode_gen.hpp"
-
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/MC/MCAsmBackend.h>
+#include <llvm/MC/MCCodeEmitter.h>
+#include <llvm/MC/MCContext.h>
+#include <llvm/MC/MCInstrInfo.h>
+#include <llvm/MC/MCObjectWriter.h>
+#include <llvm/MC/MCStreamer.h>
+#include <llvm/MC/TargetRegistry.h>
+#include <llvm/Target/TargetLoweringObjectFile.h>
+#include <llvm/Target/TargetMachine.h>
+
+#include "encode_gen.hpp"
+#include "inst_descs.hpp"
 
 namespace {
 
@@ -25,9 +38,17 @@ struct EncodingTarget {
 
     virtual ~EncodingTarget() = default;
 
-    virtual unsigned         reg_id_from_mc_reg(llvm::MCRegister) = 0;
-    virtual std::string_view reg_name_lower(unsigned id)          = 0;
-    virtual unsigned         reg_bank(unsigned id)                = 0;
+    virtual unsigned         reg_id_from_mc_reg(llvm::MCRegister)    = 0;
+    virtual std::string_view reg_name_lower(unsigned id)             = 0;
+    virtual unsigned         reg_bank(unsigned id)                   = 0;
+    // some registers, e.g. flags should be ignored for generation purposes
+    virtual bool             reg_should_be_ignored(llvm::MCRegister) = 0;
+    virtual void             generate_copy(std::string     &buf,
+                                           unsigned         indent,
+                                           unsigned         bank,
+                                           std::string_view dst,
+                                           std::string_view src,
+                                           unsigned         size)            = 0;
 };
 
 struct EncodingTargetX64 : EncodingTarget {
@@ -99,6 +120,78 @@ struct EncodingTargetX64 : EncodingTarget {
             exit(1);
         }
     }
+
+    bool reg_should_be_ignored(const llvm::MCRegister reg) override {
+        const auto name = std::string_view{
+            func->getSubtarget().getRegisterInfo()->getName(reg)};
+        return (name == "EFLAGS" || name == "MXCSR" || name == "FPCW"
+                || name == "SSP");
+    }
+
+    void generate_copy(std::string     &buf,
+                       unsigned         indent,
+                       unsigned         bank,
+                       std::string_view dst,
+                       std::string_view src,
+                       unsigned         size) override {
+        if (bank == 0) {
+            if (size <= 4) {
+                std::format_to(std::back_inserter(buf),
+                               "{:>{}}ASMD(MOV32rr, {}, {});\n",
+                               "",
+                               indent,
+                               dst,
+                               src);
+            } else {
+                assert(size <= 8);
+                std::format_to(std::back_inserter(buf),
+                               "{:>{}}ASMD(MOV64rr, {}, {});\n",
+                               "",
+                               indent,
+                               dst,
+                               src);
+            }
+        } else {
+            assert(bank == 1);
+            if (size <= 16) {
+                std::format_to(std::back_inserter(buf),
+                               "{:>{}}if (has_avx()) {{\n",
+                               "",
+                               indent);
+                std::format_to(std::back_inserter(buf),
+                               "{:>{}}    ASMD(VMOVUPD128rr, {}, {});\n",
+                               "",
+                               indent,
+                               dst,
+                               src);
+                std::format_to(
+                    std::back_inserter(buf), "{:>{}}else {{\n", "", indent);
+                std::format_to(std::back_inserter(buf),
+                               "{:>{}}    ASMD(SSE_MOVUPDrr, {}, {});\n",
+                               "",
+                               indent,
+                               dst,
+                               src);
+                std::format_to(
+                    std::back_inserter(buf), "{:>{}}}}\n", "", indent);
+            } else if (size <= 32) {
+                std::format_to(std::back_inserter(buf),
+                               "{:>{}}ASMD(VMOVUPD256rr, {}, {});\n",
+                               "",
+                               indent,
+                               dst,
+                               src);
+            } else {
+                assert(size <= 64);
+                std::format_to(std::back_inserter(buf),
+                               "{:>{}}ASMD(VMOVUPD512rr, {}, {});\n",
+                               "",
+                               indent,
+                               dst,
+                               src);
+            }
+        }
+    }
 };
 
 struct ValueInfo {
@@ -115,9 +208,12 @@ struct ValueInfo {
     // registers aliased to this value
     std::unordered_set<unsigned> aliased_regs = {};
 
-    bool is_dead           = false;
+    bool is_dead = false;
+    // TODO(ts): this has questionable implications when we modify them in if
+    // statements as we would need to consolidate their state across the
+    // different branches so for now we can simply move this to the runtime
     // scratch register state
-    bool scratch_allocated = false, scratch_destroyed = false;
+    // bool scratch_allocated = false, scratch_destroyed = false;
 };
 
 struct GenerationState {
@@ -126,8 +222,14 @@ struct GenerationState {
     std::vector<std::string>            param_names{};
     std::unordered_set<unsigned>        used_regs{};
     llvm::DenseMap<unsigned, ValueInfo> value_map{};
-    int                                 num_ret_regs = -1;
-    std::vector<unsigned>               return_regs  = {};
+    unsigned                            cur_inst_id    = 0;
+    int                                 num_ret_regs   = -1;
+    bool                                is_first_block = false;
+    std::vector<unsigned>               return_regs    = {};
+
+    llvm::DenseMap<unsigned, std::vector<std::string>> fixed_reg_conds{};
+
+    void remove_reg_alias(std::string &buf, unsigned reg, unsigned aliased_reg);
 };
 
 bool handle_move(std::string        &buf,
@@ -136,6 +238,13 @@ bool handle_move(std::string        &buf,
 bool handle_terminator(std::string        &buf,
                        GenerationState    &state,
                        llvm::MachineInstr *inst);
+
+bool generate_inst_inner(std::string           &buf,
+                         GenerationState       &state,
+                         llvm::MachineInstr    *inst,
+                         tpde_encgen::InstDesc &desc,
+                         std::string_view       if_cond,
+                         unsigned               indent);
 
 bool generate_inst(std::string        &buf,
                    GenerationState    &state,
@@ -170,15 +279,241 @@ bool generate_inst(std::string        &buf,
         }
     }
 
+#if 0
+    auto       &tm      = state.func->getTarget();
+    const auto &target  = tm.getTarget();
+    auto        context = llvm::MCContext{tm.getTargetTriple(),
+                                   tm.getMCAsmInfo(),
+                                   tm.getMCRegisterInfo(),
+                                   tm.getMCSubtargetInfo(),
+                                   nullptr,
+                                   &tm.Options.MCOptions};
+    tm.getObjFileLowering()->Initialize(context, tm);
+    auto emitter = state.func->getTarget().getTarget().createMCCodeEmitter(
+        *tm.getMCInstrInfo(), context);
+
+    llvm::SmallVector<char, 32> inst_buf = {};
+
+    struct EmitterWrapper : llvm::MCCodeEmitter {
+        virtual ~EmitterWrapper() = default;
+
+        llvm::MCCodeEmitter         *emitter;
+        llvm::SmallVector<char, 32> *inst_buf;
+
+        EmitterWrapper(llvm::MCCodeEmitter         *emitter,
+                       llvm::SmallVector<char, 32> *buf)
+            : emitter(emitter), inst_buf(buf) {}
+
+        void reset() override { emitter->reset(); }
+
+        void
+            encodeInstruction(const llvm::MCInst                   &Inst,
+                              llvm::SmallVectorImpl<char>          &CB,
+                              llvm::SmallVectorImpl<llvm::MCFixup> &Fixups,
+                              const llvm::MCSubtargetInfo &STI) const override {
+            const auto size = CB.size();
+            emitter->encodeInstruction(Inst, CB, Fixups, STI);
+            const auto enc_len = CB.size() - size;
+            std::cerr << std::format("Encoded inst with len {}: ", enc_len);
+            for (unsigned i = 0; i < enc_len; ++i) {
+                std::cerr << std::format("{:X} ", CB[size + i]);
+            }
+            std::cerr << "\n";
+
+            inst_buf->append(CB.begin() + size, CB.begin() + CB.size());
+        }
+    };
+
+    auto obj_streamer =
+        std::unique_ptr<llvm::MCStreamer>(target.createMCObjectStreamer(
+            tm.getTargetTriple(),
+            context,
+            nullptr,
+            nullptr,
+            std::make_unique<EmitterWrapper>(emitter, &inst_buf),
+            state.func->getSubtarget(),
+            false,
+            false,
+            true));
+    // TOOD(ts): get tm from main? why is is not const?
+    auto *asm_printer = target.createAsmPrinter(
+        *const_cast<llvm::LLVMTargetMachine *>(&tm), std::move(obj_streamer));
+    asm_printer->SetupMachineFunction(*state.func);
+
+    asm_printer->emitInstruction(inst);
+    delete asm_printer;
+    delete emitter;
+
+    std::format_to(std::back_inserter(buf), "    // encoded as ");
+    for (char c : inst_buf) {
+        std::format_to(std::back_inserter(buf), "{:X}", c);
+    }
+    std::format_to(std::back_inserter(buf), "\n");
+#endif
+
+    using namespace tpde_encgen;
     // TODO(ts): lookup instruction desc
+    tpde_encgen::InstDesc desc;
+    if (!tpde_encgen::get_inst_def(*inst, desc)) {
+        std::string              buf{};
+        llvm::raw_string_ostream os(buf);
+        inst->print(os);
+        std::cerr << std::format(
+            "ERROR: Failed to get instruction desc for {}\n", buf);
+        assert(0);
+        return false;
+    }
 
     // TODO(ts): check preferred encodings
+    const auto get_use = [&](unsigned idx) {
+        for (auto &use : inst->uses()) {
+            if (idx != 0) {
+                --idx;
+                continue;
+            }
+            return use;
+        }
+        // should never happen
+        assert(0);
+        exit(1);
+    };
+#if 0
+    const auto get_def = [&](unsigned idx) {
+        for (auto &def : inst->all_defs()) {
+            if (idx != 0) {
+                --idx;
+                continue;
+            }
+            return def;
+        }
+        // should never happen
+        assert(0);
+        exit(1);
+    };
+#endif
+
+    bool ifs_written = false;
+    for (auto &pref_enc : desc.preferred_encodings) {
+        if (pref_enc.target == InstDesc::PreferredEncoding::TARGET_NONE) {
+            // unsupported for now, later used for CPU target checks maybe
+            continue;
+        }
+
+        assert(pref_enc.target == InstDesc::PreferredEncoding::TARGET_USE);
+        const auto &use = get_use(pref_enc.target_def_use_idx);
+
+        bool break_loop = false;
+        switch (pref_enc.cond) {
+            using enum InstDesc::PreferredEncoding::COND;
+        case COND_IMM: {
+            if (use.isImm()) {
+                // we can always encode this
+                desc       = *pref_enc.replacement;
+                break_loop = true;
+                break;
+            }
+            assert(use.isReg() && use.getReg().isPhysical());
+            auto reg_id = state.enc_target->reg_id_from_mc_reg(use.getReg());
+            assert(state.value_map.contains(reg_id));
+            while (state.value_map[reg_id].ty == ValueInfo::REG_ALIAS) {
+                reg_id = state.value_map[reg_id].alias_reg_id;
+                assert(state.value_map.contains(reg_id));
+            }
+            if (state.value_map[reg_id].ty != ValueInfo::ASM_OPERAND) {
+                // cannot be an immediate
+                continue;
+            }
+
+            std::format_to(
+                std::back_inserter(buf),
+                "    // {} has a preferred encoding as {} if possible\n",
+                desc.name_fadec,
+                pref_enc.replacement->name_fadec);
+
+            const auto if_cond = std::format(
+                "{}.is_imm()", state.value_map[reg_id].operand_name);
+            if (ifs_written) {
+                buf += " else";
+            }
+            std::format_to(
+                std::back_inserter(buf), "    if ({}) {{\n", if_cond);
+            ifs_written = true;
+            generate_inst_inner(
+                buf, state, inst, *pref_enc.replacement, if_cond, 8);
+            std::format_to(std::back_inserter(buf), "    }}");
+
+            // TODO(ts): if the instruction is commutable, we should also check
+            // other uses
+
+            continue;
+        }
+        case COND_MEM: {
+            // TODO
+            assert(0);
+            exit(1);
+        }
+        }
+
+        if (break_loop) {
+            break;
+        }
+    }
+
+    if (ifs_written) {
+        buf += " else {{\n";
+    }
 
     // TODO(ts): generate operation
+    generate_inst_inner(buf, state, inst, desc, "", 4);
+
+    if (ifs_written) {
+        buf += "}}\n";
+    }
 
     // TODO(ts): check killed operands
 
+    for (auto &def : inst->all_defs()) {
+        assert(def.isReg() && def.getReg().isPhysical());
+        const auto reg = def.getReg();
+        if (state.enc_target->reg_should_be_ignored(reg)) {
+            continue;
+        }
+
+        // TODO(ts): needs special handling in the operands
+        assert(!def.isImplicit());
+
+        // after an instruction all registers are in ScratchRegs
+        const auto reg_id = state.enc_target->reg_id_from_mc_reg(reg);
+        assert(state.value_map.contains(reg_id));
+        auto &reg_info = state.value_map[reg_id];
+        if (reg_info.ty == ValueInfo::REG_ALIAS) {
+            state.remove_reg_alias(buf, reg_id, reg_info.alias_reg_id);
+        }
+
+        reg_info.ty      = ValueInfo::SCRATCHREG;
+        reg_info.is_dead = def.isDead();
+    }
+
     return true;
+}
+
+void GenerationState::remove_reg_alias(std::string &buf,
+                                       unsigned     reg,
+                                       unsigned     aliased_reg) {
+    assert(value_map.contains(reg));
+    assert(value_map.contains(aliased_reg));
+    std::format_to(std::back_inserter(buf),
+                   "    // removing alias from {} to {}\n",
+                   enc_target->reg_name_lower(reg),
+                   enc_target->reg_name_lower(aliased_reg));
+
+    auto &info = value_map[aliased_reg];
+    info.aliased_regs.erase(reg);
+
+    if (info.ty == ValueInfo::REG_ALIAS && info.aliased_regs.empty()
+        && info.is_dead) {
+        remove_reg_alias(buf, aliased_reg, info.alias_reg_id);
+    }
 }
 
 bool handle_move(std::string        &buf,
@@ -352,6 +687,363 @@ bool handle_terminator(std::string        &buf,
     std::cerr << std::format("ERROR: Encountered unknown terminator {}\n", tmp);
     return false;
 }
+
+bool generate_inst_inner(std::string           &buf,
+                         GenerationState       &state,
+                         llvm::MachineInstr    *inst,
+                         tpde_encgen::InstDesc &desc,
+                         std::string_view       if_cond,
+                         unsigned               indent) {
+    // ok so we should just need to walk the operands in the desc, set them up
+    // depending on what we get from the MachineInstr and then emit the encoding
+    //
+    // sounds good...
+
+    (void)if_cond;
+    // we need the llvm desc to check for memory operand mismatches
+    // as we need different code generated if we deal with a replacement
+    // from INSTrr -> INSTrm
+    const llvm::MCInstrDesc &llvm_inst_desc =
+        state.func->getTarget().getMCInstrInfo()->get(inst->getOpcode());
+    (void)llvm_inst_desc;
+
+    // allocate mapping for destinations
+    std::vector<bool> defs_allocated{};
+    for (const auto &def : inst->all_defs()) {
+        assert(def.isReg() && def.getReg().isPhysical());
+        const auto reg = def.getReg();
+        if (state.enc_target->reg_should_be_ignored(reg)) {
+            continue;
+        }
+
+        // TODO(ts): needs special handling in the operands
+        assert(!def.isImplicit());
+
+        const auto reg_id = state.enc_target->reg_id_from_mc_reg(reg);
+        if (!state.value_map.contains(reg_id)) {
+            state.value_map[reg_id] =
+                ValueInfo{.ty = ValueInfo::SCRATCHREG, .is_dead = false};
+        }
+        defs_allocated.push_back(false);
+    }
+
+    const auto def_idx = [inst](const llvm::MachineOperand *op) {
+        unsigned idx = 0;
+        for (const auto &def : inst->all_defs()) {
+            if (&def == op) {
+                return idx;
+            }
+            ++idx;
+        }
+        assert(0);
+        exit(1);
+    };
+
+    auto       llvm_uses     = inst->uses().begin();
+    auto       llvm_uses_end = inst->uses().end();
+    const auto inst_id       = state.cur_inst_id;
+
+    std::vector<std::string> op_names{};
+    for (unsigned op_idx = 0; op_idx < desc.op_types.size(); ++op_idx) {
+        switch (desc.op_types[op_idx]) {
+            using enum tpde_encgen::InstDesc::OP_TYPE;
+        case OP_REG: {
+            assert(llvm_uses != llvm_uses_end);
+            auto &llvm_op = *llvm_uses++;
+            assert(llvm_op.isReg() && llvm_op.getReg().isPhysical());
+            auto reg_id =
+                state.enc_target->reg_id_from_mc_reg(llvm_op.getReg());
+            assert(state.value_map.contains(reg_id));
+            std::format_to(std::back_inserter(buf),
+                           "{:>{}}// operand {} is {}\n",
+                           "",
+                           indent,
+                           op_idx,
+                           state.enc_target->reg_name_lower(reg_id));
+
+            while (state.value_map[reg_id].ty == ValueInfo::REG_ALIAS) {
+                std::format_to(std::back_inserter(buf),
+                               "{:>{}}// {} is an alias for {}\n",
+                               "",
+                               indent,
+                               state.enc_target->reg_name_lower(reg_id),
+                               state.enc_target->reg_name_lower(
+                                   state.value_map[reg_id].alias_reg_id));
+                reg_id = state.value_map[reg_id].alias_reg_id;
+                assert(state.value_map.contains(reg_id));
+            }
+            // TODO(ts): need to think about this
+            assert(!llvm_op.isEarlyClobber());
+
+            if (llvm_op.isImplicit()) {
+                // TODO(ts): needs special allocation handling
+                assert(0);
+                exit(1);
+            }
+
+            const auto &reg_info = state.value_map[reg_id];
+            if (reg_info.ty == ValueInfo::SCRATCHREG) {
+                // if the destination is tied, we want to salvage if possible
+                // or allocate the destination if required and do a copy
+                // if the destination and the source are the same then we only
+                // need to allocate
+                //
+                // if it is not tied we can simply use the source reg
+
+                if (llvm_op.isTied()) {
+                    const auto &def_reg = inst->getOperand(
+                        inst->findTiedOperandIdx(llvm_op.getOperandNo()));
+                    assert(def_reg.isReg() && def_reg.getReg().isPhysical());
+                    const auto def_reg_id =
+                        state.enc_target->reg_id_from_mc_reg(def_reg.getReg());
+                    assert(state.enc_target->reg_bank(reg_id)
+                           == state.enc_target->reg_bank(def_reg_id));
+
+                    if (reg_id == def_reg_id) {
+                        std::format_to(
+                            std::back_inserter(buf),
+                            "{:>{}}// operand {}({}) is the same as its tied "
+                            "destination\n",
+                            "",
+                            indent,
+                            op_idx,
+                            state.enc_target->reg_name_lower(reg_id));
+                        std::format_to(std::back_inserter(buf),
+                                       "{:>{}}"
+                                       "scratch_{}.alloc_from_bank({});\n",
+                                       "",
+                                       indent,
+                                       state.enc_target->reg_name_lower(reg_id),
+                                       state.enc_target->reg_bank(reg_id));
+                        defs_allocated[def_idx(&def_reg)] = true;
+                    } else if (state.is_first_block && llvm_op.isKill()
+                               && (reg_info.aliased_regs.empty()
+                                   || (reg_info.is_dead
+                                       && reg_info.aliased_regs.size() == 1))) {
+                        std::format_to(
+                            std::back_inserter(buf),
+                            "{:>{}}// operand {}({}) can be salvaged\n",
+                            "",
+                            indent,
+                            op_idx,
+                            state.enc_target->reg_name_lower(reg_id));
+                        std::format_to(
+                            std::back_inserter(buf),
+                            "{:>{}}scratch_{} = std::move(scratch_{});\n",
+                            "",
+                            indent,
+                            state.enc_target->reg_name_lower(def_reg_id),
+                            state.enc_target->reg_name_lower(reg_id));
+                        std::format_to(
+                            std::back_inserter(buf),
+                            "{:>{}}"
+                            "scratch_{}.alloc_from_bank({});\n",
+                            "",
+                            indent,
+                            state.enc_target->reg_name_lower(def_reg_id),
+                            state.enc_target->reg_bank(def_reg_id));
+                        defs_allocated[def_idx(&def_reg)] = true;
+                    } else {
+                        std::format_to(
+                            std::back_inserter(buf),
+                            "{:>{}}// operand {}({}) has some references so "
+                            "copy it\n",
+                            "",
+                            indent,
+                            op_idx,
+                            state.enc_target->reg_name_lower(reg_id));
+                        std::format_to(
+                            std::back_inserter(buf),
+                            "{:>{}}AsmReg inst_{}_op{} = "
+                            "scratch_{}.alloc_from_bank({});\n",
+                            "",
+                            indent,
+                            inst_id,
+                            op_idx,
+                            state.enc_target->reg_name_lower(def_reg_id),
+                            state.enc_target->reg_bank(def_reg_id));
+                        state.enc_target->generate_copy(
+                            buf,
+                            indent,
+                            state.enc_target->reg_bank(def_reg_id),
+                            std::format("inst_{}_op{}", inst_id, op_idx),
+                            std::format(
+                                "scratch_{}.cur_reg",
+                                state.enc_target->reg_name_lower(reg_id)),
+                            reg_size_bytes(state.func, reg_id));
+                    }
+                } else {
+                    // TODO(ts): try to salvage the register if possible
+                    std::format_to(
+                        std::back_inserter(buf),
+                        "{:>{}}// operand {}({}) is a simple register\n",
+                        "",
+                        indent,
+                        op_idx,
+                        state.enc_target->reg_name_lower(reg_id));
+                    // register should be allocated if we come into here
+                    std::format_to(std::back_inserter(buf),
+                                   "{:>{}}AsmReg inst_{}_op{} = "
+                                   "scratch_{}.cur_reg;\n",
+                                   "",
+                                   indent,
+                                   inst_id,
+                                   op_idx,
+                                   state.enc_target->reg_name_lower(reg_id));
+                    op_names.push_back(
+                        std::format("inst_{}_op{}", inst_id, op_names.size()));
+                }
+            } else {
+                assert(reg_info.ty == ValueInfo::ASM_OPERAND);
+                std::format_to(std::back_inserter(buf),
+                               "{:>{}}// {} is mapped to {}\n",
+                               "",
+                               indent,
+                               state.enc_target->reg_name_lower(reg_id),
+                               reg_info.operand_name);
+                // try to salvage
+
+                if (llvm_op.isTied()) {
+                    // TODO(ts): if the destination is used as a fixed reg at
+                    // some point we cannot simply salvage into it i think so we
+                    // need some extra helpers for that
+                    const auto &def_reg = inst->getOperand(
+                        inst->findTiedOperandIdx(llvm_op.getOperandNo()));
+                    assert(def_reg.isReg() && def_reg.getReg().isPhysical());
+                    const auto def_reg_id =
+                        state.enc_target->reg_id_from_mc_reg(def_reg.getReg());
+                    assert(state.enc_target->reg_bank(reg_id)
+                           == state.enc_target->reg_bank(def_reg_id));
+                    if (state.is_first_block && llvm_op.isKill()
+                        && (reg_info.aliased_regs.empty()
+                            || (reg_info.is_dead
+                                && reg_info.aliased_regs.size() == 1))) {
+                        std::format_to(std::back_inserter(buf),
+                                       "{:>{}}// operand {}({}) is tied so try "
+                                       "to salvage or materialize\n",
+                                       "",
+                                       indent,
+                                       op_idx,
+                                       reg_info.operand_name);
+                        std::format_to(
+                            std::back_inserter(buf),
+                            "{:>{}}{}.try_salvage_or_materialize(this, "
+                            "scratch_{}, {}, {});\n",
+                            "",
+                            indent,
+                            reg_info.operand_name,
+                            state.enc_target->reg_name_lower(def_reg_id),
+                            state.enc_target->reg_bank(reg_id),
+                            reg_size_bytes(state.func, llvm_op.getReg()));
+                        defs_allocated[def_idx(&def_reg)] = true;
+                    } else {
+                        std::format_to(
+                            std::back_inserter(buf),
+                            "{:>{}}AsmReg inst_{}_op{} = "
+                            "scratch_{}.alloc_from_bank({});\n",
+                            "",
+                            indent,
+                            inst_id,
+                            op_idx,
+                            state.enc_target->reg_name_lower(def_reg_id),
+                            state.enc_target->reg_bank(def_reg_id));
+                        std::format_to(std::back_inserter(buf),
+                                       "{:>{}}AsmReg inst_{}_op{}_tmp = "
+                                       "{}.as_reg(this);\n",
+                                       "",
+                                       indent,
+                                       inst_id,
+                                       op_idx,
+                                       reg_info.operand_name);
+                        state.enc_target->generate_copy(
+                            buf,
+                            indent,
+                            state.enc_target->reg_bank(def_reg_id),
+                            std::format("inst_{}_op{}", inst_id, op_idx),
+                            std::format("inst_{}_op{}_tmp", inst_id, op_idx),
+                            reg_size_bytes(state.func, reg_id));
+                        defs_allocated[def_idx(&def_reg)] = true;
+                    }
+                } else {
+                    // TODO(ts): search for dests to salvage to
+                    std::format_to(
+                        std::back_inserter(buf),
+                        "{:>{}}AsmReg inst_{}_op{} = {}.as_reg(this);\n",
+                        "",
+                        indent,
+                        inst_id,
+                        op_idx,
+                        reg_info.operand_name);
+                    op_names.push_back(
+                        std::format("inst_{}_op{}", inst_id, op_idx));
+                }
+            }
+            break;
+        }
+        case OP_NONE: continue;
+        default: {
+            assert(0);
+            exit(1);
+        }
+        }
+    }
+
+    // allocate destinations if it did not yet happen
+    // TODO(ts): we rely on the fact that the order when encoding corresponds
+    // to llvms ordering of defs/uses which might not always be the case
+
+    buf += "\n";
+
+    std::string operand_str;
+    for (const auto &def : inst->all_defs()) {
+        assert(def.isReg() && def.getReg().isPhysical());
+        const auto reg = def.getReg();
+        if (state.enc_target->reg_should_be_ignored(reg)) {
+            continue;
+        }
+
+        // TODO(ts): needs special handling in the operands
+        assert(!def.isImplicit());
+
+        const auto reg_id = state.enc_target->reg_id_from_mc_reg(reg);
+        if (!defs_allocated[def_idx(&def)]) {
+            std::format_to(std::back_inserter(buf),
+                           "{:>{}}// def {} has not been allocated yet\n",
+                           "",
+                           indent,
+                           state.enc_target->reg_name_lower(reg_id));
+            std::format_to(std::back_inserter(buf),
+                           "{:>{}}scratch_{}.alloc_from_bank({});\n",
+                           "",
+                           indent,
+                           state.enc_target->reg_name_lower(reg_id),
+                           state.enc_target->reg_bank(reg_id));
+        }
+
+        if (!operand_str.empty()) {
+            operand_str += ", ";
+        }
+        std::format_to(std::back_inserter(operand_str),
+                       "scratch_{}.cur_reg",
+                       state.enc_target->reg_name_lower(reg_id));
+    }
+
+    for (auto &name : op_names) {
+        if (!operand_str.empty()) {
+            operand_str += ", ";
+        }
+        operand_str += name;
+    }
+
+    std::format_to(std::back_inserter(buf),
+                   "{:>{}}ASMD({}, {})\n",
+                   "",
+                   indent,
+                   desc.name_fadec,
+                   operand_str);
+
+    return true;
+}
 } // namespace
 
 namespace tpde_encgen {
@@ -396,7 +1088,8 @@ bool create_encode_function(llvm::MachineFunction *func,
 
     // TODO(ts): parameterize
     auto            enc_target = std::make_unique<EncodingTargetX64>(func);
-    GenerationState state{.func = func, .enc_target = enc_target.get()};
+    GenerationState state{
+        .func = func, .enc_target = enc_target.get(), .is_first_block = true};
 
 // TODO(ts): this can't work if a IR value corresponds to multiple registers
 // so we should parse debug info but that does not always exist
@@ -485,7 +1178,9 @@ bool create_encode_function(llvm::MachineFunction *func,
                 if (!generate_inst(write_buf_inner, state, inst)) {
                     return false;
                 }
+                ++state.cur_inst_id;
             }
+            state.is_first_block = false;
         }
     }
 
