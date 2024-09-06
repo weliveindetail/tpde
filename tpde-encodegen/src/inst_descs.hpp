@@ -45,7 +45,12 @@ struct InstDesc {
         OP_REG,
     };
 
-    std::array<OP_TYPE, 4> op_types;
+    struct Operand {
+        OP_TYPE  type;
+        unsigned llvm_idx;
+    };
+
+    std::array<Operand, 4> operands;
 
     std::vector<PreferredEncoding> preferred_encodings;
     // TODO(ts): need to think about operand encoding

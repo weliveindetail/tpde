@@ -739,17 +739,20 @@ bool generate_inst_inner(std::string           &buf,
         exit(1);
     };
 
-    auto       llvm_uses     = inst->uses().begin();
-    auto       llvm_uses_end = inst->uses().end();
-    const auto inst_id       = state.cur_inst_id;
+    // auto       llvm_uses     = inst->uses().begin();
+    // auto       llvm_uses_end = inst->uses().end();
+    const auto inst_id = state.cur_inst_id;
 
     std::vector<std::string> op_names{};
-    for (unsigned op_idx = 0; op_idx < desc.op_types.size(); ++op_idx) {
-        switch (desc.op_types[op_idx]) {
+    for (unsigned op_idx = 0; op_idx < desc.operands.size(); ++op_idx) {
+        switch (desc.operands[op_idx].type) {
             using enum tpde_encgen::InstDesc::OP_TYPE;
         case OP_REG: {
-            assert(llvm_uses != llvm_uses_end);
-            auto &llvm_op = *llvm_uses++;
+            auto &llvm_op = inst->getOperand(desc.operands[op_idx].llvm_idx);
+            if (llvm_op.isDef()) {
+                continue;
+            }
+
             assert(llvm_op.isReg() && llvm_op.getReg().isPhysical());
             auto reg_id =
                 state.enc_target->reg_id_from_mc_reg(llvm_op.getReg());
@@ -891,7 +894,7 @@ bool generate_inst_inner(std::string           &buf,
                                    op_idx,
                                    state.enc_target->reg_name_lower(reg_id));
                     op_names.push_back(
-                        std::format("inst_{}_op{}", inst_id, op_names.size()));
+                        std::format("inst_{}_op{}", inst_id, op_idx));
                 }
             } else {
                 assert(reg_info.ty == ValueInfo::ASM_OPERAND);
