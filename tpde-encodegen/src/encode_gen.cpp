@@ -471,6 +471,31 @@ bool generate_inst(std::string        &buf,
     }
 
     // TODO(ts): check killed operands
+    for (auto &use : inst->all_uses()) {
+        assert(use.isReg() && use.getReg().isPhysical());
+        const auto reg = use.getReg();
+        if (state.enc_target->reg_should_be_ignored(reg)) {
+            continue;
+        }
+
+        if (!use.isKill()) {
+            continue;
+        }
+
+        const auto reg_id = state.enc_target->reg_id_from_mc_reg(reg);
+        std::format_to(std::back_inserter(buf),
+                       "    // {} is killed and marked as dead\n",
+                       state.enc_target->reg_name_lower(reg_id));
+
+        assert(state.value_map.contains(reg_id));
+        auto &reg_info = state.value_map[reg_id];
+        if (reg_info.ty == ValueInfo::REG_ALIAS) {
+            state.remove_reg_alias(buf, reg_id, reg_info.alias_reg_id);
+        }
+
+        reg_info.ty      = ValueInfo::SCRATCHREG;
+        reg_info.is_dead = true;
+    }
 
     for (auto &def : inst->all_defs()) {
         assert(def.isReg() && def.getReg().isPhysical());
