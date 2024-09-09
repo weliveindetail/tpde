@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: 2024 Tobias Kamm <tobias.kamm@tum.de>
 // SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
 //
 // SPDX-License-Identifier: LicenseRef-Proprietary

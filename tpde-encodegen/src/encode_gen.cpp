@@ -229,7 +229,18 @@ struct GenerationState {
 
     llvm::DenseMap<unsigned, std::vector<std::string>> fixed_reg_conds{};
 
+    template <typename... T>
+    void fmt_line(std::string             &buf,
+                  unsigned                 indent,
+                  std::format_string<T...> fmt,
+                  T &&...args) {
+        std::format_to(std::back_inserter(buf), "{:>{}}", "", indent);
+        std::format_to(std::back_inserter(buf), fmt, std::forward<T>(args)...);
+        buf += '\n';
+    }
+
     void remove_reg_alias(std::string &buf, unsigned reg, unsigned aliased_reg);
+    unsigned resolve_reg_alias(std::string &buf, unsigned indent, unsigned);
 };
 
 bool handle_move(std::string        &buf,
@@ -449,6 +460,9 @@ bool generate_inst(std::string        &buf,
         }
         case COND_MEM: {
             // TODO
+            // TODO(ts): note that here we need to check whether the inst
+            // reads/stores from memory and emit a check for
+            // is_addr/is_mem_reference depending on that
             assert(0);
             exit(1);
         }
@@ -472,8 +486,13 @@ bool generate_inst(std::string        &buf,
 
     // TODO(ts): check killed operands
     for (auto &use : inst->all_uses()) {
+        if (use.isImm() || (use.isReg() && !use.getReg().isValid())) {
+            continue;
+        }
+
         assert(use.isReg() && use.getReg().isPhysical());
         const auto reg = use.getReg();
+
         if (state.enc_target->reg_should_be_ignored(reg)) {
             continue;
         }
@@ -539,6 +558,23 @@ void GenerationState::remove_reg_alias(std::string &buf,
         && info.is_dead) {
         remove_reg_alias(buf, aliased_reg, info.alias_reg_id);
     }
+}
+
+unsigned GenerationState::resolve_reg_alias(std::string &buf,
+                                            unsigned     indent,
+                                            unsigned     reg) {
+    assert(value_map.contains(reg));
+    const auto &info = value_map[reg];
+    if (info.ty == ValueInfo::REG_ALIAS) {
+        fmt_line(buf,
+                 indent,
+                 "// {} is an alias for {}",
+                 enc_target->reg_name_lower(reg),
+                 enc_target->reg_name_lower(info.alias_reg_id));
+        return resolve_reg_alias(buf, indent, info.alias_reg_id);
+    }
+
+    return reg;
 }
 
 bool handle_move(std::string        &buf,
@@ -1008,6 +1044,307 @@ bool generate_inst_inner(std::string           &buf,
             }
             break;
         }
+        case OP_MEM: {
+            // TODO(ts): factor out for arch-specifica
+            state.fmt_line(
+                buf, indent, "// operand {} is a memory operand", op_idx);
+
+            const auto  llvm_op_idx = desc.operands[op_idx].llvm_idx;
+            const auto &op_info     = llvm_inst_desc.operands()[llvm_op_idx];
+            if (op_info.OperandType != llvm::MCOI::OPERAND_MEMORY) {
+                // dealing with a replacement so we already know that the
+                // operand is a AsmOperand::Address or an AsmOperand::ValueRef
+                // that is on the stack
+                // TODO(ts): here I need the handling to discriminate whether we
+                // checked for an Address or Address/ValueRefOnStack when
+                // picking the replacement
+                assert(0);
+                exit(1);
+            }
+
+
+            /*
+            ** A Memory Operand in MIR consists of five operands:
+            ** 1. base register
+            ** 2. scale factor
+            ** 3. index register
+            ** 4. displacement
+            ** 5. segment register (uninteresting for us)
+            **
+            ** We just encountered the first operand, start by getting the rest
+            */
+            const llvm::MachineOperand &base_reg =
+                inst->getOperand(llvm_op_idx);
+            const llvm::MachineOperand &scale_factor =
+                inst->getOperand(llvm_op_idx + 1);
+            const llvm::MachineOperand &index_reg =
+                inst->getOperand(llvm_op_idx + 2);
+            const llvm::MachineOperand &displacement =
+                inst->getOperand(llvm_op_idx + 3);
+            assert(scale_factor.isImm() && displacement.isImm());
+            assert(base_reg.isReg() && index_reg.isReg());
+            assert(base_reg.getReg().isValid()
+                   && base_reg.getReg().isPhysical());
+
+            std::format_to(std::back_inserter(buf),
+                           "{:>{}}FeMem inst{}_op{};\n",
+                           "",
+                           indent,
+                           inst_id,
+                           op_idx);
+            const auto mem_insert_idx = buf.size();
+
+            const auto base_reg_id =
+                state.enc_target->reg_id_from_mc_reg(base_reg.getReg());
+            assert(state.value_map.contains(base_reg_id));
+
+            std::format_to(std::back_inserter(buf),
+                           "{:>{}}// looking at base {}\n",
+                           "",
+                           indent,
+                           state.enc_target->reg_name_lower(base_reg_id));
+            const auto base_reg_aliased_id =
+                state.resolve_reg_alias(buf, indent, base_reg_id);
+            const auto base_is_asm_op = state.value_map[base_reg_aliased_id].ty
+                                        == ValueInfo::ASM_OPERAND;
+            if (base_is_asm_op) {
+                std::format_to(
+                    std::back_inserter(buf),
+                    "{:>{}}// {} maps to {}, so could be an address\n",
+                    "",
+                    indent,
+                    state.enc_target->reg_name_lower(base_reg_aliased_id),
+                    state.value_map[base_reg_aliased_id].operand_name);
+                std::format_to(
+                    std::back_inserter(buf),
+                    "{:>{}}if ({}.is_addr()) {{\n",
+                    "",
+                    indent,
+                    state.value_map[base_reg_aliased_id].operand_name);
+                std::format_to(
+                    std::back_inserter(buf),
+                    "{:>{}}const auto& addr = {}.addr();\n",
+                    "",
+                    indent + 4,
+                    state.value_map[base_reg_aliased_id].operand_name);
+                // if there is no displacement and index we can simply take over
+                // the address
+                if (!index_reg.getReg().isValid()
+                    && displacement.getImm() == 0) {
+                    state.fmt_line(buf,
+                                   indent + 4,
+                                   "// no index/disp in LLVM, can simply use "
+                                   "the operand address");
+                    state.fmt_line(
+                        buf,
+                        indent + 4,
+                        "inst{}_op{} = FE_MEM(addr.base, addr.scale, "
+                        "addr.scale ? addr.index : FE_NOREG, addr.disp);",
+                        inst_id,
+                        op_idx);
+                } else if (index_reg.getReg().isValid()) {
+                    // TODO(ts): if index_reg is an AsmOperand, check if it is
+                    // an imm and fold it into the displacement
+                    //
+                    // for now, just move the addr into a scratch and then build
+                    // a mem op with the llvm index
+                    std::format_to(
+                        std::inserter(buf, buf.begin() + mem_insert_idx),
+                        "{:>{}}ScratchReg inst{}_op{}_scratch{{derived()}};\n",
+                        "",
+                        indent,
+                        inst_id,
+                        op_idx);
+                    // TODO(ts): don't need to do this if displacement is zero
+                    // and addr.scale == 0
+                    state.fmt_line(buf,
+                                   indent + 4,
+                                   "// LLVM memory operand has index, need to "
+                                   "materialize the addr");
+                    state.fmt_line(buf,
+                                   indent + 4,
+                                   "AsmReg base_tmp = "
+                                   "inst{}_op{}_scratch.alloc_from_bank(0);",
+                                   inst_id,
+                                   op_idx);
+                    state.fmt_line(
+                        buf,
+                        indent + 4,
+                        "ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, "
+                        "addr.scale ? addr.index : FE_NOREG, addr.disp));");
+
+                    state.fmt_line(buf,
+                                   indent + 4,
+                                   "// gather the LLVM memory operand index {}",
+                                   state.enc_target->reg_name_lower(
+                                       state.enc_target->reg_id_from_mc_reg(
+                                           index_reg.getReg())));
+                    const auto index_aliased_id = state.resolve_reg_alias(
+                        buf,
+                        indent,
+                        state.enc_target->reg_id_from_mc_reg(
+                            index_reg.getReg()));
+                    if (state.value_map[index_aliased_id].ty
+                        == ValueInfo::ASM_OPERAND) {
+                        state.fmt_line(
+                            buf,
+                            indent + 4,
+                            "// {} maps to operand {}",
+                            state.enc_target->reg_name_lower(index_aliased_id),
+                            state.value_map[index_aliased_id].operand_name);
+                        state.fmt_line(
+                            buf,
+                            indent + 4,
+                            "AsmReg index_tmp = {}.as_reg(this);",
+                            state.value_map[index_aliased_id].operand_name);
+                    } else {
+                        state.fmt_line(
+                            buf,
+                            indent + 4,
+                            "AsmReg index_tmp = scratch_{}.cur_reg;",
+                            state.enc_target->reg_name_lower(index_aliased_id));
+                    }
+                    state.fmt_line(
+                        buf,
+                        indent + 4,
+                        "inst{}_op{} = FE_MEM(base_tmp, {}, index_tmp, {});",
+                        inst_id,
+                        op_idx,
+                        scale_factor.getImm(),
+                        displacement.getImm());
+                } else {
+                    // try to check if the displacement is encodeable
+                    state.fmt_line(
+                        buf,
+                        indent + 4,
+                        "// LLVM memory operand has displacement, check if it "
+                        "is encodeable with the disp from addr");
+                    state.fmt_line(buf,
+                                   indent + 4,
+                                   "if (disp_add_encodeable(addr.disp, {}) {{",
+                                   displacement.getImm());
+                    state.fmt_line(
+                        buf,
+                        indent + 8,
+                        "inst{}_op{} = FE_MEM(addr.base, addr.scale, "
+                        "addr.scale ? addr.index : FE_NOREG, addr.disp + {});",
+                        inst_id,
+                        op_idx,
+                        displacement.getImm());
+                    state.fmt_line(buf, indent + 4, "}} else {{");
+                    std::format_to(
+                        std::inserter(buf, buf.begin() + mem_insert_idx),
+                        "{:>{}}ScratchReg inst{}_op{}_scratch{{derived()}};\n",
+                        "",
+                        indent,
+                        inst_id,
+                        op_idx);
+                    state.fmt_line(
+                        buf,
+                        indent + 8,
+                        "// displacements not encodeable together, need to "
+                        "materialize the addr");
+                    state.fmt_line(buf,
+                                   indent + 8,
+                                   "AsmReg base_tmp = "
+                                   "inst{}_op{}_scratch.alloc_from_bank(0);",
+                                   inst_id,
+                                   op_idx);
+                    state.fmt_line(
+                        buf,
+                        indent + 8,
+                        "ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, "
+                        "addr.scale ? addr.index : FE_NOREG, addr.disp));");
+                    state.fmt_line(
+                        buf,
+                        indent + 8,
+                        "inst{}_op{} = FE_MEM(base_tmp, 0, FE_NOREG, {});",
+                        inst_id,
+                        op_idx,
+                        displacement.getImm());
+                    state.fmt_line(buf, indent + 4, "}}");
+                }
+
+
+                buf += std::format("{:>{}}}} else {{\n", "", indent);
+            }
+
+            if (state.value_map[base_reg_aliased_id].ty
+                == ValueInfo::ASM_OPERAND) {
+                state.fmt_line(
+                    buf,
+                    indent + 4,
+                    "// {} maps to operand {}",
+                    state.enc_target->reg_name_lower(base_reg_aliased_id),
+                    state.value_map[base_reg_aliased_id].operand_name);
+                state.fmt_line(
+                    buf,
+                    indent + 4,
+                    "AsmReg base = {}.as_reg(this);",
+                    state.value_map[base_reg_aliased_id].operand_name);
+            } else {
+                state.fmt_line(
+                    buf,
+                    indent + 4,
+                    "AsmReg base = scratch_{}.cur_reg;",
+                    state.enc_target->reg_name_lower(base_reg_aliased_id));
+            }
+            if (index_reg.getReg().isValid()) {
+                // TODO(ts): if index_reg is an AsmOperand, check if it is
+                // an imm and fold it into the displacement
+                const auto idx_reg_id =
+                    state.enc_target->reg_id_from_mc_reg(index_reg.getReg());
+                state.fmt_line(buf,
+                               indent + 4,
+                               "// LLVM memory operand has index reg {}",
+                               state.enc_target->reg_name_lower(idx_reg_id));
+                const auto idx_reg_aliased_id =
+                    state.resolve_reg_alias(buf, indent + 4, idx_reg_id);
+                if (state.value_map[idx_reg_aliased_id].ty
+                    == ValueInfo::ASM_OPERAND) {
+                    state.fmt_line(
+                        buf,
+                        indent + 4,
+                        "// {} maps to operand {}",
+                        state.enc_target->reg_name_lower(idx_reg_aliased_id),
+                        state.value_map[idx_reg_aliased_id].operand_name);
+                    state.fmt_line(
+                        buf,
+                        indent + 4,
+                        "AsmReg index_tmp = {}.as_reg(this);",
+                        state.value_map[idx_reg_aliased_id].operand_name);
+                } else {
+                    state.fmt_line(
+                        buf,
+                        indent + 4,
+                        "AsmReg index_tmp = scratch_{}.cur_reg;",
+                        state.enc_target->reg_name_lower(idx_reg_aliased_id));
+                }
+
+                state.fmt_line(buf,
+                               indent + 4,
+                               "inst{}_op{} = FE_MEM(base, {}, index_tmp, {});",
+                               inst_id,
+                               op_idx,
+                               scale_factor.getImm(),
+                               displacement.getImm());
+            } else {
+                state.fmt_line(buf,
+                               indent + 4,
+                               "inst{}_op{} = FE_MEM(base, 0, FE_NOREG, {});",
+                               inst_id,
+                               op_idx,
+                               displacement.getImm());
+            }
+
+            if (base_is_asm_op) {
+                buf += std::format("{:>{}}}}\n", "", indent);
+            }
+
+            op_names.push_back(std::format("inst_{}_op{}", inst_id, op_idx));
+
+            break;
+        }
         case OP_NONE: continue;
         default: {
             assert(0);
@@ -1210,6 +1547,13 @@ bool create_encode_function(llvm::MachineFunction *func,
             }
             state.is_first_block = false;
         }
+    }
+
+    // create ScratchRegs
+    for (const auto &[reg, info] : state.value_map) {
+        std::format_to(std::back_inserter(write_buf),
+                       "    ScratchReg scratch_{}{{derived()}};\n",
+                       state.enc_target->reg_name_lower(reg));
     }
 
 

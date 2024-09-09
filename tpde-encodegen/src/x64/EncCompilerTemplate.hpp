@@ -198,6 +198,11 @@ struct EncodeCompiler {
         return derived()->has_cpu_feats(CompilerX64::CPU_AVX);
     }
 
+    [[nodiscard]] static bool disp_add_encodeable(int32_t disp, int32_t add) noexcept {
+        const auto tmp = static_cast<int64_t>(disp) + add;
+        return (static_cast<int64_t>(static_cast<int32_t>(tmp)) == tmp);
+    }
+
 // SPDX-SnippetEnd
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: CC0-1.0
