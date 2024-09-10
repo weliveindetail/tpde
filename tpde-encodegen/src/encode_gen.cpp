@@ -375,7 +375,8 @@ bool generate_inst(std::string        &buf,
         return false;
     }
 
-    // TODO(ts): check preferred encodings
+// TODO(ts): check preferred encodings
+#if 0
     const auto get_use = [&](unsigned idx) {
         for (auto &use : inst->uses()) {
             if (idx != 0) {
@@ -388,6 +389,7 @@ bool generate_inst(std::string        &buf,
         assert(0);
         exit(1);
     };
+#endif
 #if 0
     const auto get_def = [&](unsigned idx) {
         for (auto &def : inst->all_defs()) {
@@ -411,7 +413,7 @@ bool generate_inst(std::string        &buf,
         }
 
         assert(pref_enc.target == InstDesc::PreferredEncoding::TARGET_USE);
-        const auto &use = get_use(pref_enc.target_def_use_idx);
+        const auto &use = inst->getOperand(pref_enc.target_def_use_idx);
 
         bool break_loop = false;
         switch (pref_enc.cond) {
@@ -474,14 +476,14 @@ bool generate_inst(std::string        &buf,
     }
 
     if (ifs_written) {
-        buf += " else {{\n";
+        buf += " else {\n";
     }
 
     // TODO(ts): generate operation
-    generate_inst_inner(buf, state, inst, desc, "", 4);
+    generate_inst_inner(buf, state, inst, desc, "", ifs_written ? 8 : 4);
 
     if (ifs_written) {
-        buf += "}}\n";
+        buf += "    }\n";
     }
 
     // TODO(ts): check killed operands
@@ -1342,6 +1344,35 @@ bool generate_inst_inner(std::string           &buf,
             }
 
             op_names.push_back(std::format("inst_{}_op{}", inst_id, op_idx));
+
+            break;
+        }
+        case OP_IMM: {
+            state.fmt_line(
+                buf, indent, "// operand {} is an immediate operand", op_idx);
+
+            const auto  llvm_op_idx = desc.operands[op_idx].llvm_idx;
+            const auto &op_info     = llvm_inst_desc.operands()[llvm_op_idx];
+            const auto &inst_op     = inst->getOperand(llvm_op_idx);
+            if (op_info.OperandType != llvm::MCOI::OPERAND_IMMEDIATE) {
+                // we have an replacement and know that the operand must be an
+                // immediate
+                assert(inst_op.isReg());
+                const auto reg_id =
+                    state.enc_target->reg_id_from_mc_reg(inst_op.getReg());
+                assert(state.value_map.contains(reg_id));
+                const auto &reg_info = state.value_map[reg_id];
+                assert(reg_info.ty == ValueInfo::ASM_OPERAND);
+
+                state.fmt_line(buf,
+                               indent,
+                               "const auto& imm = {}.imm();",
+                               reg_info.operand_name);
+                op_names.emplace_back("imm.const_u64");
+            } else {
+                assert(inst_op.isImm());
+                op_names.push_back(std::format("{}", inst_op.getImm()));
+            }
 
             break;
         }

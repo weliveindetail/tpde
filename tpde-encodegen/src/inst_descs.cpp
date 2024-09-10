@@ -26,6 +26,33 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
     const llvm::MCInstrDesc &llvm_desc =
         inst.getMF()->getTarget().getMCInstrInfo()->get(inst.getOpcode());
 
+    const auto add_op_ty_name = [&desc](const std::string_view str) {
+        desc.name_fadec += str;
+        for (auto &replacement : desc.preferred_encodings) {
+            replacement.replacement->name_fadec += str;
+        }
+    };
+
+    const auto create_imm_replacement = [&desc, &inst, &info](
+                                            const std::string &old_fadec_name,
+                                            const unsigned     idx,
+                                            OpSupports        &op) {
+        if (!inst.getOperand(op.opIndex).isDef()) {
+            if (op.supportsImm()) {
+                assert(!info.isFullName);
+                auto replacement = std::make_shared<InstDesc>(desc);
+                replacement->operands[idx].type  = InstDesc::OP_IMM;
+                replacement->name_fadec          = old_fadec_name;
+                replacement->name_fadec         += 'i';
+                desc.preferred_encodings.push_back(InstDesc::PreferredEncoding{
+                    .target = InstDesc::PreferredEncoding::TARGET_USE,
+                    .target_def_use_idx = op.opIndex,
+                    .cond               = InstDesc::PreferredEncoding::COND_IMM,
+                    .replacement        = std::move(replacement)});
+            }
+        }
+    };
+
     // MOVSX/MOVZX require special handling, because they also state the
     // parameter sizes
     bool is_mov_with_extension = info.fadecName.starts_with("MOVSX")
@@ -35,17 +62,24 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
         auto &op = info.ops[idx];
 
         desc.operands[idx].llvm_idx = op.opIndex;
+
+        const auto old_fadec_name = desc.name_fadec;
+
         // for now just take what's in the MachineInstr
         if (llvm_desc.operands()[op.opIndex].OperandType
             == llvm::MCOI::OPERAND_REGISTER) {
             assert(op.supportsReg());
+
             if (!info.isFullName) {
-                desc.name_fadec += 'r';
+                add_op_ty_name("r");
                 if (is_mov_with_extension) {
-                    desc.name_fadec += std::format("{}", op.opSize);
+                    add_op_ty_name(std::format("{}", op.opSize));
                 }
             }
             desc.operands[idx].type = InstDesc::OP_REG;
+
+            create_imm_replacement(old_fadec_name, idx, op);
+
             continue;
         }
 
@@ -59,6 +93,8 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
                 }
             }
             desc.operands[idx].type = InstDesc::OP_MEM;
+
+            create_imm_replacement(old_fadec_name, idx, op);
             continue;
         }
 
