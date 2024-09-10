@@ -84,6 +84,9 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
         }
     };
 
+    for (auto &op : desc.operands) {
+        op.type = InstDesc::OP_NONE;
+    }
 
     for (unsigned idx = 0; idx < info.numOps; ++idx) {
         auto &op = info.ops[idx];
@@ -92,9 +95,21 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
 
         const auto old_fadec_name = desc.name_fadec;
 
+        auto force_is_reg = false;
+        if (op.opIndex > inst.getNumExplicitOperands()) {
+            // this operand is an implicit operand
+            assert(inst.getOperand(op.opIndex).isReg());
+            if (!inst.getOperand(op.opIndex).isImplicit()) {
+                assert(0);
+                return false;
+            }
+            force_is_reg = true;
+        }
+
         // for now just take what's in the MachineInstr
-        if (llvm_desc.operands()[op.opIndex].OperandType
-            == llvm::MCOI::OPERAND_REGISTER) {
+        if (force_is_reg
+            || llvm_desc.operands()[op.opIndex].OperandType
+                   == llvm::MCOI::OPERAND_REGISTER) {
             assert(op.supportsReg());
 
             if (!info.isFullName) {

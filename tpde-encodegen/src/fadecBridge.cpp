@@ -571,6 +571,7 @@ variantMatching:
                 }
 
                 int llvmIndex = instInfo.ops[paramNo].opIndex;
+#if 0
                 if (llvmIndex >= instrDesc.NumOperands) {
                     // This is a physical register, we cannot change that
                     assert(originalType & REG);
@@ -580,6 +581,7 @@ variantMatching:
                     success = false;
                     break;
                 }
+#endif
                 // const auto &llvmOp = instrDesc.operands()[llvmIndex];
 
                 int tiedIdx = instrDesc.getOperandConstraint(
