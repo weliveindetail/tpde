@@ -145,7 +145,13 @@ struct EncodeCompiler {
             return std::get<Immediate>(state);
         }
 
+        [[nodiscard]] ValuePartRef &val_ref() noexcept {
+            return std::get<ValuePartRef>(state);
+        }
+
         [[nodiscard]] bool encodable_as_imm32_sext() const noexcept;
+        [[nodiscard]] bool val_ref_prefers_mem_enc() const noexcept;
+        [[nodiscard]] u32  val_ref_frame_off() const noexcept;
         AsmReg             as_reg(EncodeCompiler *compiler) noexcept;
         bool try_salvage(AsmReg &, ScratchReg &, u8 bank) noexcept;
         void try_salvage_or_materialize(EncodeCompiler *compiler,
@@ -316,6 +322,51 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
     assert(std::get<Immediate>(state).size <= 8);
     const u64 imm = std::get<Immediate>(state).const_u64;
     return static_cast<i64>(static_cast<i32>(imm)) == static_cast<i64>(imm);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+    val_ref_prefers_mem_enc() const noexcept {
+    ValuePartRef *ptr;
+    if (std::holds_alternative<ValuePartRef>(state)) {
+        ptr = &std::get<ValuePartRef>(state);
+    } else if (std::holds_alternative<ValuePartRef *>(state)) {
+        ptr = std::get<ValuePartRef *>(state);
+    } else {
+        return false;
+    }
+
+    if (ptr->is_const) {
+        return false;
+    }
+
+    const auto ap = ptr->assignment();
+    return (!ap.register_valid() && !ap.variable_reference());
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+u32 EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::val_ref_frame_off()
+    const noexcept {
+    if (std::holds_alternative<ValuePartRef>(state)) {
+        const auto &val_ref = std::get<ValuePartRef>(state);
+        assert(!val_ref.is_const);
+        const auto ap = val_ref.assignment();
+        assert(!ap.variable_reference());
+        return ap.frame_off();
+    } else {
+        assert(std::holds_alternative<ValuePartRef *>(state));
+        const auto *val_ref = std::get<ValuePartRef *>(state);
+        assert(!val_ref->is_const);
+        const auto ap = val_ref->assignment();
+        assert(!ap.variable_reference());
+        return ap.frame_off();
+    }
 }
 
 template <typename Adaptor,

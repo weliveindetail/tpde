@@ -448,8 +448,11 @@ bool generate_inst(std::string        &buf,
             if (ifs_written) {
                 buf += " else";
             }
-            std::format_to(
-                std::back_inserter(buf), "    if ({}) {{\n", if_cond);
+            std::format_to(std::back_inserter(buf),
+                           "{:>{}}if ({}) {{\n",
+                           "",
+                           ifs_written ? 1 : 4,
+                           if_cond);
             ifs_written = true;
             generate_inst_inner(
                 buf, state, inst, *pref_enc.replacement, if_cond, 8);
@@ -462,11 +465,43 @@ bool generate_inst(std::string        &buf,
         }
         case COND_MEM: {
             // TODO
-            // TODO(ts): note that here we need to check whether the inst
-            // reads/stores from memory and emit a check for
-            // is_addr/is_mem_reference depending on that
-            assert(0);
-            exit(1);
+            // we can only do this replacement if the asmoperand is a valueref
+            // *and* not in a register
+            // otherwise we get different semantics
+            assert(use.isReg() && use.getReg().isPhysical());
+            auto reg_id = state.enc_target->reg_id_from_mc_reg(use.getReg());
+            assert(state.value_map.contains(reg_id));
+            while (state.value_map[reg_id].ty == ValueInfo::REG_ALIAS) {
+                reg_id = state.value_map[reg_id].alias_reg_id;
+                assert(state.value_map.contains(reg_id));
+            }
+            if (state.value_map[reg_id].ty != ValueInfo::ASM_OPERAND) {
+                // cannot be a memory operand
+                continue;
+            }
+
+            std::format_to(
+                std::back_inserter(buf),
+                "    // {} has a preferred encoding as {} if possible\n",
+                desc.name_fadec,
+                pref_enc.replacement->name_fadec);
+
+            const auto if_cond =
+                std::format("{}.val_ref_prefers_mem_enc()",
+                            state.value_map[reg_id].operand_name);
+            if (ifs_written) {
+                buf += "    else";
+            }
+            std::format_to(std::back_inserter(buf),
+                           "{:>{}}if ({}) {{\n",
+                           "",
+                           ifs_written ? 1 : 4,
+                           if_cond);
+            ifs_written = true;
+            generate_inst_inner(
+                buf, state, inst, *pref_enc.replacement, if_cond, 8);
+            std::format_to(std::back_inserter(buf), "    }}");
+            continue;
         }
         }
 
@@ -1053,17 +1088,48 @@ bool generate_inst_inner(std::string           &buf,
 
             const auto  llvm_op_idx = desc.operands[op_idx].llvm_idx;
             const auto &op_info     = llvm_inst_desc.operands()[llvm_op_idx];
+
             if (op_info.OperandType != llvm::MCOI::OPERAND_MEMORY) {
                 // dealing with a replacement so we already know that the
-                // operand is a AsmOperand::Address or an AsmOperand::ValueRef
+                // operand is an AsmOperand::ValueRef
                 // that is on the stack
-                // TODO(ts): here I need the handling to discriminate whether we
-                // checked for an Address or Address/ValueRefOnStack when
-                // picking the replacement
-                assert(0);
-                exit(1);
-            }
+                assert(inst->getOperand(llvm_op_idx).isReg());
+                const auto base_reg_id = state.enc_target->reg_id_from_mc_reg(
+                    inst->getOperand(llvm_op_idx).getReg());
+                assert(state.value_map.contains(base_reg_id));
+                state.fmt_line(buf,
+                               indent,
+                               "// {} is base for memory operand to use",
+                               state.enc_target->reg_name_lower(base_reg_id));
 
+                const auto base_reg_aliased_id =
+                    state.resolve_reg_alias(buf, indent, base_reg_id);
+                assert(state.value_map.contains(base_reg_aliased_id));
+                const auto &base_info = state.value_map[base_reg_aliased_id];
+                assert(base_info.ty == ValueInfo::ASM_OPERAND);
+
+                state.fmt_line(
+                    buf,
+                    indent,
+                    "// {} maps to operand {} which is known to be a "
+                    "ValuePartRef",
+                    state.enc_target->reg_name_lower(base_reg_aliased_id),
+                    base_info.operand_name);
+
+                // in x64's case, we know that the stack address is simply
+                // rbp-disp
+                state.fmt_line(buf,
+                               indent,
+                               "FeMem inst{}_op{} = FE_MEM(AsmReg::BP, 0, "
+                               "FE_NOREG, -{}.val_ref_frame_off());",
+                               inst_id,
+                               op_idx,
+                               base_info.operand_name);
+
+                op_names.push_back(
+                    std::format("inst_{}_op{}", inst_id, op_idx));
+                break;
+            }
 
             /*
             ** A Memory Operand in MIR consists of five operands:
@@ -1094,6 +1160,7 @@ bool generate_inst_inner(std::string           &buf,
                            indent,
                            inst_id,
                            op_idx);
+
             const auto mem_insert_idx = buf.size();
 
             const auto base_reg_id =
@@ -1107,9 +1174,13 @@ bool generate_inst_inner(std::string           &buf,
                            state.enc_target->reg_name_lower(base_reg_id));
             const auto base_reg_aliased_id =
                 state.resolve_reg_alias(buf, indent, base_reg_id);
+
             const auto base_is_asm_op = state.value_map[base_reg_aliased_id].ty
                                         == ValueInfo::ASM_OPERAND;
             if (base_is_asm_op) {
+                // TODO(ts): add helper to check if this operand is an address
+                // *or* a stack reference so we can fold the stack addr into the
+                // instruction
                 std::format_to(
                     std::back_inserter(buf),
                     "{:>{}}// {} maps to {}, so could be an address\n",
