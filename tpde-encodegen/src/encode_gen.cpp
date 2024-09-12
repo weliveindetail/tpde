@@ -840,12 +840,6 @@ bool generate_inst_inner(std::string           &buf,
                 ValueInfo{.ty = ValueInfo::SCRATCHREG, .is_dead = false};
         }
         defs_allocated.push_back(def.isImplicit());
-
-        if (def.isImplicit()) {
-            // notify the outer code that the register is needed as a fixed
-            // register
-            state.fixed_reg_conds[reg_id].emplace_back(if_cond);
-        }
     }
 
     const auto def_idx = [inst](const llvm::MachineOperand *op) {
@@ -869,6 +863,8 @@ bool generate_inst_inner(std::string           &buf,
     // sometimes implicit operands will show up in the argument list, e.g.
     // `SHL32rCL` but not always, e.g. `CDQ`
     std::vector<unsigned> implicit_ops_handled{};
+    unsigned              implicit_use_count = 0, explicit_use_count = 0;
+
     for (unsigned op_idx = 0; op_idx < desc.operands.size(); ++op_idx) {
         switch (desc.operands[op_idx].type) {
             using enum tpde_encgen::InstDesc::OP_TYPE;
@@ -880,12 +876,27 @@ bool generate_inst_inner(std::string           &buf,
 
             if (llvm_op.isImplicit()) {
                 implicit_ops_handled.push_back(desc.operands[op_idx].llvm_idx);
+
+                if (implicit_use_count >= llvm_inst_desc.NumImplicitUses) {
+                    // should not happen
+                    assert(0);
+                    exit(1);
+                }
+                ++implicit_use_count;
+            } else {
+                if (explicit_use_count >= llvm_inst_desc.NumOperands) {
+                    // should not happen
+                    assert(0);
+                    exit(1);
+                }
+                ++explicit_use_count;
             }
 
             assert(llvm_op.isReg() && llvm_op.getReg().isPhysical());
             auto orig_reg_id =
                 state.enc_target->reg_id_from_mc_reg(llvm_op.getReg());
             assert(state.value_map.contains(orig_reg_id));
+
             std::format_to(std::back_inserter(buf),
                            "{:>{}}// operand {} is {}\n",
                            "",
@@ -1220,6 +1231,13 @@ bool generate_inst_inner(std::string           &buf,
                 // this was an implicit (physical) register operand
                 is_replacement = true;
                 implicit_ops_handled.push_back(llvm_op_idx);
+
+                if (implicit_use_count >= llvm_inst_desc.NumImplicitUses) {
+                    // should not happen
+                    assert(0);
+                    exit(1);
+                }
+                ++implicit_use_count;
             } else {
                 const auto &op_info = llvm_inst_desc.operands()[llvm_op_idx];
                 is_replacement =
@@ -1227,6 +1245,20 @@ bool generate_inst_inner(std::string           &buf,
 
                 if (inst->getOperand(llvm_op_idx).isImplicit()) {
                     implicit_ops_handled.push_back(llvm_op_idx);
+                    assert(is_replacement);
+                    if (implicit_use_count >= llvm_inst_desc.NumImplicitUses) {
+                        // should not happen
+                        assert(0);
+                        exit(1);
+                    }
+                    ++implicit_use_count;
+                } else if (is_replacement) {
+                    if (explicit_use_count >= llvm_inst_desc.NumOperands) {
+                        // should not happen
+                        assert(0);
+                        exit(1);
+                    }
+                    ++explicit_use_count;
                 }
             }
 
@@ -1294,6 +1326,13 @@ bool generate_inst_inner(std::string           &buf,
             assert(base_reg.isReg() && index_reg.isReg());
             assert(base_reg.getReg().isValid()
                    && base_reg.getReg().isPhysical());
+
+            if (explicit_use_count + 4 > llvm_inst_desc.NumOperands) {
+                // should not happen
+                assert(0);
+                exit(1);
+            }
+            explicit_use_count += 4;
 
             std::format_to(std::back_inserter(buf),
                            "{:>{}}FeMem inst{}_op{};\n",
@@ -1569,6 +1608,13 @@ bool generate_inst_inner(std::string           &buf,
                 // this was an implicit (physical) register operand
                 is_replacement = true;
                 implicit_ops_handled.push_back(llvm_op_idx);
+
+                if (implicit_use_count >= llvm_inst_desc.NumImplicitUses) {
+                    // should not happen
+                    assert(0);
+                    exit(1);
+                }
+                ++implicit_use_count;
             } else {
                 const auto &op_info = llvm_inst_desc.operands()[llvm_op_idx];
                 is_replacement =
@@ -1577,6 +1623,22 @@ bool generate_inst_inner(std::string           &buf,
                 if (inst->getOperand(llvm_op_idx).isReg()
                     && inst->getOperand(llvm_op_idx).isImplicit()) {
                     implicit_ops_handled.push_back(llvm_op_idx);
+
+                    if (implicit_use_count >= llvm_inst_desc.NumImplicitUses) {
+                        // should not happen
+                        assert(0);
+                        exit(1);
+                    }
+                    ++implicit_use_count;
+                } else {
+                    assert(!inst->getOperand(llvm_op_idx).isReg()
+                           || !inst->getOperand(llvm_op_idx).isImplicit());
+                    if (explicit_use_count >= llvm_inst_desc.NumOperands) {
+                        // should not happen
+                        assert(0);
+                        exit(1);
+                    }
+                    ++explicit_use_count;
                 }
             }
             const auto &inst_op = inst->getOperand(llvm_op_idx);
@@ -1615,7 +1677,7 @@ bool generate_inst_inner(std::string           &buf,
     // TODO(ts): factor this out a bit with the code above
     // need to make sure implicit register uses are also properly moved
     for (auto &op : inst->all_uses()) {
-        if (!op.isImplicit()) {
+        if (!op.isReg() || !op.isImplicit()) {
             continue;
         }
         if (std::find(implicit_ops_handled.begin(),
@@ -1637,6 +1699,16 @@ bool generate_inst_inner(std::string           &buf,
                        indent,
                        "// Handling implicit operand {}",
                        state.enc_target->reg_name_lower(reg_id));
+        if (implicit_use_count >= llvm_inst_desc.NumImplicitUses) {
+            state.fmt_line(
+                buf,
+                indent,
+                "// Ignoring since the number of implicit operands on the LLVM "
+                "inst exceeds the number in the MCInstrDesc");
+            continue;
+        }
+        ++implicit_use_count;
+
         const auto resolved_reg_id =
             state.resolve_reg_alias(buf, indent, reg_id);
 
@@ -1715,14 +1787,35 @@ bool generate_inst_inner(std::string           &buf,
     buf += "\n";
 
     std::string operand_str;
+    unsigned    implicit_def_count = 0;
     for (const auto &def : inst->all_defs()) {
         assert(def.isReg() && def.getReg().isPhysical());
         const auto reg = def.getReg();
+        if (def.isImplicit()) {
+            if (implicit_def_count >= llvm_inst_desc.NumImplicitDefs) {
+                state.fmt_line(
+                    buf,
+                    indent,
+                    "// Ignoring implicit def {} as it exceeds the number of "
+                    "implicit defs in the MCInstrDesc",
+                    state.func->getSubtarget().getRegisterInfo()->getName(
+                        def.getReg()));
+                continue;
+            }
+            ++implicit_def_count;
+        }
+
         if (state.enc_target->reg_should_be_ignored(reg)) {
             continue;
         }
 
         const auto reg_id = state.enc_target->reg_id_from_mc_reg(reg);
+        if (def.isImplicit()) {
+            // notify the outer code that the register is needed as a fixed
+            // register
+            state.fixed_reg_conds[reg_id].emplace_back(if_cond);
+        }
+
         if (!defs_allocated[def_idx(&def)]) {
             std::format_to(std::back_inserter(buf),
                            "{:>{}}// def {} has not been allocated yet\n",
