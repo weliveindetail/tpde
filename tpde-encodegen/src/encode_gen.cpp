@@ -959,6 +959,8 @@ bool generate_inst_inner(std::string           &buf,
                             indent,
                             op_idx,
                             state.enc_target->reg_name_lower(resolved_reg_id));
+                        // TODO(ts): in this case, the scratch should already be
+                        // allocated, no?
                         std::format_to(
                             std::back_inserter(buf),
                             "{:>{}}"
@@ -1025,7 +1027,7 @@ bool generate_inst_inner(std::string           &buf,
                             std::format("scratch_{}.cur_reg",
                                         state.enc_target->reg_name_lower(
                                             resolved_reg_id)),
-                            reg_size_bytes(state.func, resolved_reg_id));
+                            reg_size_bytes(state.func, llvm_op.getReg()));
                     }
                 } else {
                     std::format_to(
@@ -1188,7 +1190,7 @@ bool generate_inst_inner(std::string           &buf,
                             state.enc_target->reg_bank(def_resolved_reg_id),
                             std::format("inst_{}_op{}", inst_id, op_idx),
                             std::format("inst_{}_op{}_tmp", inst_id, op_idx),
-                            reg_size_bytes(state.func, resolved_reg_id));
+                            reg_size_bytes(state.func, llvm_op.getReg()));
                         defs_allocated[def_idx(&def_reg)] = true;
                     }
                 } else {
@@ -1572,7 +1574,8 @@ bool generate_inst_inner(std::string           &buf,
                 is_replacement =
                     op_info.OperandType != llvm::MCOI::OPERAND_IMMEDIATE;
 
-                if (inst->getOperand(llvm_op_idx).isImplicit()) {
+                if (inst->getOperand(llvm_op_idx).isReg()
+                    && inst->getOperand(llvm_op_idx).isImplicit()) {
                     implicit_ops_handled.push_back(llvm_op_idx);
                 }
             }
