@@ -1623,6 +1623,10 @@ bool generate_inst_inner(std::string           &buf,
         }
 
         assert(op.isReg());
+        if (state.enc_target->reg_should_be_ignored(op.getReg())) {
+            continue;
+        }
+
         const auto reg_id = state.enc_target->reg_id_from_mc_reg(op.getReg());
         assert(state.value_map.contains(reg_id));
 
