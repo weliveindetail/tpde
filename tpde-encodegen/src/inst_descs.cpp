@@ -13,6 +13,8 @@
 
 using namespace tpde_encgen;
 
+// TODO(ts): add manual replacements for SSE_MOVQ_X2Grr -> MOV64rm,
+// SSE_MOVQ_G2Xrr -> MOV64rm, etc
 bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
     InstInfo info;
     if (!llvmUtils::deriveInstInfo(
@@ -38,7 +40,17 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
     bool is_mov_with_extension = info.fadecName.starts_with("MOVSX")
                                  || info.fadecName.starts_with("MOVZX");
 
-    const auto create_imm_replacement = [&desc, &inst, &info](
+    const auto imm_cond = [](const OpType ty) {
+        switch (ty) {
+        case IMM64: return InstDesc::PreferredEncoding::COND_IMM64;
+        case IMM32: return InstDesc::PreferredEncoding::COND_IMM32;
+        case IMM16: return InstDesc::PreferredEncoding::COND_IMM16;
+        case IMM8: return InstDesc::PreferredEncoding::COND_IMM8;
+        default: assert(0); exit(1);
+        }
+    };
+
+    const auto create_imm_replacement = [&desc, &inst, &info, &imm_cond](
                                             const std::string &old_fadec_name,
                                             const unsigned     idx,
                                             OpSupports        &op) {
@@ -52,7 +64,7 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
                 desc.preferred_encodings.push_back(InstDesc::PreferredEncoding{
                     .target = InstDesc::PreferredEncoding::TARGET_USE,
                     .target_def_use_idx = op.opIndex,
-                    .cond               = InstDesc::PreferredEncoding::COND_IMM,
+                    .cond               = imm_cond(op.getLargestImmOpType()),
                     .replacement        = std::move(replacement)});
             }
         }

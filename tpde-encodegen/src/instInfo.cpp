@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: 2024 Tobias Kamm <tobias.kamm@tum.de>
+// SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
 //
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
@@ -73,6 +74,22 @@ OpType OpSupports::getRegOpType() {
     } else {
         return NO_OP;
     }
+}
+
+OpType OpSupports::getLargestImmOpType() const {
+    if (supportMap & IMM64) {
+        return IMM64;
+    }
+    if (supportMap & IMM32) {
+        return IMM32;
+    }
+    if (supportMap & IMM16) {
+        return IMM16;
+    }
+    if (supportMap & IMM8) {
+        return IMM8;
+    }
+    return NO_OP;
 }
 
 void OpSupports::print(std::ostream &out) {

@@ -172,7 +172,10 @@ struct EncodeCompiler {
             return std::get<ValuePartRef>(state);
         }
 
+        [[nodiscard]] bool encodable_as_imm64() const noexcept;
         [[nodiscard]] bool encodable_as_imm32_sext() const noexcept;
+        [[nodiscard]] bool encodable_as_imm16_sext() const noexcept;
+        [[nodiscard]] bool encodable_as_imm8_sext() const noexcept;
         [[nodiscard]] bool val_ref_prefers_mem_enc() const noexcept;
         [[nodiscard]] u32  val_ref_frame_off() const noexcept;
         AsmReg             as_reg(EncodeCompiler *compiler) noexcept;
@@ -228,6 +231,20 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy>
 bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+    encodable_as_imm64() const noexcept {
+    if (!is_imm() || std::get<Immediate>(state).size > 8) {
+        return false;
+    }
+
+    const u64 imm = std::get<Immediate>(state).const_u64;
+    return imm;
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
     encodable_as_imm32_sext() const noexcept {
     if (!is_imm()) {
         return false;
@@ -236,6 +253,42 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
     assert(std::get<Immediate>(state).size <= 8);
     const u64 imm = std::get<Immediate>(state).const_u64;
     return static_cast<i64>(static_cast<i32>(imm)) == static_cast<i64>(imm);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+    encodable_as_imm16_sext() const noexcept {
+    if (!is_imm()) {
+        return false;
+    }
+
+    const auto& info = std::get<Immediate>(state);
+    assert(info.bank == 0);
+    assert(info.size <= 8);
+
+    const u64 imm = std::get<Immediate>(state).const_u64;
+    return static_cast<i64>(static_cast<i16>(imm)) == static_cast<i64>(imm);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+    encodable_as_imm16_sext() const noexcept {
+    if (!is_imm()) {
+        return false;
+    }
+
+    const auto& info = std::get<Immediate>(state);
+    assert(info.bank == 0);
+    assert(info.size <= 8);
+
+    const u64 imm = std::get<Immediate>(state).const_u64;
+    return static_cast<i64>(static_cast<i8>(imm)) == static_cast<i8>(imm);
 }
 
 template <typename Adaptor,

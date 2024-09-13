@@ -22,7 +22,10 @@ struct InstDesc {
         };
 
         enum COND {
-            COND_IMM,
+            COND_IMM64,
+            COND_IMM32,
+            COND_IMM16,
+            COND_IMM8,
             COND_MEM,
         };
 
