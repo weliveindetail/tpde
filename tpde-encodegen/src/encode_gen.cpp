@@ -457,14 +457,14 @@ bool generate_inst(std::string        &buf,
                 desc.name_fadec,
                 pref_enc.replacement->name_fadec);
 
-            const char* cond_str = nullptr;
+            // TODO(ts): this is arch-dependent
+            const char *cond_str = nullptr;
             switch (pref_enc.cond) {
-            case COND_IMM64:
-                cond_str = "encodeable_as_imm64"; break;
+            case COND_IMM64: cond_str = "encodeable_as_imm64"; break;
             case COND_IMM32: cond_str = "encodeable_as_imm32_sext"; break;
             case COND_IMM16: cond_str = "encodeable_as_imm16_sext"; break;
             case COND_IMM8: cond_str = "encodeable_as_imm8_sext"; break;
-                default: __builtin_unreachable();
+            default: __builtin_unreachable();
             }
 
             const auto if_cond = std::format(

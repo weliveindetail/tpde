@@ -28,6 +28,47 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
     const llvm::MCInstrDesc &llvm_desc =
         inst.getMF()->getTarget().getMCInstrInfo()->get(inst.getOpcode());
 
+    if (desc.name_fadec.find("CC") != std::string::npos) {
+        // replace condition code for instructions like SETcc/Jcc
+        std::array<const char *, 16> cond_codes = {"O",
+                                                   "NO",
+                                                   "C",
+                                                   "NC",
+                                                   "Z",
+                                                   "NZ",
+                                                   "BE",
+                                                   "A",
+                                                   "S",
+                                                   "NS",
+                                                   "P",
+                                                   "NP",
+                                                   "L",
+                                                   "GE",
+                                                   "LE",
+                                                   "G"};
+        auto                         use_it     = inst.uses().begin();
+        for (auto use_idx = 0; use_idx < llvm_desc.NumOperands;
+             ++use_idx, ++use_it) {
+            assert(use_it != inst.uses().end());
+            if (!use_it->isImm()) {
+                // condition codes are immediates
+                continue;
+            }
+            if (llvm_desc.operands()[use_idx].OperandType
+                == llvm::MCOI::OPERAND_IMMEDIATE) {
+                // condition codes have their own operand type
+                continue;
+            }
+            // should be it
+            const auto code_idx = use_it->getImm();
+            assert(code_idx >= 0
+                   && code_idx < static_cast<int64_t>(cond_codes.size()));
+            desc.name_fadec.replace(
+                desc.name_fadec.find("CC"), 2, cond_codes[code_idx]);
+            break;
+        }
+    }
+
     const auto add_op_ty_name = [&desc](const std::string_view str) {
         desc.name_fadec += str;
         for (auto &replacement : desc.preferred_encodings) {
