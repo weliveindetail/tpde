@@ -61,8 +61,8 @@
 #define ASMC(compiler, op, ...)                                                \
     do {                                                                       \
         compiler->assembler.text_ensure_space(16);                             \
-        u32 inst_len =                                                         \
-            fe64_##op(compiler->assembler.text_write_ptr, 0, __VA_ARGS__);     \
+        u32 inst_len = fe64_##op(compiler->assembler.text_write_ptr,           \
+                                 0 __VA_OPT__(, ) __VA_ARGS__);                \
         assert(inst_len != 0);                                                 \
         compiler->assembler.text_write_ptr += inst_len;                        \
     } while (false)

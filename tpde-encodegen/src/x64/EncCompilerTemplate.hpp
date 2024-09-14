@@ -41,6 +41,8 @@ static constexpr inline char ENCODER_TEMPLATE_BEGIN[] =
 
 namespace tpde_encodegen {
 
+using namespace tpde;
+
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
@@ -151,6 +153,8 @@ struct EncodeCompiler {
 
         AsmOperand(Address addr) noexcept { state = addr; }
 
+        AsmOperand(Immediate imm) noexcept { state = imm; }
+
         // NOLINTEND(*-explicit-constructor)
         // ReSharper restore CppNonExplicitConvertingConstructor
 
@@ -174,15 +178,22 @@ struct EncodeCompiler {
             return std::get<ValuePartRef>(state);
         }
 
-        [[nodiscard]] bool encodable_as_imm64() const noexcept;
-        [[nodiscard]] bool encodable_as_imm32_sext() const noexcept;
-        [[nodiscard]] bool encodable_as_imm16_sext() const noexcept;
-        [[nodiscard]] bool encodable_as_imm8_sext() const noexcept;
+        [[nodiscard]] bool encodeable_as_imm64() const noexcept;
+        [[nodiscard]] bool encodeable_as_imm32_sext() const noexcept;
+        [[nodiscard]] bool encodeable_as_imm16_sext() const noexcept;
+        [[nodiscard]] bool encodeable_as_imm8_sext() const noexcept;
         [[nodiscard]] bool val_ref_prefers_mem_enc() const noexcept;
         [[nodiscard]] u32  val_ref_frame_off() const noexcept;
         AsmReg             as_reg(EncodeCompiler *compiler) noexcept;
         bool try_salvage(ScratchReg &, u8 bank) noexcept;
         void try_salvage_or_materialize(EncodeCompiler *compiler,
+                                        ScratchReg     &dst_scratch,
+                                        u8              bank,
+                                        u32             size) noexcept;
+        // compatibility
+        bool try_salvage(AsmReg&, ScratchReg &, u8 bank) noexcept;
+        void try_salvage_or_materialize(EncodeCompiler *compiler,
+                                        AsmReg &dst_reg,
                                         ScratchReg     &dst_scratch,
                                         u8              bank,
                                         u32             size) noexcept;
@@ -217,6 +228,7 @@ struct EncodeCompiler {
 // SPDX-SnippetEnd
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: CC0-1.0
+// clang-format off
 )";
 
 static constexpr inline char ENCODER_TEMPLATE_END[] = R"(
@@ -233,7 +245,7 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy>
 bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
-    encodable_as_imm64() const noexcept {
+    encodeable_as_imm64() const noexcept {
     if (!is_imm() || std::get<Immediate>(state).size > 8) {
         return false;
     }
@@ -247,7 +259,7 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy>
 bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
-    encodable_as_imm32_sext() const noexcept {
+    encodeable_as_imm32_sext() const noexcept {
     if (!is_imm()) {
         return false;
     }
@@ -262,7 +274,7 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy>
 bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
-    encodable_as_imm16_sext() const noexcept {
+    encodeable_as_imm16_sext() const noexcept {
     if (!is_imm()) {
         return false;
     }
@@ -280,7 +292,7 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy>
 bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
-    encodable_as_imm16_sext() const noexcept {
+    encodeable_as_imm8_sext() const noexcept {
     if (!is_imm()) {
         return false;
     }
@@ -299,7 +311,7 @@ template <typename Adaptor,
           class BaseTy>
 bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
     val_ref_prefers_mem_enc() const noexcept {
-    ValuePartRef *ptr;
+    const ValuePartRef *ptr;
     if (std::holds_alternative<ValuePartRef>(state)) {
         ptr = &std::get<ValuePartRef>(state);
     } else if (std::holds_alternative<ValuePartRef *>(state)) {
@@ -313,7 +325,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
     }
 
     const auto ap = ptr->assignment();
-    return (!ap.register_valid() && !ap.variable_reference());
+    return (!ap.register_valid() && !ap.variable_ref());
 }
 
 template <typename Adaptor,
@@ -326,14 +338,14 @@ u32 EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::val_ref_frame_off()
         const auto &val_ref = std::get<ValuePartRef>(state);
         assert(!val_ref.is_const);
         const auto ap = val_ref.assignment();
-        assert(!ap.variable_reference());
+        assert(!ap.variable_ref());
         return ap.frame_off();
     } else {
         assert(std::holds_alternative<ValuePartRef *>(state));
         const auto *val_ref = std::get<ValuePartRef *>(state);
         assert(!val_ref->is_const);
         const auto ap = val_ref->assignment();
-        assert(!ap.variable_reference());
+        assert(!ap.variable_ref());
         return ap.frame_off();
     }
 }
@@ -404,6 +416,31 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
+    AsmReg &dst_reg, ScratchReg &dst_scratch, const u8 bank) noexcept {
+    const auto res = try_salvage(dst_scratch, bank);
+    dst_reg = dst_scratch.cur_reg;
+    return res;
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+    try_salvage_or_materialize(EncodeCompiler *compiler,
+                               AsmReg         &dst_reg,
+                               ScratchReg     &dst_scratch,
+                               u8              bank,
+                               u32             size) noexcept {
+    try_salvage_or_materialize(compiler, dst_scratch, bank, size);
+    dst_reg = dst_scratch.cur_reg;
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
 void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
     try_salvage_or_materialize(EncodeCompiler *compiler,
                                ScratchReg     &dst_scratch,
@@ -413,9 +450,9 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
     if (!this->try_salvage(dst_scratch, bank)) {
         if (bank == 0) {
             if (size <= 4) {
-                ASMC(compiler->derived(), MOV32rr, dst.cur_reg, val);
+                ASMC(compiler->derived(), MOV32rr, dst_scratch.cur_reg, val);
             } else {
-                ASMC(compiler->derived(), MOV64rr, dst.cur_reg, val);
+                ASMC(compiler->derived(), MOV64rr, dst_scratch.cur_reg, val);
             }
         } else {
             // TODO

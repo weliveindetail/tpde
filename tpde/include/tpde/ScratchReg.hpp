@@ -22,7 +22,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ScratchReg {
 
     AsmReg               alloc_specific(AsmReg reg) noexcept;
     [[nodiscard]] AsmReg alloc_gp() noexcept;
-    [[nodiscard]] AsmReg alloc_from_bank(u8 bank) noexcept;
+    AsmReg               alloc_from_bank(u8 bank) noexcept;
 
     [[nodiscard]] AsmReg alloc_from_bank_excluding(u8  bank,
                                                    u64 exclusion_mask) noexcept;

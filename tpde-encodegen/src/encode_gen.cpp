@@ -49,6 +49,7 @@ struct EncodingTarget {
                                            std::string_view dst,
                                            std::string_view src,
                                            unsigned         size)            = 0;
+    virtual bool inst_should_be_skipped(llvm::MachineInstr &inst)    = 0;
 };
 
 struct EncodingTargetX64 : EncodingTarget {
@@ -192,6 +193,15 @@ struct EncodingTargetX64 : EncodingTarget {
             }
         }
     }
+
+    bool inst_should_be_skipped(llvm::MachineInstr &inst) override {
+        const auto *inst_info =
+            inst.getParent()->getParent()->getTarget().getMCInstrInfo();
+        if (inst_info->getName(inst.getOpcode()) == "VZEROUPPER") {
+            return true;
+        }
+        return false;
+    }
 };
 
 struct ValueInfo {
@@ -304,6 +314,11 @@ bool generate_inst(std::string        &buf,
             assert(0);
             return false;
         }
+    }
+
+    if (state.enc_target->inst_should_be_skipped(*inst)) {
+        state.fmt_line(buf, 4, "// Skipping");
+        return true;
     }
 
 #if 0
@@ -1590,7 +1605,7 @@ bool generate_inst_inner(std::string           &buf,
                             state.enc_target->reg_name_lower(resolved_reg_id));
                         std::format_to(
                             std::back_inserter(buf),
-                            "{:>{}}AsmReg inst_{}_op{} = "
+                            "{:>{}}AsmReg inst{}_op{} = "
                             "scratch_{}.alloc_from_bank({});\n",
                             "",
                             indent,
@@ -1603,7 +1618,7 @@ bool generate_inst_inner(std::string           &buf,
                             buf,
                             indent,
                             state.enc_target->reg_bank(def_resolved_reg_id),
-                            std::format("inst_{}_op{}", inst_id, op_idx),
+                            std::format("inst{}_op{}", inst_id, op_idx),
                             std::format("scratch_{}.cur_reg",
                                         state.enc_target->reg_name_lower(
                                             resolved_reg_id)),
@@ -1646,7 +1661,7 @@ bool generate_inst_inner(std::string           &buf,
                     // register should be allocated if we come into here
                     std::format_to(
                         std::back_inserter(buf),
-                        "{:>{}}AsmReg inst_{}_op{} = "
+                        "{:>{}}AsmReg inst{}_op{} = "
                         "scratch_{}.cur_reg;\n",
                         "",
                         indent,
@@ -1654,7 +1669,7 @@ bool generate_inst_inner(std::string           &buf,
                         op_idx,
                         state.enc_target->reg_name_lower(use_reg_id));
                     op_names.push_back(
-                        std::format("inst_{}_op{}", inst_id, op_idx));
+                        std::format("inst{}_op{}", inst_id, op_idx));
                 }
             } else {
                 assert(reg_info.ty == ValueInfo::ASM_OPERAND);
@@ -1747,7 +1762,7 @@ bool generate_inst_inner(std::string           &buf,
                     } else {
                         std::format_to(
                             std::back_inserter(buf),
-                            "{:>{}}AsmReg inst_{}_op{} = "
+                            "{:>{}}AsmReg inst{}_op{} = "
                             "scratch_{}.alloc_from_bank({});\n",
                             "",
                             indent,
@@ -1757,7 +1772,7 @@ bool generate_inst_inner(std::string           &buf,
                                 def_resolved_reg_id),
                             state.enc_target->reg_bank(def_resolved_reg_id));
                         std::format_to(std::back_inserter(buf),
-                                       "{:>{}}AsmReg inst_{}_op{}_tmp = "
+                                       "{:>{}}AsmReg inst{}_op{}_tmp = "
                                        "{}.as_reg(this);\n",
                                        "",
                                        indent,
@@ -1768,8 +1783,8 @@ bool generate_inst_inner(std::string           &buf,
                             buf,
                             indent,
                             state.enc_target->reg_bank(def_resolved_reg_id),
-                            std::format("inst_{}_op{}", inst_id, op_idx),
-                            std::format("inst_{}_op{}_tmp", inst_id, op_idx),
+                            std::format("inst{}_op{}", inst_id, op_idx),
+                            std::format("inst{}_op{}_tmp", inst_id, op_idx),
                             reg_size_bytes(state.func, llvm_op.getReg()));
                         defs_allocated[def_idx(&def_reg)] = true;
                     }
@@ -1777,14 +1792,14 @@ bool generate_inst_inner(std::string           &buf,
                     // TODO(ts): search for dests to salvage to
                     std::format_to(
                         std::back_inserter(buf),
-                        "{:>{}}AsmReg inst_{}_op{} = {}.as_reg(this);\n",
+                        "{:>{}}AsmReg inst{}_op{} = {}.as_reg(this);\n",
                         "",
                         indent,
                         inst_id,
                         op_idx,
                         reg_info.operand_name);
                     op_names.push_back(
-                        std::format("inst_{}_op{}", inst_id, op_idx));
+                        std::format("inst{}_op{}", inst_id, op_idx));
                 }
             }
             break;
@@ -1863,14 +1878,13 @@ bool generate_inst_inner(std::string           &buf,
                 // rbp-disp
                 state.fmt_line(buf,
                                indent,
-                               "FeMem inst{}_op{} = FE_MEM(AsmReg::BP, 0, "
-                               "FE_NOREG, -{}.val_ref_frame_off());",
+                               "FeMem inst{}_op{} = FE_MEM(FE_BP, 0, "
+                               "FE_NOREG, -(i32){}.val_ref_frame_off());",
                                inst_id,
                                op_idx,
                                base_info.operand_name);
 
-                op_names.push_back(
-                    std::format("inst_{}_op{}", inst_id, op_idx));
+                op_names.push_back(std::format("inst{}_op{}", inst_id, op_idx));
                 break;
             }
 
@@ -2044,7 +2058,7 @@ bool generate_inst_inner(std::string           &buf,
                         "is encodeable with the disp from addr");
                     state.fmt_line(buf,
                                    indent + 4,
-                                   "if (disp_add_encodeable(addr.disp, {}) {{",
+                                   "if (disp_add_encodeable(addr.disp, {})) {{",
                                    displacement.getImm());
                     state.fmt_line(
                         buf,
@@ -2164,7 +2178,7 @@ bool generate_inst_inner(std::string           &buf,
                 buf += std::format("{:>{}}}}\n", "", indent);
             }
 
-            op_names.push_back(std::format("inst_{}_op{}", inst_id, op_idx));
+            op_names.push_back(std::format("inst{}_op{}", inst_id, op_idx));
 
             break;
         }
@@ -2418,7 +2432,7 @@ bool generate_inst_inner(std::string           &buf,
     }
 
     std::format_to(std::back_inserter(buf),
-                   "{:>{}}ASMD({}{})\n",
+                   "{:>{}}ASMD({}{});\n",
                    "",
                    indent,
                    desc.name_fadec,
@@ -2433,11 +2447,6 @@ bool create_encode_function(llvm::MachineFunction *func,
                             std::string_view       name,
                             std::string           &decl_lines,
                             std::string           &impl_lines) {
-    (void)func;
-    (void)name;
-    (void)decl_lines;
-    (void)impl_lines;
-
     std::string write_buf{};
 
     // update dead/kill flags since they might not be very accurate anymore
@@ -2467,6 +2476,9 @@ bool create_encode_function(llvm::MachineFunction *func,
         }
         write_buf += '\n';
     }
+
+    // TODO(ts): check for the target feature flags of the function
+    // and if they are not default, emit a check at the beginning for it
 
     // TODO(ts): parameterize
     auto            enc_target = std::make_unique<EncodingTargetX64>(func);
@@ -2656,6 +2668,10 @@ bool create_encode_function(llvm::MachineFunction *func,
         }
     }
 
+    // TODO
+    // for now, always return true
+    state.fmt_line(write_buf_inner, 4, "return true;");
+
     // create ScratchRegs
     for (const auto &[reg, info] : state.value_map) {
         std::format_to(std::back_inserter(write_buf),
@@ -2709,7 +2725,7 @@ bool create_encode_function(llvm::MachineFunction *func,
         }
     }
 
-
+    std::string func_decl{};
     // finish up function header
     {
         std::format_to(
@@ -2718,18 +2734,20 @@ bool create_encode_function(llvm::MachineFunction *func,
             "          typename Derived,\n"
             "          template <typename, typename, typename>\n"
             "          class BaseTy>\n"
-            "void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_{}(",
+            "bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_{}(",
             name);
+        std::format_to(
+            std::back_inserter(decl_lines), "    bool encode_{}(", name);
     }
 
     auto first = true;
     for (auto &param : state.param_names) {
         if (!first) {
-            std::format_to(std::back_inserter(impl_lines), ", ");
+            std::format_to(std::back_inserter(func_decl), ", ");
         } else {
             first = false;
         }
-        std::format_to(std::back_inserter(impl_lines), "AsmOperand {}", param);
+        std::format_to(std::back_inserter(func_decl), "AsmOperand {}", param);
     }
 
     if (state.num_ret_regs == -1) {
@@ -2741,15 +2759,21 @@ bool create_encode_function(llvm::MachineFunction *func,
 
     for (int i = 0; i < state.num_ret_regs; ++i) {
         if (!first) {
-            std::format_to(std::back_inserter(impl_lines), ", ");
+            std::format_to(std::back_inserter(func_decl), ", ");
         } else {
             first = false;
         }
         std::format_to(
-            std::back_inserter(impl_lines), "ScratchReg &result_{}", i);
+            std::back_inserter(func_decl), "ScratchReg &result_{}", i);
     }
 
-    impl_lines += ") {\n";
+    func_decl += ')';
+
+    decl_lines += func_decl;
+    decl_lines += ";\n";
+
+    impl_lines += func_decl;
+    impl_lines += " {\n";
 
     impl_lines += write_buf;
     impl_lines += write_buf_inner;

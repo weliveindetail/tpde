@@ -260,6 +260,22 @@ bool deriveInstInfo(unsigned                     opcode,
         }
     }
 
+    // AVX instructions have Y/Z suffixes that fadec replaces with the vector
+    // width
+    if (instName.size() > fadecName.mnemonic.size()) {
+        if (instName[fadecName.mnemonic.size()] == 'Y') {
+            if (debug) {
+                std::cout << "Replacing Y suffix with vector width of 256\n";
+            }
+            fadecName.suffix += "256";
+        } else if (instName[fadecName.mnemonic.size()] == 'Z') {
+            if (debug) {
+                std::cout << "Replacing Z suffix with vector width of 512\n";
+            }
+            fadecName.suffix += "512";
+        }
+    }
+
     /*
     ** For MOVD and MOVQ, there is this annoying _G2X or _X2G suffix.
     ** So we need to check if it is oved into a GP or XMM register and adjust
