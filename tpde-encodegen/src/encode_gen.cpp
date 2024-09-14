@@ -240,6 +240,12 @@ struct GenerationState {
     }
 
     void remove_reg_alias(std::string &buf, unsigned reg, unsigned aliased_reg);
+    /// This function will update all registers that alias this register to
+    /// point to the target of this register (either an AsmOperand or another
+    /// register)
+    ///
+    /// \note reg must be a REGISTER_ALIAS or ASM_OPERAND
+    void redirect_aliased_regs_to_parent(unsigned reg);
     unsigned resolve_reg_alias(std::string &buf, unsigned indent, unsigned);
 };
 
@@ -630,6 +636,29 @@ void GenerationState::remove_reg_alias(std::string &buf,
     }
 }
 
+void GenerationState::redirect_aliased_regs_to_parent(const unsigned reg) {
+    assert(value_map.contains(reg));
+    auto &info = value_map[reg];
+    assert(info.ty == ValueInfo::ASM_OPERAND
+           || info.ty == ValueInfo::REG_ALIAS);
+    for (auto alias_reg : info.aliased_regs) {
+        assert(value_map.contains(alias_reg));
+        auto &alias_info = value_map[alias_reg];
+
+        assert(alias_info.ty == ValueInfo::REG_ALIAS);
+        alias_info.ty           = info.ty;
+        alias_info.alias_reg_id = info.alias_reg_id;
+        alias_info.operand_name = info.operand_name;
+
+        if (info.ty == ValueInfo::REG_ALIAS) {
+            assert(value_map.contains(info.alias_reg_id));
+            value_map[info.alias_reg_id].aliased_regs.insert(alias_reg);
+        }
+    }
+
+    info.aliased_regs.clear();
+}
+
 unsigned GenerationState::resolve_reg_alias(std::string &buf,
                                             unsigned     indent,
                                             unsigned     reg) {
@@ -753,17 +782,40 @@ bool handle_terminator(std::string        &buf,
             }
         }
 
-        // if there is only one block, we can return from the encoding function
-        // otherwise we need to buffer the return until the end
-        if (state.func->size() == 1) {
+        if (state.func->size() > 1) {
+            // need to resolve aliases for ret regs (all values should be
+            // scratchregs by now) and then write the return stub for the end of
+            // the function if we haven't done so
+
+            const auto ret_op_for_idx = [inst](unsigned idx) {
+                for (auto &op : inst->explicit_uses()) {
+                    if (!idx) {
+                        return op;
+                    }
+                    --idx;
+                }
+                std::cerr
+                    << "ERROR: Encountered OOB return register operand index\n";
+                exit(1);
+            };
+
             for (int idx = 0; idx < state.num_ret_regs; ++idx) {
                 const auto reg = state.return_regs[idx];
-                buf += std::format("    // returning reg {} as result_{}\n",
-                                   state.enc_target->reg_name_lower(reg),
-                                   idx);
                 assert(state.value_map.contains(reg));
+
+                state.fmt_line(buf,
+                               4,
+                               "// handling return for {}",
+                               state.enc_target->reg_name_lower(reg));
                 auto  cur_reg = reg;
-                auto *info    = &state.value_map[reg];
+                auto *info    = &state.value_map[cur_reg];
+                if (info->ty != ValueInfo::REG_ALIAS) {
+                    assert(info->ty == ValueInfo::SCRATCHREG);
+                    state.fmt_line(
+                        buf, 4, "// value already in register, nothing to do");
+                    continue;
+                }
+
                 while (info->ty == ValueInfo::REG_ALIAS) {
                     buf += std::format(
                         "    // {} is an alias for {}\n",
@@ -773,42 +825,504 @@ bool handle_terminator(std::string        &buf,
                     info    = &state.value_map[cur_reg];
                 }
 
-                if (info->ty == ValueInfo::ASM_OPERAND) {
-                    buf +=
-                        std::format("    // {} is an alias for {}\n",
-                                    state.enc_target->reg_name_lower(cur_reg),
-                                    info->operand_name);
+                assert(info->ty == ValueInfo::SCRATCHREG);
+                const auto &op = ret_op_for_idx(idx);
+                assert(op.isReg());
+                state.enc_target->generate_copy(
+                    buf,
+                    4,
+                    state.enc_target->reg_bank(cur_reg),
+                    std::format("scratch_{}.cur_reg",
+                                state.enc_target->reg_name_lower(reg)),
+                    std::format("scratch_{}.cur_reg",
+                                state.enc_target->reg_name_lower(cur_reg)),
+                    reg_size_bytes(state.func, op.getReg()));
+            }
 
-                    unsigned tmp_idx = idx;
-                    for (auto &op : inst->explicit_uses()) {
-                        if (tmp_idx > 0) {
-                            --tmp_idx;
+            // jump to convergence point
+            if (inst->getParent()->getNextNode() == nullptr) {
+                state.fmt_line(buf,
+                               4,
+                               "// Omitting jump to convergence as this is the "
+                               "last block");
+            } else {
+                state.fmt_line(buf,
+                               4,
+                               "// Jumping to convergence point at the end of "
+                               "the encoding function");
+                state.fmt_line(
+                    buf,
+                    4,
+                    "derived()->generate_raw_jump(CompilerX64::Jump::"
+                    "jmp, ret_converge_label);\n");
+            }
+
+            // remove all aliases and reset them to scratch regs so other blocks
+            // don't think that values are aliased
+            for (auto &[reg, info] : state.value_map) {
+                if (info.ty != ValueInfo::REG_ALIAS) {
+                    // for now, we assume that if there are multiple blocks, the
+                    // first block will materialize everything into scratch
+                    // registers at the end of it
+                    assert(info.ty != ValueInfo::ASM_OPERAND);
+                    continue;
+                }
+                state.fmt_line(buf,
+                               4,
+                               "// Resetting alias status for {}",
+                               state.enc_target->reg_name_lower(reg));
+                info.ty = ValueInfo::SCRATCHREG;
+            }
+
+            return true;
+        }
+
+        // if there is only one block, we can return from the encoding function
+        for (int idx = 0; idx < state.num_ret_regs; ++idx) {
+            const auto reg = state.return_regs[idx];
+            buf += std::format("    // returning reg {} as result_{}\n",
+                               state.enc_target->reg_name_lower(reg),
+                               idx);
+            assert(state.value_map.contains(reg));
+            auto  cur_reg = reg;
+            auto *info    = &state.value_map[reg];
+            while (info->ty == ValueInfo::REG_ALIAS) {
+                buf += std::format(
+                    "    // {} is an alias for {}\n",
+                    state.enc_target->reg_name_lower(cur_reg),
+                    state.enc_target->reg_name_lower(info->alias_reg_id));
+                cur_reg = info->alias_reg_id;
+                info    = &state.value_map[cur_reg];
+            }
+
+            if (info->ty == ValueInfo::ASM_OPERAND) {
+                buf += std::format("    // {} is an alias for {}\n",
+                                   state.enc_target->reg_name_lower(cur_reg),
+                                   info->operand_name);
+
+                unsigned tmp_idx = idx;
+                for (auto &op : inst->explicit_uses()) {
+                    if (tmp_idx > 0) {
+                        --tmp_idx;
+                        continue;
+                    }
+
+                    buf +=
+                        std::format("    {}.try_salvage_or_materialize(this, "
+                                    "result_{}, {}, {});\n",
+                                    info->operand_name,
+                                    idx,
+                                    state.enc_target->reg_bank(cur_reg),
+                                    reg_size_bytes(state.func, op.getReg()));
+                }
+            } else {
+                assert(info->ty == ValueInfo::SCRATCHREG);
+                buf += std::format("    result_{} = std::move(scratch_{});\n",
+                                   idx,
+                                   state.enc_target->reg_name_lower(cur_reg));
+                // no more housekeeping needed
+            }
+        }
+
+        return true;
+    } else if (inst->isBranch()) {
+        state.fmt_line(buf, 4, "// Preparing jump to other block");
+
+        const auto collect_liveouts =
+            [&inst, &state, &buf](
+                std::unordered_map<unsigned, unsigned> &liveouts) {
+                for (auto &reg : inst->getParent()->liveouts()) {
+                    if (state.enc_target->reg_should_be_ignored(reg.PhysReg)) {
+                        continue;
+                    }
+
+                    const auto reg_id =
+                        state.enc_target->reg_id_from_mc_reg(reg.PhysReg);
+                    const auto reg_size =
+                        reg_size_bytes(state.func, reg.PhysReg);
+                    if (!liveouts.contains(reg_id)) {
+                        state.fmt_line(
+                            buf,
+                            4,
+                            "// {} is live-out",
+                            state.enc_target->reg_name_lower(reg_id));
+                        liveouts.emplace(reg_id, reg_size);
+                    } else {
+                        if (liveouts[reg_id] < reg_size) {
+                            liveouts[reg_id] = reg_size;
+                        }
+                    }
+                }
+            };
+
+        // TODO(ts): in the first block, allocate all live outgoing scratchregs
+        // and set all others to be dead (and maybe to an invalid type?)
+        if (inst->getParent()->isEntryBlock()) {
+            // <reg, size>
+            std::unordered_map<unsigned, unsigned> func_used_regs{};
+            // collect all liveouts with size information
+            collect_liveouts(func_used_regs);
+
+            // need to collect all registers that may be used in the function
+            // and allocate them
+            for (auto it = ++inst->getParent()->getIterator();
+                 it != state.func->end();
+                 ++it) {
+                for (const auto &inst : *it) {
+                    for (const auto &op : inst.operands()) {
+                        if (!op.isReg() || op.isImplicit()) {
+                            // implicit defs/uses should be handled through the
+                            // fixed allocation
                             continue;
                         }
 
-                        buf += std::format(
-                            "    {}.try_salvage_or_materialize(this, "
-                            "result_{}, {}, {});\n",
-                            info->operand_name,
-                            idx,
-                            state.enc_target->reg_bank(cur_reg),
-                            reg_size_bytes(state.func, op.getReg()));
+                        if (state.enc_target->reg_should_be_ignored(op.getReg())
+                            || !op.getReg().isValid()) {
+                            continue;
+                        }
+
+                        const auto reg_id =
+                            state.enc_target->reg_id_from_mc_reg(op.getReg());
+                        if (func_used_regs.contains(reg_id)) {
+                            continue;
+                        }
+
+                        // reg_id is not a liveout of the entry block so we
+                        // don't need to copy anything into it but the scratch
+                        // for it needs to be allocated
+                        func_used_regs[reg_id] = 0;
+                        state.fmt_line(
+                            buf,
+                            4,
+                            "// {} is used in the function later on",
+                            state.enc_target->reg_name_lower(reg_id));
                     }
-                } else {
-                    assert(info->ty == ValueInfo::SCRATCHREG);
-                    buf +=
-                        std::format("    result_{} = std::move(scratch_{});\n",
-                                    idx,
-                                    state.enc_target->reg_name_lower(cur_reg));
-                    // no more housekeeping needed
                 }
             }
-            return true;
+
+            // allocate all used registers and resolve aliases if needed
+            for (auto [reg, size] : func_used_regs) {
+                state.fmt_line(buf,
+                               4,
+                               "// Handling register {}",
+                               state.enc_target->reg_name_lower(reg));
+
+                if (!state.value_map.contains(reg)) {
+                    assert(size == 0);
+                    state.fmt_line(
+                        buf,
+                        4,
+                        "// {} is not live-out and needs to be allocated",
+                        state.enc_target->reg_name_lower(reg));
+                    state.fmt_line(buf,
+                                   4,
+                                   "scratch_{}.alloc_from_bank({});",
+                                   state.enc_target->reg_name_lower(reg),
+                                   state.enc_target->reg_bank(reg));
+
+                    state.value_map[reg] =
+                        ValueInfo{.ty = ValueInfo::SCRATCHREG, .is_dead = true};
+                    continue;
+                }
+
+                auto *info = &state.value_map[reg];
+                if (size == 0) {
+                    if (info->ty == ValueInfo::SCRATCHREG) {
+                        state.fmt_line(
+                            buf,
+                            4,
+                            "// {} is not live-out but is already allocated",
+                            state.enc_target->reg_name_lower(reg));
+                        continue;
+                    }
+
+                    state.fmt_line(buf,
+                                   4,
+                                   "// {} is not live-out but is currently "
+                                   "aliased so needs to be allocated",
+                                   state.enc_target->reg_name_lower(reg));
+                    // we do not need to copy anything since it is not a liveout
+                    // of the entry block
+
+                    if (info->ty == ValueInfo::REG_ALIAS
+                        || info->ty == ValueInfo::ASM_OPERAND) {
+                        // make sure regs depending on this reg get updated to
+                        // alias this register's alias since we do not copy
+                        // anything
+                        state.redirect_aliased_regs_to_parent(reg);
+
+                        if (info->ty == ValueInfo::REG_ALIAS) {
+                            assert(
+                                state.value_map.contains(info->alias_reg_id));
+                            state.value_map[info->alias_reg_id]
+                                .aliased_regs.erase(reg);
+                        }
+                    }
+
+                    state.fmt_line(buf,
+                                   4,
+                                   "scratch_{}.alloc_from_bank({});",
+                                   state.enc_target->reg_name_lower(reg),
+                                   state.enc_target->reg_bank(reg));
+                    info->ty      = ValueInfo::SCRATCHREG;
+                    info->is_dead = true;
+                    continue;
+                }
+
+                assert(size > 0);
+                if (info->ty == ValueInfo::SCRATCHREG) {
+                    state.fmt_line(buf,
+                                   4,
+                                   "// {} is already allocated",
+                                   state.enc_target->reg_name_lower(reg));
+                    continue;
+                }
+
+                if (info->ty == ValueInfo::ASM_OPERAND) {
+                    state.fmt_line(
+                        buf,
+                        4,
+                        "// {} is mapped to operand {}, materializing it",
+                        state.enc_target->reg_name_lower(reg),
+                        info->operand_name);
+                    // TODO(ts): we need to change the semantics of
+                    // try_salvage_or_materialize to not salvage if the scratch
+                    // register is already allocated, otherwise this will screw
+                    // up codegen with fixed regs
+                    state.fmt_line(buf,
+                                   4,
+                                   "{}.try_salvage_or_materialize(this, "
+                                   "scratch_{}, {}, {});",
+                                   info->operand_name,
+                                   state.enc_target->reg_name_lower(reg),
+                                   state.enc_target->reg_bank(reg),
+                                   size);
+                } else {
+                    assert(info->ty == ValueInfo::REG_ALIAS);
+                    const auto aliased_reg_id =
+                        state.resolve_reg_alias(buf, 4, reg);
+                    assert(state.value_map.contains(aliased_reg_id));
+                    const auto &alias_info = state.value_map[aliased_reg_id];
+                    if (alias_info.ty == ValueInfo::ASM_OPERAND) {
+                        state.fmt_line(
+                            buf,
+                            4,
+                            "// {} maps to operand {}",
+                            state.enc_target->reg_name_lower(aliased_reg_id),
+                            alias_info.operand_name);
+                    }
+
+
+                    state.fmt_line(
+                        buf,
+                        4,
+                        "// copying {} into {} to resolve alias",
+                        state.enc_target->reg_name_lower(info->alias_reg_id),
+                        state.enc_target->reg_name_lower(reg));
+                    state.redirect_aliased_regs_to_parent(reg);
+                    state.remove_reg_alias(buf, reg, info->alias_reg_id);
+
+                    state.fmt_line(buf,
+                                   4,
+                                   "scratch_{}.alloc_from_bank({});",
+                                   state.enc_target->reg_name_lower(reg),
+                                   state.enc_target->reg_bank(reg));
+                    std::string src_name;
+                    if (alias_info.ty == ValueInfo::ASM_OPERAND) {
+                        // TODO(ts): salvaging if possible
+                        src_name = std::format(
+                            "inst{}_tmp_{}",
+                            state.cur_inst_id,
+                            state.enc_target->reg_name_lower(aliased_reg_id));
+                        state.fmt_line(buf,
+                                       4,
+                                       "AsmReg {} = {}.as_reg(this);",
+                                       src_name,
+                                       alias_info.operand_name);
+                    } else {
+                        src_name = std::format(
+                            "scratch_{}.cur_reg",
+                            state.enc_target->reg_name_lower(aliased_reg_id));
+                    }
+
+                    state.enc_target->generate_copy(
+                        buf,
+                        4,
+                        state.enc_target->reg_bank(reg),
+                        std::format("scratch_{}.cur_reg",
+                                    state.enc_target->reg_name_lower(reg)),
+                        src_name,
+                        size);
+                }
+
+                info->ty      = ValueInfo::SCRATCHREG;
+                info->is_dead = false;
+            }
+
+            // reset the state of any other regs that will not be used anymore
+            for (auto &[reg, info] : state.value_map) {
+                if (func_used_regs.contains(reg)) {
+                    continue;
+                }
+
+                state.fmt_line(buf,
+                               4,
+                               "// Resetting the state of {} as it is unused "
+                               "for the rest of the function",
+                               state.enc_target->reg_name_lower(reg));
+                assert(info.aliased_regs.empty());
+
+                if (info.ty == ValueInfo::REG_ALIAS) {
+                    state.remove_reg_alias(buf, reg, info.alias_reg_id);
+                }
+                info.ty      = ValueInfo::SCRATCHREG;
+                info.is_dead = true;
+            }
         } else {
-            // we need to move into the result scratch regs (they should be
-            // allocated by now)
+            // in the other blocks we just need to make sure all register
+            // aliases are resolved at the end
+            std::unordered_map<unsigned, unsigned> block_liveouts{};
+            collect_liveouts(block_liveouts);
+
+            for (auto &[reg, info] : state.value_map) {
+                const auto reg_name = state.enc_target->reg_name_lower(reg);
+                if (!block_liveouts.contains(reg)) {
+                    if (info.ty != ValueInfo::SCRATCHREG) {
+                        state.fmt_line(buf,
+                                       4,
+                                       "// {} is not live-out, resetting its "
+                                       "state to be a ScratchReg",
+                                       reg_name);
+
+                        state.redirect_aliased_regs_to_parent(reg);
+                        if (info.ty == ValueInfo::REG_ALIAS) {
+                            state.remove_reg_alias(buf, reg, info.alias_reg_id);
+                        }
+                        info.ty = ValueInfo::SCRATCHREG;
+                    }
+                    info.is_dead = true;
+                    continue;
+                }
+
+                if (info.ty == ValueInfo::SCRATCHREG) {
+                    state.fmt_line(
+                        buf,
+                        4,
+                        "// {} is live-out but already in its correct place",
+                        reg_name);
+                    continue;
+                }
+
+                state.fmt_line(
+                    buf,
+                    4,
+                    "// {} is live-out and an alias, need to resolve",
+                    reg_name);
+                if (info.ty == ValueInfo::ASM_OPERAND) {
+                    std::cerr << "Encountered AsmOperand at branch in "
+                                 "non-entry block\n";
+                    exit(1);
+                }
+
+                assert(info.ty == ValueInfo::REG_ALIAS);
+                const auto aliased_reg_id =
+                    state.resolve_reg_alias(buf, 4, reg);
+
+
+                state.redirect_aliased_regs_to_parent(reg);
+                state.remove_reg_alias(buf, reg, info.alias_reg_id);
+
+                state.enc_target->generate_copy(
+                    buf,
+                    4,
+                    state.enc_target->reg_bank(0),
+                    std::format("scratch_{}.cur_reg", reg_name),
+                    std::format(
+                        "scratch_{}.cur_reg",
+                        state.enc_target->reg_name_lower(aliased_reg_id)),
+                    block_liveouts[reg]);
+
+                info.ty      = ValueInfo::SCRATCHREG;
+                info.is_dead = false;
+            }
+        }
+
+        // at last, jump to the target basic block
+
+        std::string jump_code{};
+        if (inst->isIndirectBranch()) {
+            assert(0);
+            std::cerr << "ERROR: encountered indirect branch\n";
             return false;
         }
+
+        // TODO(ts): arch-specific
+        if (inst->isUnconditionalBranch()) {
+            jump_code = "jmp";
+        } else {
+            std::array<const char *, 16> cond_codes = {"jo",
+                                                       "jno",
+                                                       "jb",
+                                                       "jae",
+                                                       "je",
+                                                       "jne",
+                                                       "jbe",
+                                                       "ja",
+                                                       "js",
+                                                       "jns",
+                                                       "jp",
+                                                       "jnp",
+                                                       "jl",
+                                                       "jge",
+                                                       "jle",
+                                                       "jg"};
+
+            // just assume the first immediate is the condition code
+            for (const auto &op : inst->explicit_uses()) {
+                if (!op.isImm()) {
+                    continue;
+                }
+                assert(op.getImm() >= 0
+                       && op.getImm() < (int64_t)cond_codes.size());
+                jump_code = cond_codes[op.getImm()];
+            }
+
+            if (jump_code.empty()) {
+                assert(0);
+                std::cerr
+                    << "ERROR: encountered jump without known condition code\n";
+                return false;
+            }
+        }
+        llvm::MachineBasicBlock *target = nullptr;
+        for (const auto &op : inst->explicit_uses()) {
+            if (!op.isMBB()) {
+                continue;
+            }
+
+            if (target != nullptr) {
+                assert(0);
+                std::cerr << "ERROR: multiple block targets for branch\n";
+                return false;
+            }
+            target = op.getMBB();
+        }
+        if (target == nullptr) {
+            assert(0);
+            std::cerr << "ERROR: could not find block target for branch\n";
+            return false;
+        }
+
+        state.fmt_line(buf,
+                       4,
+                       "derived()->generate_raw_jump(CompilerX64::Jump::{}, "
+                       "block{}_label);",
+                       jump_code,
+                       target->getNumber());
+
+        buf += '\n';
+        buf += '\n';
+        return true;
     }
 
     std::string              tmp;
@@ -1983,7 +2497,65 @@ bool create_encode_function(llvm::MachineFunction *func,
 
     std::string write_buf_inner{};
     {
+        const auto multiple_bbs = func->size() > 1;
+
+        if (multiple_bbs) {
+            write_buf += "\n    // Creating label for convergence point at the "
+                         "end of the function\n";
+            write_buf += "    Label ret_converge_label = "
+                         "derived()->assembler.label_create();\n";
+            write_buf +=
+                "    // Creating labels for blocks that are jump targets\n";
+        }
+
         for (auto bb_it = func->begin(); bb_it != func->end(); ++bb_it) {
+            if (multiple_bbs && !bb_it->pred_empty()) {
+                std::format_to(std::back_inserter(write_buf),
+                               "    Label block{}_label = "
+                               "derived()->assembler.label_create();\n",
+                               bb_it->getNumber());
+
+                std::format_to(std::back_inserter(write_buf_inner),
+                               "    // Starting encoding of block {}\n",
+                               bb_it->getNumber());
+                std::format_to(
+                    std::back_inserter(write_buf_inner),
+                    "    derived()->assembler.label_place(block{}_label);\n",
+                    bb_it->getNumber());
+
+                std::vector<unsigned> live_in_regs{};
+                for (auto &livein : bb_it->liveins()) {
+                    if (state.enc_target->reg_should_be_ignored(
+                            livein.PhysReg)) {
+                        continue;
+                    }
+
+                    const auto reg_id =
+                        state.enc_target->reg_id_from_mc_reg(livein.PhysReg);
+                    assert(state.value_map.contains(reg_id));
+                    state.fmt_line(write_buf_inner,
+                                   4,
+                                   "// Marking {} as live",
+                                   state.enc_target->reg_name_lower(reg_id));
+                    state.value_map[reg_id].is_dead = false;
+
+                    if (std::find(
+                            live_in_regs.begin(), live_in_regs.end(), reg_id)
+                        == live_in_regs.end()) {
+                        live_in_regs.push_back(reg_id);
+                    }
+                }
+
+                for (auto &[reg, info] : state.value_map) {
+                    if (std::find(live_in_regs.begin(), live_in_regs.end(), reg)
+                        != live_in_regs.end()) {
+                        continue;
+                    }
+
+                    info.is_dead = true;
+                }
+            }
+
             for (auto inst_it = bb_it->begin(); inst_it != bb_it->end();
                  ++inst_it) {
                 llvm::MachineInstr *inst = &(*inst_it);
@@ -2000,11 +2572,43 @@ bool create_encode_function(llvm::MachineFunction *func,
                 write_buf_inner += "\n";
 
                 if (!generate_inst(write_buf_inner, state, inst)) {
+                    std::cerr << std::format(
+                        "ERROR: Failed to generate code for instruction {}\n",
+                        tmp);
                     return false;
                 }
                 ++state.cur_inst_id;
             }
             state.is_first_block = false;
+        }
+
+
+        if (multiple_bbs) {
+            // separate block labels from ScratchRegs
+            write_buf += '\n';
+
+            // write the moves into the result register at the end of the
+            // function
+            write_buf_inner += '\n';
+            state.fmt_line(
+                write_buf_inner,
+                4,
+                "// Placing the convergence point for registers here");
+            state.fmt_line(
+                write_buf_inner,
+                4,
+                "derived()->assembler.label_place(ret_converge_label);");
+
+            assert(state.num_ret_regs >= 0);
+            for (int idx = 0; idx < state.num_ret_regs; ++idx) {
+                const auto reg = state.return_regs[idx];
+                assert(state.value_map.contains(reg));
+                assert(state.value_map[reg].ty == ValueInfo::SCRATCHREG);
+                write_buf_inner +=
+                    std::format("    result_{} = std::move(scratch_{});\n",
+                                idx,
+                                state.enc_target->reg_name_lower(reg));
+            }
         }
     }
 
