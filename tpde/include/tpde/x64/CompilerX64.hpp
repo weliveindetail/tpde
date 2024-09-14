@@ -469,6 +469,10 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, PlatformConfig> {
         jne,
         jno,
         jo,
+        js,
+        jns,
+        jp,
+        jnp,
     };
 
     Jump invert_jump(Jump jmp) noexcept;
@@ -1465,6 +1469,10 @@ typename CompilerX64<Adaptor, Derived, BaseTy>::Jump
     case Jump::jne: return Jump::je;
     case Jump::jno: return Jump::jo;
     case Jump::jo: return Jump::jno;
+    case Jump::js: return Jump::jns;
+    case Jump::jns: return Jump::js;
+    case Jump::jp: return Jump::jnp;
+    case Jump::jnp: return Jump::jp;
     }
 }
 
@@ -1520,6 +1528,10 @@ void CompilerX64<Adaptor, Derived, BaseTy>::generate_raw_jump(
         case Jump::jne: ASMNCF(JNZ, FE_JMPL, target); break;
         case Jump::jno: ASMNCF(JNO, FE_JMPL, target); break;
         case Jump::jo: ASMNCF(JO, FE_JMPL, target); break;
+        case Jump::js: ASMNCF(JS, FE_JMPL, target); break;
+        case Jump::jns: ASMNCF(JNS, FE_JMPL, target); break;
+        case Jump::jp: ASMNCF(JP, FE_JMPL, target); break;
+        case Jump::jnp: ASMNCF(JNP, FE_JMPL, target); break;
         }
 
         this->assembler.label_add_unresolved_jump_offset(
