@@ -432,6 +432,48 @@ bool generate_inst(std::string        &buf,
         assert(pref_enc.target == InstDesc::PreferredEncoding::TARGET_USE);
         const auto &use = inst->getOperand(pref_enc.target_def_use_idx);
 
+        if (use.isUndef()) {
+            // cannot be replaced
+            state.fmt_line(
+                buf,
+                4,
+                "// Skipping check for {} since associated use is undefined",
+                pref_enc.replacement->name_fadec);
+            continue;
+        }
+
+        if (use.isReg()) {
+            if (!use.getReg().isValid()) {
+                state.fmt_line(buf,
+                               4,
+                               "// Skipping check for {} since associated "
+                               "register is invalid",
+                               pref_enc.replacement->name_fadec);
+                continue;
+            }
+
+            auto skip = false;
+            for (const auto &other_use : inst->all_uses()) {
+                if (!other_use.isReg()
+                    || other_use.getOperandNo() == use.getOperandNo()) {
+                    continue;
+                }
+
+                if (use.getReg().id() == other_use.getReg().id()) {
+                    skip = true;
+                    break;
+                }
+            }
+            if (skip) {
+                state.fmt_line(buf,
+                               4,
+                               "// Skipping check for {} since associated "
+                               "register is used as an operand twice",
+                               pref_enc.replacement->name_fadec);
+                continue;
+            }
+        }
+
         bool break_loop = false;
         switch (pref_enc.cond) {
             using enum InstDesc::PreferredEncoding::COND;
@@ -1768,7 +1810,8 @@ bool generate_inst_inner(std::string           &buf,
             } else {
                 const auto &op_info = llvm_inst_desc.operands()[llvm_op_idx];
                 is_replacement =
-                    op_info.OperandType != llvm::MCOI::OPERAND_MEMORY;
+                    op_info.OperandType != llvm::MCOI::OPERAND_MEMORY
+                    && !desc.operands[op_idx].op_type_manual;
 
                 if (inst->getOperand(llvm_op_idx).isImplicit()) {
                     implicit_ops_handled.push_back(llvm_op_idx);
@@ -2145,7 +2188,8 @@ bool generate_inst_inner(std::string           &buf,
             } else {
                 const auto &op_info = llvm_inst_desc.operands()[llvm_op_idx];
                 is_replacement =
-                    op_info.OperandType != llvm::MCOI::OPERAND_IMMEDIATE;
+                    op_info.OperandType != llvm::MCOI::OPERAND_IMMEDIATE
+                    && !desc.operands[op_idx].op_type_manual;
 
                 if (inst->getOperand(llvm_op_idx).isReg()
                     && inst->getOperand(llvm_op_idx).isImplicit()) {

@@ -33,17 +33,18 @@ const char *const importantPrefixes[] = {"LOCK_", "MMX_"};
 
 /// Some instructions need a manual mapping. This is done here
 llvm::StringMap<InstInfo> manualMappings{
-    {"BT64rr",
+    {   "BT64rr",
      InstInfo{2,
      {{GPREG, 0}, {GPREG | IMM8, 1}},
      "BT64",
-     false}}, //  BT64mr is NOT a variant => incorrect variant
-    {"LEA64r",
+     false}                                                           }, //  BT64mr is NOT a variant => incorrect variant
+    {   "LEA64r",
      InstInfo{2,
      {{GPREG, 0}, {MEM, 1}},
      "LEA64rm",
-     true} }, //  The operand type is UNKNOWN instead of OPERAND_MEMORY
-                      // => mapping fails
+     true}                                                            }, //  The operand type is UNKNOWN instead of OPERAND_MEMORY
+    {"LEA64_32r", InstInfo{2, {{GPREG, 0}, {MEM, 1}}, "LEA32rm", true}},
+    // => mapping fails
 };
 
 /// Returns all fadec instructions that contain the provided string

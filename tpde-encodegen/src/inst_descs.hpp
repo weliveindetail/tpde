@@ -50,6 +50,7 @@ struct InstDesc {
 
     struct Operand {
         OP_TYPE  type;
+        bool     op_type_manual = false;
         unsigned llvm_idx;
     };
 

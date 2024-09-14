@@ -15,6 +15,23 @@ using namespace tpde_encgen;
 
 // TODO(ts): add manual replacements for SSE_MOVQ_X2Grr -> MOV64rm,
 // SSE_MOVQ_G2Xrr -> MOV64rm, etc
+// TODO(ts): for TESTrr, we do not generate TESTmi as a replacement
+
+struct ManualOperand {
+    std::string       inst_name;
+    unsigned          op_idx;
+    InstDesc::OP_TYPE op_type;
+};
+
+std::array<ManualOperand, 2> manual_operands = {
+    {
+     ManualOperand{
+            .inst_name = "LEA64rm", .op_idx = 1, .op_type = InstDesc::OP_MEM},
+     ManualOperand{
+            .inst_name = "LEA32rm", .op_idx = 1, .op_type = InstDesc::OP_MEM},
+     }
+};
+
 bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
     InstInfo info;
     if (!llvmUtils::deriveInstInfo(
@@ -73,6 +90,20 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
         desc.name_fadec += str;
         for (auto &replacement : desc.preferred_encodings) {
             replacement.replacement->name_fadec += str;
+        }
+    };
+
+    const auto set_op_ty_and_llvm_idx = [&desc](const unsigned          op_idx,
+                                                const InstDesc::OP_TYPE ty,
+                                                const unsigned llvm_idx) {
+        desc.operands[op_idx].type     = ty;
+        desc.operands[op_idx].llvm_idx = llvm_idx;
+
+        for (auto &replacement : desc.preferred_encodings) {
+            assert(replacement.replacement->operands[op_idx].type
+                   == InstDesc::OP_NONE);
+            replacement.replacement->operands[op_idx].type     = ty;
+            replacement.replacement->operands[op_idx].llvm_idx = llvm_idx;
         }
     };
 
@@ -137,6 +168,25 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
         }
     };
 
+    const auto get_op_type = [&llvm_desc,
+                              &desc](const unsigned op_idx) -> uint8_t {
+        for (const auto &manual_op : manual_operands) {
+            if (manual_op.inst_name != desc.name_fadec
+                || manual_op.op_idx != op_idx) {
+                continue;
+            }
+            desc.operands[op_idx].op_type_manual = true;
+            switch (manual_op.op_type) {
+            case InstDesc::OP_IMM: return llvm::MCOI::OPERAND_IMMEDIATE;
+            case InstDesc::OP_REG: return llvm::MCOI::OPERAND_REGISTER;
+            case InstDesc::OP_MEM: return llvm::MCOI::OPERAND_MEMORY;
+            case InstDesc::OP_NONE: return llvm::MCOI::OPERAND_UNKNOWN;
+            }
+        }
+
+        return llvm_desc.operands()[op_idx].OperandType;
+    };
+
     for (auto &op : desc.operands) {
         op.type = InstDesc::OP_NONE;
     }
@@ -161,8 +211,7 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
 
         // for now just take what's in the MachineInstr
         if (force_is_reg
-            || llvm_desc.operands()[op.opIndex].OperandType
-                   == llvm::MCOI::OPERAND_REGISTER) {
+            || get_op_type(op.opIndex) == llvm::MCOI::OPERAND_REGISTER) {
             assert(op.supportsReg());
 
             if (!info.isFullName) {
@@ -171,7 +220,7 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
                     add_op_ty_name(std::format("{}", op.opSize));
                 }
             }
-            desc.operands[idx].type = InstDesc::OP_REG;
+            set_op_ty_and_llvm_idx(idx, InstDesc::OP_REG, op.opIndex);
 
             create_imm_replacement(old_fadec_name, idx, op);
             create_mem_replacement(old_fadec_name, idx, op);
@@ -179,8 +228,7 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
             continue;
         }
 
-        if (llvm_desc.operands()[op.opIndex].OperandType
-            == llvm::MCOI::OPERAND_MEMORY) {
+        if (get_op_type(op.opIndex) == llvm::MCOI::OPERAND_MEMORY) {
             assert(op.supportsMem());
             if (!info.isFullName) {
                 desc.name_fadec += 'm';
@@ -188,20 +236,20 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
                     desc.name_fadec += std::format("{}", op.opSize);
                 }
             }
-            desc.operands[idx].type = InstDesc::OP_MEM;
+            set_op_ty_and_llvm_idx(idx, InstDesc::OP_MEM, op.opIndex);
 
             create_imm_replacement(old_fadec_name, idx, op);
             continue;
         }
 
-        if (llvm_desc.operands()[op.opIndex].OperandType
-            == llvm::MCOI::OPERAND_IMMEDIATE) {
+        if (get_op_type(op.opIndex) == llvm::MCOI::OPERAND_IMMEDIATE) {
             assert(op.supportsImm());
             if (!info.isFullName) {
                 desc.name_fadec += 'i';
                 assert(!is_mov_with_extension);
             }
-            desc.operands[idx].type = InstDesc::OP_IMM;
+
+            set_op_ty_and_llvm_idx(idx, InstDesc::OP_IMM, op.opIndex);
             continue;
         }
 
