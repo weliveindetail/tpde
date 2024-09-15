@@ -257,6 +257,8 @@ struct GenerationState {
     /// \note reg must be a REGISTER_ALIAS or ASM_OPERAND
     void redirect_aliased_regs_to_parent(unsigned reg);
     unsigned resolve_reg_alias(std::string &buf, unsigned indent, unsigned);
+
+    bool can_salvage_operand(const llvm::MachineOperand &op);
 };
 
 bool handle_move(std::string        &buf,
@@ -731,6 +733,55 @@ unsigned GenerationState::resolve_reg_alias(std::string &buf,
     }
 
     return reg;
+}
+
+bool GenerationState::can_salvage_operand(const llvm::MachineOperand &op) {
+    if (!is_first_block) {
+        return false;
+    }
+
+    if (!op.isReg()) {
+        return false;
+    }
+
+    if (!op.isKill()) {
+        return false;
+    }
+
+    const auto reg_id = enc_target->reg_id_from_mc_reg(op.getReg());
+    assert(value_map.contains(reg_id));
+    const auto &info = value_map[reg_id];
+
+    if (!info.aliased_regs.empty()) {
+        return false;
+    }
+
+    if (info.ty != ValueInfo::REG_ALIAS) {
+        return true;
+    }
+
+    auto old_reg = reg_id;
+    auto cur_reg = info.alias_reg_id;
+    while (true) {
+        assert(value_map.contains(cur_reg));
+        const auto &alias_info = value_map[cur_reg];
+        if (!alias_info.is_dead) {
+            return false;
+        }
+
+        if (alias_info.aliased_regs.size() > 1) {
+            return false;
+        }
+        assert(alias_info.aliased_regs.size() == 1);
+        assert(alias_info.aliased_regs.contains(old_reg));
+
+        if (alias_info.ty != ValueInfo::REG_ALIAS) {
+            return true;
+        }
+
+        old_reg = cur_reg;
+        cur_reg = alias_info.alias_reg_id;
+    }
 }
 
 bool handle_move(std::string        &buf,
@@ -1410,7 +1461,7 @@ bool generate_inst_inner(std::string           &buf,
     (void)llvm_inst_desc;
 
     // allocate mapping for destinations
-    std::vector<bool> defs_allocated{};
+    std::vector<std::pair<bool, const llvm::MachineOperand *>> defs_allocated{};
     for (const auto &def : inst->all_defs()) {
         assert(def.isReg() && def.getReg().isPhysical());
         const auto reg = def.getReg();
@@ -1423,7 +1474,7 @@ bool generate_inst_inner(std::string           &buf,
             state.value_map[reg_id] =
                 ValueInfo{.ty = ValueInfo::SCRATCHREG, .is_dead = false};
         }
-        defs_allocated.push_back(def.isImplicit());
+        defs_allocated.emplace_back(def.isImplicit(), &def);
     }
 
     const auto def_idx = [inst](const llvm::MachineOperand *op) {
@@ -1564,7 +1615,7 @@ bool generate_inst_inner(std::string           &buf,
                             indent,
                             state.enc_target->reg_name_lower(resolved_reg_id),
                             state.enc_target->reg_bank(resolved_reg_id));
-                        defs_allocated[def_idx(&def_reg)] = true;
+                        defs_allocated[def_idx(&def_reg)].first = true;
                     } else if (state.is_first_block && llvm_op.isKill()
                                && (reg_info.aliased_regs.empty()
                                    || (reg_info.is_dead
@@ -1593,7 +1644,7 @@ bool generate_inst_inner(std::string           &buf,
                             state.enc_target->reg_name_lower(
                                 def_resolved_reg_id),
                             state.enc_target->reg_bank(def_resolved_reg_id));
-                        defs_allocated[def_idx(&def_reg)] = true;
+                        defs_allocated[def_idx(&def_reg)].first = true;
                     } else {
                         std::format_to(
                             std::back_inserter(buf),
@@ -1758,7 +1809,7 @@ bool generate_inst_inner(std::string           &buf,
                                 def_resolved_reg_id),
                             state.enc_target->reg_bank(resolved_reg_id),
                             reg_size_bytes(state.func, llvm_op.getReg()));
-                        defs_allocated[def_idx(&def_reg)] = true;
+                        defs_allocated[def_idx(&def_reg)].first = true;
                     } else {
                         std::format_to(
                             std::back_inserter(buf),
@@ -1786,7 +1837,7 @@ bool generate_inst_inner(std::string           &buf,
                             std::format("inst{}_op{}", inst_id, op_idx),
                             std::format("inst{}_op{}_tmp", inst_id, op_idx),
                             reg_size_bytes(state.func, llvm_op.getReg()));
-                        defs_allocated[def_idx(&def_reg)] = true;
+                        defs_allocated[def_idx(&def_reg)].first = true;
                     }
                 } else {
                     // TODO(ts): search for dests to salvage to
@@ -2114,11 +2165,59 @@ bool generate_inst_inner(std::string           &buf,
                     "// {} maps to operand {}",
                     state.enc_target->reg_name_lower(base_reg_aliased_id),
                     state.value_map[base_reg_aliased_id].operand_name);
-                state.fmt_line(
-                    buf,
-                    indent + 4,
-                    "AsmReg base = {}.as_reg(this);",
-                    state.value_map[base_reg_aliased_id].operand_name);
+                auto handled = false;
+
+                if (state.can_salvage_operand(base_reg)) {
+                    for (auto &[allocated, def] : defs_allocated) {
+                        if (allocated) {
+                            continue;
+                        }
+
+                        assert(def->isReg());
+                        const auto def_reg_id =
+                            state.enc_target->reg_id_from_mc_reg(def->getReg());
+                        const auto def_bank =
+                            state.enc_target->reg_bank(def_reg_id);
+                        const auto op_bank =
+                            state.enc_target->reg_bank(base_reg_aliased_id);
+
+                        if (def_bank != op_bank) {
+                            continue;
+                        }
+
+                        const auto def_reg_name =
+                            state.enc_target->reg_name_lower(def_reg_id);
+                        state.fmt_line(buf, indent + 4, "AsmReg base;");
+                        state.fmt_line(
+                            buf,
+                            indent + 4,
+                            "if ({}.try_salvage_if_nonalloc(scratch_{}, {})) "
+                            "{{",
+                            state.value_map[base_reg_aliased_id].operand_name,
+                            def_reg_name,
+                            def_bank);
+                        state.fmt_line(buf,
+                                       indent + 8,
+                                       "base = scratch_{}.cur_reg;",
+                                       def_reg_name);
+                        state.fmt_line(buf, indent + 4, "}} else {{");
+                        state.fmt_line(
+                            buf,
+                            indent + 8,
+                            "base = {}.as_reg(this);",
+                            state.value_map[base_reg_aliased_id].operand_name);
+                        state.fmt_line(buf, indent + 4, "}}");
+                        handled = true;
+                        break;
+                    }
+                }
+                if (!handled) {
+                    state.fmt_line(
+                        buf,
+                        indent + 4,
+                        "AsmReg base = {}.as_reg(this);",
+                        state.value_map[base_reg_aliased_id].operand_name);
+                }
             } else {
                 state.fmt_line(
                     buf,
@@ -2401,7 +2500,7 @@ bool generate_inst_inner(std::string           &buf,
             state.fixed_reg_conds[reg_id].emplace_back(if_cond);
         }
 
-        if (!defs_allocated[def_idx(&def)]) {
+        if (!defs_allocated[def_idx(&def)].first) {
             std::format_to(std::back_inserter(buf),
                            "{:>{}}// def {} has not been allocated yet\n",
                            "",

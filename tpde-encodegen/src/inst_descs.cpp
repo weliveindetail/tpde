@@ -113,6 +113,11 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
                                  || info.fadecName.starts_with("MOVZX");
 
     const auto imm_cond = [](const OpType ty) {
+        // TODO(ts): for immediates we should try to know whether they are
+        // actually sign-extended and what the operation size is, e.g. for
+        // ADD64ri we actually care whether the 64 bit immediate fits into
+        // 32bits as sign-extended but for MOV16mi, we dont actually care at all
+        // and can take any immediate and we can just truncate
         switch (ty) {
         case IMM64: return InstDesc::PreferredEncoding::COND_IMM64;
         case IMM32: return InstDesc::PreferredEncoding::COND_IMM32;

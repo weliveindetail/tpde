@@ -186,6 +186,7 @@ struct EncodeCompiler {
         [[nodiscard]] u32  val_ref_frame_off() const noexcept;
         AsmReg             as_reg(EncodeCompiler *compiler) noexcept;
         bool try_salvage(ScratchReg &, u8 bank) noexcept;
+        bool try_salvage_if_nonalloc(ScratchReg &, u8 bank) noexcept;
         void try_salvage_or_materialize(EncodeCompiler *compiler,
                                         ScratchReg     &dst_scratch,
                                         u8              bank,
@@ -410,6 +411,18 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
 
     dst_scratch.alloc_from_bank(bank);
     return false;
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage_if_nonalloc(
+    ScratchReg &dst_scratch, const u8 bank) noexcept {
+    if (!dst_scratch.cur_reg.invalid()) {
+        return false;
+    }
+    return try_salvage(dst_scratch, bank);
 }
 
 template <typename Adaptor,
