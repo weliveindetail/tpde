@@ -2238,32 +2238,77 @@ bool generate_inst_inner(std::string           &buf,
                     state.resolve_reg_alias(buf, indent + 4, idx_reg_id);
                 if (state.value_map[idx_reg_aliased_id].ty
                     == ValueInfo::ASM_OPERAND) {
+                    const auto &op_name =
+                        state.value_map[idx_reg_aliased_id].operand_name;
                     state.fmt_line(
                         buf,
                         indent + 4,
                         "// {} maps to operand {}",
                         state.enc_target->reg_name_lower(idx_reg_aliased_id),
-                        state.value_map[idx_reg_aliased_id].operand_name);
+                        op_name);
+
+                    // check if we can fold the operand into the displacement
+                    if (displacement.getImm() != 0) {
+                        state.fmt_line(buf,
+                                       indent + 4,
+                                       "if ({}.encodeable_as_imm32_sext() && "
+                                       "disp_add_encodeable({} * "
+                                       "(i32){}.imm().const_u64, {})) {{",
+                                       op_name,
+                                       scale_factor.getImm(),
+                                       op_name,
+                                       displacement.getImm());
+                    } else {
+                        state.fmt_line(buf,
+                                       indent + 4,
+                                       "if ({}.encodeable_as_imm32_sext()) {{",
+                                       op_name);
+                    }
+
+                    state.fmt_line(buf,
+                                   indent + 8,
+                                   "inst{}_op{} = FE_MEM(base, 0, FE_NOREG, {} "
+                                   "* (i32){}.imm().const_u64 + {});",
+                                   inst_id,
+                                   op_idx,
+                                   scale_factor.getImm(),
+                                   op_name,
+                                   displacement.getImm());
+
+                    state.fmt_line(buf, indent + 4, "}} else {{");
+
                     state.fmt_line(
                         buf,
-                        indent + 4,
+                        indent + 8,
                         "AsmReg index_tmp = {}.as_reg(this);",
                         state.value_map[idx_reg_aliased_id].operand_name);
+
+                    state.fmt_line(
+                        buf,
+                        indent + 8,
+                        "inst{}_op{} = FE_MEM(base, {}, index_tmp, {});",
+                        inst_id,
+                        op_idx,
+                        scale_factor.getImm(),
+                        displacement.getImm());
+
+                    state.fmt_line(buf, indent + 4, "}}");
                 } else {
                     state.fmt_line(
                         buf,
                         indent + 4,
                         "AsmReg index_tmp = scratch_{}.cur_reg;",
                         state.enc_target->reg_name_lower(idx_reg_aliased_id));
-                }
 
-                state.fmt_line(buf,
-                               indent + 4,
-                               "inst{}_op{} = FE_MEM(base, {}, index_tmp, {});",
-                               inst_id,
-                               op_idx,
-                               scale_factor.getImm(),
-                               displacement.getImm());
+                    state.fmt_line(
+                        buf,
+                        indent + 4,
+                        "inst{}_op{} = FE_MEM(base, {}, index_tmp, {});",
+                        inst_id,
+                        op_idx,
+                        scale_factor.getImm(),
+                        displacement.getImm());
+                }
             } else {
                 state.fmt_line(buf,
                                indent + 4,
