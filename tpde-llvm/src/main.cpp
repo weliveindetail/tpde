@@ -16,6 +16,8 @@
 #include <memory>
 #include <stdio.h>
 
+#include "tpde/base.hpp"
+
 #define ARGS_NOEXCEPT
 #include <args/args.hxx>
 
@@ -23,6 +25,13 @@ int main(int argc, char *argv[]) {
     args::ArgumentParser parser("TPDE for LLVM");
     args::HelpFlag       help(parser, "help", "Display help", {'h', "help"});
 
+    args::ValueFlag<unsigned> log_level(
+        parser,
+        "log_level",
+        "Set the log level to 0=NONE, 1=ERR, 2=WARN(default), 3=INFO, 4=DEBUG, "
+        ">5=TRACE",
+        {'l', "log-level"},
+        2);
     args::Flag print_ir(parser, "print_ir", "Print LLVM-IR", {"print-ir"});
 
     args::Flag print_liveness(parser,
@@ -54,6 +63,25 @@ int main(int argc, char *argv[]) {
                   << '\n';
         return 1;
     }
+
+#ifdef TPDE_LOGGING
+    {
+        spdlog::level::level_enum level = spdlog::level::off;
+        switch (log_level.Get()) {
+        case 0: level = spdlog::level::off; break;
+        case 1: level = spdlog::level::err; break;
+        case 2: level = spdlog::level::warn; break;
+        case 3: level = spdlog::level::info; break;
+        case 4: level = spdlog::level::debug; break;
+        default:
+            assert(level >= 5);
+            level = spdlog::level::trace;
+            break;
+        }
+
+        spdlog::set_level(level);
+    }
+#endif
 
     std::unique_ptr<llvm::MemoryBuffer> bitcode_buf;
     if (ir_path) {
