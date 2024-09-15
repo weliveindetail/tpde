@@ -730,8 +730,108 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
     const auto int_width = inst_ty->getIntegerBitWidth();
     if (int_width == 128) {
-        assert(0);
-        exit(1);
+        auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        auto rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+
+        // TODO(ts): better salvaging
+        lhs.inc_ref_count();
+        rhs.inc_ref_count();
+
+        auto lhs_high = this->val_ref(llvm_val_idx(inst->getOperand(0)), 1);
+        auto rhs_high = this->val_ref(llvm_val_idx(inst->getOperand(1)), 1);
+
+        if ((op == IntBinaryOp::add || op == IntBinaryOp::mul
+             || op == IntBinaryOp::land || op == IntBinaryOp::lor
+             || op == IntBinaryOp::lxor)
+            && lhs.is_const && lhs_high.is_const && !rhs.is_const
+            && !rhs_high.is_const) {
+            // TODO(ts): this is a hack since the encoder can currently not do
+            // commutable operations so we reorder immediates manually here
+            std::swap(lhs, rhs);
+            std::swap(lhs_high, rhs_high);
+        }
+
+        auto res_low = this->result_ref_lazy(inst_idx, 0);
+        res_low.inc_ref_count();
+        auto res_high = this->result_ref_lazy(inst_idx, 1);
+
+        ScratchReg scratch_low{derived()}, scratch_high{derived()};
+
+
+        std::array<bool (Derived::*)(AsmOperand,
+                                     AsmOperand,
+                                     AsmOperand,
+                                     AsmOperand,
+                                     ScratchReg &,
+                                     ScratchReg &),
+                   10>
+            encode_ptrs = {
+                {
+                 &Derived::encode_addi128,
+                 &Derived::encode_subi128,
+                 &Derived::encode_muli128,
+#if 0
+                 &Derived::encode_udivi128,
+                 &Derived::encode_sdivi128,
+                 &Derived::encode_uremi128,
+                 &Derived::encode_sremi128,
+#else
+                 nullptr, nullptr,
+                 nullptr, nullptr,
+#endif
+                 &Derived::encode_landi128,
+                 &Derived::encode_lori128,
+                 &Derived::encode_lxori128,
+                 }
+        };
+
+        if (op == IntBinaryOp::udiv || op == IntBinaryOp::sdiv
+            || op == IntBinaryOp::urem || op == IntBinaryOp::srem) {
+            // TODO(ts): the autoencoder can currently not generate calls to
+            // globals which LLVM generates for 128 bit division so we need to
+            // fix that or do the calls ourselves (which is probably easier rn)
+            llvm::errs() << "Division/Remainder for 128bit integers currently "
+                            "unimplemented\n";
+            return false;
+        }
+
+        switch (op) {
+        case IntBinaryOp::shl:
+            derived()->encode_shli128(std::move(lhs),
+                                      std::move(lhs_high),
+                                      std::move(rhs),
+                                      scratch_low,
+                                      scratch_high);
+            break;
+        case IntBinaryOp::shr:
+            derived()->encode_shri128(std::move(lhs),
+                                      std::move(lhs_high),
+                                      std::move(rhs),
+                                      scratch_low,
+                                      scratch_high);
+            break;
+        case IntBinaryOp::ashr:
+            derived()->encode_ashri128(std::move(lhs),
+                                       std::move(lhs_high),
+                                       std::move(rhs),
+                                       scratch_low,
+                                       scratch_high);
+            break;
+        default:
+            (derived()->*(encode_ptrs[static_cast<u32>(op)]))(
+                std::move(lhs),
+                std::move(lhs_high),
+                std::move(rhs),
+                std::move(rhs_high),
+                scratch_low,
+                scratch_high);
+            break;
+        }
+
+        this->set_value(res_low, scratch_low);
+        this->set_value(res_high, scratch_high);
+
+        return true;
     }
     assert(int_width <= 64);
 
@@ -762,6 +862,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
     auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
     auto rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+
+    if ((op == IntBinaryOp::add || op == IntBinaryOp::mul
+         || op == IntBinaryOp::land || op == IntBinaryOp::lor
+         || op == IntBinaryOp::lxor)
+        && lhs.is_const && !rhs.is_const) {
+        // TODO(ts): this is a hack since the encoder can currently not do
+        // commutable operations so we reorder immediates manually here
+        std::swap(lhs, rhs);
+    }
 
     auto lhs_op = AsmOperand{std::move(lhs)};
     auto rhs_op = AsmOperand{std::move(rhs)};

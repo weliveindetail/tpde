@@ -20,10 +20,12 @@ typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
+typedef __int128_t i128;
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
+typedef __uint128_t u128;
 
 // --------------------------
 // loads
@@ -111,6 +113,20 @@ u64 TARGET_V1 lxori64(u64 a, u64 b) { return (a ^ b); }
 u64 TARGET_V1 shli64(u64 a, u64 b) { return (a << b); }
 u64 TARGET_V1 shri64(u64 a, u64 b) { return (a >> b); }
 i64 TARGET_V1 ashri64(i64 a, i64 b) { return (a >> b); }
+
+u128 TARGET_V1 addi128(u128 a, u128 b) { return (a + b); }
+u128 TARGET_V1 subi128(u128 a, u128 b) { return (a - b); }
+u128 TARGET_V1 muli128(u128 a, u128 b) { return (a * b); }
+//u128 TARGET_V1 udivi128(u128 a, u128 b) { return (a / b); }
+//i128 TARGET_V1 sdivi128(i128 a, i128 b) { return (a / b); }
+//u128 TARGET_V1 uremi128(u128 a, u128 b) { return (a % b); }
+//i128 TARGET_V1 sremi128(i128 a, i128 b) { return (a % b); }
+u128 TARGET_V1 landi128(u128 a, u128 b) { return (a & b); }
+u128 TARGET_V1 lori128(u128 a, u128 b) { return (a | b); }
+u128 TARGET_V1 lxori128(u128 a, u128 b) { return (a ^ b); }
+u128 TARGET_V1 shli128(u128 a, u128 b) { return (a << b); }
+u128 TARGET_V1 shri128(u128 a, u128 b) { return (a >> b); }
+i128 TARGET_V1 ashri128(i128 a, i128 b) { return (a >> b); }
 
 // --------------------------
 // extensions
