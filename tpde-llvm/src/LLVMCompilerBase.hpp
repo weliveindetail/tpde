@@ -365,39 +365,41 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
         const auto bit_width = load->getType()->getIntegerBitWidth();
         switch (bit_width) {
         case 1:
-        case 8: derived()->encode_load8(std::move(ptr_ref), res_scratch); break;
+        case 8:
+            derived()->encode_loadi8(std::move(ptr_ref), res_scratch);
+            break;
         case 16:
-            derived()->encode_load16(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi16(std::move(ptr_ref), res_scratch);
             break;
         case 24:
-            derived()->encode_load24(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi24(std::move(ptr_ref), res_scratch);
             break;
         case 32:
-            derived()->encode_load32(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi32(std::move(ptr_ref), res_scratch);
             break;
         case 40:
-            derived()->encode_load40(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi40(std::move(ptr_ref), res_scratch);
             break;
         case 48:
-            derived()->encode_load48(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi48(std::move(ptr_ref), res_scratch);
             break;
         case 56:
-            derived()->encode_load56(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi56(std::move(ptr_ref), res_scratch);
             break;
         case 64:
-            derived()->encode_load64(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi64(std::move(ptr_ref), res_scratch);
             break;
         default: assert(0); return false;
         }
         break;
     }
-    case ptr: derived()->encode_load64(std::move(ptr_ref), res_scratch); break;
+    case ptr: derived()->encode_loadi64(std::move(ptr_ref), res_scratch); break;
     case i128: {
         ScratchReg res_scratch_high{derived()};
         res.inc_ref_count();
         auto res_high = this->result_ref_lazy(load_idx, 1);
 
-        derived()->encode_load128(
+        derived()->encode_loadi128(
             std::move(ptr_ref), res_scratch, res_scratch_high);
         this->set_value(res, res_scratch);
         this->set_value(res_high, res_scratch_high);
@@ -459,36 +461,36 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
                     load_ty->getContainedType(part_idx)->getIntegerBitWidth();
                 switch (bit_width) {
                 case 1:
-                case 8: derived()->encode_load8(part_addr, res_scratch); break;
+                case 8: derived()->encode_loadi8(part_addr, res_scratch); break;
                 case 16:
-                    derived()->encode_load16(part_addr, res_scratch);
+                    derived()->encode_loadi16(part_addr, res_scratch);
                     break;
                 case 24:
-                    derived()->encode_load24(part_addr, res_scratch);
+                    derived()->encode_loadi24(part_addr, res_scratch);
                     break;
                 case 32:
-                    derived()->encode_load32(part_addr, res_scratch);
+                    derived()->encode_loadi32(part_addr, res_scratch);
                     break;
                 case 40:
-                    derived()->encode_load40(part_addr, res_scratch);
+                    derived()->encode_loadi40(part_addr, res_scratch);
                     break;
                 case 48:
-                    derived()->encode_load48(part_addr, res_scratch);
+                    derived()->encode_loadi48(part_addr, res_scratch);
                     break;
                 case 56:
-                    derived()->encode_load56(part_addr, res_scratch);
+                    derived()->encode_loadi56(part_addr, res_scratch);
                     break;
                 case 64:
-                    derived()->encode_load64(part_addr, res_scratch);
+                    derived()->encode_loadi64(part_addr, res_scratch);
                     break;
                 default: assert(0); return false;
                 }
                 break;
             }
-            case ptr: derived()->encode_load64(part_addr, res_scratch); break;
+            case ptr: derived()->encode_loadi64(part_addr, res_scratch); break;
             case i128: {
                 ScratchReg res_scratch_high{derived()};
-                derived()->encode_load128(
+                derived()->encode_loadi128(
                     part_addr, res_scratch, res_scratch_high);
 
                 auto part_ref_high =
@@ -559,41 +561,41 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
         switch (bit_width) {
         case 1:
         case 8:
-            derived()->encode_store8(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei8(std::move(ptr_ref), std::move(op_ref));
             break;
         case 16:
-            derived()->encode_store16(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei16(std::move(ptr_ref), std::move(op_ref));
             break;
         case 24:
-            derived()->encode_store24(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei24(std::move(ptr_ref), std::move(op_ref));
             break;
         case 32:
-            derived()->encode_store32(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei32(std::move(ptr_ref), std::move(op_ref));
             break;
         case 40:
-            derived()->encode_store40(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei40(std::move(ptr_ref), std::move(op_ref));
             break;
         case 48:
-            derived()->encode_store48(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei48(std::move(ptr_ref), std::move(op_ref));
             break;
         case 56:
-            derived()->encode_store56(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei56(std::move(ptr_ref), std::move(op_ref));
             break;
         case 64:
-            derived()->encode_store64(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei64(std::move(ptr_ref), std::move(op_ref));
             break;
         default: assert(0); return false;
         }
         break;
     }
     case ptr:
-        derived()->encode_store64(std::move(ptr_ref), std::move(op_ref));
+        derived()->encode_storei64(std::move(ptr_ref), std::move(op_ref));
         break;
     case i128: {
         op_ref.inc_ref_count();
         auto op_ref_high = this->val_ref(op_idx, 1);
 
-        derived()->encode_store128(
+        derived()->encode_storei128(
             std::move(ptr_ref), std::move(op_ref), std::move(op_ref_high));
         break;
     }
@@ -658,22 +660,22 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
                     store_ty->getContainedType(part_idx)->getIntegerBitWidth();
                 switch (bit_width) {
                 case 1:
-                case 8: derived()->encode_store8(part_addr, part_ref); break;
-                case 16: derived()->encode_store16(part_addr, part_ref); break;
-                case 24: derived()->encode_store24(part_addr, part_ref); break;
-                case 32: derived()->encode_store32(part_addr, part_ref); break;
-                case 40: derived()->encode_store40(part_addr, part_ref); break;
-                case 48: derived()->encode_store48(part_addr, part_ref); break;
-                case 56: derived()->encode_store56(part_addr, part_ref); break;
-                case 64: derived()->encode_store64(part_addr, part_ref); break;
+                case 8: derived()->encode_storei8(part_addr, part_ref); break;
+                case 16: derived()->encode_storei16(part_addr, part_ref); break;
+                case 24: derived()->encode_storei24(part_addr, part_ref); break;
+                case 32: derived()->encode_storei32(part_addr, part_ref); break;
+                case 40: derived()->encode_storei40(part_addr, part_ref); break;
+                case 48: derived()->encode_storei48(part_addr, part_ref); break;
+                case 56: derived()->encode_storei56(part_addr, part_ref); break;
+                case 64: derived()->encode_storei64(part_addr, part_ref); break;
                 default: assert(0); return false;
                 }
                 break;
             }
-            case ptr: derived()->encode_store64(part_addr, part_ref); break;
+            case ptr: derived()->encode_storei64(part_addr, part_ref); break;
             case i128: {
                 auto part_ref_high = this->val_ref(op_idx, ++res_part_idx);
-                derived()->encode_store128(part_addr, part_ref, part_ref_high);
+                derived()->encode_storei128(part_addr, part_ref, part_ref_high);
 
                 part_ref_high.reset_without_refcount();
                 break;
@@ -715,6 +717,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     llvm::Instruction *inst,
     const IntBinaryOp  op) noexcept {
     using AsmOperand = typename Derived::AsmOperand;
+    using EncodeImm  = typename Derived::EncodeImm;
 
     auto *inst_ty = inst->getType();
 
@@ -730,26 +733,27 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         assert(0);
         exit(1);
     }
+    assert(int_width <= 64);
 
     // encode functions for 32/64 bit operations
     std::array<
-        std::array<void (Derived::*)(AsmOperand, AsmOperand, ScratchReg &), 2>,
+        std::array<bool (Derived::*)(AsmOperand, AsmOperand, ScratchReg &), 2>,
         13>
         encode_ptrs = {
             {
-             {&Derived::encode_add32, &Derived::encode_add64},
-             {&Derived::encode_sub32, &Derived::encode_sub64},
-             {&Derived::encode_mul32, &Derived::encode_mul64},
-             {&Derived::encode_udiv32, &Derived::encode_udiv64},
-             {&Derived::encode_sdiv32, &Derived::encode_sdiv64},
-             {&Derived::encode_urem32, &Derived::encode_urem64},
-             {&Derived::encode_srem32, &Derived::encode_srem64},
-             {&Derived::encode_land32, &Derived::encode_land64},
-             {&Derived::encode_lor32, &Derived::encode_lor64},
-             {&Derived::encode_lxor32, &Derived::encode_lxor64},
-             {&Derived::encode_shl32, &Derived::encode_shl64},
-             {&Derived::encode_shr32, &Derived::encode_shr64},
-             {&Derived::encode_ashr32, &Derived::encode_ashr64},
+             {&Derived::encode_addi32, &Derived::encode_addi64},
+             {&Derived::encode_subi32, &Derived::encode_subi64},
+             {&Derived::encode_muli32, &Derived::encode_muli64},
+             {&Derived::encode_udivi32, &Derived::encode_udivi64},
+             {&Derived::encode_sdivi32, &Derived::encode_sdivi64},
+             {&Derived::encode_uremi32, &Derived::encode_uremi64},
+             {&Derived::encode_sremi32, &Derived::encode_sremi64},
+             {&Derived::encode_landi32, &Derived::encode_landi64},
+             {&Derived::encode_lori32, &Derived::encode_lori64},
+             {&Derived::encode_lxori32, &Derived::encode_lxori64},
+             {&Derived::encode_shli32, &Derived::encode_shli64},
+             {&Derived::encode_shri32, &Derived::encode_shri64},
+             {&Derived::encode_ashri32, &Derived::encode_ashri64},
              }
     };
 
@@ -775,9 +779,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
             } else if (int_width == 16) {
                 derived()->encode_sext_16_to_32(std::move(lhs_op), tmp);
             } else if (int_width < 32) {
-                derived()->encode_sext_smaller32(std::move(lhs_op), tmp);
+                derived()->encode_sext_arbitrary_to_32(
+                    std::move(lhs_op), EncodeImm{32u - int_width}, tmp);
             } else {
-                derived()->encode_sext_smaller64(std::move(lhs_op), tmp);
+                derived()->encode_sext_arbitrary_to_64(
+                    std::move(lhs_op), EncodeImm{64u - int_width}, tmp);
             }
             lhs_op = std::move(tmp);
         } else if (op == IntBinaryOp::udiv || op == IntBinaryOp::urem) {
@@ -786,12 +792,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
                 ScratchReg tmp{derived()};
                 u64        mask = (1ull << int_width) - 1;
                 if (int_width <= 32) {
-                    derived()->encode_land32(
+                    derived()->encode_landi32(
                         std::move(lhs_op),
                         ValuePartRef{mask, Config::GP_BANK, 4},
                         tmp);
                 } else {
-                    derived()->encode_land64(
+                    derived()->encode_landi64(
                         std::move(lhs_op),
                         ValuePartRef{mask, Config::GP_BANK, 8},
                         tmp);
@@ -808,9 +814,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
             } else if (int_width == 16) {
                 derived()->encode_sext_16_to_32(std::move(rhs_op), tmp);
             } else if (int_width < 32) {
-                derived()->encode_sext_smaller32(std::move(rhs_op), tmp);
+                derived()->encode_sext_arbitrary_to_32(
+                    std::move(lhs_op), EncodeImm{32u - int_width}, tmp);
             } else {
-                derived()->encode_sext_smaller64(std::move(rhs_op), tmp);
+                derived()->encode_sext_arbitrary_to_64(
+                    std::move(lhs_op), EncodeImm{64u - int_width}, tmp);
             }
             rhs_op = std::move(tmp);
         } else {
@@ -820,12 +828,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
                 ScratchReg tmp{derived()};
                 u64        mask = (1ull << int_width) - 1;
                 if (int_width <= 32) {
-                    derived()->encode_land32(
+                    derived()->encode_landi32(
                         std::move(rhs_op),
                         ValuePartRef{mask, Config::GP_BANK, 4},
                         tmp);
                 } else {
-                    derived()->encode_land64(
+                    derived()->encode_landi64(
                         std::move(rhs_op),
                         ValuePartRef{mask, Config::GP_BANK, 8},
                         tmp);

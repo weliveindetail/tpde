@@ -6,18 +6,37 @@
 
 #include "LLVMAdaptor.hpp"
 #include "LLVMCompilerBase.hpp"
-#include "enc_funcs.hpp"
+#include "encode_compiler.hpp"
 #include "tpde/x64/CompilerX64.hpp"
 
 namespace tpde_llvm::x64 {
 
 struct LLVMCompilerX64
     : tpde::x64::CompilerX64<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase>,
-      EncodeCompiler<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase> {
+      tpde_encodegen::
+          EncodeCompiler<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase> {
     using Base =
         tpde::x64::CompilerX64<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase>;
     using EncCompiler =
         EncodeCompiler<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase>;
+
+    struct EncodeImm : EncCompiler::AsmOperand::Immediate {
+        explicit EncodeImm(const u32 value)
+            : Immediate{.const_u64 = value, .bank = 0, .size = 4} {}
+
+        explicit EncodeImm(const u64 value)
+            : Immediate{.const_u64 = value, .bank = 0, .size = 8} {}
+
+        explicit EncodeImm(const float value)
+            : Immediate{.const_u64 = std::bit_cast<u32>(value),
+                        .bank      = 1,
+                        .size      = 4} {}
+
+        explicit EncodeImm(const double value)
+            : Immediate{.const_u64 = std::bit_cast<u64>(value),
+                        .bank      = 1,
+                        .size      = 8} {}
+    };
 
     std::unique_ptr<LLVMAdaptor> adaptor;
 

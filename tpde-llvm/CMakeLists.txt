@@ -87,7 +87,7 @@ set(TPDE_LLVM_SOURCES
 
 set(TPDE_LLVM_X64_HEADERS
     src/x64/LLVMCompilerX64.hpp
-    src/x64/enc_funcs.hpp
+    src/x64/encode_compiler.hpp
 )
 
 set(TPDE_LLVM_X64_SOURCES

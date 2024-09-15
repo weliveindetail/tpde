@@ -97,12 +97,12 @@ define i24 @load_i24(ptr %a) {
 ; X64:    movzx eax, word ptr [rdi]
 ; X64:    movzx edi, byte ptr [rdi + 0x2]
 ; X64:    shl edi, 0x10
-; X64:    add eax, edi
+; X64:    or edi, eax
+; X64:    mov eax, edi
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    add byte ptr [rax], al
 entry:
   %b = load i24, ptr %a, align 2
   ret i24 %b
@@ -117,15 +117,15 @@ define i24 @load_i24_alt(ptr %a) {
 ; X64:    movzx eax, word ptr [rdi]
 ; X64:    movzx ecx, byte ptr [rdi + 0x2]
 ; X64:    shl ecx, 0x10
-; X64:    add eax, ecx
+; X64:    or ecx, eax
 ; X64:    movzx eax, word ptr [rdi]
 ; X64:    movzx edi, byte ptr [rdi + 0x2]
 ; X64:    shl edi, 0x10
-; X64:    add eax, edi
+; X64:    or edi, eax
+; X64:    mov eax, edi
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
 entry:
   %b = load i24, ptr %a, align 2
   %c = load i24, ptr %a, align 2
@@ -182,12 +182,13 @@ define i40 @load_i40(ptr %a) {
 ; X64:    mov eax, dword ptr [rdi]
 ; X64:    movzx edi, byte ptr [rdi + 0x4]
 ; X64:    shl rdi, 0x20
-; X64:    add rax, rdi
+; X64:    or rdi, rax
+; X64:    mov rax, rdi
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
 entry:
   %b = load i40, ptr %a, align 2
   ret i40 %b
@@ -202,14 +203,17 @@ define i40 @load_i40_alt(ptr %a) {
 ; X64:    mov eax, dword ptr [rdi]
 ; X64:    movzx ecx, byte ptr [rdi + 0x4]
 ; X64:    shl rcx, 0x20
-; X64:    add rax, rcx
+; X64:    or rcx, rax
 ; X64:    mov eax, dword ptr [rdi]
 ; X64:    movzx edi, byte ptr [rdi + 0x4]
 ; X64:    shl rdi, 0x20
-; X64:    add rax, rdi
+; X64:    or rdi, rax
+; X64:    mov rax, rdi
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %b = load i40, ptr %a, align 2
   %c = load i40, ptr %a, align 2
@@ -226,12 +230,13 @@ define i48 @load_i48(ptr %a) {
 ; X64:    mov eax, dword ptr [rdi]
 ; X64:    movzx edi, word ptr [rdi + 0x4]
 ; X64:    shl rdi, 0x20
-; X64:    add rax, rdi
+; X64:    or rdi, rax
+; X64:    mov rax, rdi
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
 entry:
   %b = load i48, ptr %a, align 2
   ret i48 %b
@@ -246,14 +251,17 @@ define i48 @load_i48_alt(ptr %a) {
 ; X64:    mov eax, dword ptr [rdi]
 ; X64:    movzx ecx, word ptr [rdi + 0x4]
 ; X64:    shl rcx, 0x20
-; X64:    add rax, rcx
+; X64:    or rcx, rax
 ; X64:    mov eax, dword ptr [rdi]
 ; X64:    movzx edi, word ptr [rdi + 0x4]
 ; X64:    shl rdi, 0x20
-; X64:    add rax, rdi
+; X64:    or rdi, rax
+; X64:    mov rax, rdi
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %b = load i48, ptr %a, align 2
   %c = load i48, ptr %a, align 2
@@ -270,15 +278,15 @@ define i56 @load_i56(ptr %a) {
 ; X64:    movzx eax, word ptr [rdi + 0x4]
 ; X64:    movzx ecx, byte ptr [rdi + 0x6]
 ; X64:    shl ecx, 0x10
-; X64:    add eax, ecx
-; X64:    shl rax, 0x20
-; X64:    mov edi, dword ptr [rdi]
-; X64:    add rdi, rax
-; X64:    mov rax, rdi
+; X64:    or ecx, eax
+; X64:    shl rcx, 0x20
+; X64:    mov eax, dword ptr [rdi]
+; X64:    or rax, rcx
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
 entry:
   %b = load i56, ptr %a, align 2
   ret i56 %b
@@ -293,24 +301,22 @@ define i56 @load_i56_alt(ptr %a) {
 ; X64:    movzx eax, word ptr [rdi + 0x4]
 ; X64:    movzx ecx, byte ptr [rdi + 0x6]
 ; X64:    shl ecx, 0x10
-; X64:    add eax, ecx
-; X64:    shl rax, 0x20
-; X64:    mov ecx, dword ptr [rdi]
-; X64:    add rcx, rax
+; X64:    or ecx, eax
+; X64:    shl rcx, 0x20
+; X64:    mov eax, dword ptr [rdi]
+; X64:    or rax, rcx
 ; X64:    movzx eax, word ptr [rdi + 0x4]
 ; X64:    movzx ecx, byte ptr [rdi + 0x6]
 ; X64:    shl ecx, 0x10
-; X64:    add eax, ecx
-; X64:    shl rax, 0x20
-; X64:    mov edi, dword ptr [rdi]
-; X64:    add rdi, rax
-; X64:    mov rax, rdi
+; X64:    or ecx, eax
+; X64:    shl rcx, 0x20
+; X64:    mov eax, dword ptr [rdi]
+; X64:    or rax, rcx
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %b = load i56, ptr %a, align 2
   %c = load i56, ptr %a, align 2
