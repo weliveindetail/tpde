@@ -7,6 +7,7 @@
 #include <variant>
 
 #include "base.hpp"
+#include "encode_compiler.hpp"
 #include "tpde/x64/CompilerX64.hpp"
 
 // Helper macros for assembling in the compiler
@@ -22,12 +23,19 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           typename BaseTy>
-struct EncodeCompiler {
-    using CompilerX64  = tpde::x64::CompilerX64<Adaptor, Derived, BaseTy>;
+struct EncodeCompiler
+    : tpde_encodegen::EncodeCompiler<Adaptor, Derived, BaseTy> {
+    using CompilerX64 = tpde::x64::CompilerX64<Adaptor, Derived, BaseTy>;
+    using EncCompiler =
+        tpde_encodegen::EncodeCompiler<Adaptor, Derived, BaseTy>;
+
     using ScratchReg   = typename CompilerX64::ScratchReg;
     using AsmReg       = typename CompilerX64::AsmReg;
     using ValuePartRef = typename CompilerX64::ValuePartRef;
 
+    using AsmOperand = typename EncCompiler::AsmOperand;
+
+#if 0
     struct AsmOperand {
         struct Address {
             AsmReg  base;
@@ -161,6 +169,7 @@ struct EncodeCompiler {
                                         u32             size) noexcept;
         void reset() noexcept;
     };
+#endif
 
     CompilerX64 *derived() noexcept {
         return static_cast<CompilerX64 *>(static_cast<Derived *>(this));
@@ -182,8 +191,9 @@ struct EncodeCompiler {
         return derived()->has_cpu_feats(CompilerX64::CPU_AVX);
     }
 
-    // TODO(ts): also generate overloads with IRValueRef params/results
-    // that will automagically do part management for us?
+// TODO(ts): also generate overloads with IRValueRef params/results
+// that will automagically do part management for us?
+#if 0
     void encode_load8(AsmOperand ptr, ScratchReg &result) noexcept;
     void encode_load16(AsmOperand ptr, ScratchReg &result) noexcept;
     void encode_load24(AsmOperand ptr, ScratchReg &result) noexcept;
@@ -202,8 +212,9 @@ struct EncodeCompiler {
                                        ScratchReg &result) noexcept;
     [[nodiscard]] bool encode_loadv512(AsmOperand  ptr,
                                        ScratchReg &result) noexcept;
+#endif
 
-
+#if 0
     void encode_store8(AsmOperand ptr, AsmOperand value) noexcept;
     void encode_store16(AsmOperand ptr, AsmOperand value) noexcept;
     void encode_store24(AsmOperand ptr, AsmOperand value) noexcept;
@@ -222,7 +233,7 @@ struct EncodeCompiler {
                                         AsmOperand value) noexcept;
     [[nodiscard]] bool encode_storev512(AsmOperand ptr,
                                         AsmOperand value) noexcept;
-
+#endif
     void encode_add32(AsmOperand  lhs,
                       AsmOperand  rhs,
                       ScratchReg &result) noexcept;
@@ -303,12 +314,9 @@ struct EncodeCompiler {
                        ScratchReg &result) noexcept;
 
     void encode_sext_8_to_32(AsmOperand op, ScratchReg &result) noexcept;
-    void encode_sext_16_to_32(AsmOperand op, ScratchReg &result) noexcept;
-    void encode_sext_32_to_64(AsmOperand op, ScratchReg &result) noexcept;
-    void encode_sext_smaller32(AsmOperand op, ScratchReg &result) noexcept;
-    void encode_sext_smaller64(AsmOperand op, ScratchReg &result) noexcept;
 };
 
+#if 0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
@@ -466,7 +474,9 @@ template <typename Adaptor,
 void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::reset() noexcept {
     state = std::monostate{};
 }
+#endif
 
+#if 0
 // these are mostly derived from what tpde-asmgen currently generates
 // with some ideas on how it could be improved though I'm not sure what is
 // technically possible
@@ -2147,7 +2157,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_store64(
     }
 
     // MOV64mr as a preferred encoding as MOV64mi if possible
-    if (value.encodable_as_imm32_sext()) {
+    if (value.encodeable_as_imm32_sext()) {
         const auto &data = value.imm();
         ASMD(MOV64mi, op3_mem_op, data.const_u64);
     } else {
@@ -2215,7 +2225,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_store128(
     }
 
     // MOV64mr has a preferred encoding as MOV64mi if possible
-    if (value1.encodable_as_imm32_sext()) {
+    if (value1.encodeable_as_imm32_sext()) {
         const auto &data = value1.imm();
         ASMD(MOV64mi, op3_mem_op, data.const_u64);
     } else {
@@ -2243,7 +2253,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_store128(
     }
 
     // MOV64mr has a preferred encoding as MOV64mi if possible
-    if (value0.encodable_as_imm32_sext()) {
+    if (value0.encodeable_as_imm32_sext()) {
         const auto &data = value0.imm();
         ASMD(MOV64mi, op4_mem_op, data.const_u64);
     } else {
@@ -2554,6 +2564,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storev512(
 
     return true;
 }
+#endif
 
 template <typename Adaptor,
           typename Derived,
@@ -2584,13 +2595,13 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_add32(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // ADD32rr has a preferred encoding as ADD32ri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
         const auto &data = rhs.imm();
 
         ASMD(ADD32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
-    } else if (lhs.encodable_as_imm32_sext()) {
+    } else if (lhs.encodeable_as_imm32_sext()) {
         // ADD32rr is commutable and preferred encoding as ADD32ri
         rhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
@@ -2600,7 +2611,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_add32(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(ADD32rr, op2_dst_reg, rhs.as_reg());
+        ASMD(ADD32rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -2646,13 +2657,13 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_add64(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // ADD64rr has a preferred encoding as ADD64ri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
         const auto &data = rhs.imm();
 
         ASMD(ADD64ri, op2_dst_reg, data.const_u64);
-    } else if (lhs.encodable_as_imm32_sext()) {
+    } else if (lhs.encodeable_as_imm32_sext()) {
         // ADD64rr is commutable and preferred encoding as ADD64ri
         rhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
@@ -2662,7 +2673,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_add64(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(ADD64rr, op2_dst_reg, rhs.as_reg());
+        ASMD(ADD64rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -2708,7 +2719,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sub32(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // SUB32rr has a preferred encoding as SUB32ri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
         const auto &data = rhs.imm();
@@ -2717,7 +2728,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sub32(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(SUB32rr, op2_dst_reg, rhs.as_reg());
+        ASMD(SUB32rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -2763,7 +2774,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sub64(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // SUB64rr has a preferred encoding as SUB64ri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
         const auto &data = rhs.imm();
@@ -2772,7 +2783,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sub64(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(SUB64rr, op2_dst_reg, rhs.as_reg());
+        ASMD(SUB64rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -2818,7 +2829,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mul32(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // IMUL32rr has a preferred encoding as IMUL32rri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage(op2_dst_reg, op2_dst_reg_scratch, 0);
         const auto &data = rhs.imm();
 
@@ -2829,7 +2840,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mul32(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(IMUL32rr, op2_dst_reg, rhs.as_reg());
+        ASMD(IMUL32rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -2875,7 +2886,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mul64(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // IMUL64rr has a preferred encoding as IMUL64rri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage(op2_dst_reg, op2_dst_reg_scratch, 0);
         const auto &data = rhs.imm();
 
@@ -2883,7 +2894,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mul64(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(IMUL64rr, op2_dst_reg, rhs.as_reg());
+        ASMD(IMUL64rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -2929,13 +2940,13 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_land32(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // AND32rr has a preferred encoding as AND32ri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
         const auto &data = rhs.imm();
 
         ASMD(AND32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
-    } else if (lhs.encodable_as_imm32_sext()) {
+    } else if (lhs.encodeable_as_imm32_sext()) {
         // AND32rr is commutable and preferred encoding as AND32ri
         rhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
@@ -2945,7 +2956,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_land32(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(AND32rr, op2_dst_reg, rhs.as_reg());
+        ASMD(AND32rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -2991,13 +3002,13 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_land64(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // AND64rr has a preferred encoding as AND64ri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
         const auto &data = rhs.imm();
 
         ASMD(AND64ri, op2_dst_reg, data.const_u64);
-    } else if (lhs.encodable_as_imm32_sext()) {
+    } else if (lhs.encodeable_as_imm32_sext()) {
         // AND64rr is commutable and preferred encoding as AND64ri
         rhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
@@ -3007,7 +3018,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_land64(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(AND64rr, op2_dst_reg, rhs.as_reg());
+        ASMD(AND64rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -3053,13 +3064,13 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lor32(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // OR32rr has a preferred encoding as OR32ri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
         const auto &data = rhs.imm();
 
         ASMD(OR32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
-    } else if (lhs.encodable_as_imm32_sext()) {
+    } else if (lhs.encodeable_as_imm32_sext()) {
         // OR32rr is commutable and preferred encoding as OR32ri
         rhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
@@ -3069,7 +3080,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lor32(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(OR32rr, op2_dst_reg, rhs.as_reg());
+        ASMD(OR32rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -3115,13 +3126,13 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lor64(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // OR64rr has a preferred encoding as OR64ri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
         const auto &data = rhs.imm();
 
         ASMD(OR64ri, op2_dst_reg, data.const_u64);
-    } else if (lhs.encodable_as_imm32_sext()) {
+    } else if (lhs.encodeable_as_imm32_sext()) {
         // OR64rr is commutable and preferred encoding as OR64ri
         rhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
@@ -3131,7 +3142,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lor64(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(OR64rr, op2_dst_reg, rhs.as_reg());
+        ASMD(OR64rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -3177,13 +3188,13 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxor32(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // XOR32rr has a preferred encoding as XOR32ri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
         const auto &data = rhs.imm();
 
         ASMD(XOR32ri, op2_dst_reg, data.const_u64 & 0xFFFF'FFFF);
-    } else if (lhs.encodable_as_imm32_sext()) {
+    } else if (lhs.encodeable_as_imm32_sext()) {
         // XOR32rr is commutable and preferred encoding as XOR32ri
         rhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
@@ -3193,7 +3204,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxor32(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(XOR32rr, op2_dst_reg, rhs.as_reg());
+        ASMD(XOR32rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -3239,13 +3250,13 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxor64(
     ScratchReg op2_dst_reg_scratch{derived()};
 
     // XOR64rr has a preferred encoding as XOR64ri if possible
-    if (rhs.encodable_as_imm32_sext()) {
+    if (rhs.encodeable_as_imm32_sext()) {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
         const auto &data = rhs.imm();
 
         ASMD(XOR64ri, op2_dst_reg, data.const_u64);
-    } else if (lhs.encodable_as_imm32_sext()) {
+    } else if (lhs.encodeable_as_imm32_sext()) {
         // XOR64rr is commutable and preferred encoding as XOR64ri
         rhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
@@ -3255,7 +3266,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxor64(
     } else {
         lhs.try_salvage_or_materialize(
             this, op2_dst_reg, op2_dst_reg_scratch, 0, 4);
-        ASMD(XOR64rr, op2_dst_reg, rhs.as_reg());
+        ASMD(XOR64rr, op2_dst_reg, rhs.as_reg(this));
     }
 
     // lhs is dead after this point
@@ -3311,7 +3322,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_8_to_32(
         ASMD(MOVSXr32m8, op2_dst_reg, op2_mem_op);
     } else {
         op.try_salvage(op2_dst_reg, op2_dst_reg_scratch, 0);
-        ASMD(MOVSXr32r8, op2_dst_reg, op.as_reg());
+        ASMD(MOVSXr32r8, op2_dst_reg, op.as_reg(this));
     }
 
     // op is dead after this point
