@@ -1327,7 +1327,10 @@ void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
     if (bank == 0) {
         assert(size <= 8);
         if (const_u64 == 0) {
-            ASM(XOR32rr, dst, dst);
+            // note: cannot use XOR here since this might be called in-between
+            // instructions that rely on the flags being preserved
+            // ASM(XOR32rr, dst, dst);
+            ASM(MOV32ri, dst, 0);
             return;
         }
 
