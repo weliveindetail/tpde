@@ -265,8 +265,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
         return false;
     }
 
-    assert(std::get<Immediate>(state).size <= 8);
-    const u64 imm = std::get<Immediate>(state).const_u64;
+    const auto& data = std::get<Immediate>(state);
+    assert(data.size <= 8);
+    if (data.size <= 4) {
+        // always encodeable
+        return true;
+    }
+
+    const u64 imm = data.const_u64;
     return static_cast<i64>(static_cast<i32>(imm)) == static_cast<i64>(imm);
 }
 
