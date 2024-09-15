@@ -413,11 +413,12 @@ define i128 @ret_i128_const1() {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x0
 ; X64:    mov rax, 0x539
-; X64:    xor edx, edx
+; X64:    mov edx, 0x0
 ; X64:    add rsp, 0x0
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:     ...
+; X64:    add byte ptr [rax], al
 entry:
   ret i128 1337
 }
