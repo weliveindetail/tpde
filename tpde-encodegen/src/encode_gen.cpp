@@ -232,10 +232,11 @@ struct GenerationState {
     std::vector<std::string>            param_names{};
     std::unordered_set<unsigned>        used_regs{};
     llvm::DenseMap<unsigned, ValueInfo> value_map{};
-    unsigned                            cur_inst_id    = 0;
-    int                                 num_ret_regs   = -1;
-    bool                                is_first_block = false;
-    std::vector<unsigned>               return_regs    = {};
+    unsigned                            cur_inst_id               = 0;
+    int                                 num_ret_regs              = -1;
+    bool                                is_first_block            = false;
+    std::vector<unsigned>               return_regs               = {};
+    std::string                         one_bb_return_assignments = {};
 
     llvm::DenseMap<unsigned, std::vector<std::string>> fixed_reg_conds{};
 
@@ -986,17 +987,23 @@ bool handle_terminator(std::string        &buf,
         }
 
         // if there is only one block, we can return from the encoding function
+
+        auto &ret_buf = state.one_bb_return_assignments;
         for (int idx = 0; idx < state.num_ret_regs; ++idx) {
             const auto reg = state.return_regs[idx];
-            buf += std::format("    // returning reg {} as result_{}\n",
-                               state.enc_target->reg_name_lower(reg),
-                               idx);
+            state.fmt_line(ret_buf,
+                           4,
+                           "// returning reg {} as result_{}",
+                           state.enc_target->reg_name_lower(reg),
+                           idx);
             assert(state.value_map.contains(reg));
             auto  cur_reg = reg;
             auto *info    = &state.value_map[reg];
             while (info->ty == ValueInfo::REG_ALIAS) {
-                buf += std::format(
-                    "    // {} is an alias for {}\n",
+                state.fmt_line(
+                    ret_buf,
+                    4,
+                    "// {} is an alias for {}",
                     state.enc_target->reg_name_lower(cur_reg),
                     state.enc_target->reg_name_lower(info->alias_reg_id));
                 cur_reg = info->alias_reg_id;
@@ -1004,9 +1011,11 @@ bool handle_terminator(std::string        &buf,
             }
 
             if (info->ty == ValueInfo::ASM_OPERAND) {
-                buf += std::format("    // {} is an alias for {}\n",
-                                   state.enc_target->reg_name_lower(cur_reg),
-                                   info->operand_name);
+                state.fmt_line(ret_buf,
+                               4,
+                               "// {} is an alias for {}",
+                               state.enc_target->reg_name_lower(cur_reg),
+                               info->operand_name);
 
                 unsigned tmp_idx = idx;
                 for (auto &op : inst->explicit_uses()) {
@@ -1015,19 +1024,22 @@ bool handle_terminator(std::string        &buf,
                         continue;
                     }
 
-                    buf +=
-                        std::format("    {}.try_salvage_or_materialize(this, "
-                                    "result_{}, {}, {});\n",
-                                    info->operand_name,
-                                    idx,
-                                    state.enc_target->reg_bank(cur_reg),
-                                    reg_size_bytes(state.func, op.getReg()));
+                    state.fmt_line(ret_buf,
+                                   4,
+                                   "{}.try_salvage_or_materialize(this, "
+                                   "result_{}, {}, {});",
+                                   info->operand_name,
+                                   idx,
+                                   state.enc_target->reg_bank(cur_reg),
+                                   reg_size_bytes(state.func, op.getReg()));
                 }
             } else {
                 assert(info->ty == ValueInfo::SCRATCHREG);
-                buf += std::format("    result_{} = std::move(scratch_{});\n",
-                                   idx,
-                                   state.enc_target->reg_name_lower(cur_reg));
+                state.fmt_line(ret_buf,
+                               4,
+                               "result_{} = std::move(scratch_{});",
+                               idx,
+                               state.enc_target->reg_name_lower(cur_reg));
                 // no more housekeeping needed
             }
         }
@@ -2804,17 +2816,14 @@ bool create_encode_function(llvm::MachineFunction *func,
                 const auto reg = state.return_regs[idx];
                 assert(state.value_map.contains(reg));
                 assert(state.value_map[reg].ty == ValueInfo::SCRATCHREG);
-                write_buf_inner +=
-                    std::format("    result_{} = std::move(scratch_{});\n",
-                                idx,
-                                state.enc_target->reg_name_lower(reg));
+                state.fmt_line(state.one_bb_return_assignments,
+                               4,
+                               "result_{} = std::move(scratch_{});",
+                               idx,
+                               state.enc_target->reg_name_lower(reg));
             }
         }
     }
-
-    // TODO
-    // for now, always return true
-    state.fmt_line(write_buf_inner, 4, "return true;");
 
     // create ScratchRegs
     for (const auto &[reg, info] : state.value_map) {
@@ -2824,6 +2833,15 @@ bool create_encode_function(llvm::MachineFunction *func,
     }
 
     // handle fixed registers
+    std::string fixed_reg_param_names{};
+    for (const auto &name : state.param_names) {
+        if (!fixed_reg_param_names.empty()) {
+            fixed_reg_param_names += ", ";
+        }
+        fixed_reg_param_names += '&';
+        fixed_reg_param_names += name;
+    }
+
     for (const auto &[reg, fix_conds] : state.fixed_reg_conds) {
         const auto reg_name_lower = state.enc_target->reg_name_lower(reg);
         auto       reg_name_upper = std::string{reg_name_lower};
@@ -2831,6 +2849,13 @@ bool create_encode_function(llvm::MachineFunction *func,
                        reg_name_upper.end(),
                        reg_name_upper.begin(),
                        toupper);
+
+        state.fmt_line(write_buf,
+                       4,
+                       "FixedRegBackup reg_backup_{} = {{.scratch = "
+                       "ScratchReg{{derived()}}}};",
+                       reg_name_lower);
+
         auto if_written = false;
         if (!std::any_of(fix_conds.begin(), fix_conds.end(), [](const auto &e) {
                 return e.empty();
@@ -2857,17 +2882,38 @@ bool create_encode_function(llvm::MachineFunction *func,
             write_buf += ") {\n";
         }
 
-        // TODO(ts): need more sophisticated fixed alloc helper
-        std::format_to(std::back_inserter(write_buf),
-                       "{:>{}}scratch_{}.alloc_specific(AsmReg::{});\n",
-                       "",
+        state.fmt_line(write_buf,
                        if_written ? 8 : 4,
+                       "scratch_alloc_specific(AsmReg::{}, scratch_{}, {{{}}}, "
+                       "reg_backup_{});",
+                       reg_name_upper,
                        reg_name_lower,
-                       reg_name_upper);
+                       fixed_reg_param_names,
+                       reg_name_lower);
+
         if (if_written) {
             write_buf += "    }\n";
         }
+
+        const auto is_ret_reg =
+            std::find(state.return_regs.begin(), state.return_regs.end(), reg)
+            != state.return_regs.end();
+        state.fmt_line(
+            write_buf_inner,
+            4,
+            "scratch_check_fixed_backup(scratch_{}, reg_backup_{}, {});",
+            reg_name_lower,
+            reg_name_lower,
+            is_ret_reg ? "true" : "false");
     }
+
+    // assignments for the results need to be after the check for fixed reg
+    // backups
+    write_buf_inner += state.one_bb_return_assignments;
+
+    // TODO
+    // for now, always return true
+    state.fmt_line(write_buf_inner, 4, "return true;");
 
     std::string func_decl{};
     // finish up function header

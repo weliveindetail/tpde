@@ -16,6 +16,8 @@ using namespace tpde_encgen;
 // TODO(ts): add manual replacements for SSE_MOVQ_X2Grr -> MOV64rm,
 // SSE_MOVQ_G2Xrr -> MOV64rm, etc
 // TODO(ts): for TESTrr, we do not generate TESTmi as a replacement
+// TODO(ts): we kind of want to support two->three operand replacements
+// e.g. IMUL32rr -> IMUL32rri
 
 struct ManualOperand {
     std::string       inst_name;

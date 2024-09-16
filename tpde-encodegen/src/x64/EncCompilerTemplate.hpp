@@ -54,6 +54,7 @@ struct EncodeCompiler {
     using ValuePartRef = typename CompilerX64::ValuePartRef;
     using Assembler = typename CompilerX64::Assembler;
     using Label = typename Assembler::Label;
+    using ValLocalIdx = typename CompilerX64::ValLocalIdx;
 
     struct AsmOperand {
         struct Address {
@@ -226,6 +227,22 @@ struct EncodeCompiler {
         return (static_cast<int64_t>(static_cast<int32_t>(tmp)) == tmp);
     }
 
+    struct FixedRegBackup {
+        ScratchReg  scratch;
+        ValLocalIdx local_idx;
+        u32         part;
+        u32         lock_count;
+    };
+
+    void scratch_alloc_specific(AsmReg                              reg,
+                                ScratchReg                         &scratch,
+                                std::initializer_list<AsmOperand *> operands,
+                                FixedRegBackup &backup_reg) noexcept;
+
+    void scratch_check_fixed_backup(ScratchReg     &scratch,
+                                    FixedRegBackup &backup_reg,
+                                    bool            is_ret_reg) noexcept;
+
 // SPDX-SnippetEnd
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: CC0-1.0
@@ -241,6 +258,7 @@ static constexpr inline char ENCODER_IMPL_TEMPLATE_BEGIN[] = R"(
 
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: LicenseRef-Proprietary
+// clang-format on
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
@@ -489,6 +507,152 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::reset() noexcept {
     state = std::monostate{};
 }
 
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::scratch_alloc_specific(
+    AsmReg                              reg,
+    ScratchReg                         &scratch,
+    std::initializer_list<AsmOperand *> operands,
+    FixedRegBackup                     &backup_reg) noexcept {
+    if (!derived()->register_file.is_fixed(reg)) [[likely]] {
+        scratch.alloc_specific(reg);
+        return;
+    }
+
+    const auto bank = derived()->register_file.reg_bank(reg);
+    if (bank != 0) {
+        // TODO(ts): need to know the size
+        assert(0);
+        exit(1);
+    }
+
+    const auto alloc_backup = [this, &backup_reg, &scratch, reg, bank]() {
+        const auto bak_reg    = backup_reg.scratch.alloc_from_bank(bank);
+        auto      &reg_file   = derived()->register_file;
+        auto      &assignment = reg_file.assignments[reg.id()];
+        backup_reg.local_idx  = assignment.local_idx;
+        backup_reg.part       = assignment.part;
+        backup_reg.lock_count = assignment.lock_count;
+
+        assignment.local_idx  = CompilerX64::INVALID_VAL_LOCAL_IDX;
+        assignment.part       = 0;
+        assignment.lock_count = 0;
+
+        assert(scratch.cur_reg.invalid());
+        scratch.cur_reg = reg;
+
+        ASMD(MOV64rr, bak_reg, reg);
+    };
+
+    // check if one of the operands holds the fixed register
+    for (auto *op_ptr : operands) {
+        auto &op = op_ptr->state;
+        if (std::holds_alternative<ScratchReg>(op)) {
+            auto &op_scratch = std::get<ScratchReg>(op);
+            if (op_scratch.cur_reg == reg) {
+                scratch = std::move(op_scratch);
+                op_scratch.alloc_from_bank(bank);
+                ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                return;
+            }
+            continue;
+        }
+
+        if (std::holds_alternative<ValuePartRef>(op)) {
+            auto &op_ref = std::get<ValuePartRef>(op);
+            if (!op_ref.is_const) {
+                assert(!op_ref.state.v.locked);
+                const auto ap = op_ref.assignment();
+                if (ap.register_valid()) {
+                    assert(AsmReg{ap.full_reg_id()} != reg);
+                }
+            }
+            continue;
+        }
+
+        if (std::holds_alternative<ValuePartRef *>(op)) {
+            auto &op_ref = *std::get<ValuePartRef *>(op);
+            if (!op_ref.is_const) {
+                assert(!op_ref.state.v.locked);
+                const auto ap = op_ref.assignment();
+                if (ap.register_valid()) {
+                    assert(AsmReg{ap.full_reg_id()} != reg);
+                }
+            }
+            continue;
+        }
+
+        if (std::holds_alternative<AsmReg>(op)) {
+            auto &op_reg = std::get<AsmReg>(op);
+            if (op_reg == reg) {
+                alloc_backup();
+                op_reg = backup_reg.scratch.cur_reg;
+                return;
+            }
+            continue;
+        }
+
+        if (std::holds_alternative<typename AsmOperand::Address>(op)) {
+            auto &addr = std::get<typename AsmOperand::Address>(op);
+            if (addr.base == reg) {
+                alloc_backup();
+                addr.base = backup_reg.scratch.cur_reg;
+                return;
+            }
+            if (addr.scale != 0 && addr.index == reg) {
+                alloc_backup();
+                addr.index = backup_reg.scratch.cur_reg;
+                return;
+            }
+            continue;
+        }
+    }
+
+    // otherwise temporarily store it somewhere else
+    alloc_backup();
+    return;
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::scratch_check_fixed_backup(
+    ScratchReg     &scratch,
+    FixedRegBackup &backup_reg,
+    const bool      is_ret_reg) noexcept {
+    if (backup_reg.scratch.cur_reg.invalid()) [[likely]] {
+        return;
+    }
+
+    assert(!scratch.cur_reg.invalid());
+    auto &reg_file        = derived()->register_file;
+    auto &assignment      = reg_file.assignments[scratch.cur_reg.id()];
+    assignment.local_idx  = backup_reg.local_idx;
+    assignment.part       = backup_reg.part;
+    assignment.lock_count = backup_reg.lock_count;
+
+    assert(reg_file.reg_bank(scratch.cur_reg) == 0);
+    if (is_ret_reg) {
+        // TODO(ts): allocate another scratch? Though at this point the scratch
+        // regs have not been released yet so we might need to spill...
+
+        // need to switch around backup and reg so it can be returned as a
+        // ScratchReg
+        ASMD(XCHG64rr, scratch.cur_reg, backup_reg.scratch.cur_reg);
+        scratch.cur_reg            = backup_reg.scratch.cur_reg;
+        backup_reg.scratch.cur_reg = AsmReg::make_invalid();
+    } else {
+        ASMD(MOV64rr, scratch.cur_reg, backup_reg.scratch.cur_reg);
+
+        scratch.cur_reg = AsmReg::make_invalid();
+        backup_reg.scratch.reset();
+    }
+}
+
+// clang-format off
 // SPDX-SnippetEnd
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: CC0-1.0
