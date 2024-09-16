@@ -872,8 +872,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         std::swap(lhs, rhs);
     }
 
-    auto lhs_op = AsmOperand{std::move(lhs)};
-    auto rhs_op = AsmOperand{std::move(rhs)};
+    // TODO(ts): optimize div/rem by constant to a shift?
+    const auto lhs_const = lhs.is_const;
+    const auto rhs_const = rhs.is_const;
+    auto       lhs_op    = AsmOperand{std::move(lhs)};
+    auto       rhs_op    = AsmOperand{std::move(rhs)};
     if (!is_exact_width
         && (op == IntBinaryOp::udiv || op == IntBinaryOp::sdiv
             || op == IntBinaryOp::urem || op == IntBinaryOp::srem
@@ -897,10 +900,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
             lhs_op = std::move(tmp);
         } else if (op == IntBinaryOp::udiv || op == IntBinaryOp::urem) {
             // need to zero-extend lhs (if it is not an immediate)
-            if (!lhs.is_const) {
+            if (!lhs_const) {
                 ScratchReg tmp{derived()};
                 u64        mask = (1ull << int_width) - 1;
-                if (int_width <= 32) {
+                if (int_width == 8) {
+                    derived()->encode_zext_8_to_32(std::move(lhs_op), tmp);
+                } else if (int_width == 16) {
+                    derived()->encode_zext_16_to_32(std::move(lhs_op), tmp);
+                } else if (int_width <= 32) {
                     derived()->encode_landi32(
                         std::move(lhs_op),
                         ValuePartRef{mask, Config::GP_BANK, 4},
@@ -933,10 +940,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         } else {
             // need to zero-extend rhs (if it is not an immediate since then
             // this is guaranteed by LLVM)
-            if (!rhs.is_const) {
+            if (!rhs_const) {
                 ScratchReg tmp{derived()};
                 u64        mask = (1ull << int_width) - 1;
-                if (int_width <= 32) {
+                if (int_width == 8) {
+                    derived()->encode_zext_8_to_32(std::move(rhs_op), tmp);
+                } else if (int_width == 16) {
+                    derived()->encode_zext_16_to_32(std::move(rhs_op), tmp);
+                } else if (int_width <= 32) {
                     derived()->encode_landi32(
                         std::move(rhs_op),
                         ValuePartRef{mask, Config::GP_BANK, 4},

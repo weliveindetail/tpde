@@ -39,6 +39,7 @@ struct EncodeCompiler {
     using ValuePartRef = typename CompilerX64::ValuePartRef;
     using Assembler = typename CompilerX64::Assembler;
     using Label = typename Assembler::Label;
+    using ValLocalIdx = typename CompilerX64::ValLocalIdx;
 
     struct AsmOperand {
         struct Address {
@@ -211,6 +212,22 @@ struct EncodeCompiler {
         return (static_cast<int64_t>(static_cast<int32_t>(tmp)) == tmp);
     }
 
+    struct FixedRegBackup {
+        ScratchReg  scratch;
+        ValLocalIdx local_idx;
+        u32         part;
+        u32         lock_count;
+    };
+
+    void scratch_alloc_specific(AsmReg                              reg,
+                                ScratchReg                         &scratch,
+                                std::initializer_list<AsmOperand *> operands,
+                                FixedRegBackup &backup_reg) noexcept;
+
+    void scratch_check_fixed_backup(ScratchReg     &scratch,
+                                    FixedRegBackup &backup_reg,
+                                    bool            is_ret_reg) noexcept;
+
 // SPDX-SnippetEnd
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: CC0-1.0
@@ -284,6 +301,9 @@ struct EncodeCompiler {
     bool encode_sext_32_to_64(AsmOperand param_0, ScratchReg &result_0);
     bool encode_sext_arbitrary_to_32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_sext_arbitrary_to_64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_zext_8_to_32(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_zext_16_to_32(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_zext_32_to_64(AsmOperand param_0, ScratchReg &result_0);
 
 
 };
@@ -293,6 +313,7 @@ struct EncodeCompiler {
 
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: LicenseRef-Proprietary
+// clang-format on
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
@@ -541,6 +562,152 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::reset() noexcept {
     state = std::monostate{};
 }
 
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::scratch_alloc_specific(
+    AsmReg                              reg,
+    ScratchReg                         &scratch,
+    std::initializer_list<AsmOperand *> operands,
+    FixedRegBackup                     &backup_reg) noexcept {
+    if (!derived()->register_file.is_fixed(reg)) [[likely]] {
+        scratch.alloc_specific(reg);
+        return;
+    }
+
+    const auto bank = derived()->register_file.reg_bank(reg);
+    if (bank != 0) {
+        // TODO(ts): need to know the size
+        assert(0);
+        exit(1);
+    }
+
+    const auto alloc_backup = [this, &backup_reg, &scratch, reg, bank]() {
+        const auto bak_reg    = backup_reg.scratch.alloc_from_bank(bank);
+        auto      &reg_file   = derived()->register_file;
+        auto      &assignment = reg_file.assignments[reg.id()];
+        backup_reg.local_idx  = assignment.local_idx;
+        backup_reg.part       = assignment.part;
+        backup_reg.lock_count = assignment.lock_count;
+
+        assignment.local_idx  = CompilerX64::INVALID_VAL_LOCAL_IDX;
+        assignment.part       = 0;
+        assignment.lock_count = 0;
+
+        assert(scratch.cur_reg.invalid());
+        scratch.cur_reg = reg;
+
+        ASMD(MOV64rr, bak_reg, reg);
+    };
+
+    // check if one of the operands holds the fixed register
+    for (auto *op_ptr : operands) {
+        auto &op = op_ptr->state;
+        if (std::holds_alternative<ScratchReg>(op)) {
+            auto &op_scratch = std::get<ScratchReg>(op);
+            if (op_scratch.cur_reg == reg) {
+                scratch = std::move(op_scratch);
+                op_scratch.alloc_from_bank(bank);
+                ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                return;
+            }
+            continue;
+        }
+
+        if (std::holds_alternative<ValuePartRef>(op)) {
+            auto &op_ref = std::get<ValuePartRef>(op);
+            if (!op_ref.is_const) {
+                assert(!op_ref.state.v.locked);
+                const auto ap = op_ref.assignment();
+                if (ap.register_valid()) {
+                    assert(AsmReg{ap.full_reg_id()} != reg);
+                }
+            }
+            continue;
+        }
+
+        if (std::holds_alternative<ValuePartRef *>(op)) {
+            auto &op_ref = *std::get<ValuePartRef *>(op);
+            if (!op_ref.is_const) {
+                assert(!op_ref.state.v.locked);
+                const auto ap = op_ref.assignment();
+                if (ap.register_valid()) {
+                    assert(AsmReg{ap.full_reg_id()} != reg);
+                }
+            }
+            continue;
+        }
+
+        if (std::holds_alternative<AsmReg>(op)) {
+            auto &op_reg = std::get<AsmReg>(op);
+            if (op_reg == reg) {
+                alloc_backup();
+                op_reg = backup_reg.scratch.cur_reg;
+                return;
+            }
+            continue;
+        }
+
+        if (std::holds_alternative<typename AsmOperand::Address>(op)) {
+            auto &addr = std::get<typename AsmOperand::Address>(op);
+            if (addr.base == reg) {
+                alloc_backup();
+                addr.base = backup_reg.scratch.cur_reg;
+                return;
+            }
+            if (addr.scale != 0 && addr.index == reg) {
+                alloc_backup();
+                addr.index = backup_reg.scratch.cur_reg;
+                return;
+            }
+            continue;
+        }
+    }
+
+    // otherwise temporarily store it somewhere else
+    alloc_backup();
+    return;
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+void EncodeCompiler<Adaptor, Derived, BaseTy>::scratch_check_fixed_backup(
+    ScratchReg     &scratch,
+    FixedRegBackup &backup_reg,
+    const bool      is_ret_reg) noexcept {
+    if (backup_reg.scratch.cur_reg.invalid()) [[likely]] {
+        return;
+    }
+
+    assert(!scratch.cur_reg.invalid());
+    auto &reg_file        = derived()->register_file;
+    auto &assignment      = reg_file.assignments[scratch.cur_reg.id()];
+    assignment.local_idx  = backup_reg.local_idx;
+    assignment.part       = backup_reg.part;
+    assignment.lock_count = backup_reg.lock_count;
+
+    assert(reg_file.reg_bank(scratch.cur_reg) == 0);
+    if (is_ret_reg) {
+        // TODO(ts): allocate another scratch? Though at this point the scratch
+        // regs have not been released yet so we might need to spill...
+
+        // need to switch around backup and reg so it can be returned as a
+        // ScratchReg
+        ASMD(XCHG64rr, scratch.cur_reg, backup_reg.scratch.cur_reg);
+        scratch.cur_reg            = backup_reg.scratch.cur_reg;
+        backup_reg.scratch.cur_reg = AsmReg::make_invalid();
+    } else {
+        ASMD(MOV64rr, scratch.cur_reg, backup_reg.scratch.cur_reg);
+
+        scratch.cur_reg = AsmReg::make_invalid();
+        backup_reg.scratch.reset();
+    }
+}
+
+// clang-format off
 // SPDX-SnippetEnd
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: CC0-1.0
@@ -3097,8 +3264,10 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi32(AsmOperand param_0
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_dx{derived()};
     ScratchReg scratch_si{derived()};
-    scratch_ax.alloc_specific(AsmReg::AX);
-    scratch_dx.alloc_specific(AsmReg::DX);
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
 
 
     // $eax = MOV32rr killed $edi
@@ -3159,6 +3328,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi32(AsmOperand param_0
 
 
     // RET64 killed $eax
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     return true;
@@ -3189,8 +3360,10 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sdivi32(AsmOperand param_0
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_dx{derived()};
     ScratchReg scratch_si{derived()};
-    scratch_ax.alloc_specific(AsmReg::AX);
-    scratch_dx.alloc_specific(AsmReg::DX);
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
 
 
     // $eax = MOV32rr killed $edi
@@ -3244,6 +3417,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sdivi32(AsmOperand param_0
 
 
     // RET64 killed $eax
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     return true;
@@ -3275,8 +3450,10 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi32(AsmOperand param_0
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_dx{derived()};
     ScratchReg scratch_si{derived()};
-    scratch_ax.alloc_specific(AsmReg::AX);
-    scratch_dx.alloc_specific(AsmReg::DX);
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
 
 
     // $eax = MOV32rr killed $edi
@@ -3342,6 +3519,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi32(AsmOperand param_0
 
 
     // RET64 killed $eax
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
     // returning reg ax as result_0
     // ax is an alias for dx
     result_0 = std::move(scratch_dx);
@@ -3374,8 +3553,10 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi32(AsmOperand param_0
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_dx{derived()};
     ScratchReg scratch_si{derived()};
-    scratch_ax.alloc_specific(AsmReg::AX);
-    scratch_dx.alloc_specific(AsmReg::DX);
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
 
 
     // $eax = MOV32rr killed $edi
@@ -3434,6 +3615,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi32(AsmOperand param_0
 
 
     // RET64 killed $eax
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
     // returning reg ax as result_0
     // ax is an alias for dx
     result_0 = std::move(scratch_dx);
@@ -3703,8 +3886,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli32(AsmOperand param_0,
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_cx = {.scratch = ScratchReg{derived()}};
     if (((!param_1.encodeable_as_imm8_sext()))) {
-        scratch_cx.alloc_specific(AsmReg::CX);
+        scratch_alloc_specific(AsmReg::CX, scratch_cx, {&param_0, &param_1}, reg_backup_cx);
     }
 
 
@@ -3758,6 +3942,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli32(AsmOperand param_0,
 
 
     // RET64 killed $eax
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     return true;
@@ -3789,8 +3974,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri32(AsmOperand param_0,
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_cx = {.scratch = ScratchReg{derived()}};
     if (((!param_1.encodeable_as_imm8_sext()))) {
-        scratch_cx.alloc_specific(AsmReg::CX);
+        scratch_alloc_specific(AsmReg::CX, scratch_cx, {&param_0, &param_1}, reg_backup_cx);
     }
 
 
@@ -3844,6 +4030,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri32(AsmOperand param_0,
 
 
     // RET64 killed $eax
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     return true;
@@ -3875,8 +4062,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri32(AsmOperand param_0
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_cx = {.scratch = ScratchReg{derived()}};
     if (((!param_1.encodeable_as_imm8_sext()))) {
-        scratch_cx.alloc_specific(AsmReg::CX);
+        scratch_alloc_specific(AsmReg::CX, scratch_cx, {&param_0, &param_1}, reg_backup_cx);
     }
 
 
@@ -3930,6 +4118,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri32(AsmOperand param_0
 
 
     // RET64 killed $eax
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     return true;
@@ -4178,8 +4367,10 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi64(AsmOperand param_0
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_dx{derived()};
     ScratchReg scratch_si{derived()};
-    scratch_ax.alloc_specific(AsmReg::AX);
-    scratch_dx.alloc_specific(AsmReg::DX);
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
 
 
     // $rax = MOV64rr killed $rdi
@@ -4242,6 +4433,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi64(AsmOperand param_0
 
 
     // RET64 killed $rax
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     return true;
@@ -4272,8 +4465,10 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sdivi64(AsmOperand param_0
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_dx{derived()};
     ScratchReg scratch_si{derived()};
-    scratch_ax.alloc_specific(AsmReg::AX);
-    scratch_dx.alloc_specific(AsmReg::DX);
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
 
 
     // $rax = MOV64rr killed $rdi
@@ -4327,6 +4522,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sdivi64(AsmOperand param_0
 
 
     // RET64 killed $rax
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     return true;
@@ -4358,8 +4555,10 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi64(AsmOperand param_0
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_dx{derived()};
     ScratchReg scratch_si{derived()};
-    scratch_ax.alloc_specific(AsmReg::AX);
-    scratch_dx.alloc_specific(AsmReg::DX);
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
 
 
     // $rax = MOV64rr killed $rdi
@@ -4427,6 +4626,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi64(AsmOperand param_0
 
 
     // RET64 killed $rax
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
     // returning reg ax as result_0
     // ax is an alias for dx
     result_0 = std::move(scratch_dx);
@@ -4459,8 +4660,10 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi64(AsmOperand param_0
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_dx{derived()};
     ScratchReg scratch_si{derived()};
-    scratch_ax.alloc_specific(AsmReg::AX);
-    scratch_dx.alloc_specific(AsmReg::DX);
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
 
 
     // $rax = MOV64rr killed $rdi
@@ -4519,6 +4722,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi64(AsmOperand param_0
 
 
     // RET64 killed $rax
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
     // returning reg ax as result_0
     // ax is an alias for dx
     result_0 = std::move(scratch_dx);
@@ -4788,8 +4993,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli64(AsmOperand param_0,
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_cx = {.scratch = ScratchReg{derived()}};
     if (((!param_1.encodeable_as_imm8_sext()))) {
-        scratch_cx.alloc_specific(AsmReg::CX);
+        scratch_alloc_specific(AsmReg::CX, scratch_cx, {&param_0, &param_1}, reg_backup_cx);
     }
 
 
@@ -4843,6 +5049,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli64(AsmOperand param_0,
 
 
     // RET64 killed $rax
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     return true;
@@ -4874,8 +5081,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri64(AsmOperand param_0,
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_cx = {.scratch = ScratchReg{derived()}};
     if (((!param_1.encodeable_as_imm8_sext()))) {
-        scratch_cx.alloc_specific(AsmReg::CX);
+        scratch_alloc_specific(AsmReg::CX, scratch_cx, {&param_0, &param_1}, reg_backup_cx);
     }
 
 
@@ -4929,6 +5137,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri64(AsmOperand param_0,
 
 
     // RET64 killed $rax
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     return true;
@@ -4960,8 +5169,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri64(AsmOperand param_0
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_cx = {.scratch = ScratchReg{derived()}};
     if (((!param_1.encodeable_as_imm8_sext()))) {
-        scratch_cx.alloc_specific(AsmReg::CX);
+        scratch_alloc_specific(AsmReg::CX, scratch_cx, {&param_0, &param_1}, reg_backup_cx);
     }
 
 
@@ -5015,6 +5225,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri64(AsmOperand param_0
 
 
     // RET64 killed $rax
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     return true;
@@ -5315,8 +5526,10 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli128(AsmOperand param_0
     ScratchReg scratch_dx{derived()};
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
-    scratch_ax.alloc_specific(AsmReg::AX);
-    scratch_dx.alloc_specific(AsmReg::DX);
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2, &param_3}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1, &param_2, &param_3}, reg_backup_dx);
 
 
     // $rax = MOV64rr $rdx
@@ -5440,6 +5653,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli128(AsmOperand param_0
 
 
     // RET64 killed $rax, killed $rdx
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, true);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg dx as result_1
@@ -5882,7 +6097,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128(AsmOperand param_0
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
     ScratchReg scratch_r8{derived()};
-    scratch_cx.alloc_specific(AsmReg::CX);
+    FixedRegBackup reg_backup_cx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::CX, scratch_cx, {&param_0, &param_1, &param_2}, reg_backup_cx);
 
 
     // $r8 = MOV64rr killed $rdx
@@ -6072,6 +6288,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128(AsmOperand param_0
 
 
     // RET64 killed $rax, killed $rdx
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg dx as result_1
@@ -6117,7 +6334,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
     ScratchReg scratch_r8{derived()};
-    scratch_cx.alloc_specific(AsmReg::CX);
+    FixedRegBackup reg_backup_cx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::CX, scratch_cx, {&param_0, &param_1, &param_2}, reg_backup_cx);
 
 
     // $r8 = MOV64rr killed $rdx
@@ -6336,6 +6554,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0
 
 
     // RET64 killed $rax, killed $rdx
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg dx as result_1
@@ -6382,7 +6601,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128(AsmOperand param_
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
     ScratchReg scratch_r8{derived()};
-    scratch_cx.alloc_specific(AsmReg::CX);
+    FixedRegBackup reg_backup_cx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::CX, scratch_cx, {&param_0, &param_1, &param_2}, reg_backup_cx);
 
 
     // $r8 = MOV64rr killed $rdx
@@ -6606,6 +6826,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128(AsmOperand param_
 
 
     // RET64 killed $rax, killed $rdx
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg dx as result_1
@@ -6806,8 +7027,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_arbitrary_to_32(AsmOp
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_cx = {.scratch = ScratchReg{derived()}};
     if (((!param_1.encodeable_as_imm8_sext()))) {
-        scratch_cx.alloc_specific(AsmReg::CX);
+        scratch_alloc_specific(AsmReg::CX, scratch_cx, {&param_0, &param_1}, reg_backup_cx);
     }
 
 
@@ -6889,6 +7111,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_arbitrary_to_32(AsmOp
 
 
     // RET64 killed $eax
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     return true;
@@ -6921,8 +7144,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_arbitrary_to_64(AsmOp
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_si{derived()};
     ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_cx = {.scratch = ScratchReg{derived()}};
     if (((!param_1.encodeable_as_imm8_sext()))) {
-        scratch_cx.alloc_specific(AsmReg::CX);
+        scratch_alloc_specific(AsmReg::CX, scratch_cx, {&param_0, &param_1}, reg_backup_cx);
     }
 
 
@@ -7000,6 +7224,185 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_arbitrary_to_64(AsmOp
     // argument ax is killed and marked as dead
     // argument cx is killed and marked as dead
     // removing alias from cx to si
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_8_to_32(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function zext_8_to_32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $edi
+    //   renamable $eax = MOVZX32rr8 killed renamable $dil, implicit killed $edi
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function zext_8_to_32.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $eax = MOVZX32rr8 killed renamable $dil, implicit killed $edi
+    // MOVZXr32r8 has a preferred encoding as MOVZXr32m8 if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32m8, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is di
+        // di is mapped to param_0
+        AsmReg inst0_op1 = param_0.as_reg(this);
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32r8, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument di is killed and marked as dead
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_16_to_32(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function zext_16_to_32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $edi
+    //   renamable $eax = MOVZX32rr16 killed renamable $di, implicit killed $edi
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function zext_16_to_32.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $eax = MOVZX32rr16 killed renamable $di, implicit killed $edi
+    // MOVZXr32r16 has a preferred encoding as MOVZXr32m16 if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32m16, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is di
+        // di is mapped to param_0
+        AsmReg inst0_op1 = param_0.as_reg(this);
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32r16, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument di is killed and marked as dead
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_32_to_64(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function zext_32_to_64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $edi
+    //   renamable $eax = MOV32rr killed renamable $edi, implicit-def $rax
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function zext_32_to_64.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $eax = MOV32rr killed renamable $edi, implicit-def $rax
+    // MOV32rr has a preferred encoding as MOV32ri if possible
+    if (param_0.encodeable_as_imm32_sext()) {
+        // operand 1 is an immediate operand
+        const auto& imm = param_0.imm();
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        // Ignoring implicit def RAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(MOV32ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // MOV32rr has a preferred encoding as MOV32rm if possible
+    else if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        // Ignoring implicit def RAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(MOV32rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is di
+        // di is mapped to param_0
+        AsmReg inst0_op1 = param_0.as_reg(this);
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        // Ignoring implicit def RAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(MOV32rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
     // result ax is marked as alive
 
 
