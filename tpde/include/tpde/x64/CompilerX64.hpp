@@ -404,7 +404,11 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, PlatformConfig> {
 
     // When handling function arguments, we need to prevent argument registers
     // from being handed out as fixed registers
-    u64 fixed_assignment_nonallocatable_mask = 0u;
+    //
+    // Additionally, for now we prevent AX,DX,CX to be fixed to not run into
+    // issues with instructions that need them as implicit arguments
+    u64 fixed_assignment_nonallocatable_mask =
+        create_bitmask({AsmReg::AX, AsmReg::DX, AsmReg::CX});
     u32 func_start_off = 0u, func_reg_save_off = 0u, func_reg_save_alloc = 0u,
         func_reg_restore_alloc                        = 0u;
     /// Offset to the `sub rsp, XXX` instruction that sets up the frame
@@ -553,7 +557,7 @@ void CallingConv::handle_func_args(
     // give arguments their own register as a fixed assignment (if there are no
     // calls) gives perf benefits on C/C++ codebases with a lot of smaller
     // getters
-    compiler->fixed_assignment_nonallocatable_mask = arg_regs_mask();
+    compiler->fixed_assignment_nonallocatable_mask |= arg_regs_mask();
 
     for (const IRValueRef arg : compiler->adaptor->cur_args()) {
         const u32 part_count = compiler->derived()->val_part_count(arg);
@@ -627,7 +631,7 @@ void CallingConv::handle_func_args(
         }
     }
 
-    compiler->fixed_assignment_nonallocatable_mask = 0;
+    compiler->fixed_assignment_nonallocatable_mask &= ~arg_regs_mask();
 }
 
 template <typename Adaptor,

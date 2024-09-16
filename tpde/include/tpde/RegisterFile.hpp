@@ -22,6 +22,10 @@ struct AsmRegBase {
     constexpr static AsmRegBase make_invalid() noexcept {
         return AsmRegBase{(u8)0xFF};
     }
+
+    constexpr bool operator==(const AsmRegBase &other) const noexcept {
+        return reg_id == other.reg_id;
+    }
 };
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
