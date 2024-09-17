@@ -52,9 +52,9 @@ struct EncodeCompiler {
     using ScratchReg   = typename CompilerX64::ScratchReg;
     using AsmReg       = typename CompilerX64::AsmReg;
     using ValuePartRef = typename CompilerX64::ValuePartRef;
-    using Assembler = typename CompilerX64::Assembler;
-    using Label = typename Assembler::Label;
-    using ValLocalIdx = typename CompilerX64::ValLocalIdx;
+    using Assembler    = typename CompilerX64::Assembler;
+    using Label        = typename Assembler::Label;
+    using ValLocalIdx  = typename CompilerX64::ValLocalIdx;
 
     struct AsmOperand {
         struct Address {
@@ -186,16 +186,16 @@ struct EncodeCompiler {
         [[nodiscard]] bool val_ref_prefers_mem_enc() const noexcept;
         [[nodiscard]] u32  val_ref_frame_off() const noexcept;
         AsmReg             as_reg(EncodeCompiler *compiler) noexcept;
-        bool try_salvage(ScratchReg &, u8 bank) noexcept;
+        bool               try_salvage(ScratchReg &, u8 bank) noexcept;
         bool try_salvage_if_nonalloc(ScratchReg &, u8 bank) noexcept;
         void try_salvage_or_materialize(EncodeCompiler *compiler,
                                         ScratchReg     &dst_scratch,
                                         u8              bank,
                                         u32             size) noexcept;
         // compatibility
-        bool try_salvage(AsmReg&, ScratchReg &, u8 bank) noexcept;
+        bool try_salvage(AsmReg &, ScratchReg &, u8 bank) noexcept;
         void try_salvage_or_materialize(EncodeCompiler *compiler,
-                                        AsmReg &dst_reg,
+                                        AsmReg         &dst_reg,
                                         ScratchReg     &dst_scratch,
                                         u8              bank,
                                         u32             size) noexcept;
@@ -222,7 +222,8 @@ struct EncodeCompiler {
         return derived()->has_cpu_feats(CompilerX64::CPU_AVX);
     }
 
-    [[nodiscard]] static bool disp_add_encodeable(int32_t disp, int32_t add) noexcept {
+    [[nodiscard]] static bool disp_add_encodeable(int32_t disp,
+                                                  int32_t add) noexcept {
         const auto tmp = static_cast<int64_t>(disp) + add;
         return (static_cast<int64_t>(static_cast<int32_t>(tmp)) == tmp);
     }
@@ -263,8 +264,8 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
-    encodeable_as_imm64() const noexcept {
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::encodeable_as_imm64()
+    const noexcept {
     if (!is_imm() || std::get<Immediate>(state).size > 8) {
         return false;
     }
@@ -283,7 +284,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
         return false;
     }
 
-    const auto& data = std::get<Immediate>(state);
+    const auto &data = std::get<Immediate>(state);
     assert(data.size <= 8);
     if (data.size <= 4) {
         // always encodeable
@@ -304,7 +305,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
         return false;
     }
 
-    const auto& info = std::get<Immediate>(state);
+    const auto &info = std::get<Immediate>(state);
     assert(info.bank == 0);
     assert(info.size <= 8);
 
@@ -322,7 +323,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
         return false;
     }
 
-    const auto& info = std::get<Immediate>(state);
+    const auto &info = std::get<Immediate>(state);
     assert(info.bank == 0);
     assert(info.size <= 8);
 
@@ -455,8 +456,8 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage_if_nonalloc(
-    ScratchReg &dst_scratch, const u8 bank) noexcept {
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+    try_salvage_if_nonalloc(ScratchReg &dst_scratch, const u8 bank) noexcept {
     if (!dst_scratch.cur_reg.invalid()) {
         return false;
     }
@@ -470,7 +471,7 @@ template <typename Adaptor,
 bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
     AsmReg &dst_reg, ScratchReg &dst_scratch, const u8 bank) noexcept {
     const auto res = try_salvage(dst_scratch, bank);
-    dst_reg = dst_scratch.cur_reg;
+    dst_reg        = dst_scratch.cur_reg;
     return res;
 }
 
@@ -515,9 +516,35 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
                 ASMC(compiler->derived(), MOV64rr, dst_scratch.cur_reg, val);
             }
         } else {
-            // TODO
-            assert(0);
-            exit(1);
+            AsmReg val = this->as_reg(compiler);
+            if (size <= 16) {
+                if (compiler->derived()->has_cpu_feats(CompilerX64::CPU_AVX)) {
+                    ASMC(compiler->derived(),
+                         VMOVAPD128rr,
+                         dst_scratch.cur_reg,
+                         val);
+                } else {
+                    ASMC(compiler->derived(),
+                         SSE_MOVAPDrr,
+                         dst_scratch.cur_reg,
+                         val);
+                }
+            } else if (size <= 32) {
+                assert(
+                    compiler->derived()->has_cpu_feats(CompilerX64::CPU_AVX));
+                ASMC(compiler->derived(),
+                     VMOVAPD256rr,
+                     dst_scratch.cur_reg,
+                     val);
+            } else {
+                assert(size <= 64);
+                assert(compiler->derived()->has_cpu_feats(
+                    CompilerX64::CPU_AVX512F));
+                ASMC(compiler->derived(),
+                     VMOVAPD512rr,
+                     dst_scratch.cur_reg,
+                     val);
+            }
         }
     }
 }
