@@ -419,9 +419,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
                    std::get<ScratchReg>(state).cur_reg)
                == bank);
         dst_scratch = std::move(std::get<ScratchReg>(state));
+        state       = std::monostate{};
         return true;
-    }
-    if (std::holds_alternative<ValuePartRef>(state)) {
+    } else if (std::holds_alternative<ValuePartRef>(state)) {
         auto &ref = std::get<ValuePartRef>(state);
         assert(ref.bank() == bank);
         if (ref.can_salvage()) {
@@ -431,6 +431,16 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
         }
         // dst = std::get<ValuePartRef>(state).alloc_reg();
         // return;
+    } else if (std::holds_alternative<Immediate>(state)) {
+        this->as_reg(static_cast<Derived *>(dst_scratch.compiler));
+        assert(std::holds_alternative<ScratchReg>(state));
+        assert(std::get<ScratchReg>(state).compiler->register_file.reg_bank(
+                   std::get<ScratchReg>(state).cur_reg)
+               == bank);
+
+        dst_scratch = std::move(std::get<ScratchReg>(state));
+        state       = std::monostate{};
+        return true;
     }
 
     dst_scratch.alloc_from_bank(bank);
