@@ -227,16 +227,17 @@ struct ValueInfo {
 };
 
 struct GenerationState {
-    llvm::MachineFunction              *func;
-    EncodingTarget                     *enc_target;
-    std::vector<std::string>            param_names{};
-    std::unordered_set<unsigned>        used_regs{};
-    llvm::DenseMap<unsigned, ValueInfo> value_map{};
-    unsigned                            cur_inst_id               = 0;
-    int                                 num_ret_regs              = -1;
-    bool                                is_first_block            = false;
-    std::vector<unsigned>               return_regs               = {};
-    std::string                         one_bb_return_assignments = {};
+    llvm::MachineFunction                    *func;
+    EncodingTarget                           *enc_target;
+    std::vector<std::string>                  param_names{};
+    std::unordered_set<unsigned>              used_regs{};
+    llvm::DenseMap<unsigned, ValueInfo>       value_map{};
+    std::unordered_map<std::string, unsigned> operand_ref_counts{};
+    unsigned                                  cur_inst_id               = 0;
+    int                                       num_ret_regs              = -1;
+    bool                                      is_first_block            = false;
+    std::vector<unsigned>                     return_regs               = {};
+    std::string                               one_bb_return_assignments = {};
 
     llvm::DenseMap<unsigned, std::vector<std::string>> fixed_reg_conds{};
 
@@ -642,6 +643,9 @@ bool generate_inst(std::string        &buf,
         auto &reg_info = state.value_map[reg_id];
         if (reg_info.ty == ValueInfo::REG_ALIAS) {
             state.remove_reg_alias(buf, reg_id, reg_info.alias_reg_id);
+        } else if (reg_info.ty == ValueInfo::ASM_OPERAND) {
+            assert(state.operand_ref_counts[reg_info.operand_name] > 0);
+            state.operand_ref_counts[reg_info.operand_name] -= 1;
         }
 
         reg_info.ty      = ValueInfo::SCRATCHREG;
@@ -661,6 +665,9 @@ bool generate_inst(std::string        &buf,
         auto &reg_info = state.value_map[reg_id];
         if (reg_info.ty == ValueInfo::REG_ALIAS) {
             state.remove_reg_alias(buf, reg_id, reg_info.alias_reg_id);
+        } else if (reg_info.ty == ValueInfo::ASM_OPERAND) {
+            assert(state.operand_ref_counts[reg_info.operand_name] > 0);
+            state.operand_ref_counts[reg_info.operand_name] -= 1;
         }
 
         reg_info.ty      = ValueInfo::SCRATCHREG;
@@ -686,6 +693,7 @@ void GenerationState::remove_reg_alias(std::string &buf,
                    enc_target->reg_name_lower(reg),
                    enc_target->reg_name_lower(aliased_reg));
 
+    assert(value_map[reg].ty != ValueInfo::ASM_OPERAND);
     value_map[reg].ty = ValueInfo::SCRATCHREG;
     auto &info        = value_map[aliased_reg];
     info.aliased_regs.erase(reg);
@@ -709,6 +717,10 @@ void GenerationState::redirect_aliased_regs_to_parent(const unsigned reg) {
         alias_info.ty           = info.ty;
         alias_info.alias_reg_id = info.alias_reg_id;
         alias_info.operand_name = info.operand_name;
+
+        if (info.ty == ValueInfo::ASM_OPERAND) {
+            operand_ref_counts[info.operand_name] += 1;
+        }
 
         if (info.ty == ValueInfo::REG_ALIAS) {
             assert(value_map.contains(info.alias_reg_id));
@@ -755,6 +767,13 @@ bool GenerationState::can_salvage_operand(const llvm::MachineOperand &op) {
 
     if (!info.aliased_regs.empty()) {
         return false;
+    }
+
+    if (info.ty == ValueInfo::ASM_OPERAND) {
+        assert(operand_ref_counts.contains(info.operand_name));
+        if (operand_ref_counts[info.operand_name] > 1) {
+            return false;
+        }
     }
 
     if (info.ty != ValueInfo::REG_ALIAS) {
@@ -822,6 +841,33 @@ bool handle_move(std::string        &buf,
     buf += std::format("    // aliasing {} to {}\n", dst_name, src_name);
     state.value_map[src_id].aliased_regs.insert(dst_id);
 
+    if (state.value_map.contains(dst_id)) {
+        auto &info = state.value_map[dst_id];
+        if (info.ty == ValueInfo::REG_ALIAS
+            || info.ty == ValueInfo::ASM_OPERAND) {
+            state.fmt_line(
+                buf,
+                4,
+                "// {} is an alias or operand, redirecting all aliases",
+                dst_name);
+            state.redirect_aliased_regs_to_parent(dst_id);
+
+            if (info.ty == ValueInfo::REG_ALIAS) {
+                state.remove_reg_alias(buf, dst_id, info.alias_reg_id);
+            } else {
+                assert(info.ty == ValueInfo::ASM_OPERAND);
+                assert(state.operand_ref_counts[info.operand_name] > 0);
+                state.operand_ref_counts[info.operand_name] -= 1;
+            }
+        }
+    }
+
+    // TODO(ts): check for dead moves?
+    auto &dst_info        = state.value_map[dst_id];
+    dst_info.ty           = ValueInfo::REG_ALIAS;
+    dst_info.alias_reg_id = src_id;
+    dst_info.is_dead      = false;
+
     // TODO(ts): cannot do this when we are outside of the entry-block
     if (src_op->isKill()) {
 #if 0
@@ -836,17 +882,28 @@ bool handle_move(std::string        &buf,
                 state.value_map[src_id].was_destroyed = true;
                 state.value_map[src_id].is_dead = true;
 #else
-        buf += std::format("    // source {} is killed and marked as "
-                           "dead but not yet destroyed\n",
-                           src_name);
-        state.value_map[src_id].is_dead = true;
+        buf += std::format(
+            "    // source {} is killed, all aliases redirected and marked as "
+            "dead\n",
+            src_name);
+
+        auto &reg_info = state.value_map[src_id];
+        if (reg_info.ty == ValueInfo::REG_ALIAS
+            || reg_info.ty == ValueInfo::ASM_OPERAND) {
+            state.redirect_aliased_regs_to_parent(src_id);
+        }
+        if (reg_info.ty == ValueInfo::REG_ALIAS) {
+            state.remove_reg_alias(buf, src_id, reg_info.alias_reg_id);
+        } else if (reg_info.ty == ValueInfo::ASM_OPERAND) {
+            assert(state.operand_ref_counts[reg_info.operand_name] > 0);
+            state.operand_ref_counts[reg_info.operand_name] -= 1;
+        }
+
+        reg_info.ty      = ValueInfo::SCRATCHREG;
+        reg_info.is_dead = true;
 #endif
     }
 
-    auto &dst_info        = state.value_map[dst_id];
-    dst_info.ty           = ValueInfo::REG_ALIAS;
-    dst_info.alias_reg_id = src_id;
-    dst_info.is_dead      = false;
     return true;
 }
 
@@ -988,7 +1045,8 @@ bool handle_terminator(std::string        &buf,
 
         // if there is only one block, we can return from the encoding function
 
-        auto &ret_buf = state.one_bb_return_assignments;
+        auto &ret_buf      = state.one_bb_return_assignments;
+        auto  asm_ops_seen = std::unordered_set<std::string>{};
         for (int idx = 0; idx < state.num_ret_regs; ++idx) {
             const auto reg = state.return_regs[idx];
             state.fmt_line(ret_buf,
@@ -1011,6 +1069,8 @@ bool handle_terminator(std::string        &buf,
             }
 
             if (info->ty == ValueInfo::ASM_OPERAND) {
+                assert(!asm_ops_seen.contains(info->operand_name));
+                asm_ops_seen.insert(info->operand_name);
                 state.fmt_line(ret_buf,
                                4,
                                "// {} is an alias for {}",
@@ -1121,6 +1181,7 @@ bool handle_terminator(std::string        &buf,
             }
 
             // allocate all used registers and resolve aliases if needed
+            auto asm_ops_seen = std::unordered_set<std::string>{};
             for (auto [reg, size] : func_used_regs) {
                 state.fmt_line(buf,
                                4,
@@ -1166,6 +1227,14 @@ bool handle_terminator(std::string        &buf,
 
                     if (info->ty == ValueInfo::REG_ALIAS
                         || info->ty == ValueInfo::ASM_OPERAND) {
+                        if (info->ty == ValueInfo::ASM_OPERAND) {
+                            assert(!asm_ops_seen.contains(info->operand_name));
+                            asm_ops_seen.insert(info->operand_name);
+                            assert(state.operand_ref_counts[info->operand_name]
+                                   > 0);
+                            state.operand_ref_counts[info->operand_name] -= 1;
+                        }
+
                         // make sure regs depending on this reg get updated to
                         // alias this register's alias since we do not copy
                         // anything
@@ -1199,6 +1268,11 @@ bool handle_terminator(std::string        &buf,
                 }
 
                 if (info->ty == ValueInfo::ASM_OPERAND) {
+                    assert(!asm_ops_seen.contains(info->operand_name));
+                    asm_ops_seen.insert(info->operand_name);
+                    assert(state.operand_ref_counts[info->operand_name] > 0);
+                    state.operand_ref_counts[info->operand_name] -= 1;
+
                     state.fmt_line(
                         buf,
                         4,
@@ -1249,6 +1323,12 @@ bool handle_terminator(std::string        &buf,
                                    state.enc_target->reg_bank(reg));
                     std::string src_name;
                     if (alias_info.ty == ValueInfo::ASM_OPERAND) {
+                        assert(!asm_ops_seen.contains(alias_info.operand_name));
+                        asm_ops_seen.insert(alias_info.operand_name);
+                        assert(state.operand_ref_counts[info->operand_name]
+                               > 0);
+                        state.operand_ref_counts[info->operand_name] -= 1;
+
                         // TODO(ts): salvaging if possible
                         src_name = std::format(
                             "inst{}_tmp_{}",
@@ -1293,7 +1373,12 @@ bool handle_terminator(std::string        &buf,
                 assert(info.aliased_regs.empty());
 
                 if (info.ty == ValueInfo::REG_ALIAS) {
+                    state.redirect_aliased_regs_to_parent(reg);
                     state.remove_reg_alias(buf, reg, info.alias_reg_id);
+                } else if (info.ty == ValueInfo::ASM_OPERAND) {
+                    state.redirect_aliased_regs_to_parent(reg);
+                    assert(state.operand_ref_counts[info.operand_name] > 0);
+                    state.operand_ref_counts[info.operand_name] -= 1;
                 }
                 info.ty      = ValueInfo::SCRATCHREG;
                 info.is_dead = true;
@@ -1851,10 +1936,7 @@ bool generate_inst_inner(std::string           &buf,
                         return false;
                     }
 
-                    if (state.is_first_block && llvm_op.isKill()
-                        && (reg_info.aliased_regs.empty()
-                            || (reg_info.is_dead
-                                && reg_info.aliased_regs.size() == 1))) {
+                    if (state.can_salvage_operand(llvm_op)) {
                         std::format_to(std::back_inserter(buf),
                                        "{:>{}}// operand {}({}) is tied so try "
                                        "to salvage or materialize\n",
@@ -2728,6 +2810,7 @@ bool create_encode_function(llvm::MachineFunction *func,
                             std::string           &impl_lines) {
     std::string write_buf{};
 
+    std::cerr << "Creating encoder for " << name << "\n";
     // update dead/kill flags since they might not be very accurate anymore
     // NOTE: we assume that the MBB liveins are accurate though
     for (auto &MBB : *func) {
@@ -2822,6 +2905,8 @@ bool create_encode_function(llvm::MachineFunction *func,
                 // .cur_def_use_it =
                 //    mach_reg_info.reg_instr_nodbg_begin(it->first)
             };
+
+            state.operand_ref_counts[state.param_names.back()] = 1;
 
             std::format_to(std::back_inserter(write_buf),
                            "    // Mapping {} to {}\n",

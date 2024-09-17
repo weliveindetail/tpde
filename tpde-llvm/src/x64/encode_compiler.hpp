@@ -3142,15 +3142,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi32(AsmOperand param_0,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $eax = SUB32rr killed renamable $eax(tied-def 0), killed renamable $esi, implicit-def dead $eflags
     // SUB32rr has a preferred encoding as SUB32ri if possible
     if (param_1.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is an immediate operand
@@ -3160,8 +3159,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi32(AsmOperand param_0,
     }    // SUB32rr has a preferred encoding as SUB32rm if possible
     else if (param_1.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is a memory operand
@@ -3172,8 +3170,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi32(AsmOperand param_0,
         ASMD(SUB32rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is si
@@ -3183,7 +3180,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi32(AsmOperand param_0,
         ASMD(SUB32rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument si is killed and marked as dead
     // result ax is marked as alive
 
@@ -3221,15 +3217,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli32(AsmOperand param_0,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $eax = IMUL32rr killed renamable $eax(tied-def 0), killed renamable $esi, implicit-def dead $eflags
     // IMUL32rr has a preferred encoding as IMUL32rm if possible
     if (param_1.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is a memory operand
@@ -3240,8 +3235,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli32(AsmOperand param_0,
         ASMD(IMUL32rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is si
@@ -3251,7 +3245,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli32(AsmOperand param_0,
         ASMD(IMUL32rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument si is killed and marked as dead
     // result ax is marked as alive
 
@@ -3295,7 +3288,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi32(AsmOperand param_0
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
@@ -3323,7 +3316,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi32(AsmOperand param_0
         // si maps to operand param_1 which is known to be a ValuePartRef
         FeMem inst2_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
         // Handling implicit operand ax
-        // ax is an alias for di
         // Need to break alias from ax to operand param_0 and copy the value
         AsmReg inst2_op4_tmp = param_0.as_reg(this);
         ASMD(MOV32rr, scratch_ax.cur_reg, inst2_op4_tmp);
@@ -3336,11 +3328,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi32(AsmOperand param_0
         // si is mapped to param_1
         AsmReg inst2_op0 = param_1.as_reg(this);
         // Handling implicit operand ax
-        // ax is an alias for di
         // Need to break alias from ax to operand param_0 and copy the value
         AsmReg inst2_op4_tmp = param_0.as_reg(this);
         ASMD(MOV32rr, scratch_ax.cur_reg, inst2_op4_tmp);
-    // removing alias from ax to di
         // Handling implicit operand dx
         // Value is already in register, no need to copy
 
@@ -3394,16 +3384,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sdivi32(AsmOperand param_0
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // CDQ implicit-def $eax, implicit-def $edx, implicit killed $eax
     // Handling implicit operand ax
-    // ax is an alias for di
     // Need to break alias from ax to operand param_0 and copy the value
     AsmReg inst1_op2_tmp = param_0.as_reg(this);
     ASMD(MOV32rr, scratch_ax.cur_reg, inst1_op2_tmp);
-    // removing alias from ax to di
 
     ASMD(CDQ);
     // argument ax is killed and marked as dead
@@ -3484,7 +3472,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi32(AsmOperand param_0
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
@@ -3512,7 +3500,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi32(AsmOperand param_0
         // si maps to operand param_1 which is known to be a ValuePartRef
         FeMem inst2_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
         // Handling implicit operand ax
-        // ax is an alias for di
         // Need to break alias from ax to operand param_0 and copy the value
         AsmReg inst2_op4_tmp = param_0.as_reg(this);
         ASMD(MOV32rr, scratch_ax.cur_reg, inst2_op4_tmp);
@@ -3525,11 +3512,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi32(AsmOperand param_0
         // si is mapped to param_1
         AsmReg inst2_op0 = param_1.as_reg(this);
         // Handling implicit operand ax
-        // ax is an alias for di
         // Need to break alias from ax to operand param_0 and copy the value
         AsmReg inst2_op4_tmp = param_0.as_reg(this);
         ASMD(MOV32rr, scratch_ax.cur_reg, inst2_op4_tmp);
-    // removing alias from ax to di
         // Handling implicit operand dx
         // Value is already in register, no need to copy
 
@@ -3544,7 +3529,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi32(AsmOperand param_0
 
     // $eax = MOV32rr killed $edx
     // aliasing ax to dx
-    // source dx is killed and marked as dead but not yet destroyed
+    // source dx is killed, all aliases redirected and marked as dead
 
 
     // RET64 killed $eax
@@ -3590,16 +3575,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi32(AsmOperand param_0
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // CDQ implicit-def $eax, implicit-def $edx, implicit killed $eax
     // Handling implicit operand ax
-    // ax is an alias for di
     // Need to break alias from ax to operand param_0 and copy the value
     AsmReg inst1_op2_tmp = param_0.as_reg(this);
     ASMD(MOV32rr, scratch_ax.cur_reg, inst1_op2_tmp);
-    // removing alias from ax to di
 
     ASMD(CDQ);
     // argument ax is killed and marked as dead
@@ -3640,7 +3623,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi32(AsmOperand param_0
 
     // $eax = MOV32rr killed $edx
     // aliasing ax to dx
-    // source dx is killed and marked as dead but not yet destroyed
+    // source dx is killed, all aliases redirected and marked as dead
 
 
     // RET64 killed $eax
@@ -3679,15 +3662,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi32(AsmOperand param_0
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $eax = AND32rr killed renamable $eax(tied-def 0), killed renamable $esi, implicit-def dead $eflags
     // AND32rr has a preferred encoding as AND32ri if possible
     if (param_1.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is an immediate operand
@@ -3697,8 +3679,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi32(AsmOperand param_0
     }    // AND32rr has a preferred encoding as AND32rm if possible
     else if (param_1.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is a memory operand
@@ -3709,8 +3690,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi32(AsmOperand param_0
         ASMD(AND32rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is si
@@ -3720,7 +3700,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi32(AsmOperand param_0
         ASMD(AND32rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument si is killed and marked as dead
     // result ax is marked as alive
 
@@ -3758,15 +3737,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori32(AsmOperand param_0,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $eax = OR32rr killed renamable $eax(tied-def 0), killed renamable $esi, implicit-def dead $eflags
     // OR32rr has a preferred encoding as OR32ri if possible
     if (param_1.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is an immediate operand
@@ -3776,8 +3754,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori32(AsmOperand param_0,
     }    // OR32rr has a preferred encoding as OR32rm if possible
     else if (param_1.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is a memory operand
@@ -3788,8 +3765,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori32(AsmOperand param_0,
         ASMD(OR32rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is si
@@ -3799,7 +3775,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori32(AsmOperand param_0,
         ASMD(OR32rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument si is killed and marked as dead
     // result ax is marked as alive
 
@@ -3837,15 +3812,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori32(AsmOperand param_0
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $eax = XOR32rr killed renamable $eax(tied-def 0), killed renamable $esi, implicit-def dead $eflags
     // XOR32rr has a preferred encoding as XOR32ri if possible
     if (param_1.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is an immediate operand
@@ -3855,8 +3829,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori32(AsmOperand param_0
     }    // XOR32rr has a preferred encoding as XOR32rm if possible
     else if (param_1.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is a memory operand
@@ -3867,8 +3840,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori32(AsmOperand param_0
         ASMD(XOR32rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is si
@@ -3878,7 +3850,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori32(AsmOperand param_0
         ASMD(XOR32rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument si is killed and marked as dead
     // result ax is marked as alive
 
@@ -3923,12 +3894,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli32(AsmOperand param_0,
 
     // $ecx = MOV32rr killed $esi
     // aliasing cx to si
-    // source si is killed and marked as dead but not yet destroyed
+    // source si is killed, all aliases redirected and marked as dead
 
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // $cl = KILL killed renamable $cl, implicit killed $ecx
@@ -3939,24 +3910,20 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli32(AsmOperand param_0,
     // SHL32rr has a preferred encoding as SHL32ri if possible
     if (param_1.encodeable_as_imm8_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is an immediate operand
-        // cx is an alias for si
         const auto& imm = param_1.imm();
 
         ASMD(SHL32ri, scratch_ax.cur_reg, imm.const_u64);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is cx
-        // cx is an alias for si
-        // si is mapped to param_1
+        // cx is mapped to param_1
         // cx is an implicit operand, cannot salvage
         AsmReg inst3_op1_tmp = param_1.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst3_op1_tmp);
@@ -3964,9 +3931,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli32(AsmOperand param_0,
         ASMD(SHL32rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument cx is killed and marked as dead
-    // removing alias from cx to si
     // result ax is marked as alive
 
 
@@ -4011,12 +3976,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri32(AsmOperand param_0,
 
     // $ecx = MOV32rr killed $esi
     // aliasing cx to si
-    // source si is killed and marked as dead but not yet destroyed
+    // source si is killed, all aliases redirected and marked as dead
 
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // $cl = KILL killed renamable $cl, implicit killed $ecx
@@ -4027,24 +3992,20 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri32(AsmOperand param_0,
     // SHR32rr has a preferred encoding as SHR32ri if possible
     if (param_1.encodeable_as_imm8_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is an immediate operand
-        // cx is an alias for si
         const auto& imm = param_1.imm();
 
         ASMD(SHR32ri, scratch_ax.cur_reg, imm.const_u64);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is cx
-        // cx is an alias for si
-        // si is mapped to param_1
+        // cx is mapped to param_1
         // cx is an implicit operand, cannot salvage
         AsmReg inst3_op1_tmp = param_1.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst3_op1_tmp);
@@ -4052,9 +4013,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri32(AsmOperand param_0,
         ASMD(SHR32rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument cx is killed and marked as dead
-    // removing alias from cx to si
     // result ax is marked as alive
 
 
@@ -4099,12 +4058,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri32(AsmOperand param_0
 
     // $ecx = MOV32rr killed $esi
     // aliasing cx to si
-    // source si is killed and marked as dead but not yet destroyed
+    // source si is killed, all aliases redirected and marked as dead
 
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // $cl = KILL killed renamable $cl, implicit killed $ecx
@@ -4115,24 +4074,20 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri32(AsmOperand param_0
     // SAR32rr has a preferred encoding as SAR32ri if possible
     if (param_1.encodeable_as_imm8_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is an immediate operand
-        // cx is an alias for si
         const auto& imm = param_1.imm();
 
         ASMD(SAR32ri, scratch_ax.cur_reg, imm.const_u64);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
         // operand 1 is cx
-        // cx is an alias for si
-        // si is mapped to param_1
+        // cx is mapped to param_1
         // cx is an implicit operand, cannot salvage
         AsmReg inst3_op1_tmp = param_1.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst3_op1_tmp);
@@ -4140,9 +4095,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri32(AsmOperand param_0
         ASMD(SAR32rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument cx is killed and marked as dead
-    // removing alias from cx to si
     // result ax is marked as alive
 
 
@@ -4251,15 +4204,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi64(AsmOperand param_0,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rsi, implicit-def dead $eflags
     // SUB64rr has a preferred encoding as SUB64ri if possible
     if (param_1.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
@@ -4269,8 +4221,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi64(AsmOperand param_0,
     }    // SUB64rr has a preferred encoding as SUB64rm if possible
     else if (param_1.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is a memory operand
@@ -4281,8 +4232,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi64(AsmOperand param_0,
         ASMD(SUB64rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is si
@@ -4292,7 +4242,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi64(AsmOperand param_0,
         ASMD(SUB64rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument si is killed and marked as dead
     // result ax is marked as alive
 
@@ -4330,15 +4279,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli64(AsmOperand param_0,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $rax = IMUL64rr killed renamable $rax(tied-def 0), killed renamable $rsi, implicit-def dead $eflags
     // IMUL64rr has a preferred encoding as IMUL64rm if possible
     if (param_1.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is a memory operand
@@ -4349,8 +4297,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli64(AsmOperand param_0,
         ASMD(IMUL64rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is si
@@ -4360,7 +4307,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli64(AsmOperand param_0,
         ASMD(IMUL64rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument si is killed and marked as dead
     // result ax is marked as alive
 
@@ -4404,7 +4350,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi64(AsmOperand param_0
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
@@ -4434,7 +4380,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi64(AsmOperand param_0
         // si maps to operand param_1 which is known to be a ValuePartRef
         FeMem inst2_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
         // Handling implicit operand ax
-        // ax is an alias for di
         // Need to break alias from ax to operand param_0 and copy the value
         AsmReg inst2_op4_tmp = param_0.as_reg(this);
         ASMD(MOV64rr, scratch_ax.cur_reg, inst2_op4_tmp);
@@ -4447,11 +4392,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi64(AsmOperand param_0
         // si is mapped to param_1
         AsmReg inst2_op0 = param_1.as_reg(this);
         // Handling implicit operand ax
-        // ax is an alias for di
         // Need to break alias from ax to operand param_0 and copy the value
         AsmReg inst2_op4_tmp = param_0.as_reg(this);
         ASMD(MOV64rr, scratch_ax.cur_reg, inst2_op4_tmp);
-    // removing alias from ax to di
         // Handling implicit operand dx
         // Value is already in register, no need to copy
 
@@ -4505,16 +4448,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sdivi64(AsmOperand param_0
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // CQO implicit-def $rax, implicit-def $rdx, implicit killed $rax
     // Handling implicit operand ax
-    // ax is an alias for di
     // Need to break alias from ax to operand param_0 and copy the value
     AsmReg inst1_op2_tmp = param_0.as_reg(this);
     ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op2_tmp);
-    // removing alias from ax to di
 
     ASMD(CQO);
     // argument ax is killed and marked as dead
@@ -4595,7 +4536,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi64(AsmOperand param_0
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
@@ -4625,7 +4566,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi64(AsmOperand param_0
         // si maps to operand param_1 which is known to be a ValuePartRef
         FeMem inst2_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
         // Handling implicit operand ax
-        // ax is an alias for di
         // Need to break alias from ax to operand param_0 and copy the value
         AsmReg inst2_op4_tmp = param_0.as_reg(this);
         ASMD(MOV64rr, scratch_ax.cur_reg, inst2_op4_tmp);
@@ -4638,11 +4578,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi64(AsmOperand param_0
         // si is mapped to param_1
         AsmReg inst2_op0 = param_1.as_reg(this);
         // Handling implicit operand ax
-        // ax is an alias for di
         // Need to break alias from ax to operand param_0 and copy the value
         AsmReg inst2_op4_tmp = param_0.as_reg(this);
         ASMD(MOV64rr, scratch_ax.cur_reg, inst2_op4_tmp);
-    // removing alias from ax to di
         // Handling implicit operand dx
         // Value is already in register, no need to copy
 
@@ -4657,7 +4595,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi64(AsmOperand param_0
 
     // $rax = MOV64rr killed $rdx
     // aliasing ax to dx
-    // source dx is killed and marked as dead but not yet destroyed
+    // source dx is killed, all aliases redirected and marked as dead
 
 
     // RET64 killed $rax
@@ -4703,16 +4641,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi64(AsmOperand param_0
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // CQO implicit-def $rax, implicit-def $rdx, implicit killed $rax
     // Handling implicit operand ax
-    // ax is an alias for di
     // Need to break alias from ax to operand param_0 and copy the value
     AsmReg inst1_op2_tmp = param_0.as_reg(this);
     ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op2_tmp);
-    // removing alias from ax to di
 
     ASMD(CQO);
     // argument ax is killed and marked as dead
@@ -4753,7 +4689,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi64(AsmOperand param_0
 
     // $rax = MOV64rr killed $rdx
     // aliasing ax to dx
-    // source dx is killed and marked as dead but not yet destroyed
+    // source dx is killed, all aliases redirected and marked as dead
 
 
     // RET64 killed $rax
@@ -4792,15 +4728,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi64(AsmOperand param_0
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $rax = AND64rr killed renamable $rax(tied-def 0), killed renamable $rsi, implicit-def dead $eflags
     // AND64rr has a preferred encoding as AND64ri if possible
     if (param_1.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
@@ -4810,8 +4745,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi64(AsmOperand param_0
     }    // AND64rr has a preferred encoding as AND64rm if possible
     else if (param_1.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is a memory operand
@@ -4822,8 +4756,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi64(AsmOperand param_0
         ASMD(AND64rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is si
@@ -4833,7 +4766,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi64(AsmOperand param_0
         ASMD(AND64rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument si is killed and marked as dead
     // result ax is marked as alive
 
@@ -4871,15 +4803,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori64(AsmOperand param_0,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $rax = OR64rr killed renamable $rax(tied-def 0), killed renamable $rsi, implicit-def dead $eflags
     // OR64rr has a preferred encoding as OR64ri if possible
     if (param_1.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
@@ -4889,8 +4820,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori64(AsmOperand param_0,
     }    // OR64rr has a preferred encoding as OR64rm if possible
     else if (param_1.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is a memory operand
@@ -4901,8 +4831,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori64(AsmOperand param_0,
         ASMD(OR64rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is si
@@ -4912,7 +4841,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori64(AsmOperand param_0,
         ASMD(OR64rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument si is killed and marked as dead
     // result ax is marked as alive
 
@@ -4950,15 +4878,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori64(AsmOperand param_0
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $rax = XOR64rr killed renamable $rax(tied-def 0), killed renamable $rsi, implicit-def dead $eflags
     // XOR64rr has a preferred encoding as XOR64ri if possible
     if (param_1.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
@@ -4968,8 +4895,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori64(AsmOperand param_0
     }    // XOR64rr has a preferred encoding as XOR64rm if possible
     else if (param_1.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is a memory operand
@@ -4980,8 +4906,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori64(AsmOperand param_0
         ASMD(XOR64rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is si
@@ -4991,7 +4916,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori64(AsmOperand param_0
         ASMD(XOR64rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument si is killed and marked as dead
     // result ax is marked as alive
 
@@ -5036,12 +4960,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli64(AsmOperand param_0,
 
     // $rcx = MOV64rr killed $rsi
     // aliasing cx to si
-    // source si is killed and marked as dead but not yet destroyed
+    // source si is killed, all aliases redirected and marked as dead
 
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // $cl = KILL killed renamable $cl, implicit killed $rcx
@@ -5052,24 +4976,20 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli64(AsmOperand param_0,
     // SHL64rr has a preferred encoding as SHL64ri if possible
     if (param_1.encodeable_as_imm8_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
-        // cx is an alias for si
         const auto& imm = param_1.imm();
 
         ASMD(SHL64ri, scratch_ax.cur_reg, imm.const_u64);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is cx
-        // cx is an alias for si
-        // si is mapped to param_1
+        // cx is mapped to param_1
         // cx is an implicit operand, cannot salvage
         AsmReg inst3_op1_tmp = param_1.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst3_op1_tmp);
@@ -5077,9 +4997,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli64(AsmOperand param_0,
         ASMD(SHL64rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument cx is killed and marked as dead
-    // removing alias from cx to si
     // result ax is marked as alive
 
 
@@ -5124,12 +5042,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri64(AsmOperand param_0,
 
     // $rcx = MOV64rr killed $rsi
     // aliasing cx to si
-    // source si is killed and marked as dead but not yet destroyed
+    // source si is killed, all aliases redirected and marked as dead
 
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // $cl = KILL killed renamable $cl, implicit killed $rcx
@@ -5140,24 +5058,20 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri64(AsmOperand param_0,
     // SHR64rr has a preferred encoding as SHR64ri if possible
     if (param_1.encodeable_as_imm8_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
-        // cx is an alias for si
         const auto& imm = param_1.imm();
 
         ASMD(SHR64ri, scratch_ax.cur_reg, imm.const_u64);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is cx
-        // cx is an alias for si
-        // si is mapped to param_1
+        // cx is mapped to param_1
         // cx is an implicit operand, cannot salvage
         AsmReg inst3_op1_tmp = param_1.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst3_op1_tmp);
@@ -5165,9 +5079,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri64(AsmOperand param_0,
         ASMD(SHR64rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument cx is killed and marked as dead
-    // removing alias from cx to si
     // result ax is marked as alive
 
 
@@ -5212,12 +5124,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri64(AsmOperand param_0
 
     // $rcx = MOV64rr killed $rsi
     // aliasing cx to si
-    // source si is killed and marked as dead but not yet destroyed
+    // source si is killed, all aliases redirected and marked as dead
 
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // $cl = KILL killed renamable $cl, implicit killed $rcx
@@ -5228,24 +5140,20 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri64(AsmOperand param_0
     // SAR64rr has a preferred encoding as SAR64ri if possible
     if (param_1.encodeable_as_imm8_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
-        // cx is an alias for si
         const auto& imm = param_1.imm();
 
         ASMD(SAR64ri, scratch_ax.cur_reg, imm.const_u64);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is cx
-        // cx is an alias for si
-        // si is mapped to param_1
+        // cx is mapped to param_1
         // cx is an implicit operand, cannot salvage
         AsmReg inst3_op1_tmp = param_1.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst3_op1_tmp);
@@ -5253,9 +5161,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri64(AsmOperand param_0
         ASMD(SAR64rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument cx is killed and marked as dead
-    // removing alias from cx to si
     // result ax is marked as alive
 
 
@@ -5299,15 +5205,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addi128(AsmOperand param_0
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
     // ADD64rr has a preferred encoding as ADD64ri if possible
     if (param_2.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
@@ -5317,8 +5222,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addi128(AsmOperand param_0
     }    // ADD64rr has a preferred encoding as ADD64rm if possible
     else if (param_2.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is a memory operand
@@ -5329,8 +5233,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addi128(AsmOperand param_0
         ASMD(ADD64rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is dx
@@ -5340,7 +5243,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addi128(AsmOperand param_0
         ASMD(ADD64rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument dx is killed and marked as dead
     // result ax is marked as alive
 
@@ -5386,7 +5288,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addi128(AsmOperand param_0
 
     // $rdx = MOV64rr killed $rsi
     // aliasing dx to si
-    // source si is killed and marked as dead but not yet destroyed
+    // source si is killed, all aliases redirected and marked as dead
 
 
     // RET64 killed $rax, killed $rdx
@@ -5431,15 +5333,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi128(AsmOperand param_0
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
     // SUB64rr has a preferred encoding as SUB64ri if possible
     if (param_2.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
@@ -5449,8 +5350,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi128(AsmOperand param_0
     }    // SUB64rr has a preferred encoding as SUB64rm if possible
     else if (param_2.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is a memory operand
@@ -5461,8 +5361,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi128(AsmOperand param_0
         ASMD(SUB64rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is dx
@@ -5472,7 +5371,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi128(AsmOperand param_0
         ASMD(SUB64rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument dx is killed and marked as dead
     // result ax is marked as alive
 
@@ -5518,7 +5416,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi128(AsmOperand param_0
 
     // $rdx = MOV64rr killed $rsi
     // aliasing dx to si
-    // source si is killed and marked as dead but not yet destroyed
+    // source si is killed, all aliases redirected and marked as dead
 
 
     // RET64 killed $rax, killed $rdx
@@ -5730,15 +5628,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi128(AsmOperand param_
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $rax = AND64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def dead $eflags
     // AND64rr has a preferred encoding as AND64ri if possible
     if (param_2.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
@@ -5748,8 +5645,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi128(AsmOperand param_
     }    // AND64rr has a preferred encoding as AND64rm if possible
     else if (param_2.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is a memory operand
@@ -5760,8 +5656,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi128(AsmOperand param_
         ASMD(AND64rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is dx
@@ -5771,7 +5666,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi128(AsmOperand param_
         ASMD(AND64rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument dx is killed and marked as dead
     // result ax is marked as alive
 
@@ -5817,7 +5711,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi128(AsmOperand param_
 
     // $rdx = MOV64rr killed $rsi
     // aliasing dx to si
-    // source si is killed and marked as dead but not yet destroyed
+    // source si is killed, all aliases redirected and marked as dead
 
 
     // RET64 killed $rax, killed $rdx
@@ -5862,15 +5756,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori128(AsmOperand param_0
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $rax = OR64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def dead $eflags
     // OR64rr has a preferred encoding as OR64ri if possible
     if (param_2.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
@@ -5880,8 +5773,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori128(AsmOperand param_0
     }    // OR64rr has a preferred encoding as OR64rm if possible
     else if (param_2.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is a memory operand
@@ -5892,8 +5784,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori128(AsmOperand param_0
         ASMD(OR64rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is dx
@@ -5903,7 +5794,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori128(AsmOperand param_0
         ASMD(OR64rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument dx is killed and marked as dead
     // result ax is marked as alive
 
@@ -5949,7 +5839,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori128(AsmOperand param_0
 
     // $rdx = MOV64rr killed $rsi
     // aliasing dx to si
-    // source si is killed and marked as dead but not yet destroyed
+    // source si is killed, all aliases redirected and marked as dead
 
 
     // RET64 killed $rax, killed $rdx
@@ -5994,15 +5884,14 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori128(AsmOperand param_
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
-    // source di is killed and marked as dead but not yet destroyed
+    // source di is killed, all aliases redirected and marked as dead
 
 
     // renamable $rax = XOR64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def dead $eflags
     // XOR64rr has a preferred encoding as XOR64ri if possible
     if (param_2.encodeable_as_imm32_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is an immediate operand
@@ -6012,8 +5901,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori128(AsmOperand param_
     }    // XOR64rr has a preferred encoding as XOR64rm if possible
     else if (param_2.val_ref_prefers_mem_enc()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is a memory operand
@@ -6024,8 +5912,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori128(AsmOperand param_
         ASMD(XOR64rm, scratch_ax.cur_reg, inst1_op1);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
         // operand 1 is dx
@@ -6035,7 +5922,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori128(AsmOperand param_
         ASMD(XOR64rr, scratch_ax.cur_reg, inst1_op1);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // argument dx is killed and marked as dead
     // result ax is marked as alive
 
@@ -6081,7 +5967,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori128(AsmOperand param_
 
     // $rdx = MOV64rr killed $rsi
     // aliasing dx to si
-    // source si is killed and marked as dead but not yet destroyed
+    // source si is killed, all aliases redirected and marked as dead
 
 
     // RET64 killed $rax, killed $rdx
@@ -6138,7 +6024,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128(AsmOperand param_0
 
     // $r8 = MOV64rr killed $rdx
     // aliasing r8 to dx
-    // source dx is killed and marked as dead but not yet destroyed
+    // source dx is killed, all aliases redirected and marked as dead
 
 
     // $ecx = MOV32rr undef $r8d, implicit $r8b
@@ -6154,7 +6040,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128(AsmOperand param_0
         param_1.try_salvage_or_materialize(this, scratch_si, 0, 8);
         // operand 1 is an immediate operand
         // cx is an alias for r8
-        // r8 is an alias for dx
         const auto& imm = param_2.imm();
 
         ASMD(SHL64ri, scratch_si.cur_reg, imm.const_u64);
@@ -6165,8 +6050,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128(AsmOperand param_0
         param_1.try_salvage_or_materialize(this, scratch_si, 0, 8);
         // operand 1 is cx
         // cx is an alias for r8
-        // r8 is an alias for dx
-        // dx is mapped to param_2
+        // r8 is mapped to param_2
         // cx is an implicit operand, cannot salvage
         AsmReg inst2_op1_tmp = param_2.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst2_op1_tmp);
@@ -6199,13 +6083,11 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128(AsmOperand param_0
     // renamable $cl = NOT8r killed renamable $cl(tied-def 0)
     // operand 0 is cx
     // cx is an alias for r8
-    // r8 is an alias for dx
-    // operand 0(dx) has some references so copy it
+    // r8 is mapped to param_2
     AsmReg inst5_op0 = scratch_cx.alloc_from_bank(0);
-    ASMD(MOV32rr, inst5_op0, scratch_dx.cur_reg);
+    AsmReg inst5_op0_tmp = param_2.as_reg(this);
+    ASMD(MOV32rr, inst5_op0, inst5_op0_tmp);
 
-    // def cx has not been allocated yet
-    scratch_cx.alloc_from_bank(0);
     ASMD(NOT8r, scratch_cx.cur_reg);
     // argument cx is killed and marked as dead
     // removing alias from cx to r8
@@ -6245,19 +6127,31 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128(AsmOperand param_0
 
 
     // renamable $rdi = SHL64rCL killed renamable $rdi(tied-def 0), implicit-def dead $eflags, implicit killed $cl
-    // operand 0 is di
-    // di is mapped to param_0
-    // operand 0(param_0) is tied so try to salvage or materialize
-    param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
-    // operand 1 is cx
-    // cx is an alias for r8
-    // r8 is an alias for dx
-    // operand 1(dx) is a simple register
-    // cx is an implicit operand, need to move aliased dx into it
-    ASMD(MOV32rr, scratch_cx.cur_reg, scratch_dx.cur_reg);
-    AsmReg inst9_op1 = scratch_cx.cur_reg;
+    // SHL64rr has a preferred encoding as SHL64ri if possible
+    if (param_2.encodeable_as_imm8_sext()) {
+        // operand 0 is di
+        // di is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
+        // operand 1 is an immediate operand
+        // cx is an alias for r8
+        const auto& imm = param_2.imm();
 
-    ASMD(SHL64rr, scratch_di.cur_reg, inst9_op1);
+        ASMD(SHL64ri, scratch_di.cur_reg, imm.const_u64);
+    } else {
+        // operand 0 is di
+        // di is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
+        // operand 1 is cx
+        // cx is an alias for r8
+        // r8 is mapped to param_2
+        // cx is an implicit operand, cannot salvage
+        AsmReg inst9_op1_tmp = param_2.as_reg(this);
+        ASMD(MOV32rr, scratch_cx.cur_reg, inst9_op1_tmp);
+
+        ASMD(SHL64rr, scratch_di.cur_reg, scratch_cx.cur_reg);
+    }
     // argument di is killed and marked as dead
     // argument cx is killed and marked as dead
     // removing alias from cx to r8
@@ -6284,17 +6178,28 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128(AsmOperand param_0
 
 
     // TEST8ri killed renamable $r8b, 64, implicit-def $eflags, implicit killed $r8
-    // operand 0 is r8
-    // r8 is an alias for dx
-    // operand 0(dx) is a simple register
-    AsmReg inst11_op0 = scratch_dx.cur_reg;
-    // operand 1 is an immediate operand
-    // Handling implicit operand r8
-    // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+    // TEST8ri has a preferred encoding as TEST8mi if possible
+    if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // r8 is base for memory operand to use
+        // r8 maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst11_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+        // operand 1 is an immediate operand
+        // Handling implicit operand r8
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
 
-    ASMD(TEST8ri, inst11_op0, 64);
+        ASMD(TEST8mi, inst11_op0, 64);
+    } else {
+        // operand 0 is r8
+        // r8 is mapped to param_2
+        AsmReg inst11_op0 = param_2.as_reg(this);
+        // operand 1 is an immediate operand
+        // Handling implicit operand r8
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        ASMD(TEST8ri, inst11_op0, 64);
+    }
     // argument r8 is killed and marked as dead
-    // removing alias from r8 to dx
     // argument r8 is killed and marked as dead
 
 
@@ -6378,7 +6283,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0
 
     // $r8 = MOV64rr killed $rdx
     // aliasing r8 to dx
-    // source dx is killed and marked as dead but not yet destroyed
+    // source dx is killed, all aliases redirected and marked as dead
 
 
     // $ecx = MOV32rr undef $r8d, implicit $r8b
@@ -6394,7 +6299,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0
         param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
         // operand 1 is an immediate operand
         // cx is an alias for r8
-        // r8 is an alias for dx
         const auto& imm = param_2.imm();
 
         ASMD(SHR64ri, scratch_di.cur_reg, imm.const_u64);
@@ -6405,8 +6309,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0
         param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
         // operand 1 is cx
         // cx is an alias for r8
-        // r8 is an alias for dx
-        // dx is mapped to param_2
+        // r8 is mapped to param_2
         // cx is an implicit operand, cannot salvage
         AsmReg inst2_op1_tmp = param_2.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst2_op1_tmp);
@@ -6454,10 +6357,10 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0
     // renamable $cl = NOT8r killed renamable $cl(tied-def 0)
     // operand 0 is cx
     // cx is an alias for r8
-    // r8 is an alias for dx
-    // dx is mapped to param_2
-    // operand 0(param_2) is tied so try to salvage or materialize
-    param_2.try_salvage_or_materialize(this, scratch_cx, 0, 1);
+    // r8 is mapped to param_2
+    AsmReg inst4_op0 = scratch_cx.alloc_from_bank(0);
+    AsmReg inst4_op0_tmp = param_2.as_reg(this);
+    ASMD(MOV32rr, inst4_op0, inst4_op0_tmp);
 
     ASMD(NOT8r, scratch_cx.cur_reg);
     // argument cx is killed and marked as dead
@@ -6506,7 +6409,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0
         param_1.try_salvage_or_materialize(this, scratch_si, 0, 8);
         // operand 1 is an immediate operand
         // cx is an alias for r8
-        // r8 is an alias for dx
         const auto& imm = param_2.imm();
 
         ASMD(SHR64ri, scratch_si.cur_reg, imm.const_u64);
@@ -6517,8 +6419,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0
         param_1.try_salvage_or_materialize(this, scratch_si, 0, 8);
         // operand 1 is cx
         // cx is an alias for r8
-        // r8 is an alias for dx
-        // dx is mapped to param_2
+        // r8 is mapped to param_2
         // cx is an implicit operand, cannot salvage
         AsmReg inst8_op1_tmp = param_2.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst8_op1_tmp);
@@ -6551,17 +6452,28 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0
 
 
     // TEST8ri killed renamable $r8b, 64, implicit-def $eflags, implicit killed $r8
-    // operand 0 is r8
-    // r8 is an alias for dx
-    // operand 0(dx) is a simple register
-    AsmReg inst10_op0 = scratch_dx.cur_reg;
-    // operand 1 is an immediate operand
-    // Handling implicit operand r8
-    // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+    // TEST8ri has a preferred encoding as TEST8mi if possible
+    if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // r8 is base for memory operand to use
+        // r8 maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst10_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+        // operand 1 is an immediate operand
+        // Handling implicit operand r8
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
 
-    ASMD(TEST8ri, inst10_op0, 64);
+        ASMD(TEST8mi, inst10_op0, 64);
+    } else {
+        // operand 0 is r8
+        // r8 is mapped to param_2
+        AsmReg inst10_op0 = param_2.as_reg(this);
+        // operand 1 is an immediate operand
+        // Handling implicit operand r8
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        ASMD(TEST8ri, inst10_op0, 64);
+    }
     // argument r8 is killed and marked as dead
-    // removing alias from r8 to dx
     // argument r8 is killed and marked as dead
 
 
@@ -6646,7 +6558,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128(AsmOperand param_
 
     // $r8 = MOV64rr killed $rdx
     // aliasing r8 to dx
-    // source dx is killed and marked as dead but not yet destroyed
+    // source dx is killed, all aliases redirected and marked as dead
 
 
     // $ecx = MOV32rr undef $r8d, implicit $r8b
@@ -6662,7 +6574,6 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128(AsmOperand param_
         param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
         // operand 1 is an immediate operand
         // cx is an alias for r8
-        // r8 is an alias for dx
         const auto& imm = param_2.imm();
 
         ASMD(SHR64ri, scratch_di.cur_reg, imm.const_u64);
@@ -6673,8 +6584,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128(AsmOperand param_
         param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
         // operand 1 is cx
         // cx is an alias for r8
-        // r8 is an alias for dx
-        // dx is mapped to param_2
+        // r8 is mapped to param_2
         // cx is an implicit operand, cannot salvage
         AsmReg inst2_op1_tmp = param_2.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst2_op1_tmp);
@@ -6722,10 +6632,10 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128(AsmOperand param_
     // renamable $cl = NOT8r killed renamable $cl(tied-def 0)
     // operand 0 is cx
     // cx is an alias for r8
-    // r8 is an alias for dx
-    // dx is mapped to param_2
-    // operand 0(param_2) is tied so try to salvage or materialize
-    param_2.try_salvage_or_materialize(this, scratch_cx, 0, 1);
+    // r8 is mapped to param_2
+    AsmReg inst4_op0 = scratch_cx.alloc_from_bank(0);
+    AsmReg inst4_op0_tmp = param_2.as_reg(this);
+    ASMD(MOV32rr, inst4_op0, inst4_op0_tmp);
 
     ASMD(NOT8r, scratch_cx.cur_reg);
     // argument cx is killed and marked as dead
@@ -6771,6 +6681,115 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128(AsmOperand param_
 
     // renamable $rdx = SAR64rCL killed renamable $rdx(tied-def 0), implicit-def dead $eflags, implicit killed $cl
     // SAR64rr has a preferred encoding as SAR64ri if possible
+    if (param_2.encodeable_as_imm8_sext()) {
+        // operand 0 is dx
+        // dx is an alias for si
+        // si is mapped to param_1
+        AsmReg inst9_op0 = scratch_dx.alloc_from_bank(0);
+        AsmReg inst9_op0_tmp = param_1.as_reg(this);
+        ASMD(MOV64rr, inst9_op0, inst9_op0_tmp);
+        // operand 1 is an immediate operand
+        // cx is an alias for r8
+        const auto& imm = param_2.imm();
+
+        ASMD(SAR64ri, scratch_dx.cur_reg, imm.const_u64);
+    } else {
+        // operand 0 is dx
+        // dx is an alias for si
+        // si is mapped to param_1
+        AsmReg inst9_op0 = scratch_dx.alloc_from_bank(0);
+        AsmReg inst9_op0_tmp = param_1.as_reg(this);
+        ASMD(MOV64rr, inst9_op0, inst9_op0_tmp);
+        // operand 1 is cx
+        // cx is an alias for r8
+        // r8 is mapped to param_2
+        // cx is an implicit operand, cannot salvage
+        AsmReg inst9_op1_tmp = param_2.as_reg(this);
+        ASMD(MOV32rr, scratch_cx.cur_reg, inst9_op1_tmp);
+
+        ASMD(SAR64rr, scratch_dx.cur_reg, scratch_cx.cur_reg);
+    }
+    // argument dx is killed and marked as dead
+    // removing alias from dx to si
+    // argument cx is killed and marked as dead
+    // removing alias from cx to r8
+    // result dx is marked as alive
+
+
+    // renamable $rsi = SAR64ri killed renamable $rsi(tied-def 0), 63, implicit-def dead $eflags
+    // operand 0 is si
+    // si is mapped to param_1
+    // operand 0(param_1) is tied so try to salvage or materialize
+    param_1.try_salvage_or_materialize(this, scratch_si, 0, 8);
+    // operand 1 is an immediate operand
+
+    ASMD(SAR64ri, scratch_si.cur_reg, 63);
+    // argument si is killed and marked as dead
+    // result si is marked as alive
+
+
+    // TEST8ri killed renamable $r8b, 64, implicit-def $eflags, implicit killed $r8
+    // TEST8ri has a preferred encoding as TEST8mi if possible
+    if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // r8 is base for memory operand to use
+        // r8 maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst11_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+        // operand 1 is an immediate operand
+        // Handling implicit operand r8
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        ASMD(TEST8mi, inst11_op0, 64);
+    } else {
+        // operand 0 is r8
+        // r8 is mapped to param_2
+        AsmReg inst11_op0 = param_2.as_reg(this);
+        // operand 1 is an immediate operand
+        // Handling implicit operand r8
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        ASMD(TEST8ri, inst11_op0, 64);
+    }
+    // argument r8 is killed and marked as dead
+    // argument r8 is killed and marked as dead
+
+
+    // renamable $rax = CMOV64rr killed renamable $rax(tied-def 0), renamable $rdx, 5, implicit $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is dx
+    // operand 1(dx) is a simple register
+    AsmReg inst12_op1 = scratch_dx.cur_reg;
+
+    ASMD(CMOVNZ64rr, scratch_ax.cur_reg, inst12_op1);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rdx = CMOV64rr killed renamable $rdx(tied-def 0), killed renamable $rsi, 5, implicit killed $eflags
+    // operand 0 is dx
+    // operand 0(dx) is the same as its tied destination
+    scratch_dx.alloc_from_bank(0);
+    // operand 1 is si
+    // operand 1(si) is a simple register
+    AsmReg inst13_op1 = scratch_si.cur_reg;
+
+    ASMD(CMOVNZ64rr, scratch_dx.cur_reg, inst13_op1);
+    // argument dx is killed and marked as dead
+    // argument si is killed and marked as dead
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $rdx
+    scratch_check_fixed_backup(scratch_cx, reg_backup_cx, false);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg dx as result_1
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
     if (param_1.encodeable_as_imm8_sext()) {
         // operand 0 is dx
         // dx is an alias for si
