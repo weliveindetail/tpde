@@ -102,6 +102,9 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     /// used to quickly access it
     AsmReg cur_reg() noexcept;
 
+    /// Is the value part currently in the specified register?
+    bool is_in_reg(AsmReg) const noexcept;
+
     /// Allocate a register for the value part and reload from the stack if this
     /// is desired
     AsmReg alloc_reg(bool reload = true) noexcept;
@@ -117,9 +120,17 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     /// assignment (or freeing the assignment if the value is in the target
     /// register) meaning you are free to overwrite the register if desired
     ///
+    /// \note The target register may not be fixed and will be free'd by this
+    /// function
+    ///
     /// \note This will spill the register if the value is currently in the
     /// specified register
-    AsmReg reload_into_specific(AsmReg reg) noexcept;
+    AsmReg reload_into_specific(CompilerBase *compiler, AsmReg reg) noexcept;
+
+    /// This works similarily to reload_into_specific but will not free
+    /// the target register
+    AsmReg reload_into_specific_fixed(CompilerBase *compiler,
+                                      AsmReg        reg) noexcept;
 
     void lock() noexcept;
     void unlock() noexcept;
@@ -190,6 +201,21 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     assert(ap.register_valid());
 
     return AsmReg{ap.full_reg_id()};
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::is_in_reg(
+    const AsmReg reg) const noexcept {
+    if (is_const) {
+        return false;
+    }
+
+    auto ap = assignment();
+    if (!ap.register_valid()) {
+        return false;
+    }
+
+    return AsmReg{ap.full_reg_id()} == reg;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -295,11 +321,32 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reload_into_specific(
-        const AsmReg reg) noexcept {
+        CompilerBase *compiler, const AsmReg reg) noexcept {
     if (is_const) {
-        // TODO(ts): materialize constant
-        assert(0);
-        exit(1);
+        // TODO(ts): store a compiler* in the constant data?
+        // make sure the register is free
+        ScratchReg tmp{compiler};
+        tmp.alloc_specific(reg);
+
+        compiler->derived()->materialize_constant(*this, reg);
+        return reg;
+    }
+
+    assert(!state.v.locked);
+    auto &reg_file = state.v.compiler->register_file;
+
+    // Free the register if there is anything else in there
+    if (reg_file.is_used(reg)
+        && (reg_file.reg_local_idx(reg) != state.v.local_idx
+            || reg_file.reg_part(reg) != state.v.part)) {
+        assert(!reg_file.is_fixed(reg));
+        auto ap = AssignmentPartRef{
+            state.v.compiler->val_assignment(reg_file.reg_local_idx(reg)),
+            reg_file.reg_part(reg)};
+        assert(!ap.fixed_assignment());
+        ap.spill_if_needed(state.v.compiler);
+        ap.set_register_valid(false);
+        reg_file.unmark_used(reg);
     }
 
     auto ap = assignment();
@@ -307,8 +354,43 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
         if (ap.full_reg_id() == reg.id()) {
             ap.spill_if_needed(state.v.compiler);
             ap.set_register_valid(false);
+            assert(!reg_file.is_fixed(reg));
+            reg_file.unmark_used(reg);
             return reg;
         }
+
+        state.v.compiler->derived()->mov(
+            reg, AsmReg{ap.full_reg_id()}, ap.part_size());
+    } else {
+        assert(!ap.fixed_assignment());
+        if (ap.variable_ref()) {
+            state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
+        } else {
+            state.v.compiler->derived()->load_from_stack(
+                reg, ap.frame_off(), ap.part_size());
+        }
+    }
+
+    state.v.compiler->register_file.mark_clobbered(reg);
+    return reg;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::AsmReg
+    CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
+        reload_into_specific_fixed(CompilerBase *compiler,
+                                   AsmReg        reg) noexcept {
+    if (is_const) {
+        // TODO(ts): store a compiler* in the constant data?
+        compiler->derived()->materialize_constant(*this, reg);
+        return reg;
+    }
+
+    assert(!state.v.locked);
+
+    auto ap = assignment();
+    if (ap.register_valid()) {
+        assert(ap.full_reg_id() != reg.id());
 
         state.v.compiler->derived()->mov(
             reg, AsmReg{ap.full_reg_id()}, ap.part_size());

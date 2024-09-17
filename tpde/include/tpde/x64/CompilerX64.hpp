@@ -727,11 +727,13 @@ u32 CallingConv::handle_call_args(
             assert(!ptr_ref.is_const);
             AsmReg ptr_reg;
             if (gp_reg_count < gp_regs.size()) {
-                ptr_reg = ptr_ref.reload_into_specific(gp_regs[gp_reg_count++]);
+                ptr_reg = ptr_ref.reload_into_specific(compiler,
+                                                       gp_regs[gp_reg_count++]);
                 scratch1.alloc_specific(ptr_reg);
                 arg_scratchs.push_back(std::move(scratch1));
             } else {
-                ptr_reg = ptr_ref.reload_into_specific(scratch1.alloc_gp());
+                ptr_reg = ptr_ref.reload_into_specific_fixed(
+                    compiler, scratch1.alloc_gp());
             }
 
             auto tmp_reg = scratch2.alloc_gp();
@@ -829,12 +831,18 @@ u32 CallingConv::handle_call_args(
                 };
 
                 if (gp_reg_count < gp_regs.size()) {
-                    scratch.alloc_specific(
-                        ref.reload_into_specific(gp_regs[gp_reg_count++]));
+                    const AsmReg target_reg = gp_regs[gp_reg_count++];
+                    if (ref.is_in_reg(target_reg) && ref.can_salvage()) {
+                        scratch.alloc_specific(ref.salvage());
+                    } else {
+                        scratch.alloc_specific(
+                            ref.reload_into_specific(compiler, target_reg));
+                    }
                     ext_reg(scratch.cur_reg);
                     arg_scratchs.push_back(std::move(scratch));
                 } else {
-                    auto reg = ref.reload_into_specific(scratch.alloc_gp());
+                    auto reg = ref.reload_into_specific_fixed(
+                        compiler, scratch.alloc_gp());
                     ext_reg(reg);
                     ASMC(compiler,
                          MOV64mr,
@@ -845,8 +853,13 @@ u32 CallingConv::handle_call_args(
             } else {
                 assert(ref.bank() == 1);
                 if (xmm_reg_count < xmm_regs.size()) {
-                    scratch.alloc_specific(
-                        ref.reload_into_specific(xmm_regs[xmm_reg_count++]));
+                    const AsmReg target_reg = xmm_regs[xmm_reg_count++];
+                    if (ref.is_in_reg(target_reg) && ref.can_salvage()) {
+                        scratch.alloc_specific(ref.salvage());
+                    } else {
+                        scratch.alloc_specific(
+                            ref.reload_into_specific(compiler, target_reg));
+                    }
                     arg_scratchs.push_back(std::move(scratch));
                 } else {
                     auto reg = compiler->val_as_reg(ref, scratch);
@@ -1665,7 +1678,7 @@ void CompilerX64<Adaptor, Derived, BaseTy>::generate_call(
                == 0);
         if (ref.is_const) {
             this->register_file.clobbered |= (1ull << AsmReg::R10);
-            ASM(CALLr, ref.reload_into_specific(AsmReg::R10));
+            ASM(CALLr, ref.reload_into_specific(derived(), AsmReg::R10));
         } else {
             auto ap = ref.assignment();
             if (ap.register_valid()) {
@@ -1675,7 +1688,7 @@ void CompilerX64<Adaptor, Derived, BaseTy>::generate_call(
                 ASM(CALLm, FE_MEM(FE_BP, 0, FE_NOREG, (i32)-ap.frame_off()));
             } else {
                 this->register_file.clobbered |= (1ull << AsmReg::R10);
-                ASM(CALLr, ref.reload_into_specific(AsmReg::R10));
+                ASM(CALLr, ref.reload_into_specific(derived(), AsmReg::R10));
             }
 
             if (ap.register_valid()
