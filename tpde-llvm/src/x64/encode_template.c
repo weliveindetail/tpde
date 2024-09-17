@@ -128,6 +128,66 @@ u128 TARGET_V1 shli128(u128 a, u128 b) { return (a << b); }
 u128 TARGET_V1 shri128(u128 a, u128 b) { return (a >> b); }
 i128 TARGET_V1 ashri128(i128 a, i128 b) { return (a >> b); }
 
+// For better codegen when shifting by immediates
+u128 TARGET_V1 shli128_lt64(u128 a, u64 shift) {
+    u64 low = a & 0xFFFFFFFFFFFFFFFF;
+    u64 high = a >> 64;
+
+    u64 res_low = low << shift;
+    u64 res_high = high << shift;
+    res_high |= (low >> (64 - shift));
+
+    u128 res = ((u128)res_high) << 64;
+    res |= res_low;
+    return res;
+}
+
+u128 TARGET_V1 shli128_ge64(u128 a, u64 shift_minus_64) {
+    u64 low = a & 0xFFFFFFFFFFFFFFFF;
+
+    return (u128)(low << shift_minus_64);
+}
+
+u128 TARGET_V1 shri128_lt64(u128 a, u64 shift) {
+    u64 low = a & 0xFFFFFFFFFFFFFFFF;
+    u64 high = a >> 64;
+
+    u64 res_low = low >> shift;
+    u64 res_high = high >> shift;
+    res_low |= (high << (64 - shift));
+
+    u128 res = ((u128)res_high) << 64;
+    res |= res_low;
+    return res;
+}
+
+u128 TARGET_V1 shri128_ge64(u128 a, u64 shift_minus_64) {
+    u64 high = a >> 64;
+
+    return (u128)(high >> shift_minus_64);
+}
+
+u128 TARGET_V1 ashri128_lt64(u128 a, u64 shift) {
+    u64 low = a & 0xFFFFFFFFFFFFFFFF;
+    u64 high = a >> 64;
+
+    u64 res_low = low >> shift;
+    u64 res_high = (i64)high >> shift;
+    res_low |= (high << (64 - shift));
+
+    u128 res = ((u128)res_high) << 64;
+    res |= res_low;
+    return res;
+}
+
+u128 TARGET_V1 ashri128_ge64(i128 a, u64 shift_minus_64) {
+    i64 high = a >> 64;
+
+    u128 res = ((u128)(high >> 63)) << 64;
+    res |= (uint64_t)(high >> shift_minus_64);
+    return res;
+}
+
 // --------------------------
 // extensions
 // --------------------------

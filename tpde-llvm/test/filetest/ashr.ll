@@ -6,87 +6,87 @@
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
 
 
-define void @lshr_i8_3(i8 %0) {
-; X64-LABEL: lshr_i8_3>:
+define void @ashr_i8_3(i8 %0) {
+; X64-LABEL: ashr_i8_3>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movzx edi, dil
-; X64:    shr edi, 0x3
+; X64:    movsx edi, dil
+; X64:    sar edi, 0x3
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
-    %1 = lshr i8 %0, 3
+    %1 = ashr i8 %0, 3
     ret void
 }
 
-define void @lshr_i8_i8(i8 %0, i8 %1) {
-; X64-LABEL: lshr_i8_i8>:
+define void @ashr_i8_i8(i8 %0, i8 %1) {
+; X64-LABEL: ashr_i8_i8>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movzx edi, dil
+; X64:    movsx edi, dil
 ; X64:    movzx esi, sil
 ; X64:    mov ecx, esi
-; X64:    shr edi, cl
+; X64:    sar edi, cl
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 entry:
-    %2 = lshr i8 %0, %1
+    %2 = ashr i8 %0, %1
     ret void
 }
 
-define void @lshr_i16_3(i16 %0) {
-; X64-LABEL: lshr_i16_3>:
+define void @ashr_i16_3(i16 %0) {
+; X64-LABEL: ashr_i16_3>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movzx edi, di
-; X64:    shr edi, 0x3
+; X64:    movsx edi, di
+; X64:    sar edi, 0x3
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 entry:
-    %1 = lshr i16 %0, 3
+    %1 = ashr i16 %0, 3
     ret void
 }
 
-define void @lshr_i16_i16(i16 %0, i16 %1) {
-; X64-LABEL: lshr_i16_i16>:
+define void @ashr_i16_i16(i16 %0, i16 %1) {
+; X64-LABEL: ashr_i16_i16>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movzx edi, di
+; X64:    movsx edi, di
 ; X64:    movzx esi, si
 ; X64:    mov ecx, esi
-; X64:    shr edi, cl
+; X64:    sar edi, cl
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 entry:
-    %2 = lshr i16 %0, %1
+    %2 = ashr i16 %0, %1
     ret void
 }
 
-define void @lshr_i32_3(i32 %0) {
-; X64-LABEL: lshr_i32_3>:
+define void @ashr_i32_3(i32 %0) {
+; X64-LABEL: ashr_i32_3>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    shr edi, 0x3
+; X64:    sar edi, 0x3
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
@@ -95,18 +95,18 @@ define void @lshr_i32_3(i32 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
-    %1 = lshr i32 %0, 3
+    %1 = ashr i32 %0, 3
     ret void
 }
 
-define void @lshr_i32_i32(i32 %0, i32 %1) {
-; X64-LABEL: lshr_i32_i32>:
+define void @ashr_i32_i32(i32 %0, i32 %1) {
+; X64-LABEL: ashr_i32_i32>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
 ; X64:    mov ecx, esi
-; X64:    shr edi, cl
+; X64:    sar edi, cl
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
@@ -114,17 +114,17 @@ define void @lshr_i32_i32(i32 %0, i32 %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 entry:
-    %2 = lshr i32 %0, %1
+    %2 = ashr i32 %0, %1
     ret void
 }
 
-define void @lshr_i64_3(i64 %0) {
-; X64-LABEL: lshr_i64_3>:
+define void @ashr_i64_3(i64 %0) {
+; X64-LABEL: ashr_i64_3>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    shr rdi, 0x3
+; X64:    sar rdi, 0x3
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
@@ -132,18 +132,18 @@ define void @lshr_i64_3(i64 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 entry:
-    %1 = lshr i64 %0, 3
+    %1 = ashr i64 %0, 3
     ret void
 }
 
-define void @lshr_i64_i64(i64 %0, i64 %1) {
-; X64-LABEL: lshr_i64_i64>:
+define void @ashr_i64_i64(i64 %0, i64 %1) {
+; X64-LABEL: ashr_i64_i64>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x20
 ; X64:    mov ecx, esi
-; X64:    shr rdi, cl
+; X64:    sar rdi, cl
 ; X64:    add rsp, 0x20
 ; X64:    pop rbp
 ; X64:    ret
@@ -151,91 +151,91 @@ define void @lshr_i64_i64(i64 %0, i64 %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
-    %2 = lshr i64 %0, %1
+    %2 = ashr i64 %0, %1
     ret void
 }
 
-define void @lshr_i37_3(i37 %0) {
-; X64-LABEL: lshr_i37_3>:
+
+define void @ashr_i21_3(i21 %0) {
+; X64-LABEL: ashr_i21_3>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movabs rax, 0x1fffffffff
-; X64:    and rdi, rax
-; X64:    shr rdi, 0x3
-; X64:    add rsp, 0x10
-; X64:    pop rbp
-; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
-entry:
-    %1 = lshr i37 %0, 3
-    ret void
-}
-
-define void @lshr_i21_3(i21 %0) {
-; X64-LABEL: lshr_i21_3>:
-; X64:    push rbp
-; X64:    mov rbp, rsp
-; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
-; X64:    and edi, 0x1fffff
-; X64:    shr edi, 0x3
+; X64:    shl edi, 0xb
+; X64:    sar edi, 0xb
+; X64:    sar edi, 0x3
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
-    %1 = lshr i21 %0, 3
+    %1 = ashr i21 %0, 3
     ret void
 }
 
-define void @lshr_i21_i21(i21 %0, i21 %1) {
-; X64-LABEL: lshr_i21_i21>:
+define void @ashr_i21_i21(i21 %0, i21 %1) {
+; X64-LABEL: ashr_i21_i21>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    and edi, 0x1fffff
+; X64:    shl edi, 0xb
+; X64:    sar edi, 0xb
 ; X64:    and esi, 0x1fffff
 ; X64:    mov ecx, esi
-; X64:    shr edi, cl
+; X64:    sar edi, cl
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 entry:
-    %2 = lshr i21 %0, %1
+    %2 = ashr i21 %0, %1
     ret void
 }
 
-define void @lshr_i37_i37(i37 %0, i37 %1) {
-; X64-LABEL: lshr_i37_i37>:
+define void @ashr_i37_3(i37 %0) {
+; X64-LABEL: ashr_i37_3>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movabs rax, 0x1fffffffff
-; X64:    and rdi, rax
+; X64:    shl rdi, 0x1b
+; X64:    sar rdi, 0x1b
+; X64:    sar rdi, 0x3
+; X64:    add rsp, 0x10
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rax], al
+entry:
+    %1 = ashr i37 %0, 3
+    ret void
+}
+
+define void @ashr_i37_i37(i37 %0, i37 %1) {
+; X64-LABEL: ashr_i37_i37>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x10
+; X64:    shl rdi, 0x1b
+; X64:    sar rdi, 0x1b
 ; X64:    movabs rax, 0x1fffffffff
 ; X64:    and rsi, rax
 ; X64:    mov ecx, esi
-; X64:    shr rdi, cl
+; X64:    sar rdi, cl
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
 entry:
-    %2 = lshr i37 %0, %1
+    %2 = ashr i37 %0, %1
     ret void
 }
 
-define i128 @lshr_i128_3(i128 %0) {
-; X64-LABEL: lshr_i128_3>:
+define i128 @ashr_i128_3(i128 %0) {
+; X64-LABEL: ashr_i128_3>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
@@ -243,7 +243,7 @@ define i128 @lshr_i128_3(i128 %0) {
 ; X64:    sub rsp, 0x20
 ; X64:    lea rax, [rsi + rsi]
 ; X64:    mov rdx, rsi
-; X64:    shr rdx, 0x3
+; X64:    sar rdx, 0x3
 ; X64:    mov rbx, rdi
 ; X64:    shr rbx, 0x3
 ; X64:    mov rcx, 0x3
@@ -257,32 +257,34 @@ define i128 @lshr_i128_3(i128 %0) {
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
-    %1 = lshr i128 %0, 3
+    %1 = ashr i128 %0, 3
     ret i128 %1
 }
 
-define i128 @lshr_i128_74(i128 %0) {
-; X64-LABEL: lshr_i128_74>:
+define i128 @ashr_i128_74(i128 %0) {
+; X64-LABEL: ashr_i128_74>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x20
 ; X64:    mov rax, rsi
-; X64:    shr rax, 0xa
-; X64:    xor ecx, ecx
-; X64:    mov rdx, rcx
+; X64:    sar rax, 0x3f
+; X64:    mov rcx, rsi
+; X64:    sar rcx, 0xa
+; X64:    mov qword ptr [rbp - 0x18], rax
+; X64:    mov rax, rcx
+; X64:    mov rdx, qword ptr [rbp - 0x18]
 ; X64:    add rsp, 0x20
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
-    %1 = lshr i128 %0, 74
+    %1 = ashr i128 %0, 74
     ret i128 %1
 }
 
-define i128 @lshr_i128_128(i128 %0) {
-; X64-LABEL: lshr_i128_128>:
+define i128 @ashr_i128_128(i128 %0) {
+; X64-LABEL: ashr_i128_128>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
@@ -290,7 +292,7 @@ define i128 @lshr_i128_128(i128 %0) {
 ; X64:    sub rsp, 0x20
 ; X64:    lea rax, [rsi + rsi]
 ; X64:    mov rdx, rsi
-; X64:    shr rdx, 0x80
+; X64:    sar rdx, 0x80
 ; X64:    mov rbx, rdi
 ; X64:    shr rbx, 0x80
 ; X64:    mov rcx, 0x80
@@ -304,110 +306,108 @@ define i128 @lshr_i128_128(i128 %0) {
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
-    %1 = lshr i128 %0, 128
+    %1 = ashr i128 %0, 128
     ret i128 %1
 }
 
 
-define void @lshr_i64_no_salvage_imm(i64 %0) {
-; X64-LABEL: lshr_i64_no_salvage_imm>:
+define void @ashr_i64_no_salvage_imm(i64 %0) {
+; X64-LABEL: ashr_i64_no_salvage_imm>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x20
 ; X64:    mov rax, rdi
-; X64:    shr rax, 0x3
+; X64:    sar rax, 0x3
 ; X64:    mov ecx, eax
-; X64:    shr rdi, cl
+; X64:    sar rdi, cl
 ; X64:    add rsp, 0x20
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 entry:
-    %1 = lshr i64 %0, 3
-    %2 = lshr i64 %0, %1
+    %1 = ashr i64 %0, 3
+    %2 = ashr i64 %0, %1
     ret void
 }
 
-define void @lshr_i64_no_salvage_reg(i64 %0, i64 %1) {
-; X64-LABEL: lshr_i64_no_salvage_reg>:
+define void @ashr_i64_no_salvage_reg(i64 %0, i64 %1) {
+; X64-LABEL: ashr_i64_no_salvage_reg>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x20
 ; X64:    mov rax, rdi
 ; X64:    mov ecx, esi
-; X64:    shr rax, cl
+; X64:    sar rax, cl
 ; X64:    mov ecx, eax
-; X64:    shr rdi, cl
+; X64:    sar rdi, cl
 ; X64:    add rsp, 0x20
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
-    %2 = lshr i64 %0, %1
-    %3 = lshr i64 %0, %2
+    %2 = ashr i64 %0, %1
+    %3 = ashr i64 %0, %2
     ret void
 }
 
-define void @lshr_i37_no_salvage_imm(i37 %0) {
-; X64-LABEL: lshr_i37_no_salvage_imm>:
+define void @ashr_i37_no_salvage_imm(i37 %0) {
+; X64-LABEL: ashr_i37_no_salvage_imm>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
 ; X64:    mov rax, rdi
-; X64:    movabs rcx, 0x1fffffffff
-; X64:    and rax, rcx
-; X64:    shr rax, 0x3
-; X64:    movabs rcx, 0x1fffffffff
-; X64:    and rdi, rcx
+; X64:    shl rax, 0x1b
+; X64:    sar rax, 0x1b
+; X64:    sar rax, 0x3
+; X64:    shl rdi, 0x1b
+; X64:    sar rdi, 0x1b
 ; X64:    movabs rcx, 0x1fffffffff
 ; X64:    and rax, rcx
 ; X64:    mov ecx, eax
-; X64:    shr rdi, cl
+; X64:    sar rdi, cl
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
-    %1 = lshr i37 %0, 3
-    %2 = lshr i37 %0, %1
+    %1 = ashr i37 %0, 3
+    %2 = ashr i37 %0, %1
     ret void
 }
 
-define void @lshr_i37_no_salvage_reg(i37 %0, i37 %1) {
-; X64-LABEL: lshr_i37_no_salvage_reg>:
+define void @ashr_i37_no_salvage_reg(i37 %0, i37 %1) {
+; X64-LABEL: ashr_i37_no_salvage_reg>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
 ; X64:    mov rax, rdi
-; X64:    movabs rcx, 0x1fffffffff
-; X64:    and rax, rcx
+; X64:    shl rax, 0x1b
+; X64:    sar rax, 0x1b
 ; X64:    movabs rcx, 0x1fffffffff
 ; X64:    and rsi, rcx
 ; X64:    mov ecx, esi
-; X64:    shr rax, cl
-; X64:    movabs rcx, 0x1fffffffff
-; X64:    and rdi, rcx
+; X64:    sar rax, cl
+; X64:    shl rdi, 0x1b
+; X64:    sar rdi, 0x1b
 ; X64:    movabs rcx, 0x1fffffffff
 ; X64:    and rax, rcx
 ; X64:    mov ecx, eax
-; X64:    shr rdi, cl
+; X64:    sar rdi, cl
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+; X64:    add byte ptr [rax], al
 ; X64:    <unknown>
 entry:
-    %2 = lshr i37 %0, %1
-    %3 = lshr i37 %0, %2
+    %2 = ashr i37 %0, %1
+    %3 = ashr i37 %0, %2
     ret void
 }
 ;; NOTE: These prefixes are unused and the list is autogenerated. Do not add tests below this line:
