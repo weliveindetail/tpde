@@ -3302,12 +3302,15 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi32(AsmOperand param_0
     // Skipping check for XOR32ri since associated use is undefined
     // Skipping check for XOR32rm since associated use is undefined
     // operand 0 is dx
-    // operand 0(dx) is the same as its tied destination
-    scratch_dx.alloc_from_bank(0);
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
     // operand 1 is dx
-    // operand 1(dx) is a simple register
-    AsmReg inst1_op1 = scratch_dx.cur_reg;
+    // operand is undef, just allocating scratch for it
+    AsmReg inst1_op1 = scratch_dx.alloc_from_bank(0);
 
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
     ASMD(XOR32rr, scratch_dx.cur_reg, inst1_op1);
     // result dx is marked as alive
 
@@ -3488,12 +3491,15 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi32(AsmOperand param_0
     // Skipping check for XOR32ri since associated use is undefined
     // Skipping check for XOR32rm since associated use is undefined
     // operand 0 is dx
-    // operand 0(dx) is the same as its tied destination
-    scratch_dx.alloc_from_bank(0);
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
     // operand 1 is dx
-    // operand 1(dx) is a simple register
-    AsmReg inst1_op1 = scratch_dx.cur_reg;
+    // operand is undef, just allocating scratch for it
+    AsmReg inst1_op1 = scratch_dx.alloc_from_bank(0);
 
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
     ASMD(XOR32rr, scratch_dx.cur_reg, inst1_op1);
     // result dx is marked as alive
 
@@ -4405,12 +4411,15 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi64(AsmOperand param_0
     // Skipping check for XOR32ri since associated use is undefined
     // Skipping check for XOR32rm since associated use is undefined
     // operand 0 is dx
-    // operand 0(dx) is the same as its tied destination
-    scratch_dx.alloc_from_bank(0);
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
     // operand 1 is dx
-    // operand 1(dx) is a simple register
-    AsmReg inst1_op1 = scratch_dx.cur_reg;
+    // operand is undef, just allocating scratch for it
+    AsmReg inst1_op1 = scratch_dx.alloc_from_bank(0);
 
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
     // Ignoring implicit def RDX as it exceeds the number of implicit defs in the MCInstrDesc
     ASMD(XOR32rr, scratch_dx.cur_reg, inst1_op1);
     // result dx is marked as alive
@@ -4593,12 +4602,15 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi64(AsmOperand param_0
     // Skipping check for XOR32ri since associated use is undefined
     // Skipping check for XOR32rm since associated use is undefined
     // operand 0 is dx
-    // operand 0(dx) is the same as its tied destination
-    scratch_dx.alloc_from_bank(0);
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
     // operand 1 is dx
-    // operand 1(dx) is a simple register
-    AsmReg inst1_op1 = scratch_dx.cur_reg;
+    // operand is undef, just allocating scratch for it
+    AsmReg inst1_op1 = scratch_dx.alloc_from_bank(0);
 
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
     // Ignoring implicit def RDX as it exceeds the number of implicit defs in the MCInstrDesc
     ASMD(XOR32rr, scratch_dx.cur_reg, inst1_op1);
     // result dx is marked as alive
@@ -6256,12 +6268,15 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128(AsmOperand param_0
     // Skipping check for XOR32ri since associated use is undefined
     // Skipping check for XOR32rm since associated use is undefined
     // operand 0 is ax
-    // operand 0(ax) is the same as its tied destination
-    scratch_ax.alloc_from_bank(0);
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
     // operand 1 is ax
-    // operand 1(ax) is a simple register
-    AsmReg inst10_op1 = scratch_ax.cur_reg;
+    // operand is undef, just allocating scratch for it
+    AsmReg inst10_op1 = scratch_ax.alloc_from_bank(0);
 
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
     // Ignoring implicit def RAX as it exceeds the number of implicit defs in the MCInstrDesc
     ASMD(XOR32rr, scratch_ax.cur_reg, inst10_op1);
     // result ax is marked as alive
@@ -6520,14 +6535,15 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0
     // Skipping check for XOR32ri since associated use is undefined
     // Skipping check for XOR32rm since associated use is undefined
     // operand 0 is dx
-    // dx is mapped to param_2
-    AsmReg inst9_op0 = scratch_dx.alloc_from_bank(0);
-    AsmReg inst9_op0_tmp = param_2.as_reg(this);
-    ASMD(MOV32rr, inst9_op0, inst9_op0_tmp);
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
     // operand 1 is dx
-    // dx is mapped to param_2
-    AsmReg inst9_op1 = param_2.as_reg(this);
+    // operand is undef, just allocating scratch for it
+    AsmReg inst9_op1 = scratch_dx.alloc_from_bank(0);
 
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
     // Ignoring implicit def RDX as it exceeds the number of implicit defs in the MCInstrDesc
     ASMD(XOR32rr, scratch_dx.cur_reg, inst9_op1);
     // result dx is marked as alive

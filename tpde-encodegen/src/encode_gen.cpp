@@ -1551,6 +1551,56 @@ bool generate_inst_inner(std::string           &buf,
                            op_idx,
                            state.enc_target->reg_name_lower(orig_reg_id));
 
+            if (llvm_op.isUndef()) {
+                state.fmt_line(
+                    buf,
+                    indent,
+                    "// operand is undef, just allocating scratch for it");
+
+                if (llvm_op.isTied()) {
+                    state.fmt_line(
+                        buf,
+                        indent,
+                        "// operand is tied so no work needs to be done");
+                    if (llvm_op.isImplicit()) {
+                        std::cerr << "ERROR: Found instruction with tied "
+                                     "implicit operand which is unsupported\n";
+                        assert(0);
+                        return false;
+                    }
+                    const auto &def_reg = inst->getOperand(
+                        inst->findTiedOperandIdx(llvm_op.getOperandNo()));
+                    assert(def_reg.isReg() && def_reg.getReg().isPhysical());
+                    const auto def_reg_id =
+                        state.enc_target->reg_id_from_mc_reg(def_reg.getReg());
+                    assert(state.enc_target->reg_bank(orig_reg_id)
+                           == state.enc_target->reg_bank(def_reg_id));
+
+                    if (def_reg.isImplicit()) {
+                        // TODO(ts): does this make sense?
+                        std::cerr << "ERROR: Found instruction which has an "
+                                     "operand tied to an implicit definition "
+                                     "which is unsupported\n";
+                        assert(0);
+                        return false;
+                    }
+                    // we leave the definition unallocated so that it gets
+                    // allocated later on
+                    break;
+                }
+
+                state.fmt_line(buf,
+                               indent,
+                               "AsmReg inst{}_op{} = "
+                               "scratch_{}.alloc_from_bank({});\n",
+                               inst_id,
+                               op_idx,
+                               state.enc_target->reg_name_lower(orig_reg_id),
+                               state.enc_target->reg_bank(orig_reg_id));
+                op_names.push_back(std::format("inst{}_op{}", inst_id, op_idx));
+                break;
+            }
+
             auto resolved_reg_id = orig_reg_id;
             while (state.value_map[resolved_reg_id].ty
                    == ValueInfo::REG_ALIAS) {
@@ -1569,18 +1619,18 @@ bool generate_inst_inner(std::string           &buf,
             assert(!llvm_op.isEarlyClobber());
 
             if (llvm_op.isImplicit()) {
-                // notify the outer code that we need the register argument as a
-                // fixed register state.fmt_line(buf, indent, "// {} is an
-                // implicit operand, need to fix it");
+                // notify the outer code that we need the register argument
+                // as a fixed register state.fmt_line(buf, indent, "// {} is
+                // an implicit operand, need to fix it");
                 state.fixed_reg_conds[orig_reg_id].emplace_back(if_cond);
             }
 
             const auto &reg_info = state.value_map[resolved_reg_id];
             if (reg_info.ty == ValueInfo::SCRATCHREG) {
-                // if the destination is tied, we want to salvage if possible
-                // or allocate the destination if required and do a copy
-                // if the destination and the source are the same then we only
-                // need to allocate
+                // if the destination is tied, we want to salvage if
+                // possible or allocate the destination if required and do a
+                // copy if the destination and the source are the same then
+                // we only need to allocate
                 //
                 // if it is not tied we can simply use the source reg
 
@@ -1611,14 +1661,15 @@ bool generate_inst_inner(std::string           &buf,
                     if (resolved_reg_id == def_resolved_reg_id) {
                         std::format_to(
                             std::back_inserter(buf),
-                            "{:>{}}// operand {}({}) is the same as its tied "
+                            "{:>{}}// operand {}({}) is the "
+                            "same as its tied "
                             "destination\n",
                             "",
                             indent,
                             op_idx,
                             state.enc_target->reg_name_lower(resolved_reg_id));
-                        // TODO(ts): in this case, the scratch should already be
-                        // allocated, no?
+                        // TODO(ts): in this case, the scratch should
+                        // already be allocated, no?
                         std::format_to(
                             std::back_inserter(buf),
                             "{:>{}}"
@@ -1660,7 +1711,8 @@ bool generate_inst_inner(std::string           &buf,
                     } else {
                         std::format_to(
                             std::back_inserter(buf),
-                            "{:>{}}// operand {}({}) has some references so "
+                            "{:>{}}// operand {}({}) has some "
+                            "references so "
                             "copy it\n",
                             "",
                             indent,
@@ -1779,9 +1831,9 @@ bool generate_inst_inner(std::string           &buf,
 
                 // try to salvage
                 if (llvm_op.isTied()) {
-                    // TODO(ts): if the destination is used as a fixed reg at
-                    // some point we cannot simply salvage into it i think so we
-                    // need some extra helpers for that
+                    // TODO(ts): if the destination is used as a fixed reg
+                    // at some point we cannot simply salvage into it i
+                    // think so we need some extra helpers for that
                     const auto &def_reg = inst->getOperand(
                         inst->findTiedOperandIdx(llvm_op.getOperandNo()));
                     assert(def_reg.isReg() && def_reg.getReg().isPhysical());
@@ -1879,12 +1931,13 @@ bool generate_inst_inner(std::string           &buf,
                                            "AsmReg inst{}_op{};",
                                            inst_id,
                                            op_idx);
-                            // TODO(ts): make try_salvage_if_nonalloc return the
-                            // correct register?
+                            // TODO(ts): make try_salvage_if_nonalloc return
+                            // the correct register?
                             state.fmt_line(
                                 buf,
                                 indent,
-                                "if ({}.try_salvage_if_nonalloc(scratch_{}, "
+                                "if "
+                                "({}.try_salvage_if_nonalloc(scratch_{}, "
                                 "{})) "
                                 "{{",
                                 reg_info.operand_name,
@@ -1928,8 +1981,14 @@ bool generate_inst_inner(std::string           &buf,
             state.fmt_line(
                 buf, indent, "// operand {} is a memory operand", op_idx);
 
-            const auto llvm_op_idx    = desc.operands[op_idx].llvm_idx;
-            auto       is_replacement = false;
+            const auto llvm_op_idx = desc.operands[op_idx].llvm_idx;
+            if (inst->getOperand(llvm_op_idx).isUndef()) {
+                std::cerr
+                    << "ERROR: encountered undef operand in memory operand\n";
+                return false;
+            }
+
+            auto is_replacement = false;
             if (llvm_op_idx >= llvm_inst_desc.operands().size()) {
                 // this was an implicit (physical) register operand
                 is_replacement = true;
@@ -2398,8 +2457,14 @@ bool generate_inst_inner(std::string           &buf,
             state.fmt_line(
                 buf, indent, "// operand {} is an immediate operand", op_idx);
 
-            const auto llvm_op_idx    = desc.operands[op_idx].llvm_idx;
-            auto       is_replacement = false;
+            const auto llvm_op_idx = desc.operands[op_idx].llvm_idx;
+            if (inst->getOperand(llvm_op_idx).isReg()
+                && inst->getOperand(llvm_op_idx).isUndef()) {
+                std::cerr << "ERROR: encountered undef immediate operand\n";
+                return false;
+            }
+
+            auto is_replacement = false;
             if (llvm_op_idx >= llvm_inst_desc.operands().size()) {
                 // this was an implicit (physical) register operand
                 is_replacement = true;
@@ -2497,11 +2562,11 @@ bool generate_inst_inner(std::string           &buf,
                        "// Handling implicit operand {}",
                        state.enc_target->reg_name_lower(reg_id));
         if (implicit_use_count >= llvm_inst_desc.NumImplicitUses) {
-            state.fmt_line(
-                buf,
-                indent,
-                "// Ignoring since the number of implicit operands on the LLVM "
-                "inst exceeds the number in the MCInstrDesc");
+            state.fmt_line(buf,
+                           indent,
+                           "// Ignoring since the number of implicit "
+                           "operands on the LLVM "
+                           "inst exceeds the number in the MCInstrDesc");
             continue;
         }
         ++implicit_use_count;
@@ -2534,8 +2599,8 @@ bool generate_inst_inner(std::string           &buf,
                             state.enc_target->reg_name_lower(resolved_reg_id)),
                 reg_size_bytes(state.func, op.getReg()));
             assert(state.value_map[reg_id].ty == ValueInfo::REG_ALIAS);
-            // TODO(ts): allow this function to bubble up these copies so we can
-            // take advantage of them if they happen in all branches
+            // TODO(ts): allow this function to bubble up these copies so we
+            // can take advantage of them if they happen in all branches
             if (if_cond.empty()) {
                 state.remove_reg_alias(
                     buf, reg_id, state.value_map[reg_id].alias_reg_id);
@@ -2544,12 +2609,12 @@ bool generate_inst_inner(std::string           &buf,
         }
 
         assert(info.ty == ValueInfo::ASM_OPERAND);
-        state.fmt_line(
-            buf,
-            indent,
-            "// Need to break alias from {} to operand {} and copy the value",
-            state.enc_target->reg_name_lower(reg_id),
-            info.operand_name);
+        state.fmt_line(buf,
+                       indent,
+                       "// Need to break alias from {} to operand {} and "
+                       "copy the value",
+                       state.enc_target->reg_name_lower(reg_id),
+                       info.operand_name);
         state.fmt_line(buf,
                        indent,
                        "AsmReg inst{}_op{}_tmp = {}.as_reg(this);",
@@ -2578,8 +2643,9 @@ bool generate_inst_inner(std::string           &buf,
     }
 
     // allocate destinations if it did not yet happen
-    // TODO(ts): we rely on the fact that the order when encoding corresponds
-    // to llvms ordering of defs/uses which might not always be the case
+    // TODO(ts): we rely on the fact that the order when encoding
+    // corresponds to llvms ordering of defs/uses which might not always be
+    // the case
 
     buf += "\n";
 
@@ -2593,7 +2659,8 @@ bool generate_inst_inner(std::string           &buf,
                 state.fmt_line(
                     buf,
                     indent,
-                    "// Ignoring implicit def {} as it exceeds the number of "
+                    "// Ignoring implicit def {} as it exceeds the number "
+                    "of "
                     "implicit defs in the MCInstrDesc",
                     state.func->getSubtarget().getRegisterInfo()->getName(
                         def.getReg()));
