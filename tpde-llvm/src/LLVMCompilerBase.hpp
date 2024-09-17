@@ -19,6 +19,9 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     using ValuePartRef = typename Base::ValuePartRef;
     using ValLocalIdx  = typename Base::ValLocalIdx;
 
+    using Assembler = typename Base::Assembler;
+    using SymRef    = typename Assembler::SymRef;
+
     enum class IntBinaryOp {
         add,
         sub,
@@ -35,7 +38,18 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
         ashr,
     };
 
+    enum class FloatBinaryOp {
+        add,
+        sub,
+        mul,
+        div,
+        rem
+    };
+
     // using AsmOperand = typename Derived::AsmOperand;
+
+    SymRef sym_fmod  = Assembler::INVALID_SYM_REF;
+    SymRef sym_fmodf = Assembler::INVALID_SYM_REF;
 
     LLVMCompilerBase(LLVMAdaptor *adaptor, const bool generate_obj)
         : Base{adaptor, generate_obj} {
@@ -62,6 +76,10 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     IRValueRef llvm_val_idx(const llvm::Value *) const noexcept;
     IRValueRef llvm_val_idx(const llvm::Instruction *) const noexcept;
 
+    SymRef get_or_create_sym_ref(SymRef          &sym,
+                                 std::string_view name,
+                                 bool             local = false) noexcept;
+
     bool compile_inst(IRValueRef) noexcept;
 
     bool compile_ret(IRValueRef, llvm::Instruction *) noexcept;
@@ -70,6 +88,9 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_int_binary_op(IRValueRef,
                                llvm::Instruction *,
                                IntBinaryOp op) noexcept;
+    bool compile_float_binary_op(IRValueRef,
+                                 llvm::Instruction *,
+                                 FloatBinaryOp op) noexcept;
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -280,6 +301,18 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef
 }
 
 template <typename Adaptor, typename Derived, typename Config>
+typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
+    LLVMCompilerBase<Adaptor, Derived, Config>::get_or_create_sym_ref(
+        SymRef &sym, std::string_view name, const bool local) noexcept {
+    if (sym != Assembler::INVALID_SYM_REF) {
+        return sym;
+    }
+
+    sym = this->assembler.sym_add_undef(name, local);
+    return sym;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     IRValueRef val_idx) noexcept {
     auto *i =
@@ -316,6 +349,16 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
         return compile_int_binary_op(val_idx, i, IntBinaryOp::shr);
     case llvm::Instruction::AShr:
         return compile_int_binary_op(val_idx, i, IntBinaryOp::ashr);
+    case llvm::Instruction::FAdd:
+        return compile_float_binary_op(val_idx, i, FloatBinaryOp::add);
+    case llvm::Instruction::FSub:
+        return compile_float_binary_op(val_idx, i, FloatBinaryOp::sub);
+    case llvm::Instruction::FMul:
+        return compile_float_binary_op(val_idx, i, FloatBinaryOp::mul);
+    case llvm::Instruction::FDiv:
+        return compile_float_binary_op(val_idx, i, FloatBinaryOp::div);
+    case llvm::Instruction::FRem:
+        return compile_float_binary_op(val_idx, i, FloatBinaryOp::rem);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -1013,6 +1056,58 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
     (derived()->*(encode_ptrs[static_cast<u32>(op)][is_64 ? 1 : 0]))(
         std::move(lhs_op), std::move(rhs_op), res_scratch);
+
+    this->set_value(res, res_scratch);
+
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
+    IRValueRef inst_idx, llvm::Instruction *inst, FloatBinaryOp op) noexcept {
+    using AsmOperand = typename Derived::AsmOperand;
+
+    auto *inst_ty = inst->getType();
+
+    if (inst_ty->isVectorTy()) {
+        assert(0);
+        exit(1);
+    }
+
+    const bool is_double = inst_ty->isDoubleTy();
+    assert(inst_ty->isFloatTy() || inst_ty->isDoubleTy());
+
+    auto res = this->result_ref_lazy(inst_idx, 0);
+
+    if (op == FloatBinaryOp::rem) {
+        // TODO(ts): encodegen cannot encode calls atm
+        derived()->create_frem_calls(llvm_val_idx(inst->getOperand(0)),
+                                     llvm_val_idx(inst->getOperand(1)),
+                                     std::move(res),
+                                     is_double);
+        return true;
+    }
+
+    std::array<
+        std::array<bool (Derived::*)(AsmOperand, AsmOperand, ScratchReg &), 2>,
+        4>
+        encode_ptrs = {
+            {
+             {&Derived::encode_addf32, &Derived::encode_addf64},
+             {&Derived::encode_subf32, &Derived::encode_subf64},
+             {&Derived::encode_mulf32, &Derived::encode_mulf64},
+             {&Derived::encode_divf32, &Derived::encode_divf64},
+             }
+    };
+
+    auto       lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto       rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    ScratchReg res_scratch{derived()};
+
+    if (!(derived()->*(encode_ptrs[static_cast<u32>(op)][is_double ? 1 : 0]))(
+            std::move(lhs), std::move(rhs), res_scratch)) {
+        return false;
+    }
 
     this->set_value(res, res_scratch);
 

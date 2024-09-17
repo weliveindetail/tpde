@@ -68,6 +68,11 @@ struct LLVMCompilerX64
     }
 
     void move_val_to_ret_regs(llvm::Value *) noexcept;
+
+    void create_frem_calls(IRValueRef     lhs,
+                           IRValueRef     rhs,
+                           ValuePartRef &&res,
+                           bool           is_double) noexcept;
 };
 
 u32 LLVMCompilerX64::val_part_count(const IRValueRef val_idx) const noexcept {
@@ -198,7 +203,7 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
             this->materialize_constant(val_ref, target_reg);
         } else {
             if (val_ref.assignment().fixed_assignment()) {
-                val_ref.reload_into_specific(target_reg);
+                val_ref.reload_into_specific(this, target_reg);
             } else {
                 val_ref.move_into_specific(target_reg);
             }
@@ -271,13 +276,13 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
         }
 
         if (val_ref.assignment().fixed_assignment()) {
-            val_ref.reload_into_specific(call_conv.ret_regs_gp()[0]);
+            val_ref.reload_into_specific(this, call_conv.ret_regs_gp()[0]);
         } else {
             val_ref.move_into_specific(call_conv.ret_regs_gp()[0]);
         }
 
         if (val_ref_high.assignment().fixed_assignment()) {
-            val_ref_high.reload_into_specific(call_conv.ret_regs_gp()[1]);
+            val_ref_high.reload_into_specific(this, call_conv.ret_regs_gp()[1]);
         } else {
             val_ref_high.move_into_specific(call_conv.ret_regs_gp()[1]);
         }
@@ -301,7 +306,7 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
         }
 
         if (val_ref.assignment().fixed_assignment()) {
-            val_ref.reload_into_specific(call_conv.ret_regs_vec()[0]);
+            val_ref.reload_into_specific(this, call_conv.ret_regs_vec()[0]);
         } else {
             val_ref.move_into_specific(call_conv.ret_regs_vec()[0]);
         }
@@ -322,6 +327,28 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
         exit(1);
     }
     }
+}
+
+void LLVMCompilerX64::create_frem_calls(const IRValueRef lhs,
+                                        const IRValueRef rhs,
+                                        ValuePartRef   &&res_val,
+                                        const bool       is_double) noexcept {
+    SymRef sym;
+    if (is_double) {
+        sym = get_or_create_sym_ref(sym_fmod, "fmod");
+    } else {
+        sym = get_or_create_sym_ref(sym_fmodf, "fmodf");
+    }
+
+    std::array<CallArg, 2> args = {
+        {CallArg{lhs}, CallArg{rhs}}
+    };
+
+    std::variant<ValuePartRef, std::pair<ScratchReg, u8>> res =
+        std::move(res_val);
+
+    generate_call(
+        sym, args, std::span{&res, 1}, tpde::x64::CallingConv::SYSV_CC, false);
 }
 
 extern bool compile_llvm(llvm::LLVMContext    &ctx,

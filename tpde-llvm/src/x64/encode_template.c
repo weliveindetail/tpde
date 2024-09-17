@@ -83,7 +83,7 @@ void TARGET_V4 storev512(__m512* ptr, __m512 value) { *ptr = value; }
 #endif
 
 // --------------------------
-// arithmetic
+// integer arithmetic
 // --------------------------
 
 u32 TARGET_V1 addi32(u32 a, u32 b) { return (a + b); }
@@ -187,6 +187,23 @@ u128 TARGET_V1 ashri128_ge64(i128 a, u64 shift_minus_64) {
     res |= (uint64_t)(high >> shift_minus_64);
     return res;
 }
+
+// --------------------------
+// float arithmetic
+// --------------------------
+
+float TARGET_V1 addf32(float a, float b) { return (a + b); }
+float TARGET_V1 subf32(float a, float b) { return (a - b); }
+float TARGET_V1 mulf32(float a, float b) { return (a * b); }
+float TARGET_V1 divf32(float a, float b) { return (a / b); }
+//float TARGET_V1 remf32(float a, float b) { return __builtin_fmodf(a, b); }
+
+double TARGET_V1 addf64(double a, double b) { return (a + b); }
+double TARGET_V1 subf64(double a, double b) { return (a - b); }
+double TARGET_V1 mulf64(double a, double b) { return (a * b); }
+double TARGET_V1 divf64(double a, double b) { return (a / b); }
+//double TARGET_V1 remf64(double a, double b) { return __builtin_fmod(a, b); }
+
 
 // --------------------------
 // extensions

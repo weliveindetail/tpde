@@ -37,9 +37,9 @@ struct EncodeCompiler {
     using ScratchReg   = typename CompilerX64::ScratchReg;
     using AsmReg       = typename CompilerX64::AsmReg;
     using ValuePartRef = typename CompilerX64::ValuePartRef;
-    using Assembler = typename CompilerX64::Assembler;
-    using Label = typename Assembler::Label;
-    using ValLocalIdx = typename CompilerX64::ValLocalIdx;
+    using Assembler    = typename CompilerX64::Assembler;
+    using Label        = typename Assembler::Label;
+    using ValLocalIdx  = typename CompilerX64::ValLocalIdx;
 
     struct AsmOperand {
         struct Address {
@@ -171,16 +171,16 @@ struct EncodeCompiler {
         [[nodiscard]] bool val_ref_prefers_mem_enc() const noexcept;
         [[nodiscard]] u32  val_ref_frame_off() const noexcept;
         AsmReg             as_reg(EncodeCompiler *compiler) noexcept;
-        bool try_salvage(ScratchReg &, u8 bank) noexcept;
+        bool               try_salvage(ScratchReg &, u8 bank) noexcept;
         bool try_salvage_if_nonalloc(ScratchReg &, u8 bank) noexcept;
         void try_salvage_or_materialize(EncodeCompiler *compiler,
                                         ScratchReg     &dst_scratch,
                                         u8              bank,
                                         u32             size) noexcept;
         // compatibility
-        bool try_salvage(AsmReg&, ScratchReg &, u8 bank) noexcept;
+        bool try_salvage(AsmReg &, ScratchReg &, u8 bank) noexcept;
         void try_salvage_or_materialize(EncodeCompiler *compiler,
-                                        AsmReg &dst_reg,
+                                        AsmReg         &dst_reg,
                                         ScratchReg     &dst_scratch,
                                         u8              bank,
                                         u32             size) noexcept;
@@ -207,7 +207,8 @@ struct EncodeCompiler {
         return derived()->has_cpu_feats(CompilerX64::CPU_AVX);
     }
 
-    [[nodiscard]] static bool disp_add_encodeable(int32_t disp, int32_t add) noexcept {
+    [[nodiscard]] static bool disp_add_encodeable(int32_t disp,
+                                                  int32_t add) noexcept {
         const auto tmp = static_cast<int64_t>(disp) + add;
         return (static_cast<int64_t>(static_cast<int32_t>(tmp)) == tmp);
     }
@@ -302,6 +303,14 @@ struct EncodeCompiler {
     bool encode_shri128_ge64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
     bool encode_ashri128_lt64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
     bool encode_ashri128_ge64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_addf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_subf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_mulf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_divf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_addf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_subf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_mulf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_divf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_sext_8_to_32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_sext_16_to_32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_sext_32_to_64(AsmOperand param_0, ScratchReg &result_0);
@@ -324,8 +333,8 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
-    encodeable_as_imm64() const noexcept {
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::encodeable_as_imm64()
+    const noexcept {
     if (!is_imm() || std::get<Immediate>(state).size > 8) {
         return false;
     }
@@ -344,7 +353,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
         return false;
     }
 
-    const auto& data = std::get<Immediate>(state);
+    const auto &data = std::get<Immediate>(state);
     assert(data.size <= 8);
     if (data.size <= 4) {
         // always encodeable
@@ -365,7 +374,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
         return false;
     }
 
-    const auto& info = std::get<Immediate>(state);
+    const auto &info = std::get<Immediate>(state);
     assert(info.bank == 0);
     assert(info.size <= 8);
 
@@ -383,7 +392,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
         return false;
     }
 
-    const auto& info = std::get<Immediate>(state);
+    const auto &info = std::get<Immediate>(state);
     assert(info.bank == 0);
     assert(info.size <= 8);
 
@@ -516,8 +525,8 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage_if_nonalloc(
-    ScratchReg &dst_scratch, const u8 bank) noexcept {
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+    try_salvage_if_nonalloc(ScratchReg &dst_scratch, const u8 bank) noexcept {
     if (!dst_scratch.cur_reg.invalid()) {
         return false;
     }
@@ -531,7 +540,7 @@ template <typename Adaptor,
 bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
     AsmReg &dst_reg, ScratchReg &dst_scratch, const u8 bank) noexcept {
     const auto res = try_salvage(dst_scratch, bank);
-    dst_reg = dst_scratch.cur_reg;
+    dst_reg        = dst_scratch.cur_reg;
     return res;
 }
 
@@ -576,9 +585,35 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
                 ASMC(compiler->derived(), MOV64rr, dst_scratch.cur_reg, val);
             }
         } else {
-            // TODO
-            assert(0);
-            exit(1);
+            AsmReg val = this->as_reg(compiler);
+            if (size <= 16) {
+                if (compiler->derived()->has_cpu_feats(CompilerX64::CPU_AVX)) {
+                    ASMC(compiler->derived(),
+                         VMOVAPD128rr,
+                         dst_scratch.cur_reg,
+                         val);
+                } else {
+                    ASMC(compiler->derived(),
+                         SSE_MOVAPDrr,
+                         dst_scratch.cur_reg,
+                         val);
+                }
+            } else if (size <= 32) {
+                assert(
+                    compiler->derived()->has_cpu_feats(CompilerX64::CPU_AVX));
+                ASMC(compiler->derived(),
+                     VMOVAPD256rr,
+                     dst_scratch.cur_reg,
+                     val);
+            } else {
+                assert(size <= 64);
+                assert(compiler->derived()->has_cpu_feats(
+                    CompilerX64::CPU_AVX512F));
+                ASMC(compiler->derived(),
+                     VMOVAPD512rr,
+                     dst_scratch.cur_reg,
+                     val);
+            }
         }
     }
 }
@@ -7675,6 +7710,470 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128_ge64(AsmOperand p
     result_0 = std::move(scratch_ax);
     // returning reg dx as result_1
     result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function addf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept ADDSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function addf32.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept ADDSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    // SSE_ADDSSrr has a preferred encoding as SSE_ADDSSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_ADDSSrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_ADDSSrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function subf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept SUBSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function subf32.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept SUBSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    // SSE_SUBSSrr has a preferred encoding as SSE_SUBSSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_SUBSSrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_SUBSSrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mulf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function mulf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept MULSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function mulf32.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept MULSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    // SSE_MULSSrr has a preferred encoding as SSE_MULSSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_MULSSrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_MULSSrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_divf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function divf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept DIVSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function divf32.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept DIVSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    // SSE_DIVSSrr has a preferred encoding as SSE_DIVSSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_DIVSSrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_DIVSSrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function addf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept ADDSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function addf64.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept ADDSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    // SSE_ADDSDrr has a preferred encoding as SSE_ADDSDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_ADDSDrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_ADDSDrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function subf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept SUBSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function subf64.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept SUBSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    // SSE_SUBSDrr has a preferred encoding as SSE_SUBSDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_SUBSDrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_SUBSDrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mulf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function mulf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept MULSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function mulf64.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept MULSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    // SSE_MULSDrr has a preferred encoding as SSE_MULSDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_MULSDrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_MULSDrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_divf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function divf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept DIVSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function divf64.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept DIVSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    // SSE_DIVSDrr has a preferred encoding as SSE_DIVSDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_DIVSDrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_DIVSDrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
     return true;
 
 }
