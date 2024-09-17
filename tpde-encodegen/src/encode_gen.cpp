@@ -1852,15 +1852,71 @@ bool generate_inst_inner(std::string           &buf,
                         defs_allocated[def_idx(&def_reg)].first = true;
                     }
                 } else {
-                    // TODO(ts): search for dests to salvage to
-                    std::format_to(
-                        std::back_inserter(buf),
-                        "{:>{}}AsmReg inst{}_op{} = {}.as_reg(this);\n",
-                        "",
-                        indent,
-                        inst_id,
-                        op_idx,
-                        reg_info.operand_name);
+                    auto handled = false;
+                    if (state.can_salvage_operand(llvm_op)) {
+                        for (auto &[allocated, def] : defs_allocated) {
+                            if (allocated) {
+                                continue;
+                            }
+
+                            assert(def->isReg());
+                            const auto def_reg_id =
+                                state.enc_target->reg_id_from_mc_reg(
+                                    def->getReg());
+                            const auto def_bank =
+                                state.enc_target->reg_bank(def_reg_id);
+                            const auto op_bank =
+                                state.enc_target->reg_bank(resolved_reg_id);
+
+                            if (def_bank != op_bank) {
+                                continue;
+                            }
+
+                            const auto def_reg_name =
+                                state.enc_target->reg_name_lower(def_reg_id);
+                            state.fmt_line(buf,
+                                           indent,
+                                           "AsmReg inst{}_op{};",
+                                           inst_id,
+                                           op_idx);
+                            // TODO(ts): make try_salvage_if_nonalloc return the
+                            // correct register?
+                            state.fmt_line(
+                                buf,
+                                indent,
+                                "if ({}.try_salvage_if_nonalloc(scratch_{}, "
+                                "{})) "
+                                "{{",
+                                reg_info.operand_name,
+                                def_reg_name,
+                                def_bank);
+                            state.fmt_line(buf,
+                                           indent + 4,
+                                           "inst{}_op{} = scratch_{}.cur_reg;",
+                                           inst_id,
+                                           op_idx,
+                                           def_reg_name);
+                            state.fmt_line(buf, indent, "}} else {{");
+                            state.fmt_line(buf,
+                                           indent + 4,
+                                           "inst{}_op{} = {}.as_reg(this);",
+                                           inst_id,
+                                           op_idx,
+                                           reg_info.operand_name);
+                            state.fmt_line(buf, indent, "}}");
+                            handled = true;
+                            break;
+                        }
+                    }
+                    if (!handled) {
+                        state.fmt_line(buf,
+                                       indent,
+                                       "AsmReg inst{}_op{} = {}.as_reg(this);",
+                                       inst_id,
+                                       op_idx,
+                                       reg_info.operand_name);
+                    }
+
                     op_names.push_back(
                         std::format("inst{}_op{}", inst_id, op_idx));
                 }

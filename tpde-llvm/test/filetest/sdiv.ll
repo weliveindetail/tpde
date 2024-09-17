@@ -10,23 +10,21 @@ define i8 @sdiv_i8_1(i8 %0) {
 ; X64-LABEL: sdiv_i8_1>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, dil
-; X64:    mov ecx, 0x1
-; X64:    movsx edx, cl
+; X64:    movsx edi, dil
+; X64:    mov eax, 0x1
+; X64:    movsx eax, al
 ; X64:    mov rcx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ecx
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ebx
+; X64:    idiv ecx
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
 entry:
   %1 = sdiv i8 %0, 1
   ret i8 %1
@@ -36,23 +34,21 @@ define i8 @sdiv_i8_-1(i8 %0) {
 ; X64-LABEL: sdiv_i8_-1>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, dil
-; X64:    mov ecx, 0xff
-; X64:    movsx edx, cl
+; X64:    movsx edi, dil
+; X64:    mov eax, 0xff
+; X64:    movsx eax, al
 ; X64:    mov rcx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ecx
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ebx
+; X64:    idiv ecx
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
 entry:
   %1 = sdiv i8 %0, -1
   ret i8 %1
@@ -62,23 +58,21 @@ define i8 @sdiv_i8_28(i8 %0) {
 ; X64-LABEL: sdiv_i8_28>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, dil
-; X64:    mov ecx, 0x1c
-; X64:    movsx edx, cl
+; X64:    movsx edi, dil
+; X64:    mov eax, 0x1c
+; X64:    movsx eax, al
 ; X64:    mov rcx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ecx
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ebx
+; X64:    idiv ecx
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
 entry:
   %1 = sdiv i8 %0, 28
   ret i8 %1
@@ -88,23 +82,17 @@ define i8 @sdiv_i8_i8(i8 %0, i8 %1) {
 ; X64-LABEL: sdiv_i8_i8>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, dil
-; X64:    movsx ecx, sil
-; X64:    mov rdx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ebx
+; X64:    movsx edi, dil
+; X64:    movsx esi, sil
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ecx
+; X64:    idiv esi
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %2 = sdiv i8 %0, %1
@@ -115,23 +103,21 @@ define i8 @sdiv_i8_32(i8 %0) {
 ; X64-LABEL: sdiv_i8_32>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, dil
-; X64:    mov ecx, 0x20
-; X64:    movsx edx, cl
+; X64:    movsx edi, dil
+; X64:    mov eax, 0x20
+; X64:    movsx eax, al
 ; X64:    mov rcx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ecx
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ebx
+; X64:    idiv ecx
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
 entry:
   %1 = sdiv i8 %0, 32
   ret i8 %1
@@ -141,23 +127,22 @@ define i16 @sdiv_i16_1(i16 %0) {
 ; X64-LABEL: sdiv_i16_1>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, di
-; X64:    mov ecx, 0x1
-; X64:    movsx edx, cx
+; X64:    movsx edi, di
+; X64:    mov eax, 0x1
+; X64:    movsx eax, ax
 ; X64:    mov rcx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ecx
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ebx
+; X64:    idiv ecx
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %1 = sdiv i16 %0, 1
   ret i16 %1
@@ -167,23 +152,22 @@ define i16 @sdiv_i16_-1(i16 %0) {
 ; X64-LABEL: sdiv_i16_-1>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, di
-; X64:    mov ecx, 0xffff
-; X64:    movsx edx, cx
+; X64:    movsx edi, di
+; X64:    mov eax, 0xffff
+; X64:    movsx eax, ax
 ; X64:    mov rcx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ecx
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ebx
+; X64:    idiv ecx
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %1 = sdiv i16 %0, -1
   ret i16 %1
@@ -193,23 +177,22 @@ define i16 @sdiv_i16_28(i16 %0) {
 ; X64-LABEL: sdiv_i16_28>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, di
-; X64:    mov ecx, 0x1c
-; X64:    movsx edx, cx
+; X64:    movsx edi, di
+; X64:    mov eax, 0x1c
+; X64:    movsx eax, ax
 ; X64:    mov rcx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ecx
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ebx
+; X64:    idiv ecx
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %1 = sdiv i16 %0, 28
   ret i16 %1
@@ -219,23 +202,22 @@ define i16 @sdiv_i16_32(i16 %0) {
 ; X64-LABEL: sdiv_i16_32>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, di
-; X64:    mov ecx, 0x20
-; X64:    movsx edx, cx
+; X64:    movsx edi, di
+; X64:    mov eax, 0x20
+; X64:    movsx eax, ax
 ; X64:    mov rcx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ecx
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ebx
+; X64:    idiv ecx
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %1 = sdiv i16 %0, 32
   ret i16 %1
@@ -245,21 +227,18 @@ define i16 @sdiv_i16_i16(i16 %0, i16 %1) {
 ; X64-LABEL: sdiv_i16_i16>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, di
-; X64:    movsx ecx, si
-; X64:    mov rdx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ebx
+; X64:    movsx edi, di
+; X64:    movsx esi, si
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ecx
+; X64:    idiv esi
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %2 = sdiv i16 %0, %1
@@ -464,23 +443,17 @@ define i8 @sdiv_i8_salvage(i8 %0, i8 %1) {
 ; X64-LABEL: sdiv_i8_salvage>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, dil
-; X64:    movsx ecx, sil
-; X64:    mov rdx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ebx
+; X64:    movsx edi, dil
+; X64:    movsx esi, sil
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ecx
+; X64:    idiv esi
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %2 = sdiv i8 %0, %1
@@ -491,21 +464,18 @@ define i16 @sdiv_i16_salvage(i16 %0, i16 %1) {
 ; X64-LABEL: sdiv_i16_salvage>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
-; X64:    movsx eax, di
-; X64:    movsx ecx, si
-; X64:    mov rdx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ebx
+; X64:    movsx edi, di
+; X64:    movsx esi, si
+; X64:    mov eax, edi
 ; X64:    cdq
-; X64:    idiv ecx
+; X64:    idiv esi
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %2 = sdiv i16 %0, %1
@@ -554,27 +524,26 @@ define i8 @sdiv_i8_no_salvage(i8 %0, i8 %1) {
 ; X64-LABEL: sdiv_i8_no_salvage>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
 ; X64:    movsx eax, dil
-; X64:    movsx ecx, sil
-; X64:    mov rdx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ebx
-; X64:    cdq
-; X64:    idiv ecx
-; X64:    movsx ecx, dil
-; X64:    movsx edx, al
-; X64:    mov rbx, rdx
+; X64:    movsx esi, sil
+; X64:    mov rcx, rax
 ; X64:    mov eax, ecx
 ; X64:    cdq
-; X64:    idiv ebx
+; X64:    idiv esi
+; X64:    movsx edi, dil
+; X64:    movsx eax, al
+; X64:    mov rcx, rax
+; X64:    mov eax, edi
+; X64:    cdq
+; X64:    idiv ecx
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %2 = sdiv i8 %0, %1
   %3 = sdiv i8 %0, %2
@@ -585,29 +554,25 @@ define i16 @sdiv_i16_no_salvage(i16 %0, i16 %1) {
 ; X64-LABEL: sdiv_i16_no_salvage>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
 ; X64:    movsx eax, di
-; X64:    movsx ecx, si
-; X64:    mov rdx, rax
-; X64:    mov rbx, rdx
-; X64:    mov eax, ebx
-; X64:    cdq
-; X64:    idiv ecx
-; X64:    movsx ecx, di
-; X64:    movsx edx, ax
-; X64:    mov rbx, rdx
+; X64:    movsx esi, si
+; X64:    mov rcx, rax
 ; X64:    mov eax, ecx
 ; X64:    cdq
-; X64:    idiv ebx
+; X64:    idiv esi
+; X64:    movsx edi, di
+; X64:    movsx eax, ax
+; X64:    mov rcx, rax
+; X64:    mov eax, edi
+; X64:    cdq
+; X64:    idiv ecx
 ; X64:    add rsp, 0x10
-; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %2 = sdiv i16 %0, %1
   %3 = sdiv i16 %0, %2

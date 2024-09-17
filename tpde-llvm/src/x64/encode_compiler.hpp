@@ -474,9 +474,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
                    std::get<ScratchReg>(state).cur_reg)
                == bank);
         dst_scratch = std::move(std::get<ScratchReg>(state));
+        state       = std::monostate{};
         return true;
-    }
-    if (std::holds_alternative<ValuePartRef>(state)) {
+    } else if (std::holds_alternative<ValuePartRef>(state)) {
         auto &ref = std::get<ValuePartRef>(state);
         assert(ref.bank() == bank);
         if (ref.can_salvage()) {
@@ -486,6 +486,16 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
         }
         // dst = std::get<ValuePartRef>(state).alloc_reg();
         // return;
+    } else if (std::holds_alternative<Immediate>(state)) {
+        this->as_reg(static_cast<Derived *>(dst_scratch.compiler));
+        assert(std::holds_alternative<ScratchReg>(state));
+        assert(std::get<ScratchReg>(state).compiler->register_file.reg_bank(
+                   std::get<ScratchReg>(state).cur_reg)
+               == bank);
+
+        dst_scratch = std::move(std::get<ScratchReg>(state));
+        state       = std::monostate{};
+        return true;
     }
 
     dst_scratch.alloc_from_bank(bank);
@@ -6872,7 +6882,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_8_to_32(AsmOperand pa
     } else {
         // operand 1 is di
         // di is mapped to param_0
-        AsmReg inst0_op1 = param_0.as_reg(this);
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
         // Handling implicit operand di
         // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
 
@@ -6929,7 +6944,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_16_to_32(AsmOperand p
     } else {
         // operand 1 is di
         // di is mapped to param_0
-        AsmReg inst0_op1 = param_0.as_reg(this);
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
         // Handling implicit operand di
         // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
 
@@ -6984,7 +7004,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_32_to_64(AsmOperand p
     } else {
         // operand 1 is di
         // di is mapped to param_0
-        AsmReg inst0_op1 = param_0.as_reg(this);
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
 
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -7272,7 +7297,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_8_to_32(AsmOperand pa
     } else {
         // operand 1 is di
         // di is mapped to param_0
-        AsmReg inst0_op1 = param_0.as_reg(this);
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
         // Handling implicit operand di
         // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
 
@@ -7329,7 +7359,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_16_to_32(AsmOperand p
     } else {
         // operand 1 is di
         // di is mapped to param_0
-        AsmReg inst0_op1 = param_0.as_reg(this);
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
         // Handling implicit operand di
         // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
 
@@ -7394,7 +7429,12 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_32_to_64(AsmOperand p
     } else {
         // operand 1 is di
         // di is mapped to param_0
-        AsmReg inst0_op1 = param_0.as_reg(this);
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
 
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
