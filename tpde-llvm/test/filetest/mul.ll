@@ -549,10 +549,10 @@ define void @mul_i128_no_salvage_imm_1(i128 %0) {
 ; X64:    mov rax, rdx
 ; X64:    mul rdi
 ; X64:    add rdx, rcx
-; X64:    mov rbx, qword ptr [rbp - 0x18]
-; X64:    mov r8, rbx
-; X64:    imul r8, rdi
-; X64:    add rdx, r8
+; X64:    mov r8, qword ptr [rbp - 0x18]
+; X64:    mov rbx, r8
+; X64:    imul rbx, rdi
+; X64:    add rdx, rbx
 ; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
@@ -589,10 +589,10 @@ define void @mul_i128_no_salvage_imm_1001_1002(i128 %0) {
 ; X64:    mov rax, rdx
 ; X64:    mul rdi
 ; X64:    add rdx, rcx
-; X64:    mov rbx, qword ptr [rbp - 0x18]
-; X64:    mov r8, rbx
-; X64:    imul r8, rdi
-; X64:    add rdx, r8
+; X64:    mov r8, qword ptr [rbp - 0x18]
+; X64:    mov rbx, r8
+; X64:    imul rbx, rdi
+; X64:    add rdx, rbx
 ; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
@@ -628,10 +628,10 @@ define void @mul_i128_no_salvage_reg(i128 %0, i128 %1) {
 ; X64:    mov rax, rdx
 ; X64:    mul rdi
 ; X64:    add rdx, rcx
-; X64:    mov rbx, qword ptr [rbp - 0x28]
-; X64:    mov r8, rbx
-; X64:    imul r8, rdi
-; X64:    add rdx, r8
+; X64:    mov r8, qword ptr [rbp - 0x28]
+; X64:    mov rbx, r8
+; X64:    imul rbx, rdi
+; X64:    add rdx, rbx
 ; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp

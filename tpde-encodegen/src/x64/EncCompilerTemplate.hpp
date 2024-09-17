@@ -414,6 +414,10 @@ template <typename Adaptor,
           class BaseTy>
 bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
     ScratchReg &dst_scratch, const u8 bank) noexcept {
+    if (!dst_scratch.cur_reg.invalid()) {
+        return false;
+    }
+
     if (std::holds_alternative<ScratchReg>(state)) {
         assert(std::get<ScratchReg>(state).compiler->register_file.reg_bank(
                    std::get<ScratchReg>(state).cur_reg)
@@ -493,9 +497,18 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
                                ScratchReg     &dst_scratch,
                                u8              bank,
                                u32             size) noexcept {
-    AsmReg val = this->as_reg(compiler);
     if (!this->try_salvage(dst_scratch, bank)) {
         if (bank == 0) {
+            if (std::holds_alternative<Immediate>(state)) {
+                const auto &data = std::get<Immediate>(state);
+                compiler->derived()->materialize_constant(data.const_bytes,
+                                                          data.bank,
+                                                          data.size,
+                                                          dst_scratch.cur_reg);
+                return;
+            }
+
+            AsmReg val = this->as_reg(compiler);
             if (size <= 4) {
                 ASMC(compiler->derived(), MOV32rr, dst_scratch.cur_reg, val);
             } else {
@@ -504,10 +517,10 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
         } else {
             // TODO
             assert(0);
-                exit(1);
-            }
+            exit(1);
         }
     }
+}
 
 template <typename Adaptor,
           typename Derived,
