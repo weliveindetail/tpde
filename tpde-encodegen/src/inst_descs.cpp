@@ -238,7 +238,7 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
         if (get_op_type(op.opIndex) == llvm::MCOI::OPERAND_MEMORY) {
             assert(op.supportsMem());
             if (!info.isFullName) {
-                desc.name_fadec += 'm';
+                add_op_ty_name("m");
                 if (is_mov_with_extension) {
                     desc.name_fadec += std::format("{}", op.opSize);
                 }
@@ -252,7 +252,7 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
         if (get_op_type(op.opIndex) == llvm::MCOI::OPERAND_IMMEDIATE) {
             assert(op.supportsImm());
             if (!info.isFullName) {
-                desc.name_fadec += 'i';
+                add_op_ty_name("i");
                 assert(!is_mov_with_extension);
             }
 
