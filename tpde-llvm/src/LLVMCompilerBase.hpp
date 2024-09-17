@@ -885,6 +885,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         if (op == IntBinaryOp::sdiv || op == IntBinaryOp::srem
             || op == IntBinaryOp::ashr) {
             // need to sign-extend lhs
+            // TODO(ts): if lhs is constant, sign-extend as constant
             ScratchReg tmp{derived()};
             if (int_width == 8) {
                 derived()->encode_sext_8_to_32(std::move(lhs_op), tmp);
@@ -924,6 +925,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
         if (op == IntBinaryOp::sdiv || op == IntBinaryOp::srem) {
             // need to sign-extend rhs
+            // TODO(ts): if rhs is constant, sign-extend as constant
             ScratchReg tmp{derived()};
             if (int_width == 8) {
                 derived()->encode_sext_8_to_32(std::move(rhs_op), tmp);
