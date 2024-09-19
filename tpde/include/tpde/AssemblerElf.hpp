@@ -116,6 +116,14 @@ struct AssemblerElf {
     [[nodiscard]] SymRef
         sym_predef_func(std::string_view name, bool local, bool weak);
 
+    [[nodiscard]] SymRef sym_def_data(std::string_view    name,
+                                      std::span<const u8> data,
+                                      u32                 align,
+                                      bool                read_only,
+                                      bool                relocatable,
+                                      bool                local,
+                                      bool                weak);
+
     /// Align the text write pointer to 16 bytes
     void text_align_16() noexcept;
 
@@ -271,52 +279,6 @@ typename AssemblerElf<Derived>::SymRef AssemblerElf<Derived>::sym_predef_func(
     }
 }
 
-template <typename Derived>
-void AssemblerElf<Derived>::text_align_16() noexcept {
-    text_ensure_space(16);
-    text_write_ptr = reinterpret_cast<u8 *>(
-        util::align_up(reinterpret_cast<uintptr_t>(text_write_ptr), 16));
-}
-
-template <typename Derived>
-u32 AssemblerElf<Derived>::text_cur_off() const noexcept {
-    return static_cast<u32>(text_write_ptr - sec_text.data.data());
-}
-
-template <typename Derived>
-void AssemblerElf<Derived>::text_ensure_space(u32 size) noexcept {
-    if (text_reserve_end - text_write_ptr >= size) [[likely]] {
-        return;
-    }
-
-    // TODO(ts): include veneer handling on architectures that require it
-
-    size             = util::align_up(size, 16 * 1024);
-    const size_t off = text_write_ptr - sec_text.data.data();
-    sec_text.data.resize(sec_text.data.size() + size);
-
-    text_write_ptr   = sec_text.data.data() + off;
-    text_reserve_end = sec_text.data.data() + sec_text.data.size();
-}
-
-template <typename Derived>
-void AssemblerElf<Derived>::reset() noexcept {
-    global_symbols.clear();
-    local_symbols.clear();
-    strtab.clear();
-    sec_text       = {};
-    sec_data       = {};
-    sec_rodata     = {};
-    sec_relrodata  = {};
-    sec_init_array = {};
-    sec_fini_array = {};
-    sec_eh_frame   = {};
-    text_write_ptr = text_reserve_end = nullptr;
-    cur_func                          = INVALID_SYM_REF;
-
-    eh_init_cie();
-}
-
 // TODO(ts): maybe just outsource this to a helper func that can live in a cpp
 // file?
 namespace elf {
@@ -399,6 +361,127 @@ consteval static u32 sec_count() {
 }
 
 } // namespace elf
+
+template <typename Derived>
+typename AssemblerElf<Derived>::SymRef
+    AssemblerElf<Derived>::sym_def_data(const std::string_view    name,
+                                        const std::span<const u8> data,
+                                        const u32                 align,
+                                        const bool                read_only,
+                                        const bool                relocatable,
+                                        const bool                local,
+                                        const bool                weak) {
+    size_t str_off = 0;
+    if (!name.empty()) {
+        str_off = strtab.size();
+        strtab.insert(strtab.end(), name.begin(), name.end());
+        strtab.emplace_back('\0');
+    }
+
+    uint8_t info;
+    if (local) {
+        assert(!weak);
+        info =
+            ELF64_ST_INFO(STB_LOCAL, STT_SECTION); // TODO: use STT_OBJECT here?
+    } else if (weak) {
+        info = ELF64_ST_INFO(STB_WEAK, STT_OBJECT);
+    } else {
+        info = ELF64_ST_INFO(STB_GLOBAL, STT_OBJECT);
+    }
+
+    auto sym = Elf64_Sym{.st_name  = static_cast<Elf64_Word>(str_off),
+                         .st_info  = info,
+                         .st_other = STV_DEFAULT,
+                         .st_shndx = static_cast<Elf64_Section>(0),
+                         .st_value = 0,
+                         .st_size  = 0};
+
+
+    assert((align & (align - 1)) == 0);
+    size_t pos;
+    size_t sec_idx;
+
+    if (read_only) {
+        if (relocatable) {
+            sec_idx = elf::sec_idx(".data.rel.ro");
+            pos     = util::align_up(sec_relrodata.data.size(), align);
+            sec_relrodata.data.resize(pos);
+            sec_relrodata.data.insert(
+                sec_relrodata.data.end(), data.begin(), data.end());
+        } else {
+            sec_idx = elf::sec_idx(".rodata");
+            pos     = util::align_up(sec_rodata.data.size(), align);
+            sec_rodata.data.resize(pos);
+            sec_rodata.data.insert(
+                sec_rodata.data.end(), data.begin(), data.end());
+        }
+    } else {
+        sec_idx = elf::sec_idx(".data");
+        pos     = util::align_up(sec_rodata.data.size(), align);
+        sec_data.data.resize(pos);
+        sec_data.data.insert(sec_data.data.end(), data.begin(), data.end());
+    }
+
+    sym.st_shndx = static_cast<Elf64_Section>(sec_idx);
+    sym.st_value = pos;
+    sym.st_size  = data.size();
+
+    if (local) {
+        local_symbols.push_back(sym);
+        assert(local_symbols.size() < 0x8000'0000);
+        return static_cast<SymRef>(local_symbols.size() - 1);
+    } else {
+        global_symbols.push_back(sym);
+        assert(global_symbols.size() < 0x8000'0000);
+        return static_cast<SymRef>((global_symbols.size() - 1) | 0x8000'0000);
+    }
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::text_align_16() noexcept {
+    text_ensure_space(16);
+    text_write_ptr = reinterpret_cast<u8 *>(
+        util::align_up(reinterpret_cast<uintptr_t>(text_write_ptr), 16));
+}
+
+template <typename Derived>
+u32 AssemblerElf<Derived>::text_cur_off() const noexcept {
+    return static_cast<u32>(text_write_ptr - sec_text.data.data());
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::text_ensure_space(u32 size) noexcept {
+    if (text_reserve_end - text_write_ptr >= size) [[likely]] {
+        return;
+    }
+
+    // TODO(ts): include veneer handling on architectures that require it
+
+    size             = util::align_up(size, 16 * 1024);
+    const size_t off = text_write_ptr - sec_text.data.data();
+    sec_text.data.resize(sec_text.data.size() + size);
+
+    text_write_ptr   = sec_text.data.data() + off;
+    text_reserve_end = sec_text.data.data() + sec_text.data.size();
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::reset() noexcept {
+    global_symbols.clear();
+    local_symbols.clear();
+    strtab.clear();
+    sec_text       = {};
+    sec_data       = {};
+    sec_rodata     = {};
+    sec_relrodata  = {};
+    sec_init_array = {};
+    sec_fini_array = {};
+    sec_eh_frame   = {};
+    text_write_ptr = text_reserve_end = nullptr;
+    cur_func                          = INVALID_SYM_REF;
+
+    eh_init_cie();
+}
 
 template <typename Derived>
 std::vector<u8> AssemblerElf<Derived>::build_object_file() {

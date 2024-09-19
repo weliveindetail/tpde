@@ -56,6 +56,7 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
 
     // relocs
     void reloc_text_plt32(SymRef, u32 text_imm32_off) noexcept;
+    void reloc_text_pc32(SymRef sym, u32 text_imm32_off, i32 addend) noexcept;
 
     void eh_write_initial_cie_instrs() noexcept;
 
@@ -165,6 +166,12 @@ inline void
     AssemblerElfX64::reloc_text_plt32(const SymRef sym,
                                       const u32    text_imm32_off) noexcept {
     reloc_text(sym, R_X86_64_PLT32, text_imm32_off, -4);
+}
+
+inline void AssemblerElfX64::reloc_text_pc32(SymRef sym,
+                                             u32    text_imm32_off,
+                                             i32    addend) noexcept {
+    reloc_text(sym, R_X86_64_PC32, text_imm32_off, addend);
 }
 
 inline void AssemblerElfX64::eh_write_initial_cie_instrs() noexcept {
