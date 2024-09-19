@@ -55,6 +55,7 @@ struct EncodeCompiler {
     using Assembler    = typename CompilerX64::Assembler;
     using Label        = typename Assembler::Label;
     using ValLocalIdx  = typename CompilerX64::ValLocalIdx;
+    using SymRef       = typename Assembler::SymRef;
 
     struct AsmOperand {
         struct Address {

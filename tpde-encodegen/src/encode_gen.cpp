@@ -13,7 +13,9 @@
 
 #include <llvm/CodeGen/AsmPrinter.h>
 #include <llvm/CodeGen/LivePhysRegs.h>
+#include <llvm/CodeGen/MachineConstantPool.h>
 #include <llvm/CodeGen/MachineRegisterInfo.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/MC/MCAsmBackend.h>
@@ -22,6 +24,7 @@
 #include <llvm/MC/MCInstrInfo.h>
 #include <llvm/MC/MCObjectWriter.h>
 #include <llvm/MC/MCStreamer.h>
+#include <llvm/MC/SectionKind.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Target/TargetLoweringObjectFile.h>
 #include <llvm/Target/TargetMachine.h>
@@ -238,6 +241,7 @@ struct GenerationState {
     bool                                      is_first_block            = false;
     std::vector<unsigned>                     return_regs               = {};
     std::string                               one_bb_return_assignments = {};
+    std::unordered_set<unsigned>              const_pool_indices_used   = {};
 
     llvm::DenseMap<unsigned, std::vector<std::string>> fixed_reg_conds{};
 
@@ -1538,6 +1542,146 @@ bool handle_terminator(std::string        &buf,
     return false;
 }
 
+bool const_to_bytes(const llvm::DataLayout &dl,
+                    const llvm::Constant   *constant,
+                    std::vector<uint8_t>   &bytes,
+                    const unsigned          off) {
+    const auto alloc_size = dl.getTypeAllocSize(constant->getType());
+    // can't do this since for floats -0 is special
+    // if (constant->isZeroValue()) {
+    //    return true;
+    //}
+
+    if (auto *CI = llvm::dyn_cast<llvm::ConstantInt>(constant); CI) {
+        // TODO: endianess?
+        llvm::StoreIntToMemory(CI->getValue(), bytes.data() + off, alloc_size);
+        return true;
+    }
+    if (auto *CF = llvm::dyn_cast<llvm::ConstantFP>(constant); CF) {
+        // TODO: endianess?
+        llvm::StoreIntToMemory(
+            CF->getValue().bitcastToAPInt(), bytes.data() + off, alloc_size);
+        return true;
+    }
+    if (auto *CDS = llvm::dyn_cast<llvm::ConstantDataSequential>(constant);
+        CDS) {
+        auto d = CDS->getRawDataValues();
+        assert(d.size() <= alloc_size);
+        std::copy(d.bytes_begin(), d.bytes_end(), bytes.begin() + off);
+        return true;
+    }
+    if (auto *CA = llvm::dyn_cast<llvm::ConstantArray>(constant); CA) {
+        const auto num_elements = CA->getType()->getNumElements();
+        const auto element_size =
+            dl.getTypeAllocSize(CA->getType()->getElementType());
+        for (auto i = 0u; i < num_elements; ++i) {
+            const_to_bytes(
+                dl, CA->getAggregateElement(i), bytes, off + i * element_size);
+        }
+        return true;
+    }
+    if (auto *CA = llvm::dyn_cast<llvm::ConstantAggregate>(constant); CA) {
+        const auto num_elements = CA->getType()->getStructNumElements();
+        auto      &ctx          = constant->getContext();
+
+        auto *ty = CA->getType();
+        auto  c0 = llvm::ConstantInt::get(ctx, llvm::APInt(32, 0, false));
+
+        for (auto i = 0u; i < num_elements; ++i) {
+            auto idx = llvm::ConstantInt::get(ctx, llvm::APInt(32, i, false));
+            auto agg_off = dl.getIndexedOffsetInType(ty, {c0, idx});
+            const_to_bytes(
+                dl, CA->getAggregateElement(i), bytes, off + agg_off);
+        }
+        return true;
+    }
+    if (auto *ud = llvm::dyn_cast<llvm::UndefValue>(constant); ud) {
+        // just leave it at 0
+        return true;
+    }
+
+    std::cerr << "ERROR: Encountered unsupported constant in constant pool\n";
+    return false;
+}
+
+bool generate_cp_entry_sym(GenerationState &state,
+                           std::string     &buf,
+                           unsigned         indent,
+                           std::string_view sym_name,
+                           unsigned         cp_idx) {
+    state.const_pool_indices_used.insert(cp_idx);
+
+    const llvm::MachineConstantPoolEntry &cp_entry =
+        state.func->getConstantPool()->getConstants()[cp_idx];
+
+    if (cp_entry.isMachineConstantPoolEntry()) {
+        std::cerr << "ERROR: encountered MachineConstantPoolEntry\n";
+        return false;
+    }
+
+    if (cp_entry.needsRelocation()) {
+        std::cerr
+            << "ERROR: encountered constant pool entry that needs relocation\n";
+        return false;
+    }
+
+    const auto *constant = cp_entry.Val.ConstVal;
+    const auto  size     = cp_entry.getSizeInBytes(state.func->getDataLayout());
+    // const auto sec_kind =
+    // cp_entry.getSectionKind(&state.func->getDataLayout());
+    const auto  align    = cp_entry.getAlign().value();
+
+    std::vector<uint8_t> bytes{};
+    bytes.resize(size);
+
+    if (!const_to_bytes(state.func->getDataLayout(), constant, bytes, 0)) {
+        std::cerr << "ERROR: could not convert constant to bytes\n";
+        return false;
+    }
+
+    std::string bytes_str = "{";
+    for (const auto byte : bytes) {
+        if (bytes_str.size() != 1) {
+            bytes_str += ", ";
+        }
+        bytes_str += std::format("0x{:X}", byte);
+    }
+    bytes_str += "}";
+
+    state.fmt_line(buf,
+                   indent,
+                   "SymRef {} = this->sym_{}_cp{};",
+                   sym_name,
+                   state.func->getName().str(),
+                   cp_idx);
+    state.fmt_line(buf,
+                   indent,
+                   "if ({} == Assembler::INVALID_SYM_REF) [[unlikely]] {{",
+                   sym_name);
+    // TODO(ts): make this static so it does not get stack allocated?
+    state.fmt_line(buf,
+                   indent + 4,
+                   "const std::array<u8, {}> data = {};",
+                   bytes.size(),
+                   bytes_str);
+    state.fmt_line(
+        buf,
+        indent + 4,
+        "{} = derived()->assembler.sym_def_data(\"\", data, {}, true, "
+        "false, true, false);",
+        sym_name,
+        align);
+    state.fmt_line(buf,
+                   indent + 4,
+                   "this->sym_{}_cp{} = {};",
+                   state.func->getName().str(),
+                   cp_idx,
+                   sym_name);
+    state.fmt_line(buf, indent, "}}");
+
+    return true;
+}
+
 bool generate_inst_inner(std::string           &buf,
                          GenerationState       &state,
                          llvm::MachineInstr    *inst,
@@ -1591,9 +1735,11 @@ bool generate_inst_inner(std::string           &buf,
     const auto inst_id = state.cur_inst_id;
 
     std::vector<std::string> op_names{};
+    std::string              constant_pool_sym_name{};
+    bool                     had_imm_operand = false;
 
-    // sometimes implicit operands will show up in the argument list, e.g.
-    // `SHL32rCL` but not always, e.g. `CDQ`
+    // sometimes implicit operands will show up in the argument list,
+    // e.g. `SHL32rCL` but not always, e.g. `CDQ`
     std::vector<unsigned> implicit_ops_handled{};
     unsigned              implicit_use_count = 0, explicit_use_count = 0;
 
@@ -1637,19 +1783,20 @@ bool generate_inst_inner(std::string           &buf,
                            state.enc_target->reg_name_lower(orig_reg_id));
 
             if (llvm_op.isUndef()) {
-                state.fmt_line(
-                    buf,
-                    indent,
-                    "// operand is undef, just allocating scratch for it");
+                state.fmt_line(buf,
+                               indent,
+                               "// operand is undef, just allocating "
+                               "scratch for it");
 
                 if (llvm_op.isTied()) {
-                    state.fmt_line(
-                        buf,
-                        indent,
-                        "// operand is tied so no work needs to be done");
+                    state.fmt_line(buf,
+                                   indent,
+                                   "// operand is tied so no work "
+                                   "needs to be done");
                     if (llvm_op.isImplicit()) {
                         std::cerr << "ERROR: Found instruction with tied "
-                                     "implicit operand which is unsupported\n";
+                                     "implicit operand which is "
+                                     "unsupported\n";
                         assert(0);
                         return false;
                     }
@@ -1669,8 +1816,8 @@ bool generate_inst_inner(std::string           &buf,
                         assert(0);
                         return false;
                     }
-                    // we leave the definition unallocated so that it gets
-                    // allocated later on
+                    // we leave the definition unallocated so that it
+                    // gets allocated later on
                     break;
                 }
 
@@ -1704,25 +1851,27 @@ bool generate_inst_inner(std::string           &buf,
             assert(!llvm_op.isEarlyClobber());
 
             if (llvm_op.isImplicit()) {
-                // notify the outer code that we need the register argument
-                // as a fixed register state.fmt_line(buf, indent, "// {} is
-                // an implicit operand, need to fix it");
+                // notify the outer code that we need the register
+                // argument as a fixed register state.fmt_line(buf,
+                // indent, "// {} is an implicit operand, need to fix
+                // it");
                 state.fixed_reg_conds[orig_reg_id].emplace_back(if_cond);
             }
 
             const auto &reg_info = state.value_map[resolved_reg_id];
             if (reg_info.ty == ValueInfo::SCRATCHREG) {
                 // if the destination is tied, we want to salvage if
-                // possible or allocate the destination if required and do a
-                // copy if the destination and the source are the same then
-                // we only need to allocate
+                // possible or allocate the destination if required and
+                // do a copy if the destination and the source are the
+                // same then we only need to allocate
                 //
                 // if it is not tied we can simply use the source reg
 
                 if (llvm_op.isTied()) {
                     if (llvm_op.isImplicit()) {
                         std::cerr << "ERROR: Found instruction with tied "
-                                     "implicit operand which is unsupported\n";
+                                     "implicit operand which is "
+                                     "unsupported\n";
                         assert(0);
                         return false;
                     }
@@ -1777,7 +1926,8 @@ bool generate_inst_inner(std::string           &buf,
                             state.enc_target->reg_name_lower(resolved_reg_id));
                         std::format_to(
                             std::back_inserter(buf),
-                            "{:>{}}scratch_{} = std::move(scratch_{});\n",
+                            "{:>{}}scratch_{} = "
+                            "std::move(scratch_{});\n",
                             "",
                             indent,
                             state.enc_target->reg_name_lower(
@@ -1827,7 +1977,8 @@ bool generate_inst_inner(std::string           &buf,
                 } else {
                     std::format_to(
                         std::back_inserter(buf),
-                        "{:>{}}// operand {}({}) is a simple register\n",
+                        "{:>{}}// operand {}({}) is a "
+                        "simple register\n",
                         "",
                         indent,
                         op_idx,
@@ -1839,7 +1990,8 @@ bool generate_inst_inner(std::string           &buf,
                         state.fmt_line(
                             buf,
                             indent,
-                            "// {} is an implicit operand, need to move "
+                            "// {} is an implicit operand, "
+                            "need to move "
                             "aliased {} into it",
                             state.enc_target->reg_name_lower(orig_reg_id),
                             state.enc_target->reg_name_lower(resolved_reg_id));
@@ -1883,7 +2035,8 @@ bool generate_inst_inner(std::string           &buf,
                 if (llvm_op.isImplicit()) {
                     if (llvm_op.isTied()) {
                         std::cerr << "ERROR: Found instruction with tied "
-                                     "implicit operand which is unsupported\n";
+                                     "implicit operand which is "
+                                     "unsupported\n";
                         assert(0);
                         return false;
                     }
@@ -1916,9 +2069,9 @@ bool generate_inst_inner(std::string           &buf,
 
                 // try to salvage
                 if (llvm_op.isTied()) {
-                    // TODO(ts): if the destination is used as a fixed reg
-                    // at some point we cannot simply salvage into it i
-                    // think so we need some extra helpers for that
+                    // TODO(ts): if the destination is used as a fixed
+                    // reg at some point we cannot simply salvage into
+                    // it i think so we need some extra helpers for that
                     const auto &def_reg = inst->getOperand(
                         inst->findTiedOperandIdx(llvm_op.getOperandNo()));
                     assert(def_reg.isReg() && def_reg.getReg().isPhysical());
@@ -2013,18 +2166,18 @@ bool generate_inst_inner(std::string           &buf,
                                            "AsmReg inst{}_op{};",
                                            inst_id,
                                            op_idx);
-                            // TODO(ts): make try_salvage_if_nonalloc return
-                            // the correct register?
-                            state.fmt_line(
-                                buf,
-                                indent,
-                                "if "
-                                "({}.try_salvage_if_nonalloc(scratch_{}, "
-                                "{})) "
-                                "{{",
-                                reg_info.operand_name,
-                                def_reg_name,
-                                def_bank);
+                            // TODO(ts): make try_salvage_if_nonalloc
+                            // return the correct register?
+                            state.fmt_line(buf,
+                                           indent,
+                                           "if "
+                                           "({}.try_salvage_if_"
+                                           "nonalloc(scratch_{}, "
+                                           "{})) "
+                                           "{{",
+                                           reg_info.operand_name,
+                                           def_reg_name,
+                                           def_bank);
                             state.fmt_line(buf,
                                            indent + 4,
                                            "inst{}_op{} = scratch_{}.cur_reg;",
@@ -2065,8 +2218,8 @@ bool generate_inst_inner(std::string           &buf,
 
             const auto llvm_op_idx = desc.operands[op_idx].llvm_idx;
             if (inst->getOperand(llvm_op_idx).isUndef()) {
-                std::cerr
-                    << "ERROR: encountered undef operand in memory operand\n";
+                std::cerr << "ERROR: encountered undef operand in "
+                             "memory operand\n";
                 return false;
             }
 
@@ -2108,9 +2261,9 @@ bool generate_inst_inner(std::string           &buf,
             }
 
             if (is_replacement) {
-                // dealing with a replacement so we already know that the
-                // operand is an AsmOperand::ValueRef
-                // that is on the stack
+                // dealing with a replacement so we already know that
+                // the operand is an AsmOperand::ValueRef that is on the
+                // stack
                 assert(inst->getOperand(llvm_op_idx).isReg());
                 const auto base_reg_id = state.enc_target->reg_id_from_mc_reg(
                     inst->getOperand(llvm_op_idx).getReg());
@@ -2134,8 +2287,8 @@ bool generate_inst_inner(std::string           &buf,
                     state.enc_target->reg_name_lower(base_reg_aliased_id),
                     base_info.operand_name);
 
-                // in x64's case, we know that the stack address is simply
-                // rbp-disp
+                // in x64's case, we know that the stack address is
+                // simply rbp-disp
                 state.fmt_line(buf,
                                indent,
                                "FeMem inst{}_op{} = FE_MEM(FE_BP, 0, "
@@ -2156,7 +2309,8 @@ bool generate_inst_inner(std::string           &buf,
             ** 4. displacement
             ** 5. segment register (uninteresting for us)
             **
-            ** We just encountered the first operand, start by getting the rest
+            ** We just encountered the first operand, start by getting
+            *the rest
             */
             const llvm::MachineOperand &base_reg =
                 inst->getOperand(llvm_op_idx);
@@ -2166,7 +2320,8 @@ bool generate_inst_inner(std::string           &buf,
                 inst->getOperand(llvm_op_idx + 2);
             const llvm::MachineOperand &displacement =
                 inst->getOperand(llvm_op_idx + 3);
-            assert(scale_factor.isImm() && displacement.isImm());
+            assert(scale_factor.isImm()
+                   && (displacement.isImm() || displacement.isCPI()));
             assert(base_reg.isReg() && index_reg.isReg());
             assert(base_reg.getReg().isValid()
                    && base_reg.getReg().isPhysical());
@@ -2185,6 +2340,45 @@ bool generate_inst_inner(std::string           &buf,
                            inst_id,
                            op_idx);
 
+            if (displacement.isCPI()) {
+                assert(displacement.getOffset() == 0);
+                assert(!index_reg.getReg().isValid());
+
+                if (!constant_pool_sym_name.empty()) {
+                    std::cerr << "ERROR: encountered two constant-pool "
+                                 "references in one instruction\n";
+                    return false;
+                }
+
+                if (had_imm_operand) {
+                    // Technically we could emit a rip-relative lea/mov and then
+                    // use a simple register memory operand...
+                    std::cerr << "ERROR: imm operand and constant-pool "
+                                 "reference are not compatible\n";
+                    return false;
+                }
+
+                state.fmt_line(
+                    buf, indent, "// operand is a constant-pool reference");
+                constant_pool_sym_name =
+                    std::format("inst{}_op{}_sym", inst_id, op_idx);
+                generate_cp_entry_sym(state,
+                                      buf,
+                                      indent,
+                                      constant_pool_sym_name,
+                                      displacement.getIndex());
+
+                state.fmt_line(buf,
+                               indent,
+                               "inst{}_op{} = FE_MEM(FE_IP, 0, FE_NOREG, 0);",
+                               inst_id,
+                               op_idx);
+
+                op_names.push_back(std::format("inst{}_op{}", inst_id, op_idx));
+                break;
+            }
+
+
             const auto mem_insert_idx = buf.size();
 
             const auto base_reg_id =
@@ -2202,9 +2396,9 @@ bool generate_inst_inner(std::string           &buf,
             const auto base_is_asm_op = state.value_map[base_reg_aliased_id].ty
                                         == ValueInfo::ASM_OPERAND;
             if (base_is_asm_op) {
-                // TODO(ts): add helper to check if this operand is an address
-                // *or* a stack reference so we can fold the stack addr into the
-                // instruction
+                // TODO(ts): add helper to check if this operand is an
+                // address *or* a stack reference so we can fold the
+                // stack addr into the instruction
                 std::format_to(
                     std::back_inserter(buf),
                     "{:>{}}// {} maps to {}, so could be an address\n",
@@ -2224,8 +2418,8 @@ bool generate_inst_inner(std::string           &buf,
                     "",
                     indent + 4,
                     state.value_map[base_reg_aliased_id].operand_name);
-                // if there is no displacement and index we can simply take over
-                // the address
+                // if there is no displacement and index we can simply
+                // take over the address
                 if (!index_reg.getReg().isValid()
                     && displacement.getImm() == 0) {
                     state.fmt_line(buf,
@@ -2236,24 +2430,26 @@ bool generate_inst_inner(std::string           &buf,
                         buf,
                         indent + 4,
                         "inst{}_op{} = FE_MEM(addr.base, addr.scale, "
-                        "addr.scale ? addr.index : FE_NOREG, addr.disp);",
+                        "addr.scale ? addr.index : FE_NOREG, "
+                        "addr.disp);",
                         inst_id,
                         op_idx);
                 } else if (index_reg.getReg().isValid()) {
-                    // TODO(ts): if index_reg is an AsmOperand, check if it is
-                    // an imm and fold it into the displacement
+                    // TODO(ts): if index_reg is an AsmOperand, check if
+                    // it is an imm and fold it into the displacement
                     //
-                    // for now, just move the addr into a scratch and then build
-                    // a mem op with the llvm index
+                    // for now, just move the addr into a scratch and
+                    // then build a mem op with the llvm index
                     std::format_to(
                         std::inserter(buf, buf.begin() + mem_insert_idx),
-                        "{:>{}}ScratchReg inst{}_op{}_scratch{{derived()}};\n",
+                        "{:>{}}ScratchReg "
+                        "inst{}_op{}_scratch{{derived()}};\n",
                         "",
                         indent,
                         inst_id,
                         op_idx);
-                    // TODO(ts): don't need to do this if displacement is zero
-                    // and addr.scale == 0
+                    // TODO(ts): don't need to do this if displacement
+                    // is zero and addr.scale == 0
                     state.fmt_line(buf,
                                    indent + 4,
                                    "// LLVM memory operand has index, need to "
@@ -2264,11 +2460,12 @@ bool generate_inst_inner(std::string           &buf,
                                    "inst{}_op{}_scratch.alloc_from_bank(0);",
                                    inst_id,
                                    op_idx);
-                    state.fmt_line(
-                        buf,
-                        indent + 4,
-                        "ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, "
-                        "addr.scale ? addr.index : FE_NOREG, addr.disp));");
+                    state.fmt_line(buf,
+                                   indent + 4,
+                                   "ASMD(LEA64rm, base_tmp, "
+                                   "FE_MEM(addr.base, addr.scale, "
+                                   "addr.scale ? addr.index : "
+                                   "FE_NOREG, addr.disp));");
 
                     state.fmt_line(buf,
                                    indent + 4,
@@ -2301,21 +2498,21 @@ bool generate_inst_inner(std::string           &buf,
                             "AsmReg index_tmp = scratch_{}.cur_reg;",
                             state.enc_target->reg_name_lower(index_aliased_id));
                     }
-                    state.fmt_line(
-                        buf,
-                        indent + 4,
-                        "inst{}_op{} = FE_MEM(base_tmp, {}, index_tmp, {});",
-                        inst_id,
-                        op_idx,
-                        scale_factor.getImm(),
-                        displacement.getImm());
+                    state.fmt_line(buf,
+                                   indent + 4,
+                                   "inst{}_op{} = FE_MEM(base_tmp, {}, "
+                                   "index_tmp, {});",
+                                   inst_id,
+                                   op_idx,
+                                   scale_factor.getImm(),
+                                   displacement.getImm());
                 } else {
                     // try to check if the displacement is encodeable
-                    state.fmt_line(
-                        buf,
-                        indent + 4,
-                        "// LLVM memory operand has displacement, check if it "
-                        "is encodeable with the disp from addr");
+                    state.fmt_line(buf,
+                                   indent + 4,
+                                   "// LLVM memory operand has displacement, "
+                                   "check if it "
+                                   "is encodeable with the disp from addr");
                     state.fmt_line(buf,
                                    indent + 4,
                                    "if (disp_add_encodeable(addr.disp, {})) {{",
@@ -2324,41 +2521,44 @@ bool generate_inst_inner(std::string           &buf,
                         buf,
                         indent + 8,
                         "inst{}_op{} = FE_MEM(addr.base, addr.scale, "
-                        "addr.scale ? addr.index : FE_NOREG, addr.disp + {});",
+                        "addr.scale ? addr.index : FE_NOREG, addr.disp "
+                        "+ {});",
                         inst_id,
                         op_idx,
                         displacement.getImm());
                     state.fmt_line(buf, indent + 4, "}} else {{");
                     std::format_to(
                         std::inserter(buf, buf.begin() + mem_insert_idx),
-                        "{:>{}}ScratchReg inst{}_op{}_scratch{{derived()}};\n",
+                        "{:>{}}ScratchReg "
+                        "inst{}_op{}_scratch{{derived()}};\n",
                         "",
                         indent,
                         inst_id,
                         op_idx);
-                    state.fmt_line(
-                        buf,
-                        indent + 8,
-                        "// displacements not encodeable together, need to "
-                        "materialize the addr");
+                    state.fmt_line(buf,
+                                   indent + 8,
+                                   "// displacements not encodeable "
+                                   "together, need to "
+                                   "materialize the addr");
                     state.fmt_line(buf,
                                    indent + 8,
                                    "AsmReg base_tmp = "
                                    "inst{}_op{}_scratch.alloc_from_bank(0);",
                                    inst_id,
                                    op_idx);
-                    state.fmt_line(
-                        buf,
-                        indent + 8,
-                        "ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, "
-                        "addr.scale ? addr.index : FE_NOREG, addr.disp));");
-                    state.fmt_line(
-                        buf,
-                        indent + 8,
-                        "inst{}_op{} = FE_MEM(base_tmp, 0, FE_NOREG, {});",
-                        inst_id,
-                        op_idx,
-                        displacement.getImm());
+                    state.fmt_line(buf,
+                                   indent + 8,
+                                   "ASMD(LEA64rm, base_tmp, "
+                                   "FE_MEM(addr.base, addr.scale, "
+                                   "addr.scale ? addr.index : "
+                                   "FE_NOREG, addr.disp));");
+                    state.fmt_line(buf,
+                                   indent + 8,
+                                   "inst{}_op{} = FE_MEM(base_tmp, 0, "
+                                   "FE_NOREG, {});",
+                                   inst_id,
+                                   op_idx,
+                                   displacement.getImm());
                     state.fmt_line(buf, indent + 4, "}}");
                 }
 
@@ -2400,7 +2600,9 @@ bool generate_inst_inner(std::string           &buf,
                         state.fmt_line(
                             buf,
                             indent + 4,
-                            "if ({}.try_salvage_if_nonalloc(scratch_{}, {})) "
+                            "if "
+                            "({}.try_salvage_if_nonalloc(scratch_{}, "
+                            "{})) "
                             "{{",
                             state.value_map[base_reg_aliased_id].operand_name,
                             def_reg_name,
@@ -2435,8 +2637,8 @@ bool generate_inst_inner(std::string           &buf,
                     state.enc_target->reg_name_lower(base_reg_aliased_id));
             }
             if (index_reg.getReg().isValid()) {
-                // TODO(ts): if index_reg is an AsmOperand, check if it is
-                // an imm and fold it into the displacement
+                // TODO(ts): if index_reg is an AsmOperand, check if it
+                // is an imm and fold it into the displacement
                 const auto idx_reg_id =
                     state.enc_target->reg_id_from_mc_reg(index_reg.getReg());
                 state.fmt_line(buf,
@@ -2456,7 +2658,8 @@ bool generate_inst_inner(std::string           &buf,
                         state.enc_target->reg_name_lower(idx_reg_aliased_id),
                         op_name);
 
-                    // check if we can fold the operand into the displacement
+                    // check if we can fold the operand into the
+                    // displacement
                     if (displacement.getImm() != 0) {
                         state.fmt_line(buf,
                                        indent + 4,
@@ -2492,14 +2695,14 @@ bool generate_inst_inner(std::string           &buf,
                         "AsmReg index_tmp = {}.as_reg(this);",
                         state.value_map[idx_reg_aliased_id].operand_name);
 
-                    state.fmt_line(
-                        buf,
-                        indent + 8,
-                        "inst{}_op{} = FE_MEM(base, {}, index_tmp, {});",
-                        inst_id,
-                        op_idx,
-                        scale_factor.getImm(),
-                        displacement.getImm());
+                    state.fmt_line(buf,
+                                   indent + 8,
+                                   "inst{}_op{} = FE_MEM(base, {}, "
+                                   "index_tmp, {});",
+                                   inst_id,
+                                   op_idx,
+                                   scale_factor.getImm(),
+                                   displacement.getImm());
 
                     state.fmt_line(buf, indent + 4, "}}");
                 } else {
@@ -2509,14 +2712,14 @@ bool generate_inst_inner(std::string           &buf,
                         "AsmReg index_tmp = scratch_{}.cur_reg;",
                         state.enc_target->reg_name_lower(idx_reg_aliased_id));
 
-                    state.fmt_line(
-                        buf,
-                        indent + 4,
-                        "inst{}_op{} = FE_MEM(base, {}, index_tmp, {});",
-                        inst_id,
-                        op_idx,
-                        scale_factor.getImm(),
-                        displacement.getImm());
+                    state.fmt_line(buf,
+                                   indent + 4,
+                                   "inst{}_op{} = FE_MEM(base, {}, "
+                                   "index_tmp, {});",
+                                   inst_id,
+                                   op_idx,
+                                   scale_factor.getImm(),
+                                   displacement.getImm());
                 }
             } else {
                 state.fmt_line(buf,
@@ -2538,6 +2741,13 @@ bool generate_inst_inner(std::string           &buf,
         case OP_IMM: {
             state.fmt_line(
                 buf, indent, "// operand {} is an immediate operand", op_idx);
+            had_imm_operand = true;
+
+            if (!constant_pool_sym_name.empty()) {
+                std::cerr << "ERROR: immediate operand and constant-pool "
+                             "reference are not compatible\n";
+                return false;
+            }
 
             const auto llvm_op_idx = desc.operands[op_idx].llvm_idx;
             if (inst->getOperand(llvm_op_idx).isReg()
@@ -2587,8 +2797,8 @@ bool generate_inst_inner(std::string           &buf,
             }
             const auto &inst_op = inst->getOperand(llvm_op_idx);
             if (is_replacement) {
-                // we have an replacement and know that the operand must be an
-                // immediate
+                // we have an replacement and know that the operand must
+                // be an immediate
                 assert(inst_op.isReg());
                 const auto reg_id =
                     state.enc_target->reg_id_from_mc_reg(inst_op.getReg());
@@ -2665,12 +2875,12 @@ bool generate_inst_inner(std::string           &buf,
         }
 
         if (info.ty == ValueInfo::SCRATCHREG) {
-            state.fmt_line(
-                buf,
-                indent,
-                "// Need to break alias from {} to {} and copy the value",
-                state.enc_target->reg_name_lower(reg_id),
-                state.enc_target->reg_name_lower(resolved_reg_id));
+            state.fmt_line(buf,
+                           indent,
+                           "// Need to break alias from {} to {} and copy the "
+                           "value",
+                           state.enc_target->reg_name_lower(reg_id),
+                           state.enc_target->reg_name_lower(resolved_reg_id));
             state.enc_target->generate_copy(
                 buf,
                 indent,
@@ -2681,8 +2891,9 @@ bool generate_inst_inner(std::string           &buf,
                             state.enc_target->reg_name_lower(resolved_reg_id)),
                 reg_size_bytes(state.func, op.getReg()));
             assert(state.value_map[reg_id].ty == ValueInfo::REG_ALIAS);
-            // TODO(ts): allow this function to bubble up these copies so we
-            // can take advantage of them if they happen in all branches
+            // TODO(ts): allow this function to bubble up these copies
+            // so we can take advantage of them if they happen in all
+            // branches
             if (if_cond.empty()) {
                 state.remove_reg_alias(
                     buf, reg_id, state.value_map[reg_id].alias_reg_id);
@@ -2726,8 +2937,8 @@ bool generate_inst_inner(std::string           &buf,
 
     // allocate destinations if it did not yet happen
     // TODO(ts): we rely on the fact that the order when encoding
-    // corresponds to llvms ordering of defs/uses which might not always be
-    // the case
+    // corresponds to llvms ordering of defs/uses which might not always
+    // be the case
 
     buf += "\n";
 
@@ -2741,7 +2952,8 @@ bool generate_inst_inner(std::string           &buf,
                 state.fmt_line(
                     buf,
                     indent,
-                    "// Ignoring implicit def {} as it exceeds the number "
+                    "// Ignoring implicit def {} as it "
+                    "exceeds the number "
                     "of "
                     "implicit defs in the MCInstrDesc",
                     state.func->getSubtarget().getRegisterInfo()->getName(
@@ -2757,8 +2969,8 @@ bool generate_inst_inner(std::string           &buf,
 
         const auto reg_id = state.enc_target->reg_id_from_mc_reg(reg);
         if (def.isImplicit()) {
-            // notify the outer code that the register is needed as a fixed
-            // register
+            // notify the outer code that the register is needed as a
+            // fixed register
             state.fixed_reg_conds[reg_id].emplace_back(if_cond);
         }
 
@@ -2799,14 +3011,24 @@ bool generate_inst_inner(std::string           &buf,
                    desc.name_fadec,
                    operand_str);
 
+    if (!constant_pool_sym_name.empty()) {
+        state.fmt_line(buf,
+                       indent,
+                       "derived()->assembler.reloc_text_pc32({}, "
+                       "derived()->assembler.text_cur_off() - 4, -4);",
+                       constant_pool_sym_name);
+    }
+
     return true;
 }
+
 } // namespace
 
 namespace tpde_encgen {
 bool create_encode_function(llvm::MachineFunction *func,
                             std::string_view       name,
                             std::string           &decl_lines,
+                            std::string           &sym_lines,
                             std::string           &impl_lines) {
     std::string write_buf{};
 
@@ -2880,7 +3102,6 @@ bool create_encode_function(llvm::MachineFunction *func,
         }
     }
 #endif
-
 
     auto &mach_reg_info = func->getRegInfo();
     // const auto &target_reg_info = func->getSubtarget().getRegisterInfo();
@@ -3177,6 +3398,13 @@ bool create_encode_function(llvm::MachineFunction *func,
     impl_lines += write_buf_inner;
 
     impl_lines += "\n}\n\n";
+
+    for (const auto cp_idx : state.const_pool_indices_used) {
+        sym_lines += std::format(
+            "    SymRef sym_{}_cp{} = Assembler::INVALID_SYM_REF;\n",
+            state.func->getName().str(),
+            cp_idx);
+    }
 
     return true;
 }

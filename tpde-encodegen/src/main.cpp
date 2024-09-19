@@ -197,10 +197,16 @@ int main(const int argc, char *argv[]) {
     }
 
     // separate the declarations from the encode implementations
-    std::string decl_lines{}, impl_lines{};
+    std::string decl_lines{}, impl_lines{}, sym_lines{};
 
     // For every input function, query the resulting MachineFunction
     for (llvm::Function &fn : *mod) {
+        std::string              tmp{};
+        llvm::raw_string_ostream os{tmp};
+        fn.printAsOperand(os);
+        std::cerr << std::format(
+            "Handling function {}: {}\n", fn.getName().str(), tmp);
+
         if (fn.isIntrinsic() || fn.isDeclaration()) {
             std::cerr << std::format(
                 "WARN: Intrinsic function {} was skipped\n",
@@ -213,8 +219,14 @@ int main(const int argc, char *argv[]) {
             machine_func->print(llvm::outs(), nullptr);
         }
 
-        if (!create_encode_function(
-                machine_func, fn.getName(), decl_lines, impl_lines)) {
+        // auto live_intervals = std::make_unique<llvm::LiveIntervals>();
+        // live_intervals->runOnMachineFunction(*machine_func);
+
+        if (!create_encode_function(machine_func,
+                                    fn.getName(),
+                                    decl_lines,
+                                    sym_lines,
+                                    impl_lines)) {
             std::cerr << std::format(
                 "Failed to generate code for function {}\n",
                 fn.getName().str());
@@ -224,6 +236,7 @@ int main(const int argc, char *argv[]) {
 
     output_file << x64::ENCODER_TEMPLATE_BEGIN << '\n';
     output_file << decl_lines << '\n';
+    output_file << '\n' << sym_lines << '\n';
     output_file << x64::ENCODER_TEMPLATE_END << '\n';
     output_file << x64::ENCODER_IMPL_TEMPLATE_BEGIN << '\n';
     output_file << impl_lines << '\n';

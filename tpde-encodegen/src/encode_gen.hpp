@@ -10,5 +10,6 @@ namespace tpde_encgen {
 bool create_encode_function(llvm::MachineFunction *,
                             std::string_view name,
                             std::string     &decl_lines,
+                            std::string     &sym_lines,
                             std::string     &impl_lines);
 }
