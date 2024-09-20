@@ -382,7 +382,7 @@ typename AssemblerElf<Derived>::SymRef
     if (local) {
         assert(!weak);
         info =
-            ELF64_ST_INFO(STB_LOCAL, STT_SECTION); // TODO: use STT_OBJECT here?
+            ELF64_ST_INFO(STB_LOCAL, STT_OBJECT); 
     } else if (weak) {
         info = ELF64_ST_INFO(STB_WEAK, STT_OBJECT);
     } else {
