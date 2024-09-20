@@ -223,16 +223,37 @@ u32 TARGET_V1 f64tou32(double a) { return (u32)a; }
 i64 TARGET_V1 f64toi64(double a) { return (i64)a; }
 u64 TARGET_V1 f64tou64(double a) { return (u64)a; }
 
+float TARGET_V1 i8tof32(u8 a) { return (float)(i8)a; }
+float TARGET_V1 i16tof32(u16 a) { return (float)(i16)a; }
+float TARGET_V1 i32tof32(u32 a) { return (float)(i32)a; }
+float TARGET_V1 i64tof32(u64 a) { return (float)(i64)a; }
+float TARGET_V1 u8tof32(i8 a) { return (float)(u8)a; }
+float TARGET_V1 u16tof32(i16 a) { return (float)(u16)a; }
+float TARGET_V1 u32tof32(i32 a) { return (float)(u32)a; }
+float TARGET_V1 u64tof32(i64 a) { return (float)(u64)a; }
+
+double TARGET_V1 i8tof64(u8 a) { return (double)(i8)a; }
+double TARGET_V1 i16tof64(u16 a) { return (double)(i16)a; }
+double TARGET_V1 i32tof64(u32 a) { return (double)(i32)a; }
+double TARGET_V1 i64tof64(u64 a) { return (double)(i64)a; }
+double TARGET_V1 u8tof64(i8 a) { return (double)(u8)a; }
+double TARGET_V1 u16tof64(i16 a) { return (double)(u16)a; }
+double TARGET_V1 u32tof64(i32 a) { return (double)(u32)a; }
+double TARGET_V1 u64tof64(i64 a) { return (double)(u64)a; }
 
 // --------------------------
 // extensions
 // --------------------------
 
 i32 TARGET_V1 sext_8_to_32(u8 a) { return (i32)(i8)a; }
+i64 TARGET_V1 sext_8_to_64(u8 a) { return (i64)(i8)a; }
 i32 TARGET_V1 sext_16_to_32(u16 a) { return (i32)(i16)a; }
+i64 TARGET_V1 sext_16_to_64(u16 a) { return (i64)(i16)a; }
 i64 TARGET_V1 sext_32_to_64(u32 a) { return (i64)(i32)a; }
 i32 TARGET_V1 sext_arbitrary_to_32(u32 a, u32 shift) { return ((i32)(a << shift)) >> shift; }
 i64 TARGET_V1 sext_arbitrary_to_64(u64 a, u32 shift) { return ((i64)(a << shift)) >> shift; }
+
+i64 TARGET_V1 fill_with_sign64(i64 a) { return (a >> 63); }
 
 u32 TARGET_V1 zext_8_to_32(i8 a) { return (u32)(u8)a; }
 u32 TARGET_V1 zext_16_to_32(i16 a) { return (u32)(u16)a; }

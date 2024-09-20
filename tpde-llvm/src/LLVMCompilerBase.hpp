@@ -100,6 +100,13 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_float_to_int(IRValueRef,
                               llvm::Instruction *,
                               bool sign) noexcept;
+    bool compile_int_to_float(IRValueRef,
+                              llvm::Instruction *,
+                              bool sign) noexcept;
+    bool compile_int_trunc(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_int_ext(IRValueRef, llvm::Instruction *, bool sign) noexcept;
+    bool compile_ptr_to_int(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_int_to_ptr(IRValueRef, llvm::Instruction *) noexcept;
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -377,6 +384,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
         return compile_float_to_int(val_idx, i, true);
     case llvm::Instruction::FPToUI:
         return compile_float_to_int(val_idx, i, false);
+    case llvm::Instruction::SIToFP:
+        return compile_int_to_float(val_idx, i, true);
+    case llvm::Instruction::UIToFP:
+        return compile_int_to_float(val_idx, i, false);
+    case llvm::Instruction::Trunc: return compile_int_trunc(val_idx, i);
+    case llvm::Instruction::SExt: return compile_int_ext(val_idx, i, true);
+    case llvm::Instruction::ZExt: return compile_int_ext(val_idx, i, false);
+    case llvm::Instruction::PtrToInt: return compile_ptr_to_int(val_idx, i);
+    case llvm::Instruction::IntToPtr: return compile_int_to_ptr(val_idx, i);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -1233,6 +1249,290 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
                 derived()->encode_f32tou32(std::move(src_ref), res_scratch);
             }
         }
+    }
+
+    this->set_value(res_ref, res_scratch);
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
+    IRValueRef inst_idx, llvm::Instruction *inst, const bool sign) noexcept {
+    auto *src_val = inst->getOperand(0);
+    auto *src_ty  = src_val->getType();
+    assert(src_ty->isIntegerTy());
+
+    auto *dst_ty = inst->getType();
+    assert(dst_ty->isFloatTy() || dst_ty->isDoubleTy());
+
+    const auto bit_width = src_ty->getIntegerBitWidth();
+    if (bit_width != 64 && bit_width != 32 && bit_width != 16
+        && bit_width != 8) {
+        assert(0);
+        return false;
+    }
+
+    const auto dst_double = dst_ty->isDoubleTy();
+
+    auto src_ref     = this->val_ref(llvm_val_idx(src_val), 0);
+    auto res_ref     = this->result_ref_lazy(inst_idx, 0);
+    auto res_scratch = ScratchReg{derived()};
+
+    if (sign) {
+        if (bit_width == 64) {
+            if (dst_double) {
+                derived()->encode_i64tof64(std::move(src_ref), res_scratch);
+            } else {
+                derived()->encode_i64tof32(std::move(src_ref), res_scratch);
+            }
+        } else if (bit_width == 32) {
+            if (dst_double) {
+                derived()->encode_i32tof64(std::move(src_ref), res_scratch);
+            } else {
+                derived()->encode_i32tof32(std::move(src_ref), res_scratch);
+            }
+        } else if (bit_width == 16) {
+            if (dst_double) {
+                derived()->encode_i16tof64(std::move(src_ref), res_scratch);
+            } else {
+                derived()->encode_i16tof32(std::move(src_ref), res_scratch);
+            }
+        } else {
+            assert(bit_width == 8);
+            if (dst_double) {
+                derived()->encode_i8tof64(std::move(src_ref), res_scratch);
+            } else {
+                derived()->encode_i8tof32(std::move(src_ref), res_scratch);
+            }
+        }
+    } else {
+        if (bit_width == 64) {
+            if (dst_double) {
+                derived()->encode_u64tof64(std::move(src_ref), res_scratch);
+            } else {
+                derived()->encode_u64tof32(std::move(src_ref), res_scratch);
+            }
+        } else if (bit_width == 32) {
+            if (dst_double) {
+                derived()->encode_u32tof64(std::move(src_ref), res_scratch);
+            } else {
+                derived()->encode_u32tof32(std::move(src_ref), res_scratch);
+            }
+        } else if (bit_width == 16) {
+            if (dst_double) {
+                derived()->encode_u16tof64(std::move(src_ref), res_scratch);
+            } else {
+                derived()->encode_u16tof32(std::move(src_ref), res_scratch);
+            }
+        } else {
+            assert(bit_width == 8);
+            if (dst_double) {
+                derived()->encode_u8tof64(std::move(src_ref), res_scratch);
+            } else {
+                derived()->encode_u8tof32(std::move(src_ref), res_scratch);
+            }
+        }
+    }
+
+    this->set_value(res_ref, res_scratch);
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_trunc(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    // this is a no-op since every operation that depends on it will
+    // zero/sign-extend the value anyways
+    auto src_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+
+    AsmReg orig;
+    auto   res_ref = this->result_ref_salvage_with_original(
+        inst_idx, 0, std::move(src_ref), orig);
+    if (orig != res_ref.cur_reg()) {
+        derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
+    }
+    this->set_value(res_ref, res_ref.cur_reg());
+
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
+    IRValueRef inst_idx, llvm::Instruction *inst, bool sign) noexcept {
+    using EncodeImm = typename Derived::EncodeImm;
+
+    auto *src_val = inst->getOperand(0);
+    auto *src_ty  = src_val->getType();
+    assert(src_ty->isIntegerTy());
+    const auto src_width = src_ty->getIntegerBitWidth();
+
+    auto *dst_ty = inst->getType();
+    assert(dst_ty->isIntegerTy());
+    const auto dst_width = dst_ty->getIntegerBitWidth();
+    assert(dst_width >= src_width);
+
+    auto       src_ref = this->val_ref(llvm_val_idx(src_val), 0);
+    ScratchReg res_scratch{derived()};
+
+    if (src_width == 8) {
+        if (sign) {
+            if (dst_width <= 32) {
+                derived()->encode_sext_8_to_32(std::move(src_ref), res_scratch);
+            } else {
+                derived()->encode_sext_8_to_64(std::move(src_ref), res_scratch);
+            }
+        } else {
+            // works because both on ARM and x64 zext to 32 zeroes the upper
+            // bits
+            derived()->encode_zext_8_to_32(std::move(src_ref), res_scratch);
+        }
+    } else if (src_width == 16) {
+        if (sign) {
+            if (dst_width <= 32) {
+                derived()->encode_sext_16_to_32(std::move(src_ref),
+                                                res_scratch);
+            } else {
+                derived()->encode_sext_16_to_64(std::move(src_ref),
+                                                res_scratch);
+            }
+        } else {
+            // works because both on ARM and x64 zext to 32 zeroes the upper
+            // bits
+            derived()->encode_zext_16_to_32(std::move(src_ref), res_scratch);
+        }
+    } else if (src_width != 32 && src_width != 64) {
+        if (sign) {
+            if (dst_width <= 32) {
+                derived()->encode_sext_arbitrary_to_32(
+                    std::move(src_ref),
+                    EncodeImm{32u - src_width},
+                    res_scratch);
+            } else {
+                derived()->encode_sext_arbitrary_to_64(
+                    std::move(src_ref),
+                    EncodeImm{64u - src_width},
+                    res_scratch);
+            }
+        } else {
+            u64 mask = (1ull << src_width) - 1;
+            if (src_width <= 32) {
+                // works because both on ARM and x64 zext to 32 zeroes the upper
+                // bits
+                derived()->encode_landi32(
+                    std::move(src_ref), EncodeImm{mask}, res_scratch);
+            } else {
+                derived()->encode_landi64(
+                    std::move(src_ref), EncodeImm{mask}, res_scratch);
+            }
+        }
+    } else if (src_width == 32) {
+        if (sign) {
+            derived()->encode_sext_32_to_64(std::move(src_ref), res_scratch);
+        } else {
+            derived()->encode_zext_32_to_64(std::move(src_ref), res_scratch);
+        }
+    } else {
+        assert(src_width == 64);
+        if (src_ref.can_salvage()) {
+            if (!src_ref.assignment().register_valid()) {
+                src_ref.alloc_reg(true);
+            }
+            res_scratch.alloc_specific(src_ref.salvage());
+        } else {
+            ScratchReg tmp{derived()};
+            auto       src = this->val_as_reg(src_ref, tmp);
+
+            derived()->mov(res_scratch.alloc_gp(), src, 8);
+        }
+    }
+
+    auto res_ref = this->result_ref_lazy(inst_idx, 0);
+
+    if (dst_width == 128) {
+        assert(src_width <= 64);
+        res_ref.inc_ref_count();
+        auto       res_ref_high = this->result_ref_lazy(inst_idx, 1);
+        ScratchReg scratch_high{derived()};
+
+        if (sign) {
+            derived()->encode_fill_with_sign64(res_scratch.cur_reg,
+                                               scratch_high);
+        } else {
+            std::array<u8, 64> data{};
+            derived()->materialize_constant(
+                data, Config::GP_BANK, 8, scratch_high.alloc_gp());
+        }
+
+        this->set_value(res_ref_high, scratch_high);
+    }
+
+    this->set_value(res_ref, res_scratch);
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ptr_to_int(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    // this is a no-op since every operation that depends on it will
+    // zero/sign-extend the value anyways
+    auto src_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+
+    AsmReg orig;
+    auto   res_ref = this->result_ref_salvage_with_original(
+        inst_idx, 0, std::move(src_ref), orig);
+    if (orig != res_ref.cur_reg()) {
+        derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
+    }
+    this->set_value(res_ref, res_ref.cur_reg());
+
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_ptr(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    using EncodeImm = typename Derived::EncodeImm;
+
+    // zero-extend the value
+    auto *src_val = inst->getOperand(0);
+    auto *src_ty  = src_val->getType();
+    assert(src_ty->isIntegerTy());
+    const auto bit_width = src_ty->getIntegerBitWidth();
+
+    assert(bit_width <= 64);
+
+    auto src_ref = this->val_ref(llvm_val_idx(src_val), 0);
+    if (bit_width == 64) {
+        // no-op
+        AsmReg orig;
+        auto   res_ref = this->result_ref_salvage_with_original(
+            inst_idx, 0, std::move(src_ref), orig);
+        if (orig != res_ref.cur_reg()) {
+            derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
+        }
+        this->set_value(res_ref, res_ref.cur_reg());
+
+        return true;
+    }
+
+    auto res_ref     = this->result_ref_lazy(inst_idx, 0);
+    auto res_scratch = ScratchReg{derived()};
+
+    if (bit_width == 32) {
+        derived()->encode_zext_32_to_64(std::move(src_ref), res_scratch);
+    } else if (bit_width == 8) {
+        derived()->encode_zext_8_to_32(std::move(src_ref), res_scratch);
+    } else if (bit_width == 16) {
+        derived()->encode_zext_16_to_32(std::move(src_ref), res_scratch);
+    } else if (bit_width < 32) {
+        u64 mask = (1ull << bit_width) - 1;
+        derived()->encode_landi32(
+            std::move(src_ref), EncodeImm{mask}, res_scratch);
+    } else {
+        assert(bit_width > 32 && bit_width < 64);
+        u64 mask = (1ull << bit_width) - 1;
+        derived()->encode_landi64(
+            std::move(src_ref), EncodeImm{mask}, res_scratch);
     }
 
     this->set_value(res_ref, res_scratch);

@@ -194,7 +194,7 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
     case i32:
     case i64:
     case ptr: {
-        assert(val->getType()->isIntegerTy());
+        assert(val->getType()->isIntegerTy() || val->getType()->isPointerTy());
         auto       val_ref    = this->val_ref(val_idx, 0);
         const auto call_conv  = this->cur_calling_convention();
         const auto target_reg = call_conv.ret_regs_gp()[0];
