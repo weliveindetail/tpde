@@ -204,6 +204,25 @@ double TARGET_V1 mulf64(double a, double b) { return (a * b); }
 double TARGET_V1 divf64(double a, double b) { return (a / b); }
 //double TARGET_V1 remf64(double a, double b) { return __builtin_fmod(a, b); }
 
+float TARGET_V1 fnegf32(float a) { return (-a); }
+double TARGET_V1 fnegf64(double a) { return (-a); }
+
+// --------------------------
+// float conversions
+// --------------------------
+
+float TARGET_V1 f64tof32(double a) { return (float)(a); }
+double TARGET_V1 f32tof64(float a) { return (double)(a); }
+
+i32 TARGET_V1 f32toi32(float a) { return (i32)a; }
+u32 TARGET_V1 f32tou32(float a) { return (u32)a; }
+i64 TARGET_V1 f32toi64(float a) { return (i64)a; }
+u64 TARGET_V1 f32tou64(float a) { return (u64)a; }
+i32 TARGET_V1 f64toi32(double a) { return (i32)a; }
+u32 TARGET_V1 f64tou32(double a) { return (u32)a; }
+i64 TARGET_V1 f64toi64(double a) { return (i64)a; }
+u64 TARGET_V1 f64tou64(double a) { return (u64)a; }
+
 
 // --------------------------
 // extensions

@@ -22,6 +22,8 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     using Assembler = typename Base::Assembler;
     using SymRef    = typename Assembler::SymRef;
 
+    using AsmReg = typename Base::AsmReg;
+
     enum class IntBinaryOp {
         add,
         sub,
@@ -91,6 +93,13 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_float_binary_op(IRValueRef,
                                  llvm::Instruction *,
                                  FloatBinaryOp op) noexcept;
+    bool compile_fneg(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_float_ext_trunc(IRValueRef,
+                                 llvm::Instruction *,
+                                 bool trunc) noexcept;
+    bool compile_float_to_int(IRValueRef,
+                              llvm::Instruction *,
+                              bool sign) noexcept;
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -359,6 +368,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
         return compile_float_binary_op(val_idx, i, FloatBinaryOp::div);
     case llvm::Instruction::FRem:
         return compile_float_binary_op(val_idx, i, FloatBinaryOp::rem);
+    case llvm::Instruction::FNeg: return compile_fneg(val_idx, i);
+    case llvm::Instruction::FPExt:
+        return compile_float_ext_trunc(val_idx, i, false);
+    case llvm::Instruction::FPTrunc:
+        return compile_float_ext_trunc(val_idx, i, true);
+    case llvm::Instruction::FPToSI:
+        return compile_float_to_int(val_idx, i, true);
+    case llvm::Instruction::FPToUI:
+        return compile_float_to_int(val_idx, i, false);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -1111,6 +1129,113 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
 
     this->set_value(res, res_scratch);
 
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fneg(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    const auto is_double = inst->getType()->isDoubleTy();
+
+    assert(inst->getType()->isDoubleTy() || inst->getType()->isFloatTy());
+
+    auto src_ref     = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto res_ref     = this->result_ref_lazy(inst_idx, 0);
+    auto res_scratch = ScratchReg{derived()};
+
+    if (is_double) {
+        derived()->encode_fnegf64(std::move(src_ref), res_scratch);
+    } else {
+        derived()->encode_fnegf32(std::move(src_ref), res_scratch);
+    }
+
+    this->set_value(res_ref, res_scratch);
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
+    IRValueRef inst_idx, llvm::Instruction *inst, const bool trunc) noexcept {
+    auto *src_val = inst->getOperand(0);
+    auto *src_ty  = src_val->getType();
+
+    assert(src_ty->isFloatTy() || src_ty->isDoubleTy());
+
+    const auto src_double = src_ty->isDoubleTy();
+    const auto dst_double = inst->getType()->isDoubleTy();
+
+    auto src_ref = this->val_ref(llvm_val_idx(src_val), 0);
+
+    auto       res_ref = this->result_ref_lazy(inst_idx, 0);
+    ScratchReg res_scratch{derived()};
+    if (trunc) {
+        assert(src_double && !dst_double);
+        derived()->encode_f64tof32(std::move(src_ref), res_scratch);
+    } else {
+        assert(!src_double && dst_double);
+        derived()->encode_f32tof64(std::move(src_ref), res_scratch);
+    }
+
+    this->set_value(res_ref, res_scratch);
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
+    IRValueRef inst_idx, llvm::Instruction *inst, const bool sign) noexcept {
+    auto *src_val = inst->getOperand(0);
+    auto *src_ty  = src_val->getType();
+    assert(src_ty->isFloatTy() || src_ty->isDoubleTy());
+
+    auto *dst_ty = inst->getType();
+    assert(dst_ty->isIntegerTy());
+
+    const auto bit_width = dst_ty->getIntegerBitWidth();
+    if (bit_width != 64 && bit_width != 32) {
+        assert(0);
+        return false;
+    }
+
+    const auto src_double = src_ty->isDoubleTy();
+
+    auto src_ref     = this->val_ref(llvm_val_idx(src_val), 0);
+    auto res_ref     = this->result_ref_lazy(inst_idx, 0);
+    auto res_scratch = ScratchReg{derived()};
+    if (sign) {
+        if (src_double) {
+            if (bit_width == 64) {
+                derived()->encode_f64toi64(std::move(src_ref), res_scratch);
+            } else {
+                assert(bit_width == 32);
+                derived()->encode_f64toi32(std::move(src_ref), res_scratch);
+            }
+        } else {
+            if (bit_width == 64) {
+                derived()->encode_f32toi64(std::move(src_ref), res_scratch);
+            } else {
+                assert(bit_width == 32);
+                derived()->encode_f32toi32(std::move(src_ref), res_scratch);
+            }
+        }
+    } else {
+        if (src_double) {
+            if (bit_width == 64) {
+                derived()->encode_f64tou64(std::move(src_ref), res_scratch);
+            } else {
+                assert(bit_width == 32);
+                derived()->encode_f64tou32(std::move(src_ref), res_scratch);
+            }
+        } else {
+            if (bit_width == 64) {
+                derived()->encode_f32tou64(std::move(src_ref), res_scratch);
+            } else {
+                assert(bit_width == 32);
+                derived()->encode_f32tou32(std::move(src_ref), res_scratch);
+            }
+        }
+    }
+
+    this->set_value(res_ref, res_scratch);
     return true;
 }
 } // namespace tpde_llvm

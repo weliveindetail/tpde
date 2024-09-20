@@ -40,6 +40,7 @@ struct EncodeCompiler {
     using Assembler    = typename CompilerX64::Assembler;
     using Label        = typename Assembler::Label;
     using ValLocalIdx  = typename CompilerX64::ValLocalIdx;
+    using SymRef       = typename Assembler::SymRef;
 
     struct AsmOperand {
         struct Address {
@@ -311,6 +312,18 @@ struct EncodeCompiler {
     bool encode_subf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_mulf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_divf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fnegf32(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_fnegf64(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_f64tof32(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_f32tof64(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_f32toi32(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_f32tou32(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_f32toi64(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_f32tou64(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_f64toi32(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_f64tou32(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_f64toi64(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_f64tou64(AsmOperand param_0, ScratchReg &result_0);
     bool encode_sext_8_to_32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_sext_16_to_32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_sext_32_to_64(AsmOperand param_0, ScratchReg &result_0);
@@ -319,6 +332,12 @@ struct EncodeCompiler {
     bool encode_zext_8_to_32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_zext_16_to_32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_zext_32_to_64(AsmOperand param_0, ScratchReg &result_0);
+
+
+    SymRef sym_fnegf32_cp0 = Assembler::INVALID_SYM_REF;
+    SymRef sym_fnegf64_cp0 = Assembler::INVALID_SYM_REF;
+    SymRef sym_f32tou64_cp0 = Assembler::INVALID_SYM_REF;
+    SymRef sym_f64tou64_cp0 = Assembler::INVALID_SYM_REF;
 
 
 };
@@ -8174,6 +8193,828 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_divf64(AsmOperand param_0,
     // RET64 killed $xmm0
     // returning reg xmm0 as result_0
     result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_fnegf32(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function fnegf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Constant Pool:
+    //   cp#0: <float -0.000000e+00, float -0.000000e+00, float -0.000000e+00, float -0.000000e+00>, align=16
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $xmm0 = XORPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function fnegf32.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = XORPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    // operand 0 is xmm0
+    // xmm0 is mapped to param_0
+    // operand 0(param_0) is tied so try to salvage or materialize
+    param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // operand is a constant-pool reference
+    SymRef inst0_op1_sym = this->sym_fnegf32_cp0;
+    if (inst0_op1_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+        const std::array<u8, 16> data = {0x0, 0x0, 0x0, 0x80, 0x0, 0x0, 0x0, 0x80, 0x0, 0x0, 0x0, 0x80, 0x0, 0x0, 0x0, 0x80};
+        inst0_op1_sym = derived()->assembler.sym_def_data("", data, 16, true, false, true, false);
+        this->sym_fnegf32_cp0 = inst0_op1_sym;
+    }
+    inst0_op1 = FE_MEM(FE_IP, 0, FE_NOREG, 0);
+
+    ASMD(SSE_XORPSrm, scratch_xmm0.cur_reg, inst0_op1);
+    derived()->assembler.reloc_text_pc32(inst0_op1_sym, derived()->assembler.text_cur_off() - 4, -4);
+    // argument xmm0 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_fnegf64(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function fnegf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Constant Pool:
+    //   cp#0: <double -0.000000e+00, double -0.000000e+00>, align=16
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $xmm0 = XORPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function fnegf64.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = XORPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    // operand 0 is xmm0
+    // xmm0 is mapped to param_0
+    // operand 0(param_0) is tied so try to salvage or materialize
+    param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // operand is a constant-pool reference
+    SymRef inst0_op1_sym = this->sym_fnegf64_cp0;
+    if (inst0_op1_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+        const std::array<u8, 16> data = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x80, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x80};
+        inst0_op1_sym = derived()->assembler.sym_def_data("", data, 16, true, false, true, false);
+        this->sym_fnegf64_cp0 = inst0_op1_sym;
+    }
+    inst0_op1 = FE_MEM(FE_IP, 0, FE_NOREG, 0);
+
+    ASMD(SSE_XORPSrm, scratch_xmm0.cur_reg, inst0_op1);
+    derived()->assembler.reloc_text_pc32(inst0_op1_sym, derived()->assembler.text_cur_off() - 4, -4);
+    // argument xmm0 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64tof32(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function f64tof32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $xmm0 = nofpexcept CVTSD2SSrr killed renamable $xmm0, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function f64tof32.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept CVTSD2SSrr killed renamable $xmm0, implicit $mxcsr
+    // SSE_CVTSD2SSrr has a preferred encoding as SSE_CVTSD2SSrm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def xmm0 has not been allocated yet
+        scratch_xmm0.alloc_from_bank(1);
+        ASMD(SSE_CVTSD2SSrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_xmm0, 1)) {
+            inst0_op1 = scratch_xmm0.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
+
+        // def xmm0 has not been allocated yet
+        scratch_xmm0.alloc_from_bank(1);
+        ASMD(SSE_CVTSD2SSrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32tof64(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function f32tof64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $xmm0 = nofpexcept CVTSS2SDrr killed renamable $xmm0, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function f32tof64.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept CVTSS2SDrr killed renamable $xmm0, implicit $mxcsr
+    // SSE_CVTSS2SDrr has a preferred encoding as SSE_CVTSS2SDrm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def xmm0 has not been allocated yet
+        scratch_xmm0.alloc_from_bank(1);
+        ASMD(SSE_CVTSS2SDrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_xmm0, 1)) {
+            inst0_op1 = scratch_xmm0.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
+
+        // def xmm0 has not been allocated yet
+        scratch_xmm0.alloc_from_bank(1);
+        ASMD(SSE_CVTSS2SDrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32toi32(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function f32toi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $eax = nofpexcept CVTTSS2SIrr killed renamable $xmm0, implicit $mxcsr
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function f32toi32.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = nofpexcept CVTTSS2SIrr killed renamable $xmm0, implicit $mxcsr
+    // SSE_CVTTSS2SI32rr has a preferred encoding as SSE_CVTTSS2SI32rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSS2SI32rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst0_op1 = param_0.as_reg(this);
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSS2SI32rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32tou32(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function f32tou32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $rax = nofpexcept CVTTSS2SI64rr killed renamable $xmm0, implicit $mxcsr
+    //   $eax = KILL killed renamable $eax, implicit killed $rax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function f32tou32.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $rax = nofpexcept CVTTSS2SI64rr killed renamable $xmm0, implicit $mxcsr
+    // SSE_CVTTSS2SI64rr has a preferred encoding as SSE_CVTTSS2SI64rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSS2SI64rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst0_op1 = param_0.as_reg(this);
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSS2SI64rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // $eax = KILL killed renamable $eax, implicit killed $rax
+    // KILL is a no-op
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32toi64(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function f32toi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $rax = nofpexcept CVTTSS2SI64rr killed renamable $xmm0, implicit $mxcsr
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function f32toi64.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $rax = nofpexcept CVTTSS2SI64rr killed renamable $xmm0, implicit $mxcsr
+    // SSE_CVTTSS2SI64rr has a preferred encoding as SSE_CVTTSS2SI64rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSS2SI64rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst0_op1 = param_0.as_reg(this);
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSS2SI64rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32tou64(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function f32tou64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Constant Pool:
+    //   cp#0: 0x43E0000000000000, align=4
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $rcx = nofpexcept CVTTSS2SI64rr_Int renamable $xmm0, implicit $mxcsr
+    //   $rdx = MOV64rr $rcx
+    //   renamable $rdx = SAR64ri killed renamable $rdx(tied-def 0), 63, implicit-def dead $eflags
+    //   renamable $xmm0 = nofpexcept SUBSSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg, implicit $mxcsr :: (load (s32) from constant-pool)
+    //   renamable $rax = nofpexcept CVTTSS2SI64rr_Int killed renamable $xmm0, implicit $mxcsr
+    //   renamable $rax = AND64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def dead $eflags
+    //   renamable $rax = OR64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def dead $eflags
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function f32tou64.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_xmm0{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $rcx = nofpexcept CVTTSS2SI64rr_Int renamable $xmm0, implicit $mxcsr
+    // SSE_CVTTSS2SI64rr has a preferred encoding as SSE_CVTTSS2SI64rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def cx has not been allocated yet
+        scratch_cx.alloc_from_bank(0);
+        ASMD(SSE_CVTTSS2SI64rm, scratch_cx.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst0_op1 = param_0.as_reg(this);
+
+        // def cx has not been allocated yet
+        scratch_cx.alloc_from_bank(0);
+        ASMD(SSE_CVTTSS2SI64rr, scratch_cx.cur_reg, inst0_op1);
+    }
+    // result cx is marked as alive
+
+
+    // $rdx = MOV64rr $rcx
+    // aliasing dx to cx
+
+
+    // renamable $rdx = SAR64ri killed renamable $rdx(tied-def 0), 63, implicit-def dead $eflags
+    // operand 0 is dx
+    // dx is an alias for cx
+    // operand 0(cx) has some references so copy it
+    AsmReg inst2_op0 = scratch_dx.alloc_from_bank(0);
+    ASMD(MOV64rr, inst2_op0, scratch_cx.cur_reg);
+    // operand 1 is an immediate operand
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SAR64ri, scratch_dx.cur_reg, 63);
+    // argument dx is killed and marked as dead
+    // removing alias from dx to cx
+    // result dx is marked as alive
+
+
+    // renamable $xmm0 = nofpexcept SUBSSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg, implicit $mxcsr :: (load (s32) from constant-pool)
+    // operand 0 is xmm0
+    // xmm0 is mapped to param_0
+    // operand 0(param_0) is tied so try to salvage or materialize
+    param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+    // operand 1 is a memory operand
+    FeMem inst3_op1;
+    // operand is a constant-pool reference
+    SymRef inst3_op1_sym = this->sym_f32tou64_cp0;
+    if (inst3_op1_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+        const std::array<u8, 4> data = {0x0, 0x0, 0x0, 0x5F};
+        inst3_op1_sym = derived()->assembler.sym_def_data("", data, 4, true, false, true, false);
+        this->sym_f32tou64_cp0 = inst3_op1_sym;
+    }
+    inst3_op1 = FE_MEM(FE_IP, 0, FE_NOREG, 0);
+
+    ASMD(SSE_SUBSSrm, scratch_xmm0.cur_reg, inst3_op1);
+    derived()->assembler.reloc_text_pc32(inst3_op1_sym, derived()->assembler.text_cur_off() - 4, -4);
+    // argument xmm0 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // renamable $rax = nofpexcept CVTTSS2SI64rr_Int killed renamable $xmm0, implicit $mxcsr
+    // operand 1 is xmm0
+    // operand 1(xmm0) is a simple register
+    AsmReg inst4_op1 = scratch_xmm0.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(SSE_CVTTSS2SI64rr, scratch_ax.cur_reg, inst4_op1);
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rax = AND64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is dx
+    // operand 1(dx) is a simple register
+    AsmReg inst5_op1 = scratch_dx.cur_reg;
+
+    ASMD(AND64rr, scratch_ax.cur_reg, inst5_op1);
+    // argument ax is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rax = OR64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is cx
+    // operand 1(cx) is a simple register
+    AsmReg inst6_op1 = scratch_cx.cur_reg;
+
+    ASMD(OR64rr, scratch_ax.cur_reg, inst6_op1);
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64toi32(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function f64toi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $eax = nofpexcept CVTTSD2SIrr killed renamable $xmm0, implicit $mxcsr
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function f64toi32.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = nofpexcept CVTTSD2SIrr killed renamable $xmm0, implicit $mxcsr
+    // SSE_CVTTSD2SI32rr has a preferred encoding as SSE_CVTTSD2SI32rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSD2SI32rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst0_op1 = param_0.as_reg(this);
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSD2SI32rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64tou32(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function f64tou32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $rax = nofpexcept CVTTSD2SI64rr killed renamable $xmm0, implicit $mxcsr
+    //   $eax = KILL killed renamable $eax, implicit killed $rax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function f64tou32.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $rax = nofpexcept CVTTSD2SI64rr killed renamable $xmm0, implicit $mxcsr
+    // SSE_CVTTSD2SI64rr has a preferred encoding as SSE_CVTTSD2SI64rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSD2SI64rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst0_op1 = param_0.as_reg(this);
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSD2SI64rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // $eax = KILL killed renamable $eax, implicit killed $rax
+    // KILL is a no-op
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64toi64(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function f64toi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $rax = nofpexcept CVTTSD2SI64rr killed renamable $xmm0, implicit $mxcsr
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function f64toi64.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $rax = nofpexcept CVTTSD2SI64rr killed renamable $xmm0, implicit $mxcsr
+    // SSE_CVTTSD2SI64rr has a preferred encoding as SSE_CVTTSD2SI64rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSD2SI64rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst0_op1 = param_0.as_reg(this);
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SSE_CVTTSD2SI64rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64tou64(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function f64tou64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Constant Pool:
+    //   cp#0: 0x43E0000000000000, align=8
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $rcx = nofpexcept CVTTSD2SI64rr_Int renamable $xmm0, implicit $mxcsr
+    //   $rdx = MOV64rr $rcx
+    //   renamable $rdx = SAR64ri killed renamable $rdx(tied-def 0), 63, implicit-def dead $eflags
+    //   renamable $xmm0 = nofpexcept SUBSDrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg, implicit $mxcsr :: (load (s64) from constant-pool)
+    //   renamable $rax = nofpexcept CVTTSD2SI64rr_Int killed renamable $xmm0, implicit $mxcsr
+    //   renamable $rax = AND64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def dead $eflags
+    //   renamable $rax = OR64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def dead $eflags
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function f64tou64.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_xmm0{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $rcx = nofpexcept CVTTSD2SI64rr_Int renamable $xmm0, implicit $mxcsr
+    // SSE_CVTTSD2SI64rr has a preferred encoding as SSE_CVTTSD2SI64rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def cx has not been allocated yet
+        scratch_cx.alloc_from_bank(0);
+        ASMD(SSE_CVTTSD2SI64rm, scratch_cx.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst0_op1 = param_0.as_reg(this);
+
+        // def cx has not been allocated yet
+        scratch_cx.alloc_from_bank(0);
+        ASMD(SSE_CVTTSD2SI64rr, scratch_cx.cur_reg, inst0_op1);
+    }
+    // result cx is marked as alive
+
+
+    // $rdx = MOV64rr $rcx
+    // aliasing dx to cx
+
+
+    // renamable $rdx = SAR64ri killed renamable $rdx(tied-def 0), 63, implicit-def dead $eflags
+    // operand 0 is dx
+    // dx is an alias for cx
+    // operand 0(cx) has some references so copy it
+    AsmReg inst2_op0 = scratch_dx.alloc_from_bank(0);
+    ASMD(MOV64rr, inst2_op0, scratch_cx.cur_reg);
+    // operand 1 is an immediate operand
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SAR64ri, scratch_dx.cur_reg, 63);
+    // argument dx is killed and marked as dead
+    // removing alias from dx to cx
+    // result dx is marked as alive
+
+
+    // renamable $xmm0 = nofpexcept SUBSDrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg, implicit $mxcsr :: (load (s64) from constant-pool)
+    // operand 0 is xmm0
+    // xmm0 is mapped to param_0
+    // operand 0(param_0) is tied so try to salvage or materialize
+    param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+    // operand 1 is a memory operand
+    FeMem inst3_op1;
+    // operand is a constant-pool reference
+    SymRef inst3_op1_sym = this->sym_f64tou64_cp0;
+    if (inst3_op1_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+        const std::array<u8, 8> data = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xE0, 0x43};
+        inst3_op1_sym = derived()->assembler.sym_def_data("", data, 8, true, false, true, false);
+        this->sym_f64tou64_cp0 = inst3_op1_sym;
+    }
+    inst3_op1 = FE_MEM(FE_IP, 0, FE_NOREG, 0);
+
+    ASMD(SSE_SUBSDrm, scratch_xmm0.cur_reg, inst3_op1);
+    derived()->assembler.reloc_text_pc32(inst3_op1_sym, derived()->assembler.text_cur_off() - 4, -4);
+    // argument xmm0 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // renamable $rax = nofpexcept CVTTSD2SI64rr_Int killed renamable $xmm0, implicit $mxcsr
+    // operand 1 is xmm0
+    // operand 1(xmm0) is a simple register
+    AsmReg inst4_op1 = scratch_xmm0.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(SSE_CVTTSD2SI64rr, scratch_ax.cur_reg, inst4_op1);
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rax = AND64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is dx
+    // operand 1(dx) is a simple register
+    AsmReg inst5_op1 = scratch_dx.cur_reg;
+
+    ASMD(AND64rr, scratch_ax.cur_reg, inst5_op1);
+    // argument ax is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rax = OR64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is cx
+    // operand 1(cx) is a simple register
+    AsmReg inst6_op1 = scratch_cx.cur_reg;
+
+    ASMD(OR64rr, scratch_ax.cur_reg, inst6_op1);
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
     return true;
 
 }
