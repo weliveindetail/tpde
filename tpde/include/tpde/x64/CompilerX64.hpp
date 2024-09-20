@@ -1574,6 +1574,10 @@ void CompilerX64<Adaptor, Derived, BaseTy>::generate_raw_jump(
         case Jump::jne: ASMNC(JNZ, target); break;
         case Jump::jno: ASMNC(JNO, target); break;
         case Jump::jo: ASMNC(JO, target); break;
+        case Jump::js: ASMNC(JS, target); break;
+        case Jump::jns: ASMNC(JNS, target); break;
+        case Jump::jp: ASMNC(JP, target); break;
+        case Jump::jnp: ASMNC(JNP, target); break;
         }
     }
 }
