@@ -169,7 +169,7 @@ struct EncodingTargetX64 : EncodingTarget {
                                dst,
                                src);
                 std::format_to(
-                    std::back_inserter(buf), "{:>{}}else {{\n", "", indent);
+                    std::back_inserter(buf), "{:>{}}}} else {{\n", "", indent);
                 std::format_to(std::back_inserter(buf),
                                "{:>{}}    ASMD(SSE_MOVUPDrr, {}, {});\n",
                                "",
