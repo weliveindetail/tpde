@@ -180,7 +180,6 @@ concept IRAdaptor = requires(T a) {
         { a.cur_highest_val_idx() } -> std::convertible_to<u32>;
     };
 
-#if 0
     /// Provides the personality function for the current function or
     /// INVALID_FUNC_REF otherwise
     { a.cur_personality_func() } -> std::same_as<typename T::IRFuncRef>;
@@ -243,11 +242,11 @@ concept IRAdaptor = requires(T a) {
     /// Set the block info
     { a.block_set_info2(ARG(typename T::IRBlockRef), ARG(u32)) };
 
-    #ifdef TPDE_LOGGING
+#ifdef TPDE_LOGGING
     /// If logging is enabled, we want to be able to print blocks and want to
     /// give the adaptor the opportunity to dictate how that is done
     { a.block_fmt_ref(ARG(typename T::IRBlockRef)) } -> CanBeFormatted;
-    #endif
+#endif
 
 
     // information about values
@@ -283,6 +282,9 @@ concept IRAdaptor = requires(T a) {
     {
         a.val_produces_result(ARG(typename T::IRValueRef))
     } -> std::convertible_to<bool>;
+
+    /// Is the value fused? If so, it will not be compiled
+    { a.val_fused(ARG(typename T::IRValueRef)) } -> std::convertible_to<bool>;
 
     /// Is the specified value an argument of the current function
     { a.val_is_arg(ARG(typename T::IRValueRef)) } -> std::convertible_to<bool>;
@@ -322,7 +324,6 @@ concept IRAdaptor = requires(T a) {
     /// The compiler is being resetted. If there is any data remaining that
     /// would cause problems with recompiling it should be cleared
     { a.reset() };
-#endif
 };
 
 #undef ARG

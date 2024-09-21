@@ -887,7 +887,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
             salvage_reg_for_values(res_ref, arg);
         } else {
             const auto reg = res_ref.alloc_reg(false);
-            arg.reload_into_specific(this, reg);
+            arg.reload_into_specific_fixed(this, reg);
         }
     }
 
@@ -1710,6 +1710,10 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
 
     assembler.label_place(block_labels[block_idx]);
     for (const IRValueRef value : adaptor->block_values(block)) {
+        if (this->adaptor->val_fused(value)) {
+            continue;
+        }
+
         if (!derived()->compile_inst(value)) {
             return false;
         }

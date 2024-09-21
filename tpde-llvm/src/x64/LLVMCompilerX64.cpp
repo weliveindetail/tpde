@@ -89,6 +89,7 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                            bool           is_double) noexcept;
 
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_alloca(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_br(IRValueRef, llvm::Instruction *) noexcept;
 };
 
@@ -449,6 +450,69 @@ bool LLVMCompilerX64::compile_unreachable(IRValueRef,
                                           llvm::Instruction *) noexcept {
     ASM(UD2);
     this->release_regs_after_return();
+    return true;
+}
+
+bool LLVMCompilerX64::compile_alloca(IRValueRef         inst_idx,
+                                     llvm::Instruction *inst) noexcept {
+    auto alloca = llvm::dyn_cast<llvm::AllocaInst>(inst);
+    assert(!alloca->isStaticAlloca()); // those should've been handled already
+
+    // refcount
+    auto size_ref = this->val_ref(llvm_val_idx(alloca->getArraySize()), 0);
+    ValuePartRef res_ref;
+
+    auto &layout = adaptor->mod.getDataLayout();
+    if (auto opt = alloca->getAllocationSize(layout); opt) {
+        res_ref = this->result_ref_eager(inst_idx, 0);
+
+        const auto size = *opt;
+        assert(!size.isScalable());
+        auto size_val = size.getFixedValue();
+        size_val      = tpde::util::align_up(size_val, 16);
+        assert(size < 0x8000'0000);
+        ASM(SUB64ri, FE_SP, size_val);
+
+    } else {
+        const auto elem_size =
+            layout.getTypeAllocSize(alloca->getAllocatedType());
+        assert(elem_size > 0);
+        ScratchReg scratch{this};
+        res_ref =
+            this->result_ref_must_salvage(inst_idx, 0, std::move(size_ref));
+        const auto res_reg = res_ref.cur_reg();
+
+        if ((elem_size & (elem_size - 1)) == 0) {
+            // elSize is power of two
+            if (elem_size != 1) {
+                const auto shift = __builtin_ctzll(elem_size);
+                ASM(SHL64ri, res_reg, shift);
+            }
+        } else {
+            if (elem_size <= 0xFFFF'FFFF) [[likely]] {
+                ASM(IMUL64rri, res_reg, res_reg, elem_size);
+            } else {
+                auto tmp = scratch.alloc_gp();
+                ASM(MOV64ri, tmp, elem_size);
+                ASM(IMUL64rr, res_reg, tmp);
+            }
+        }
+
+        ASM(SUB64rr, FE_SP, res_reg);
+    }
+
+    auto align = alloca->getAlign().value();
+    if (align < 16) {
+        align = 16;
+    }
+
+    // need to keep the stack aligned
+    align = ~(align - 1);
+    assert(align >> 32 == 0xFFFF'FFFF);
+
+    ASM(AND64ri, FE_SP, align);
+    ASM(MOV64rr, res_ref.cur_reg(), FE_SP);
+    this->set_value(res_ref, res_ref.cur_reg());
     return true;
 }
 

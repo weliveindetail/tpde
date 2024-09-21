@@ -163,6 +163,10 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
         return false;
     }
 
+    bool compile_alloca(IRValueRef, llvm::Instruction *) noexcept {
+        return false;
+    }
+
     bool compile_br(IRValueRef, llvm::Instruction *) noexcept { return false; }
 };
 
@@ -805,6 +809,8 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
     for (auto v : this->adaptor->cur_static_allocas()) {
         variable_refs[cur_idx].val    = v;
         variable_refs[cur_idx].alloca = true;
+        // static allocas don't need to be compiled later
+        this->adaptor->val_set_fused(v, true);
 
         auto size = this->adaptor->val_alloca_size(v);
         size = tpde::util::align_up(size, this->adaptor->val_alloca_align(v));
@@ -913,6 +919,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::Freeze: return compile_freeze(val_idx, i);
     case llvm::Instruction::Unreachable:
         return derived()->compile_unreachable(val_idx, i);
+    case llvm::Instruction::Alloca:
+        return derived()->compile_alloca(val_idx, i);
     case llvm::Instruction::Br: return derived()->compile_br(val_idx, i);
 
     default: {

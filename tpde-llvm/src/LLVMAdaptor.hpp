@@ -390,7 +390,10 @@ struct LLVMAdaptor {
             // should handle constants and globals
             return true;
         }
-        return inst->getOpcode() == llvm::Instruction::Alloca;
+        if (inst->getOpcode() != llvm::Instruction::Alloca) {
+            return false;
+        }
+        return llvm::cast<llvm::AllocaInst>(inst)->isStaticAlloca();
     }
 
     [[nodiscard]] bool
