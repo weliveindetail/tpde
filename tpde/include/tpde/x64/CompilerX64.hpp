@@ -1246,6 +1246,8 @@ template <IRAdaptor Adaptor,
 void CompilerX64<Adaptor, Derived, BaseTy>::mov(const AsmReg dst,
                                                 const AsmReg src,
                                                 const u32    size) noexcept {
+    assert(dst.valid());
+    assert(src.valid());
     if (dst.id() <= AsmReg::R15 && src.id() <= AsmReg::R15) {
         if (size > 4) {
             ASM(MOV64rr, dst, src);

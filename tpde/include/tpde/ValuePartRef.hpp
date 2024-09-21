@@ -37,7 +37,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
 
     ValuePartRef() noexcept
         : state{
-            ConstantData{0, 0, 0}
+            ConstantData{.const_u64 = 0, .bank = 0, .size = 0}
     }, is_const(true) {}
 
     ValuePartRef(CompilerBase *compiler, ValLocalIdx local_idx, u32 part) noexcept

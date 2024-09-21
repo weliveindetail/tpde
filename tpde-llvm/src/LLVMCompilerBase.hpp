@@ -107,6 +107,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_int_ext(IRValueRef, llvm::Instruction *, bool sign) noexcept;
     bool compile_ptr_to_int(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_int_to_ptr(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_bitcast(IRValueRef, llvm::Instruction *) noexcept;
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -393,6 +394,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::ZExt: return compile_int_ext(val_idx, i, false);
     case llvm::Instruction::PtrToInt: return compile_ptr_to_int(val_idx, i);
     case llvm::Instruction::IntToPtr: return compile_int_to_ptr(val_idx, i);
+    case llvm::Instruction::BitCast: return compile_bitcast(val_idx, i);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -1536,6 +1538,41 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_ptr(
     }
 
     this->set_value(res_ref, res_scratch);
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    // at most this should be fine to implement as a copy operation
+    // as the values cannot be aggregates
+    const auto src_idx = llvm_val_idx(inst->getOperand(0));
+
+    // TODO(ts): support 128bit values
+    if (derived()->val_part_count(src_idx) != 1
+        || derived()->val_part_count(inst_idx) != 1) {
+        return false;
+    }
+
+    auto src_ref = this->val_ref(src_idx, 0);
+
+    ScratchReg   orig_scratch{derived()};
+    AsmReg       orig;
+    ValuePartRef res_ref;
+    if (derived()->val_part_bank(src_idx, 0)
+        == derived()->val_part_bank(inst_idx, 0)) {
+        res_ref = this->result_ref_salvage_with_original(
+            inst_idx, 0, std::move(src_ref), orig);
+    } else {
+        res_ref = this->result_ref_eager(inst_idx, 0);
+        orig    = this->val_as_reg(src_ref, orig_scratch);
+    }
+
+    if (orig != res_ref.cur_reg()) {
+        derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
+    }
+    this->set_value(res_ref, res_ref.cur_reg());
+
     return true;
 }
 } // namespace tpde_llvm

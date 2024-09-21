@@ -17,7 +17,9 @@ struct AsmRegBase {
 
     constexpr u8 id() const noexcept { return reg_id; }
 
-    constexpr bool invalid() noexcept { return reg_id == 0xFF; }
+    constexpr bool invalid() const noexcept { return reg_id == 0xFF; }
+
+    constexpr bool valid() const noexcept { return reg_id != 0xFF; }
 
     constexpr static AsmRegBase make_invalid() noexcept {
         return AsmRegBase{(u8)0xFF};
