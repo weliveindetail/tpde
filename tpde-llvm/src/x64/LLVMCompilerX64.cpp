@@ -56,6 +56,7 @@ struct LLVMCompilerX64
     }
 
     static u32 basic_ty_part_count(LLVMBasicValType ty) noexcept;
+    static u32 basic_ty_part_size(LLVMBasicValType ty) noexcept;
 
     u32 calculate_complex_real_part_count(IRValueRef) const noexcept;
 
@@ -100,6 +101,32 @@ u32 LLVMCompilerX64::basic_ty_part_count(const LLVMBasicValType ty) noexcept {
     case none:
     case invalid: {
         TPDE_LOG_ERR("basic_ty_part_count for value with none/invalid type");
+        assert(0);
+        __builtin_unreachable();
+    }
+    }
+}
+
+u32 LLVMCompilerX64::basic_ty_part_size(const LLVMBasicValType ty) noexcept {
+    switch (ty) {
+        using enum LLVMBasicValType;
+    case i1:
+    case i8: return 1;
+    case i16: return 2;
+    case i32: return 4;
+    case i64:
+    case ptr:
+    case i128: return 8;
+    case f32: return 4;
+    case f64: return 8;
+    case v32: return 4;
+    case v64: return 8;
+    case v128: return 16;
+    case v256: return 32;
+    case v512: return 64;
+    case complex:
+    case invalid:
+    case none: {
         assert(0);
         __builtin_unreachable();
     }
@@ -160,38 +187,12 @@ u32 LLVMCompilerX64::val_part_count(const IRValueRef val_idx) const noexcept {
 
 u32 LLVMCompilerX64::val_part_size(const IRValueRef val_idx,
                                    const u32        part_idx) const noexcept {
-    const auto size_simple = [](const LLVMBasicValType ty) {
-        switch (ty) {
-            using enum LLVMBasicValType;
-        case i1:
-        case i8: return 1;
-        case i16: return 2;
-        case i32: return 4;
-        case i64:
-        case ptr:
-        case i128: return 8;
-        case f32: return 4;
-        case f64: return 8;
-        case v32: return 4;
-        case v64: return 8;
-        case v128: return 16;
-        case v256: return 32;
-        case v512: return 64;
-        case complex:
-        case invalid:
-        case none: {
-            assert(0);
-            exit(1);
-        }
-        }
-    };
-
     if (const auto ty = this->adaptor->values[val_idx].type;
         ty != LLVMBasicValType::complex) {
-        return size_simple(ty);
+        return basic_ty_part_size(ty);
     }
 
-    return size_simple(
+    return basic_ty_part_size(
         this->adaptor->complex_part_types
             [this->adaptor->values[val_idx].complex_part_tys_idx + part_idx]);
 }

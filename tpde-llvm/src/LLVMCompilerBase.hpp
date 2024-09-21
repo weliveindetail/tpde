@@ -109,6 +109,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_int_to_ptr(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_bitcast(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_extract_value(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_insert_value(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
 };
 
@@ -399,6 +400,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::BitCast: return compile_bitcast(val_idx, i);
     case llvm::Instruction::ExtractValue:
         return compile_extract_value(val_idx, i);
+    case llvm::Instruction::InsertValue:
+        return compile_insert_value(val_idx, i);
     case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(val_idx, i);
 
     default: {
@@ -1637,6 +1640,89 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_value(
     }
 
     return false;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_value(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    auto *insert = llvm::cast<llvm::InsertValueInst>(inst);
+    assert(insert->getNumIndices() == 1);
+
+    auto      *agg_val = insert->getAggregateOperand();
+    auto      *agg_ty  = agg_val->getType();
+    const auto agg_idx = llvm_val_idx(agg_val);
+
+    auto      *ins_val = insert->getInsertedValueOperand();
+    const auto ins_idx = llvm_val_idx(ins_val);
+
+    auto target_idx = insert->getIndices()[0];
+
+    const auto llvm_part_count = agg_ty->getNumContainedTypes();
+    const auto ty_idx = this->adaptor->values[agg_idx].complex_part_tys_idx;
+
+    u32 part_idx = 0;
+    for (u32 llvm_part_idx = 0; llvm_part_idx < llvm_part_count;
+         ++llvm_part_idx) {
+        const auto part_ty =
+            this->adaptor->complex_part_types[ty_idx + part_idx];
+        assert(part_ty != LLVMBasicValType::complex);
+
+        const auto part_count = derived()->basic_ty_part_count(part_ty);
+        // TODO(ts): I'd really like to always not do refcounting in the loop
+        // and then refcount once when the loop is done
+        for (u32 inner_part_idx = 0; inner_part_idx < part_count;
+             ++inner_part_idx) {
+            const auto copy_or_salvage =
+                [this,
+                 inst_idx,
+                 part_idx,
+                 inner_part_idx,
+                 part_ty,
+                 llvm_part_count,
+                 part_count,
+                 llvm_part_idx](ValuePartRef &&src_ref) {
+                    AsmReg orig;
+                    auto   res_ref = this->result_ref_salvage_with_original(
+                        inst_idx,
+                        part_idx + inner_part_idx,
+                        std::move(src_ref),
+                        orig,
+                        (inner_part_idx != part_count - 1) ? 2 : 1);
+                    if (orig != res_ref.cur_reg()) {
+                        derived()->mov(res_ref.cur_reg(),
+                                       orig,
+                                       derived()->basic_ty_part_size(part_ty));
+                    }
+                    this->set_value(res_ref, res_ref.cur_reg());
+                    if (llvm_part_idx != llvm_part_count - 1
+                        || inner_part_idx != part_count - 1) {
+                        res_ref.reset_without_refcount();
+                    }
+                };
+            if (llvm_part_idx == target_idx) {
+                assert(derived()->val_part_count(ins_idx) == part_count);
+                auto ins_ref = this->val_ref(ins_idx, inner_part_idx);
+                if (inner_part_idx != part_count - 1) {
+                    ins_ref.inc_ref_count();
+                }
+                copy_or_salvage(std::move(ins_ref));
+            } else {
+                auto agg_ref =
+                    this->val_ref(agg_idx, part_idx + inner_part_idx);
+                if (inner_part_idx != part_count - 1
+                    || (llvm_part_idx
+                        != llvm_part_count
+                               - (target_idx == llvm_part_count - 1 ? 2 : 1))) {
+                    agg_ref.inc_ref_count();
+                }
+                copy_or_salvage(std::move(agg_ref));
+            }
+        }
+
+        part_idx += part_count;
+    }
+
+    return true;
 }
 
 template <typename Adaptor, typename Derived, typename Config>
