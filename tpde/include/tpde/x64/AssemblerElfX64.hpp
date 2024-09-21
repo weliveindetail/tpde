@@ -58,6 +58,17 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
     void reloc_text_plt32(SymRef, u32 text_imm32_off) noexcept;
     void reloc_text_pc32(SymRef sym, u32 text_imm32_off, i32 addend) noexcept;
 
+    void reloc_abs_init(SymRef target, bool init, u32 off, i32 addend) noexcept;
+
+    void reloc_data_abs(SymRef target,
+                        bool   read_only,
+                        u32    off,
+                        i32    addend) noexcept;
+    void reloc_data_pc32(SymRef target,
+                         bool   read_only,
+                         u32    off,
+                         i32    addend) noexcept;
+
     void eh_write_initial_cie_instrs() noexcept;
 
     void reset() noexcept;
@@ -172,6 +183,39 @@ inline void AssemblerElfX64::reloc_text_pc32(SymRef sym,
                                              u32    text_imm32_off,
                                              i32    addend) noexcept {
     reloc_text(sym, R_X86_64_PC32, text_imm32_off, addend);
+}
+
+inline void AssemblerElfX64::reloc_abs_init(const SymRef target,
+                                            const bool   init,
+                                            const u32    off,
+                                            const i32    addend) noexcept {
+    if (init) {
+        reloc_sec(sec_init_array, target, R_X86_64_64, off, addend);
+    } else {
+        reloc_sec(sec_fini_array, target, R_X86_64_64, off, addend);
+    }
+}
+
+inline void AssemblerElfX64::reloc_data_abs(const SymRef target,
+                                            const bool   read_only,
+                                            const u32    off,
+                                            const i32    addend) noexcept {
+    if (read_only) {
+        reloc_sec(sec_relrodata, target, R_X86_64_64, off, addend);
+    } else {
+        reloc_sec(sec_data, target, R_X86_64_64, off, addend);
+    }
+}
+
+inline void AssemblerElfX64::reloc_data_pc32(const SymRef target,
+                                             const bool   read_only,
+                                             const u32    off,
+                                             const i32    addend) noexcept {
+    if (read_only) {
+        reloc_sec(sec_relrodata, target, R_X86_64_PC32, off, addend);
+    } else {
+        reloc_sec(sec_data, target, R_X86_64_PC32, off, addend);
+    }
 }
 
 inline void AssemblerElfX64::eh_write_initial_cie_instrs() noexcept {

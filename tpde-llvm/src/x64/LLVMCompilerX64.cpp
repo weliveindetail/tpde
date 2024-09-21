@@ -66,12 +66,6 @@ struct LLVMCompilerX64
 
     u8 val_part_bank(IRValueRef, u32) const noexcept;
 
-    void define_func_idx(IRFuncRef func, const u32 idx) noexcept {
-        (void)func;
-        (void)idx;
-        // assert(static_cast<u32>(func) == idx);
-    }
-
     void move_val_to_ret_regs(llvm::Value *) noexcept;
 
     void create_frem_calls(IRValueRef     lhs,

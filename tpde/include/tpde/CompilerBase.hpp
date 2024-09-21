@@ -327,6 +327,8 @@ struct CompilerBase {
 
     bool try_force_fixed_assignment(IRValueRef) const noexcept { return false; }
 
+    bool hook_post_func_sym_init() noexcept { return true; }
+
   protected:
     bool compile_func(IRFuncRef func, u32 func_idx) noexcept;
 
@@ -366,6 +368,11 @@ bool CompilerBase<Adaptor, Derived, Config>::compile() {
                 adaptor->func_only_local(func),
                 adaptor->func_has_weak_linkage(func)));
         }
+    }
+
+    if (!derived()->hook_post_func_sym_init()) {
+        TPDE_LOG_ERR("hook_pust_func_sym_init failed");
+        return false;
     }
 
     // TODO(ts): create function labels?

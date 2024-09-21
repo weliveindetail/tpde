@@ -407,6 +407,8 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, PlatformConfig> {
     //
     // Additionally, for now we prevent AX,DX,CX to be fixed to not run into
     // issues with instructions that need them as implicit arguments
+    // also AX and DX can never be fixed if exception handling is used
+    // since they are clobbered there
     u64 fixed_assignment_nonallocatable_mask =
         create_bitmask({AsmReg::AX, AsmReg::DX, AsmReg::CX});
     u32 func_start_off = 0u, func_reg_save_off = 0u, func_reg_save_alloc = 0u,

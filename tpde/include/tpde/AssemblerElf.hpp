@@ -116,6 +116,16 @@ struct AssemblerElf {
     [[nodiscard]] SymRef
         sym_predef_func(std::string_view name, bool local, bool weak);
 
+    [[nodiscard]] SymRef
+        sym_predef_data(std::string_view name, bool local, bool weak) noexcept;
+
+    void sym_def_predef_data(SymRef              sym,
+                             bool                read_only,
+                             bool                relocatable,
+                             std::span<const u8> data,
+                             u32                 align,
+                             u32                *off) noexcept;
+
     [[nodiscard]] SymRef sym_def_data(std::string_view    name,
                                       std::span<const u8> data,
                                       u32                 align,
@@ -206,9 +216,9 @@ template <typename Derived>
 typename AssemblerElf<Derived>::SymRef
     AssemblerElf<Derived>::sym_add_undef(const std::string_view name,
                                          const bool             local) {
-    size_t strOff = 0;
+    size_t str_off = 0;
     if (!name.empty()) {
-        strOff = strtab.size();
+        str_off = strtab.size();
         strtab.insert(strtab.end(), name.begin(), name.end());
         strtab.emplace_back('\0');
     }
@@ -220,7 +230,7 @@ typename AssemblerElf<Derived>::SymRef
         info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
     }
 
-    auto sym = Elf64_Sym{.st_name  = static_cast<Elf64_Word>(strOff),
+    auto sym = Elf64_Sym{.st_name  = static_cast<Elf64_Word>(str_off),
                          .st_info  = info,
                          .st_other = STV_DEFAULT,
                          .st_shndx = SHN_UNDEF,
@@ -267,6 +277,44 @@ typename AssemblerElf<Derived>::SymRef AssemblerElf<Derived>::sym_predef_func(
                   .st_shndx = 1, // .text is always the first section
                   .st_value = 0,
                   .st_size  = 0};
+
+    if (local) {
+        local_symbols.push_back(sym);
+        assert(local_symbols.size() < 0x8000'0000);
+        return static_cast<SymRef>(local_symbols.size() - 1);
+    } else {
+        global_symbols.push_back(sym);
+        assert(global_symbols.size() < 0x8000'0000);
+        return static_cast<SymRef>((global_symbols.size() - 1) | 0x8000'0000);
+    }
+}
+
+template <typename Derived>
+typename AssemblerElf<Derived>::SymRef AssemblerElf<Derived>::sym_predef_data(
+    const std::string_view name, bool const local, const bool weak) noexcept {
+    size_t str_off = 0;
+    if (!name.empty()) {
+        str_off = strtab.size();
+        strtab.insert(strtab.end(), name.begin(), name.end());
+        strtab.emplace_back('\0');
+    }
+
+    u8 info;
+    if (local) {
+        assert(!weak);
+        info = ELF64_ST_INFO(STB_LOCAL, STT_OBJECT);
+    } else if (weak) {
+        info = ELF64_ST_INFO(STB_WEAK, STT_OBJECT);
+    } else {
+        info = ELF64_ST_INFO(STB_GLOBAL, STT_OBJECT);
+    }
+
+    auto sym = Elf64_Sym{.st_name  = static_cast<Elf64_Word>(str_off),
+                         .st_info  = info,
+                         .st_other = STV_DEFAULT,
+                         .st_shndx = static_cast<Elf64_Section>(0),
+                         .st_value = 0,
+                         .st_size  = 0};
 
     if (local) {
         local_symbols.push_back(sym);
@@ -363,6 +411,49 @@ consteval static u32 sec_count() {
 } // namespace elf
 
 template <typename Derived>
+void AssemblerElf<Derived>::sym_def_predef_data(SymRef              sym_ref,
+                                                const bool          read_only,
+                                                const bool          relocatable,
+                                                std::span<const u8> data,
+                                                const u32           align,
+                                                u32 *off) noexcept {
+    Elf64_Sym *sym = sym_ptr(sym_ref);
+
+    assert((align & (align - 1)) == 0);
+    size_t pos;
+    size_t sec_idx;
+
+    if (read_only) {
+        if (relocatable) {
+            sec_idx = elf::sec_idx(".data.rel.ro");
+            pos     = util::align_up(sec_relrodata.data.size(), align);
+            sec_relrodata.data.resize(pos);
+            sec_relrodata.data.insert(
+                sec_relrodata.data.end(), data.begin(), data.end());
+        } else {
+            sec_idx = elf::sec_idx(".rodata");
+            pos     = util::align_up(sec_rodata.data.size(), align);
+            sec_rodata.data.resize(pos);
+            sec_rodata.data.insert(
+                sec_rodata.data.end(), data.begin(), data.end());
+        }
+    } else {
+        sec_idx = elf::sec_idx(".data");
+        pos     = util::align_up(sec_data.data.size(), align);
+        sec_data.data.resize(pos);
+        sec_data.data.insert(sec_data.data.end(), data.begin(), data.end());
+    }
+
+    if (off) {
+        *off = pos;
+    }
+
+    sym->st_shndx = static_cast<Elf64_Section>(sec_idx);
+    sym->st_value = pos;
+    sym->st_size  = data.size();
+}
+
+template <typename Derived>
 typename AssemblerElf<Derived>::SymRef
     AssemblerElf<Derived>::sym_def_data(const std::string_view    name,
                                         const std::span<const u8> data,
@@ -381,8 +472,7 @@ typename AssemblerElf<Derived>::SymRef
     uint8_t info;
     if (local) {
         assert(!weak);
-        info =
-            ELF64_ST_INFO(STB_LOCAL, STT_OBJECT); 
+        info = ELF64_ST_INFO(STB_LOCAL, STT_OBJECT);
     } else if (weak) {
         info = ELF64_ST_INFO(STB_WEAK, STT_OBJECT);
     } else {
@@ -417,7 +507,7 @@ typename AssemblerElf<Derived>::SymRef
         }
     } else {
         sec_idx = elf::sec_idx(".data");
-        pos     = util::align_up(sec_rodata.data.size(), align);
+        pos     = util::align_up(sec_data.data.size(), align);
         sec_data.data.resize(pos);
         sec_data.data.insert(sec_data.data.end(), data.begin(), data.end());
     }

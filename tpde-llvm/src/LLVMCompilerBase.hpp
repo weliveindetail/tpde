@@ -15,6 +15,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     using Base = tpde::CompilerBase<LLVMAdaptor, Derived, Config>;
 
     using IRValueRef   = typename Base::IRValueRef;
+    using IRFuncRef    = typename Base::IRFuncRef;
     using ScratchReg   = typename Base::ScratchReg;
     using ValuePartRef = typename Base::ValuePartRef;
     using ValLocalIdx  = typename Base::ValLocalIdx;
@@ -23,6 +24,18 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     using SymRef    = typename Assembler::SymRef;
 
     using AsmReg = typename Base::AsmReg;
+
+    struct RelocInfo {
+        enum RELOC_TYPE : uint8_t {
+            RELOC_ABS,
+            RELOC_PC32,
+        };
+
+        uint32_t   off;
+        int32_t    addend;
+        SymRef     sym;
+        RELOC_TYPE type = RELOC_ABS;
+    };
 
     enum class IntBinaryOp {
         add,
@@ -48,7 +61,11 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
         rem
     };
 
-    // using AsmOperand = typename Derived::AsmOperand;
+    // <is_func, idx>
+    tsl::hopscotch_map<const llvm::GlobalValue *, std::pair<bool, u32>>
+                        global_sym_lookup{};
+    // TODO(ts): SmallVector?
+    std::vector<SymRef> global_syms;
 
     SymRef sym_fmod  = Assembler::INVALID_SYM_REF;
     SymRef sym_fmodf = Assembler::INVALID_SYM_REF;
@@ -75,12 +92,29 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     std::optional<ValuePartRef> val_ref_special(ValLocalIdx local_idx,
                                                 u32         part) noexcept;
 
+    void define_func_idx(IRFuncRef func, const u32 idx) noexcept;
+    bool hook_post_func_sym_init() noexcept;
+    bool global_init_to_data(const llvm::Value                     *reloc_base,
+                             tpde::util::SmallVector<u8, 64>       &data,
+                             tpde::util::SmallVector<RelocInfo, 8> &relocs,
+                             const llvm::DataLayout                &layout,
+                             const llvm::Constant                  *constant,
+                             u32 off) noexcept;
+    bool
+        global_const_expr_to_data(const llvm::Value               *reloc_base,
+                                  tpde::util::SmallVector<u8, 64> &data,
+                                  tpde::util::SmallVector<RelocInfo, 8> &relocs,
+                                  const llvm::DataLayout                &layout,
+                                  llvm::Instruction                     *expr,
+                                  u32 off) noexcept;
+
     IRValueRef llvm_val_idx(const llvm::Value *) const noexcept;
     IRValueRef llvm_val_idx(const llvm::Instruction *) const noexcept;
 
     SymRef get_or_create_sym_ref(SymRef          &sym,
                                  std::string_view name,
                                  bool             local = false) noexcept;
+    SymRef global_sym(const llvm::GlobalValue *global) const noexcept;
 
     bool compile_inst(IRValueRef) noexcept;
 
@@ -307,6 +341,381 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
 }
 
 template <typename Adaptor, typename Derived, typename Config>
+void LLVMCompilerBase<Adaptor, Derived, Config>::define_func_idx(
+    IRFuncRef func, const u32 idx) noexcept {
+    global_sym_lookup[func] = std::make_pair(true, idx);
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::
+    hook_post_func_sym_init() noexcept {
+    // create global symbols and their definitions
+    const auto &llvm_mod    = this->adaptor->mod;
+    auto       &data_layout = llvm_mod.getDataLayout();
+
+    global_sym_lookup.reserve(2 * llvm_mod.global_size());
+
+    // create the symbols first so that later relocations don't try to look up
+    // non-existant symbols
+    for (auto it = llvm_mod.global_begin(); it != llvm_mod.global_end(); ++it) {
+        const llvm::GlobalVariable *gv = &*it;
+        if (gv->hasAppendingLinkage()) [[unlikely]] {
+            if (gv->getName() != "llvm.global_ctors"
+                && gv->getName() != "llvm.global_dtors") {
+                TPDE_LOG_ERR("Unknown global with appending linkage: {}\n",
+                             static_cast<std::string_view>(gv->getName()));
+                assert(0);
+                return false;
+            }
+            continue;
+        }
+
+        // TODO(ts): we ignore weak linkage here, should emit a weak symbol for
+        // it in the data section and place an undef symbol in the symbol
+        // lookup
+        if (gv->hasInitializer()) {
+            auto sym = this->assembler.sym_predef_data(
+                gv->getName(),
+                gv->hasLocalLinkage() || gv->hasPrivateLinkage(),
+                gv->hasLinkOnceODRLinkage() || gv->hasCommonLinkage());
+
+            const auto idx = global_syms.size();
+            global_syms.push_back(sym);
+            global_sym_lookup.insert_or_assign(gv, std::make_pair(false, idx));
+        } else {
+            // TODO(ts): should we use getValueName here?
+            auto sym = this->assembler.sym_add_undef(gv->getName(), false);
+            const auto idx = global_syms.size();
+            global_syms.push_back(sym);
+            global_sym_lookup.insert_or_assign(gv, std::make_pair(false, idx));
+        }
+    }
+
+    for (auto it = llvm_mod.alias_begin(); it != llvm_mod.alias_end(); ++it) {
+        const llvm::GlobalAlias *ga  = &*it;
+        const auto               sym = this->assembler.sym_add_undef(
+            ga->getName(), ga->hasLocalLinkage() || ga->hasPrivateLinkage());
+        const auto idx = global_syms.size();
+        global_syms.push_back(sym);
+        global_sym_lookup.insert_or_assign(ga, std::make_pair(false, idx));
+    }
+
+    // since the adaptor exposes all functions in the module to TPDE,
+    // all function symbols are already added
+
+    // now we can initialize the global data
+    for (auto it = llvm_mod.global_begin(); it != llvm_mod.global_end(); ++it) {
+        auto *gv = &*it;
+        if (!gv->hasInitializer()) {
+            continue;
+        }
+
+        auto *init = gv->getInitializer();
+        if (gv->hasAppendingLinkage()) [[unlikely]] {
+            tpde::util::SmallVector<std::pair<SymRef, u32>, 16> functions;
+            assert(gv->getName() == "llvm.global_ctors"
+                   || gv->getName() == "llvm.global_dtors");
+            if (llvm::isa<llvm::ConstantAggregateZero>(init)) {
+                continue;
+            }
+
+            auto *array = llvm::dyn_cast<llvm::ConstantArray>(init);
+            assert(array);
+
+            u32 max = array->getNumOperands();
+            // see
+            // https://llvm.org/docs/LangRef.html#the-llvm-global-ctors-global-variable
+            for (auto i = 0u; i < max; ++i) {
+                auto *entry = array->getOperand(i);
+                auto *prio  = llvm::dyn_cast<llvm::ConstantInt>(
+                    entry->getAggregateElement(static_cast<unsigned>(0)));
+                assert(prio);
+                auto *ptr = llvm::dyn_cast<llvm::GlobalValue>(
+                    entry->getAggregateElement(1));
+                assert(ptr);
+                // we should not need to care about the third element
+                assert(global_sym_lookup.contains(ptr));
+                functions.emplace_back(global_sym(ptr), prio->getZExtValue());
+            }
+
+            const auto is_ctor = (gv->getName() == "llvm.global_ctors");
+            u32        off;
+            // TODO(ts): this hardcodes the ELF assembler
+            if (is_ctor) {
+                std::sort(functions.begin(),
+                          functions.end(),
+                          [](auto &lhs, auto &rhs) {
+                              return lhs.second < rhs.second;
+                          });
+                auto &sec = this->assembler.sec_init_array;
+                off       = sec.data.size();
+                sec.data.resize(sec.data.size()
+                                + functions.size() * sizeof(uint64_t));
+            } else {
+                std::sort(functions.begin(),
+                          functions.end(),
+                          [](auto &lhs, auto &rhs) {
+                              return lhs.second > rhs.second;
+                          });
+                auto &sec = this->assembler.sec_fini_array;
+                off       = sec.data.size();
+                sec.data.resize(sec.data.size()
+                                + functions.size() * sizeof(uint64_t));
+            }
+
+            for (auto i = 0u; i < functions.size(); ++i) {
+                this->assembler.reloc_abs_init(
+                    functions[i].first, is_ctor, off + i * sizeof(u64), 0);
+            }
+            continue;
+        }
+
+
+        tpde::util::SmallVector<u8, 64>       data;
+        tpde::util::SmallVector<RelocInfo, 8> relocs;
+        data.resize(data_layout.getTypeAllocSize(init->getType()));
+        if (!global_init_to_data(gv, data, relocs, data_layout, init, 0)) {
+            return false;
+        }
+
+
+        u32  off;
+        auto read_only = gv->isConstant();
+        auto sym       = global_sym(gv);
+        this->assembler.sym_def_predef_data(sym,
+                                            read_only,
+                                            !relocs.empty(),
+                                            data,
+                                            gv->getAlign().valueOrOne().value(),
+                                            &off);
+        for (auto &[inner_off, addend, target, type] : relocs) {
+            if (type == RelocInfo::RELOC_ABS) {
+                this->assembler.reloc_data_abs(
+                    target, read_only, off + inner_off, addend);
+            } else {
+                assert(type == RelocInfo::RELOC_PC32);
+                this->assembler.reloc_data_pc32(
+                    target, read_only, off + inner_off, addend);
+            }
+        }
+    }
+
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
+    const llvm::Value                     *reloc_base,
+    tpde::util::SmallVector<u8, 64>       &data,
+    tpde::util::SmallVector<RelocInfo, 8> &relocs,
+    const llvm::DataLayout                &layout,
+    const llvm::Constant                  *constant,
+    u32                                    off) noexcept {
+    const auto alloc_size = layout.getTypeAllocSize(constant->getType());
+    assert(off + alloc_size <= data.size());
+    // can't do this since for floats -0 is special
+    // if (constant->isZeroValue()) {
+    //    return true;
+    //}
+
+    if (auto *CI = llvm::dyn_cast<llvm::ConstantInt>(constant); CI) {
+        // TODO: endianess?
+        llvm::StoreIntToMemory(CI->getValue(), data.data() + off, alloc_size);
+        return true;
+    }
+    if (auto *CF = llvm::dyn_cast<llvm::ConstantFP>(constant); CF) {
+        // TODO: endianess?
+        llvm::StoreIntToMemory(
+            CF->getValue().bitcastToAPInt(), data.data() + off, alloc_size);
+        return true;
+    }
+    if (auto *CDS = llvm::dyn_cast<llvm::ConstantDataSequential>(constant);
+        CDS) {
+        auto d = CDS->getRawDataValues();
+        assert(d.size() <= alloc_size);
+        std::copy(d.bytes_begin(), d.bytes_end(), data.begin() + off);
+        return true;
+    }
+    if (auto *CA = llvm::dyn_cast<llvm::ConstantArray>(constant); CA) {
+        const auto num_elements = CA->getType()->getNumElements();
+        const auto element_size =
+            layout.getTypeAllocSize(CA->getType()->getElementType());
+        for (auto i = 0u; i < num_elements; ++i) {
+            global_init_to_data(reloc_base,
+                                data,
+                                relocs,
+                                layout,
+                                CA->getAggregateElement(i),
+                                off + i * element_size);
+        }
+        return true;
+    }
+    if (auto *CA = llvm::dyn_cast<llvm::ConstantAggregate>(constant); CA) {
+        const auto num_elements = CA->getType()->getStructNumElements();
+        auto      &ctx          = constant->getContext();
+
+        auto *ty = CA->getType();
+        auto  c0 = llvm::ConstantInt::get(ctx, llvm::APInt(32, 0, false));
+
+        for (auto i = 0u; i < num_elements; ++i) {
+            auto idx =
+                llvm::ConstantInt::get(ctx, llvm::APInt(32, (u64)i, false));
+            auto agg_off = layout.getIndexedOffsetInType(ty, {c0, idx});
+            global_init_to_data(reloc_base,
+                                data,
+                                relocs,
+                                layout,
+                                CA->getAggregateElement(i),
+                                off + agg_off);
+        }
+        return true;
+    }
+    if (auto *ud = llvm::dyn_cast<llvm::UndefValue>(constant); ud) {
+        // just leave it at 0
+        return true;
+    }
+    if (auto *zero = llvm::dyn_cast<llvm::ConstantAggregateZero>(constant);
+        zero) {
+        // leave at 0
+        return true;
+    }
+    if (auto *GV = llvm::dyn_cast<llvm::GlobalVariable>(constant); GV) {
+        assert(alloc_size == 8);
+        const auto sym = global_sym(GV);
+        assert(sym != Assembler::INVALID_SYM_REF);
+        relocs.push_back({off, 0, sym});
+        return true;
+    }
+    if (auto *GA = llvm::dyn_cast<llvm::GlobalAlias>(constant); GA) {
+        assert(alloc_size == 8);
+        const auto sym = global_sym(GA);
+        assert(sym != Assembler::INVALID_SYM_REF);
+        relocs.push_back({off, 0, sym});
+        return true;
+    }
+    if (auto *FN = llvm::dyn_cast<llvm::Function>(constant); FN) {
+        // TODO: we create more work for the linker than we need so we should
+        // fix this sometime
+        assert(!FN->isIntrinsic());
+        assert(alloc_size == 8);
+        const auto sym = global_sym(FN);
+        assert(sym != Assembler::INVALID_SYM_REF);
+        relocs.push_back({off, 0, sym});
+        return true;
+    }
+    if (auto *CE = llvm::dyn_cast<llvm::ConstantExpr>(constant); CE) {
+        auto      *inst = CE->getAsInstruction();
+        const auto res  = global_const_expr_to_data(
+            reloc_base, data, relocs, layout, inst, off);
+        inst->deleteValue();
+        return res;
+    }
+
+    TPDE_LOG_ERR("Encountered unknown constant in global initializer");
+#ifdef TPDE_DEBUG
+    constant->print(llvm::errs(), true);
+    llvm::errs() << "\n";
+#endif
+
+    assert(0);
+    return false;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::global_const_expr_to_data(
+    const llvm::Value                     *reloc_base,
+    tpde::util::SmallVector<u8, 64>       &data,
+    tpde::util::SmallVector<RelocInfo, 8> &relocs,
+    const llvm::DataLayout                &layout,
+    llvm::Instruction                     *expr,
+    u32                                    off) noexcept {
+    // idk about this design, currently just hardcoding stuff i see
+    // in theory i think this needs a new data buffer so we can recursively call
+    // parseConstIntoByteArray
+    switch (expr->getOpcode()) {
+    case llvm::Instruction::IntToPtr: {
+        auto *op = expr->getOperand(0);
+        if (auto *CI = llvm::dyn_cast<llvm::ConstantInt>(op); CI) {
+            auto alloc_size = layout.getTypeAllocSize(expr->getType());
+            // TODO: endianess?
+            llvm::StoreIntToMemory(
+                CI->getValue(), data.data() + off, alloc_size);
+            return true;
+        } else {
+            TPDE_LOG_ERR("Operand to IntToPtr is not a constant int");
+            assert(0);
+            return false;
+        }
+    }
+    case llvm::Instruction::GetElementPtr: {
+        auto  *gep = llvm::cast<llvm::GetElementPtrInst>(expr);
+        auto  *ptr = gep->getPointerOperand();
+        SymRef ptr_sym;
+        if (auto *GV = llvm::dyn_cast<llvm::GlobalVariable>(ptr); GV) {
+            ptr_sym = global_sym(GV);
+        } else {
+            assert(0);
+            return false;
+        }
+
+        auto indices = tpde::util::SmallVector<llvm::Value *, 8>{};
+        for (auto &idx : gep->indices()) {
+            indices.push_back(idx.get());
+        }
+
+        const auto ty_off = layout.getIndexedOffsetInType(
+            gep->getSourceElementType(),
+            llvm::ArrayRef{indices.data(), indices.size()});
+        relocs.push_back({off, static_cast<int32_t>(ty_off), ptr_sym});
+
+        return true;
+    }
+    case llvm::Instruction::Trunc: {
+        // recognize a truncation pattern where we need to emit PC32 relocations
+        // i32 trunc (i64 sub (i64 ptrtoint (ptr <someglobal> to i64), i64
+        // ptrtoint (ptr <relocBase> to i64)))
+        if (expr->getType()->isIntegerTy(32)) {
+            if (auto *sub =
+                    llvm::dyn_cast<llvm::ConstantExpr>(expr->getOperand(0));
+                sub && sub->getOpcode() == llvm::Instruction::Sub
+                && sub->getType()->isIntegerTy(64)) {
+                if (auto *lhs_ptr_to_int =
+                        llvm::dyn_cast<llvm::ConstantExpr>(sub->getOperand(0)),
+                    *rhs_ptr_to_int =
+                        llvm::dyn_cast<llvm::ConstantExpr>(sub->getOperand(1));
+                    lhs_ptr_to_int && rhs_ptr_to_int
+                    && lhs_ptr_to_int->getOpcode()
+                           == llvm::Instruction::PtrToInt
+                    && rhs_ptr_to_int->getOpcode()
+                           == llvm::Instruction::PtrToInt) {
+                    if (rhs_ptr_to_int->getOperand(0) == reloc_base
+                        && llvm::isa<llvm::GlobalVariable>(
+                            lhs_ptr_to_int->getOperand(0))) {
+                        auto ptr_sym =
+                            global_sym(llvm::dyn_cast<llvm::GlobalValue>(
+                                lhs_ptr_to_int->getOperand(0)));
+
+                        relocs.push_back({off,
+                                          static_cast<int32_t>(off),
+                                          ptr_sym,
+                                          RelocInfo::RELOC_PC32});
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    default: {
+        TPDE_LOG_ERR("Unknown constant expression in global initializer");
+        assert(0);
+        return false;
+    }
+    }
+
+    return false;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef
     LLVMCompilerBase<Adaptor, Derived, Config>::llvm_val_idx(
         const llvm::Value *val) const noexcept {
@@ -330,6 +739,19 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
 
     sym = this->assembler.sym_add_undef(name, local);
     return sym;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
+    LLVMCompilerBase<Adaptor, Derived, Config>::global_sym(
+        const llvm::GlobalValue *global) const noexcept {
+    auto it = global_sym_lookup.find(global);
+    if (it == global_sym_lookup.end()) {
+        assert(0);
+        return Assembler::INVALID_SYM_REF;
+    }
+    return it->second.first ? this->func_syms[it->second.second]
+                            : global_syms[it->second.second];
 }
 
 template <typename Adaptor, typename Derived, typename Config>
