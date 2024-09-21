@@ -157,6 +157,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_insert_value(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_phi(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_freeze(IRValueRef, llvm::Instruction *) noexcept;
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -903,6 +904,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
         return compile_insert_value(val_idx, i);
     case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(val_idx, i);
     case llvm::Instruction::PHI: return compile_phi(val_idx, i);
+    case llvm::Instruction::Freeze: return compile_freeze(val_idx, i);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -2324,6 +2326,37 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_phi(
     IRValueRef inst_idx, llvm::Instruction *) noexcept {
     // need to just ref-count the value
     this->val_ref(inst_idx, 0);
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_freeze(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    // essentially a no-op
+    auto      *src_val = inst->getOperand(0);
+    const auto src_idx = llvm_val_idx(src_val);
+
+    const auto part_count = derived()->val_part_count(src_idx);
+
+    for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
+        const auto last_part = (part_idx == part_count - 1);
+        auto       src_ref   = this->val_ref(src_idx, part_idx);
+        if (!last_part) {
+            src_ref.inc_ref_count();
+        }
+        AsmReg orig;
+        auto   res_ref = this->result_ref_salvage_with_original(
+            inst_idx, part_idx, std::move(src_ref), orig, last_part ? 1 : 2);
+        if (orig != res_ref.cur_reg()) {
+            derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
+        }
+        this->set_value(res_ref, res_ref.cur_reg());
+
+        if (!last_part) {
+            res_ref.reset_without_refcount();
+        }
+    }
+
     return true;
 }
 } // namespace tpde_llvm
