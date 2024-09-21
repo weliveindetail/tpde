@@ -87,6 +87,8 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                            IRValueRef     rhs,
                            ValuePartRef &&res,
                            bool           is_double) noexcept;
+
+    bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept;
 };
 
 u32 LLVMCompilerX64::basic_ty_part_count(const LLVMBasicValType ty) noexcept {
@@ -440,6 +442,13 @@ void LLVMCompilerX64::create_frem_calls(const IRValueRef lhs,
 
     generate_call(
         sym, args, std::span{&res, 1}, tpde::x64::CallingConv::SYSV_CC, false);
+}
+
+bool LLVMCompilerX64::compile_unreachable(IRValueRef,
+                                          llvm::Instruction *) noexcept {
+    ASM(UD2);
+    this->release_regs_after_return();
+    return true;
 }
 
 extern bool compile_llvm(llvm::LLVMContext    &ctx,

@@ -158,6 +158,10 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_phi(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_freeze(IRValueRef, llvm::Instruction *) noexcept;
+
+    bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept {
+        return false;
+    }
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -905,6 +909,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(val_idx, i);
     case llvm::Instruction::PHI: return compile_phi(val_idx, i);
     case llvm::Instruction::Freeze: return compile_freeze(val_idx, i);
+    case llvm::Instruction::Unreachable:
+        return derived()->compile_unreachable(val_idx, i);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
