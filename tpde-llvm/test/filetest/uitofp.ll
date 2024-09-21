@@ -94,11 +94,11 @@ define double @i8tof64(i8 %0) {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
 ; X64:    movzx edi, dil
-; X64:    cvtsi2sd xmm0, rdi
+; X64:    cvtsi2sd xmm0, edi
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
 entry:
   %1 = uitofp i8 %0 to double
   ret double %1
@@ -111,11 +111,12 @@ define double @i16tof64(i16 %0) {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x10
 ; X64:    movzx edi, di
-; X64:    cvtsi2sd xmm0, rdi
+; X64:    cvtsi2sd xmm0, edi
 ; X64:    add rsp, 0x10
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %1 = uitofp i16 %0 to double
   ret double %1
