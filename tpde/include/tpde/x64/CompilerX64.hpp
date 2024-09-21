@@ -18,8 +18,8 @@
 #define ASM(op, ...)                                                           \
     do {                                                                       \
         this->assembler.text_ensure_space(16);                                 \
-        u32 inst_len =                                                         \
-            fe64_##op(this->assembler.text_write_ptr, 0, __VA_ARGS__);         \
+        u32 inst_len = fe64_##op(this->assembler.text_write_ptr,               \
+                                 0 __VA_OPT__(, ) __VA_ARGS__);                \
         assert(inst_len != 0);                                                 \
         this->assembler.text_write_ptr += inst_len;                            \
     } while (false)
@@ -28,8 +28,8 @@
 #define ASMF(op, flag, ...)                                                    \
     do {                                                                       \
         this->assembler.text_ensure_space(16);                                 \
-        u32 inst_len =                                                         \
-            fe64_##op(this->assembler.text_write_ptr, flag, __VA_ARGS__);      \
+        u32 inst_len = fe64_##op(this->assembler.text_write_ptr,               \
+                                 flag __VA_OPT__(, ) __VA_ARGS__);             \
         assert(inst_len != 0);                                                 \
         this->assembler.text_write_ptr += inst_len;                            \
     } while (false)
@@ -39,8 +39,8 @@
     do {                                                                       \
         assert(bytes >= 1);                                                    \
         this->assembler.text_ensure_space(cnt);                                \
-        u32 inst_len =                                                         \
-            fe64_##op(this->assembler.text_write_ptr, 0, __VA_ARGS__);         \
+        u32 inst_len = fe64_##op(this->assembler.text_write_ptr,               \
+                                 0 __VA_OPT__(, ) __VA_ARGS__);                \
         assert(inst_len != 0);                                                 \
         this->assembler.text_write_ptr += inst_len;                            \
     } while (false)
@@ -48,8 +48,8 @@
 // generate an instruction without checking that enough space is available
 #define ASMNC(op, ...)                                                         \
     do {                                                                       \
-        u32 inst_len =                                                         \
-            fe64_##op(this->assembler.text_write_ptr, 0, __VA_ARGS__);         \
+        u32 inst_len = fe64_##op(this->assembler.text_write_ptr,               \
+                                 0 __VA_OPT__(, ) __VA_ARGS__);                \
         assert(inst_len != 0);                                                 \
         assert(this->assembler.text_reserve_end                                \
                    - this->assembler.text_write_ptr                            \
@@ -72,8 +72,8 @@
 // flag
 #define ASMNCF(op, flag, ...)                                                  \
     do {                                                                       \
-        u32 inst_len =                                                         \
-            fe64_##op(this->assembler.text_write_ptr, flag, __VA_ARGS__);      \
+        u32 inst_len = fe64_##op(this->assembler.text_write_ptr,               \
+                                 flag __VA_OPT__(, ) __VA_ARGS__);             \
         assert(inst_len != 0);                                                 \
         assert(this->assembler.text_reserve_end                                \
                    - this->assembler.text_write_ptr                            \
