@@ -156,6 +156,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_extract_value(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_insert_value(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_phi(IRValueRef, llvm::Instruction *) noexcept;
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -901,6 +902,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::InsertValue:
         return compile_insert_value(val_idx, i);
     case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(val_idx, i);
+    case llvm::Instruction::PHI: return compile_phi(val_idx, i);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -2314,6 +2316,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
     // br i1 %5, label %7, label %2, !llvm.loop !3
     // clang-format on
 
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_phi(
+    IRValueRef inst_idx, llvm::Instruction *) noexcept {
+    // need to just ref-count the value
+    this->val_ref(inst_idx, 0);
     return true;
 }
 } // namespace tpde_llvm
