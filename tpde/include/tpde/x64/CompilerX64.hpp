@@ -1259,6 +1259,7 @@ template <IRAdaptor Adaptor,
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::
     load_address_of_var_reference(const AsmReg            dst,
                                   const AssignmentPartRef ap) noexcept {
+    static_assert(Config::DEFAULT_VAR_REF_HANDLING);
     // per-default, variable references are only used by
     // allocas
     ASM(LEA64rm,
@@ -1733,7 +1734,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
                 ASM(CALLm, FE_MEM(FE_BP, 0, FE_NOREG, (i32)-ap.frame_off()));
             } else {
                 this->register_file.clobbered |= (1ull << AsmReg::R10);
-                ASM(CALLr, ref.reload_into_specific(derived(), AsmReg::R10));
+                ref.reload_into_specific(derived(), AsmReg::R10);
+                ASM(CALLr, FE_R10);
             }
 
             if (ap.register_valid()

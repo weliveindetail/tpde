@@ -449,6 +449,10 @@ bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::can_salvage(
         return false;
     }
 
+    if (!assignment().register_valid()) {
+        return false;
+    }
+
     const auto &liveness =
         state.v.compiler->analyzer.liveness_info((u32)state.v.local_idx);
     if (ref_count() <= ref_adjust

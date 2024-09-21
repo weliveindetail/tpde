@@ -37,6 +37,13 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
         RELOC_TYPE type = RELOC_ABS;
     };
 
+    struct VarRefInfo {
+        IRValueRef val;
+        bool       alloca;
+        bool       local;
+        u32        alloca_frame_off;
+    };
+
     enum class IntBinaryOp {
         add,
         sub,
@@ -66,6 +73,8 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
                         global_sym_lookup{};
     // TODO(ts): SmallVector?
     std::vector<SymRef> global_syms;
+
+    tpde::util::SmallVector<VarRefInfo, 16> variable_refs{};
 
     SymRef sym_fmod  = Assembler::INVALID_SYM_REF;
     SymRef sym_fmodf = Assembler::INVALID_SYM_REF;
@@ -115,6 +124,8 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
                                  std::string_view name,
                                  bool             local = false) noexcept;
     SymRef global_sym(const llvm::GlobalValue *global) const noexcept;
+
+    void setup_var_ref_assignments() noexcept;
 
     bool compile_inst(IRValueRef) noexcept;
 
@@ -745,6 +756,7 @@ template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
     LLVMCompilerBase<Adaptor, Derived, Config>::global_sym(
         const llvm::GlobalValue *global) const noexcept {
+    assert(global != nullptr);
     auto it = global_sym_lookup.find(global);
     if (it == global_sym_lookup.end()) {
         assert(0);
@@ -752,6 +764,70 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
     }
     return it->second.first ? this->func_syms[it->second.second]
                             : global_syms[it->second.second];
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+void LLVMCompilerBase<Adaptor, Derived, Config>::
+    setup_var_ref_assignments() noexcept {
+    using AssignmentPartRef = typename Base::AssignmentPartRef;
+    variable_refs.clear();
+
+    variable_refs.resize(this->adaptor->initial_stack_slot_indices.size()
+                         + this->adaptor->global_idx_end
+                         + this->adaptor->funcs_as_operands.size());
+
+
+    u32        cur_idx         = 0;
+    const auto init_assignment = [this, &cur_idx](IRValueRef v) {
+        auto *assignment = this->allocate_assignment(1, true);
+        assignment->initialize(cur_idx++,
+                               Config::PLATFORM_POINTER_SIZE,
+                               0,
+                               Config::PLATFORM_POINTER_SIZE);
+        this->assignments.value_ptrs[this->adaptor->val_local_idx(v)] =
+            assignment;
+
+        auto ap = AssignmentPartRef{assignment, 0};
+        ap.set_bank(Config::GP_BANK);
+        ap.set_variable_ref(true);
+        ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
+    };
+
+    // Allocate registers for TPDE's stack slots
+    for (auto v : this->adaptor->cur_static_allocas()) {
+        variable_refs[cur_idx].val    = v;
+        variable_refs[cur_idx].alloca = true;
+
+        auto size = this->adaptor->val_alloca_size(v);
+        size = tpde::util::align_up(size, this->adaptor->val_alloca_align(v));
+
+        auto frame_off = this->allocate_stack_slot(size);
+        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
+            frame_off += size;
+        }
+
+        variable_refs[cur_idx].alloca_frame_off = frame_off;
+        init_assignment(v);
+    }
+
+    // Allocate regs for globals
+    for (u32 v = 0; v < this->adaptor->global_idx_end; ++v) {
+        variable_refs[cur_idx].val    = v;
+        variable_refs[cur_idx].alloca = false;
+        variable_refs[cur_idx].local =
+            !llvm::dyn_cast<llvm::GlobalValue>(this->adaptor->values[v].val)
+                 ->hasExternalLinkage();
+
+        init_assignment(v);
+    }
+    for (auto v : this->adaptor->funcs_as_operands) {
+        variable_refs[cur_idx].val    = v;
+        variable_refs[cur_idx].alloca = false;
+        variable_refs[cur_idx].local =
+            !llvm::dyn_cast<llvm::GlobalValue>(this->adaptor->values[v].val)
+                 ->hasExternalLinkage();
+        init_assignment(v);
+    }
 }
 
 template <typename Adaptor, typename Derived, typename Config>

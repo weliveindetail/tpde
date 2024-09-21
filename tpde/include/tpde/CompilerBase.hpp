@@ -1642,35 +1642,39 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
         block_labels.push_back(assembler.label_create());
     }
 
-    for (const IRValueRef alloca : adaptor->cur_static_allocas()) {
-        // TODO(ts): add a flag in the adaptor to not do this if it is
-        // unnecessary?
-        const auto local_idx = adaptor->val_local_idx(alloca);
-        if (const auto &info = analyzer.liveness_info(local_idx);
-            info.ref_count == 1) {
-            // the value is ref-counted and not used, so skip it
-            continue;
+    if constexpr (Config::DEFAULT_VAR_REF_HANDLING) {
+        for (const IRValueRef alloca : adaptor->cur_static_allocas()) {
+            // TODO(ts): add a flag in the adaptor to not do this if it is
+            // unnecessary?
+            const auto local_idx = adaptor->val_local_idx(alloca);
+            if (const auto &info = analyzer.liveness_info(local_idx);
+                info.ref_count == 1) {
+                // the value is ref-counted and not used, so skip it
+                continue;
+            }
+
+            auto size = adaptor->val_alloca_size(alloca);
+            size      = util::align_up(size, adaptor->val_alloca_align(alloca));
+
+            auto *assignment = allocate_assignment(1, true);
+            auto  frame_off  = allocate_stack_slot(size);
+            if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
+                frame_off += size;
+            }
+
+            assignment->initialize(frame_off,
+                                   size,
+                                   analyzer.liveness_info(local_idx).ref_count,
+                                   Config::PLATFORM_POINTER_SIZE);
+            assignments.value_ptrs[local_idx] = assignment;
+
+            auto ap = AssignmentPartRef{assignment, 0};
+            ap.set_bank(Config::GP_BANK);
+            ap.set_variable_ref(true);
+            ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
         }
-
-        auto size = adaptor->val_alloca_size(alloca);
-        size      = util::align_up(size, adaptor->val_alloca_align(alloca));
-
-        auto *assignment = allocate_assignment(1, true);
-        auto  frame_off  = allocate_stack_slot(size);
-        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
-            frame_off += size;
-        }
-
-        assignment->initialize(frame_off,
-                               size,
-                               analyzer.liveness_info(local_idx).ref_count,
-                               Config::PLATFORM_POINTER_SIZE);
-        assignments.value_ptrs[local_idx] = assignment;
-
-        auto ap = AssignmentPartRef{assignment, 0};
-        ap.set_bank(Config::GP_BANK);
-        ap.set_variable_ref(true);
-        ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
+    } else {
+        derived()->setup_var_ref_assignments();
     }
 
     // TODO(ts): place function label

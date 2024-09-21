@@ -94,8 +94,10 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
     /// When the default variable reference handling is disabled, the
     /// implementation has to provide a few helpers to tell us what to do
     requires IsTrue<Config::DEFAULT_VAR_REF_HANDLING> || requires {
-        { a.setup_var_ref_assignments_in_prologue() };
-        { a.reset_var_ref(ARG(typename T::ValuePartRef *)) };
+        /// Called when starting to compile a func.
+        /// This should initialize all variable references
+        /// (even the ones from TPDE so static stack slots)
+        { a.setup_var_ref_assignments() };
     };
 
     {

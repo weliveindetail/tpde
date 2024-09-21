@@ -12,7 +12,7 @@
 namespace tpde_llvm::x64 {
 
 struct CompilerConfig : tpde::x64::PlatformConfig {
-    static constexpr bool DEFAULT_VAR_REF_HANDLING = true;
+    static constexpr bool DEFAULT_VAR_REF_HANDLING = false;
 };
 
 struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
@@ -79,6 +79,9 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
     u8 val_part_bank(IRValueRef, u32) const noexcept;
 
     void move_val_to_ret_regs(llvm::Value *) noexcept;
+
+    void load_address_of_var_reference(AsmReg            dst,
+                                       AssignmentPartRef ap) noexcept;
 
     void create_frem_calls(IRValueRef     lhs,
                            IRValueRef     rhs,
@@ -385,6 +388,35 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
         assert(0);
         exit(1);
     }
+    }
+}
+
+void LLVMCompilerX64::load_address_of_var_reference(
+    AsmReg dst, AssignmentPartRef ap) noexcept {
+    const auto &info = variable_refs[ap.assignment->var_ref_custom_idx];
+    if (info.alloca) {
+        // default handling from CompilerX64
+        ASM(LEA64rm,
+            dst,
+            FE_MEM(FE_BP,
+                   0,
+                   FE_NOREG,
+                   -static_cast<i32>(ap.assignment->frame_off)));
+    } else {
+        const auto sym = global_sym(
+            llvm::cast<llvm::GlobalValue>(adaptor->values[info.val].val));
+        assert(sym != Assembler::INVALID_SYM_REF);
+        if (!info.local) {
+            // mov the ptr from the GOT
+            ASM(MOV64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
+            this->assembler.reloc_text_got(
+                sym, this->assembler.text_cur_off() - 4, -4);
+        } else {
+            // emit lea with relocation
+            ASM(LEA64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
+            this->assembler.reloc_text_pc32(
+                sym, this->assembler.text_cur_off() - 4, -4);
+        }
     }
 }
 
