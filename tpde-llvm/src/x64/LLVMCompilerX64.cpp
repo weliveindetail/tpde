@@ -89,6 +89,7 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                            bool           is_double) noexcept;
 
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_br(IRValueRef, llvm::Instruction *) noexcept;
 };
 
 u32 LLVMCompilerX64::basic_ty_part_count(const LLVMBasicValType ty) noexcept {
@@ -448,6 +449,54 @@ bool LLVMCompilerX64::compile_unreachable(IRValueRef,
                                           llvm::Instruction *) noexcept {
     ASM(UD2);
     this->release_regs_after_return();
+    return true;
+}
+
+bool LLVMCompilerX64::compile_br(IRValueRef, llvm::Instruction *inst) noexcept {
+    auto *br = llvm::cast<llvm::BranchInst>(inst);
+
+    if (br->isUnconditional()) {
+        auto spilled = this->spill_before_branch();
+
+        generate_branch_to_block(
+            Jump::jmp, adaptor->block_lookup[br->getSuccessor(0)], false, true);
+
+        release_spilled_regs(spilled);
+        return true;
+    }
+
+    const auto true_block  = adaptor->block_lookup[br->getSuccessor(0)];
+    const auto false_block = adaptor->block_lookup[br->getSuccessor(1)];
+    const auto next_block  = this->analyzer.block_ref(this->next_block());
+
+    const auto true_needs_split  = this->branch_needs_split(true_block);
+    const auto false_needs_split = this->branch_needs_split(false_block);
+
+    {
+        ScratchReg scratch{this};
+        auto cond_ref = this->val_ref(llvm_val_idx(br->getCondition()), 0);
+        const auto cond_reg = this->val_as_reg(cond_ref, scratch);
+        ASM(TEST32ri, cond_reg, 1);
+    }
+
+    const auto spilled = this->spill_before_branch();
+
+    if (next_block == true_block
+        || (next_block != false_block && true_needs_split)) {
+        generate_branch_to_block(
+            Jump::je, false_block, false_needs_split, false);
+        generate_branch_to_block(Jump::jmp, true_block, false, true);
+    } else if (next_block == false_block) {
+        generate_branch_to_block(
+            Jump::jne, true_block, true_needs_split, false);
+        generate_branch_to_block(Jump::jmp, false_block, false, true);
+    } else {
+        assert(true_needs_split);
+        this->generate_branch_to_block(Jump::jne, true_block, false, false);
+        this->generate_branch_to_block(Jump::jmp, false_block, false, true);
+    }
+
+    this->release_spilled_regs(spilled);
     return true;
 }
 

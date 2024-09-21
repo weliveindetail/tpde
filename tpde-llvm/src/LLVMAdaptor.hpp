@@ -621,6 +621,14 @@ struct LLVMAdaptor {
             block_lookup[&block]       = block_idx;
             block_embedded_idx(&block) = block_idx;
 
+            // blocks are also used as operands for branches so they need an
+            // IRValueRef, too
+            value_lookup.insert_or_assign(&block, values.size());
+            values.push_back(ValInfo{.val  = static_cast<llvm::Value *>(&block),
+                                     .type = LLVMBasicValType::invalid,
+                                     .fused    = false,
+                                     .argument = false});
+
             for (auto *C : block_constants) {
                 if (value_lookup.find(C) == value_lookup.end()) {
                     value_lookup.insert_or_assign(C, values.size());

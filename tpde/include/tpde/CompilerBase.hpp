@@ -887,7 +887,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
             salvage_reg_for_values(res_ref, arg);
         } else {
             const auto reg = res_ref.alloc_reg(false);
-            arg.reload_into_specific(reg);
+            arg.reload_into_specific(this, reg);
         }
     }
 
@@ -1339,8 +1339,10 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
                        || val_ref.assignment().fixed_assignment()) {
                 reg = AsmReg{val_ref.assignment().full_reg_id()};
             } else {
-                reg = val_ref.reload_into_specific(scratch.alloc_from_bank(
-                    derived()->val_part_bank(incoming_val, i)));
+                reg = val_ref.reload_into_specific_fixed(
+                    this,
+                    scratch.alloc_from_bank(
+                        derived()->val_part_bank(incoming_val, i)));
             }
 
             auto phi_ap = phi_ref.assignment();
@@ -1516,7 +1518,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
                 phi_ref.inc_ref_count();
 
                 auto reg = tmp_reg1.alloc_from_bank(phi_ref.bank());
-                phi_ref.reload_into_specific(reg);
+                phi_ref.reload_into_specific_fixed(this, reg);
 
                 if (cur_tmp_part_count == 2) {
                     // TODO(ts): just change the part ref on the lower ref?
@@ -1525,7 +1527,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
 
                     auto reg_high =
                         tmp_reg2.alloc_from_bank(phi_ref_high.bank());
-                    phi_ref_high.reload_into_specific(reg_high);
+                    phi_ref_high.reload_into_specific_fixed(this, reg_high);
                 }
             }
 
