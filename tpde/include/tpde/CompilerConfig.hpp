@@ -18,11 +18,14 @@ concept CompilerConfig = requires {
     { T::FRAME_INDEXING_NEGATIVE } -> SameBaseAs<bool>;
     { T::PLATFORM_POINTER_SIZE } -> SameBaseAs<u32>;
     { T::NUM_BANKS } -> SameBaseAs<u32>;
+    { T::DEFAULT_VAR_REF_HANDLING } -> SameBaseAs<bool>;
 
     typename T::Assembler;
     typename T::AsmReg;
 };
 
-struct CompilerConfigDefault {};
+struct CompilerConfigDefault {
+    constexpr static bool DEFAULT_VAR_REF_HANDLING = true;
+};
 
 } // namespace tpde

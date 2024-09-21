@@ -11,14 +11,26 @@
 
 namespace tpde_llvm::x64 {
 
-struct LLVMCompilerX64
-    : tpde::x64::CompilerX64<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase>,
-      tpde_encodegen::
-          EncodeCompiler<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase> {
-    using Base =
-        tpde::x64::CompilerX64<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase>;
-    using EncCompiler =
-        EncodeCompiler<LLVMAdaptor, LLVMCompilerX64, LLVMCompilerBase>;
+struct CompilerConfig : tpde::x64::PlatformConfig {
+    static constexpr bool DEFAULT_VAR_REF_HANDLING = true;
+};
+
+struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
+                                                LLVMCompilerX64,
+                                                LLVMCompilerBase,
+                                                CompilerConfig>,
+                         tpde_encodegen::EncodeCompiler<LLVMAdaptor,
+                                                        LLVMCompilerX64,
+                                                        LLVMCompilerBase,
+                                                        CompilerConfig> {
+    using Base        = tpde::x64::CompilerX64<LLVMAdaptor,
+                                               LLVMCompilerX64,
+                                               LLVMCompilerBase,
+                                               CompilerConfig>;
+    using EncCompiler = EncodeCompiler<LLVMAdaptor,
+                                       LLVMCompilerX64,
+                                       LLVMCompilerBase,
+                                       CompilerConfig>;
 
     struct EncodeImm : EncCompiler::AsmOperand::Immediate {
         explicit EncodeImm(const u32 value)

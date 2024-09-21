@@ -3352,8 +3352,9 @@ bool create_encode_function(llvm::MachineFunction *func,
             "template <typename Adaptor,\n"
             "          typename Derived,\n"
             "          template <typename, typename, typename>\n"
-            "          class BaseTy>\n"
-            "bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_{}(",
+            "          class BaseTy,\n"
+            "          typename Config>"
+            "bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_{}(",
             name);
         std::format_to(
             std::back_inserter(decl_lines), "    bool encode_{}(", name);

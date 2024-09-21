@@ -164,10 +164,22 @@ constexpr static u64 create_bitmask(const std::array<AsmReg, N> regs) {
     return set;
 }
 
+struct PlatformConfig : CompilerConfigDefault {
+    using Assembler = AssemblerElfX64;
+    using AsmReg    = tpde::x64::AsmReg;
+
+    static constexpr u8   GP_BANK                 = 0;
+    static constexpr u8   FP_BANK                 = 1;
+    static constexpr bool FRAME_INDEXING_NEGATIVE = true;
+    static constexpr u32  PLATFORM_POINTER_SIZE   = 8;
+    static constexpr u32  NUM_BANKS               = 2;
+};
+
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename> typename BaseTy =
-              CompilerBase>
+              CompilerBase,
+          typename Config = PlatformConfig>
 struct CompilerX64;
 
 struct CallingConv {
@@ -241,40 +253,47 @@ struct CallingConv {
     template <typename Adaptor,
               typename Derived,
               template <typename, typename, typename>
-              typename BaseTy>
+              typename BaseTy,
+              typename Config>
     void handle_func_args(
-        CompilerX64<Adaptor, Derived, BaseTy> *) const noexcept;
+        CompilerX64<Adaptor, Derived, BaseTy, Config> *) const noexcept;
 
     template <typename Adaptor,
               typename Derived,
               template <typename, typename, typename>
-              typename BaseTy>
+              typename BaseTy,
+              typename Config>
     u32 calculate_call_stack_space(
-        CompilerX64<Adaptor, Derived, BaseTy> *,
-        std::span<typename CompilerX64<Adaptor, Derived, BaseTy>::CallArg>
+        CompilerX64<Adaptor, Derived, BaseTy, Config> *,
+        std::span<
+            typename CompilerX64<Adaptor, Derived, BaseTy, Config>::CallArg>
             arguments) noexcept;
 
     /// returns the number of vector arguments
     template <typename Adaptor,
               typename Derived,
               template <typename, typename, typename>
-              typename BaseTy>
+              typename BaseTy,
+              typename Config>
     u32 handle_call_args(
-        CompilerX64<Adaptor, Derived, BaseTy> *,
-        std::span<typename CompilerX64<Adaptor, Derived, BaseTy>::CallArg>
+        CompilerX64<Adaptor, Derived, BaseTy, Config> *,
+        std::span<
+            typename CompilerX64<Adaptor, Derived, BaseTy, Config>::CallArg>
             arguments) noexcept;
 
     template <typename Adaptor,
               typename Derived,
               template <typename, typename, typename>
-              typename BaseTy>
+              typename BaseTy,
+              typename Config>
     void fill_call_results(
-        CompilerX64<Adaptor, Derived, BaseTy> *,
+        CompilerX64<Adaptor, Derived, BaseTy, Config> *,
         std::span<std::variant<
-            typename CompilerX64<Adaptor, Derived, BaseTy>::ValuePartRef,
-            std::pair<
-                typename CompilerX64<Adaptor, Derived, BaseTy>::ScratchReg,
-                u8>>> results) noexcept;
+            typename CompilerX64<Adaptor, Derived, BaseTy, Config>::
+                ValuePartRef,
+            std::pair<typename CompilerX64<Adaptor, Derived, BaseTy, Config>::
+                          ScratchReg,
+                      u8>>> results) noexcept;
 
     struct SysV {
         constexpr static std::array<AsmReg, 6> arg_regs_gp{AsmReg::DI,
@@ -322,17 +341,6 @@ struct CallingConv {
     };
 };
 
-struct PlatformConfig : CompilerConfigDefault {
-    using Assembler = AssemblerElfX64;
-    using AsmReg    = tpde::x64::AsmReg;
-
-    static constexpr u8   GP_BANK                 = 0;
-    static constexpr u8   FP_BANK                 = 1;
-    static constexpr bool FRAME_INDEXING_NEGATIVE = true;
-    static constexpr u32  PLATFORM_POINTER_SIZE   = 8;
-    static constexpr u32  NUM_BANKS               = 2;
-};
-
 namespace concepts {
 template <typename T, typename Config>
 concept Compiler = tpde::Compiler<T, Config> && requires(T a) {
@@ -347,9 +355,10 @@ concept Compiler = tpde::Compiler<T, Config> && requires(T a) {
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-struct CompilerX64 : BaseTy<Adaptor, Derived, PlatformConfig> {
-    using Base = BaseTy<Adaptor, Derived, PlatformConfig>;
+          typename BaseTy,
+          typename Config>
+struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
+    using Base = BaseTy<Adaptor, Derived, Config>;
 
     using IRValueRef = typename Base::IRValueRef;
     using IRBlockRef = typename Base::IRBlockRef;
@@ -541,12 +550,13 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, PlatformConfig> {
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
+          typename BaseTy,
+          typename Config>
 void CallingConv::handle_func_args(
-    CompilerX64<Adaptor, Derived, BaseTy> *compiler) const noexcept {
+    CompilerX64<Adaptor, Derived, BaseTy, Config> *compiler) const noexcept {
     using IRValueRef = typename Adaptor::IRValueRef;
     using ScratchReg =
-        typename CompilerX64<Adaptor, Derived, BaseTy>::ScratchReg;
+        typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ScratchReg;
 
     u32 scalar_reg_count = 0, xmm_reg_count = 0;
     i32 frame_off = 16;
@@ -639,12 +649,14 @@ void CallingConv::handle_func_args(
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
+          typename BaseTy,
+          typename Config>
 u32 CallingConv::calculate_call_stack_space(
-    CompilerX64<Adaptor, Derived, BaseTy> *compiler,
-    std::span<typename CompilerX64<Adaptor, Derived, BaseTy>::CallArg>
+    CompilerX64<Adaptor, Derived, BaseTy, Config> *compiler,
+    std::span<typename CompilerX64<Adaptor, Derived, BaseTy, Config>::CallArg>
         arguments) noexcept {
-    using CallArg = typename CompilerX64<Adaptor, Derived, BaseTy>::CallArg;
+    using CallArg =
+        typename CompilerX64<Adaptor, Derived, BaseTy, Config>::CallArg;
 
     u32 gp_reg_count = 0, xmm_reg_count = 0, stack_space = 0;
 
@@ -704,14 +716,16 @@ u32 CallingConv::calculate_call_stack_space(
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
+          typename BaseTy,
+          typename Config>
 u32 CallingConv::handle_call_args(
-    CompilerX64<Adaptor, Derived, BaseTy> *compiler,
-    std::span<typename CompilerX64<Adaptor, Derived, BaseTy>::CallArg>
+    CompilerX64<Adaptor, Derived, BaseTy, Config> *compiler,
+    std::span<typename CompilerX64<Adaptor, Derived, BaseTy, Config>::CallArg>
         arguments) noexcept {
-    using CallArg = typename CompilerX64<Adaptor, Derived, BaseTy>::CallArg;
+    using CallArg =
+        typename CompilerX64<Adaptor, Derived, BaseTy, Config>::CallArg;
     using ScratchReg =
-        typename CompilerX64<Adaptor, Derived, BaseTy>::ScratchReg;
+        typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ScratchReg;
 
     u32 gp_reg_count = 0, xmm_reg_count = 0;
     i32 stack_off = 0;
@@ -907,17 +921,19 @@ u32 CallingConv::handle_call_args(
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
+          typename BaseTy,
+          typename Config>
 void CallingConv::fill_call_results(
-    CompilerX64<Adaptor, Derived, BaseTy> *compiler,
+    CompilerX64<Adaptor, Derived, BaseTy, Config> *compiler,
     std::span<std::variant<
-        typename CompilerX64<Adaptor, Derived, BaseTy>::ValuePartRef,
-        std::pair<typename CompilerX64<Adaptor, Derived, BaseTy>::ScratchReg,
-                  u8>>>                    results) noexcept {
+        typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ValuePartRef,
+        std::pair<
+            typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ScratchReg,
+            u8>>>                                  results) noexcept {
     using ValuePartRef =
-        typename CompilerX64<Adaptor, Derived, BaseTy>::ValuePartRef;
+        typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ValuePartRef;
     using ScratchReg =
-        typename CompilerX64<Adaptor, Derived, BaseTy>::ScratchReg;
+        typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ScratchReg;
 
     u32 gp_reg_count = 0, xmm_reg_count = 0;
 
@@ -951,7 +967,8 @@ void CallingConv::fill_call_results(
 
             compiler->register_file.mark_used(
                 reg.cur_reg,
-                CompilerX64<Adaptor, Derived, BaseTy>::INVALID_VAL_LOCAL_IDX,
+                CompilerX64<Adaptor, Derived, BaseTy, Config>::
+                    INVALID_VAL_LOCAL_IDX,
                 0);
             compiler->register_file.mark_fixed(reg.cur_reg);
         }
@@ -961,8 +978,9 @@ void CallingConv::fill_call_results(
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename CompilerBaseType>
-void CompilerX64<Adaptor, Derived, CompilerBaseType>::
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::
     gen_func_prolog_and_args() noexcept {
     // prologue:
     // push rbp
@@ -1021,8 +1039,9 @@ void CompilerX64<Adaptor, Derived, CompilerBaseType>::
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::finish_func() noexcept {
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     const auto final_frame_size = util::align_up(this->stack.frame_size, 16);
     *reinterpret_cast<u32 *>(this->assembler.sec_text.data.data()
                              + frame_size_setup_offset + 3) = final_frame_size;
@@ -1104,8 +1123,10 @@ void CompilerX64<Adaptor, Derived, BaseTy>::finish_func() noexcept {
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::reset_register_file() noexcept {
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::
+    reset_register_file() noexcept {
     const CallingConv conv            = derived()->cur_calling_convention();
     this->register_file.fixed         = this->register_file.used =
         this->register_file.clobbered = 0;
@@ -1115,8 +1136,9 @@ void CompilerX64<Adaptor, Derived, BaseTy>::reset_register_file() noexcept {
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::reset() noexcept {
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::reset() noexcept {
     func_ret_offs.clear();
     Base::reset();
 }
@@ -1124,8 +1146,9 @@ void CompilerX64<Adaptor, Derived, BaseTy>::reset() noexcept {
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::gen_func_epilog() noexcept {
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_epilog() noexcept {
     // epilogue:
     // add rsp, #<frame_size>+<largest_call_frame_usage>
     // optionally create vararg save-area
@@ -1149,10 +1172,10 @@ void CompilerX64<Adaptor, Derived, BaseTy>::gen_func_epilog() noexcept {
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::spill_reg(const AsmReg reg,
-                                                      const u32    frame_off,
-                                                      const u32 size) noexcept {
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::spill_reg(
+    const AsmReg reg, const u32 frame_off, const u32 size) noexcept {
     this->assembler.text_ensure_space(16);
     const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(frame_off));
     if (reg.id() <= AsmReg::R15) {
@@ -1182,8 +1205,9 @@ void CompilerX64<Adaptor, Derived, BaseTy>::spill_reg(const AsmReg reg,
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::load_from_stack(
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
     const AsmReg dst,
     const i32    frame_off,
     const u32    size,
@@ -1230,9 +1254,11 @@ void CompilerX64<Adaptor, Derived, BaseTy>::load_from_stack(
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::load_address_of_var_reference(
-    const AsmReg dst, const AssignmentPartRef ap) noexcept {
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::
+    load_address_of_var_reference(const AsmReg            dst,
+                                  const AssignmentPartRef ap) noexcept {
     // per-default, variable references are only used by
     // allocas
     ASM(LEA64rm,
@@ -1244,10 +1270,10 @@ void CompilerX64<Adaptor, Derived, BaseTy>::load_address_of_var_reference(
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::mov(const AsmReg dst,
-                                                const AsmReg src,
-                                                const u32    size) noexcept {
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::mov(
+    const AsmReg dst, const AsmReg src, const u32 size) noexcept {
     assert(dst.valid());
     assert(src.valid());
     if (dst.id() <= AsmReg::R15 && src.id() <= AsmReg::R15) {
@@ -1317,8 +1343,9 @@ void CompilerX64<Adaptor, Derived, BaseTy>::mov(const AsmReg dst,
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     ValuePartRef &val_ref, const AsmReg dst) noexcept {
     assert(val_ref.is_const);
     const auto &data = val_ref.state.c;
@@ -1328,8 +1355,9 @@ void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     ValuePartRef &val_ref, ScratchReg &dst) noexcept {
     assert(val_ref.is_const);
     materialize_constant(val_ref, dst.alloc_from_bank(val_ref.state.c.bank));
@@ -1338,8 +1366,9 @@ void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     const std::array<u8, 64> &data,
     const u32                 bank,
     const u32                 size,
@@ -1396,9 +1425,11 @@ void CompilerX64<Adaptor, Derived, BaseTy>::materialize_constant(
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-AsmReg CompilerX64<Adaptor, Derived, BaseTy>::select_fixed_assignment_reg(
-    const u32 bank, IRValueRef) noexcept {
+          typename BaseTy,
+          typename Config>
+AsmReg
+    CompilerX64<Adaptor, Derived, BaseTy, Config>::select_fixed_assignment_reg(
+        const u32 bank, IRValueRef) noexcept {
     assert(bank <= 1);
     u64 reg_mask = (1ull << 32) - 1;
     if (bank != 0) {
@@ -1476,9 +1507,11 @@ AsmReg CompilerX64<Adaptor, Derived, BaseTy>::select_fixed_assignment_reg(
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-typename CompilerX64<Adaptor, Derived, BaseTy>::Jump
-    CompilerX64<Adaptor, Derived, BaseTy>::invert_jump(Jump jmp) noexcept {
+          typename BaseTy,
+          typename Config>
+typename CompilerX64<Adaptor, Derived, BaseTy, Config>::Jump
+    CompilerX64<Adaptor, Derived, BaseTy, Config>::invert_jump(
+        Jump jmp) noexcept {
     switch (jmp) {
     case Jump::ja: return Jump::jbe;
     case Jump::jae: return Jump::jb;
@@ -1503,8 +1536,9 @@ typename CompilerX64<Adaptor, Derived, BaseTy>::Jump
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::generate_branch_to_block(
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_branch_to_block(
     const Jump jmp,
     IRBlockRef target,
     const bool needs_split,
@@ -1532,8 +1566,9 @@ void CompilerX64<Adaptor, Derived, BaseTy>::generate_branch_to_block(
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::generate_raw_jump(
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
     Jump jmp, Assembler::Label target_label) noexcept {
     if (this->assembler.label_is_pending(target_label)) {
         this->assembler.text_ensure_space(6);
@@ -1589,8 +1624,9 @@ void CompilerX64<Adaptor, Derived, BaseTy>::generate_raw_jump(
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::spill_before_call(
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::spill_before_call(
     const CallingConv calling_conv, const u64 except_mask) {
     for (auto reg_id : util::BitSetIterator<>{
              this->register_file.used & ~calling_conv.callee_saved_mask()
@@ -1615,8 +1651,9 @@ void CompilerX64<Adaptor, Derived, BaseTy>::spill_before_call(
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
-void CompilerX64<Adaptor, Derived, BaseTy>::generate_call(
+          typename BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     std::variant<Assembler::SymRef, ScratchReg, ValuePartRef>      &&target,
     std::span<CallArg>                                               arguments,
     std::span<std::variant<ValuePartRef, std::pair<ScratchReg, u8>>> results,

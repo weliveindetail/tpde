@@ -46,9 +46,10 @@ using namespace tpde;
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
+          typename BaseTy,
+          typename Config>
 struct EncodeCompiler {
-    using CompilerX64  = tpde::x64::CompilerX64<Adaptor, Derived, BaseTy>;
+    using CompilerX64  = tpde::x64::CompilerX64<Adaptor, Derived, BaseTy, Config>;
     using ScratchReg   = typename CompilerX64::ScratchReg;
     using AsmReg       = typename CompilerX64::AsmReg;
     using ValuePartRef = typename CompilerX64::ValuePartRef;
@@ -264,8 +265,9 @@ static constexpr inline char ENCODER_IMPL_TEMPLATE_BEGIN[] = R"(
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::encodeable_as_imm64()
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::encodeable_as_imm64()
     const noexcept {
     if (!is_imm() || std::get<Immediate>(state).size > 8) {
         return false;
@@ -278,8 +280,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::encodeable_as_imm64()
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     encodeable_as_imm32_sext() const noexcept {
     if (!is_imm()) {
         return false;
@@ -299,8 +302,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     encodeable_as_imm16_sext() const noexcept {
     if (!is_imm()) {
         return false;
@@ -317,8 +321,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     encodeable_as_imm8_sext() const noexcept {
     if (!is_imm()) {
         return false;
@@ -335,8 +340,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     val_ref_prefers_mem_enc() const noexcept {
     const ValuePartRef *ptr;
     if (std::holds_alternative<ValuePartRef>(state)) {
@@ -358,8 +364,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-u32 EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::val_ref_frame_off()
+          class BaseTy,
+          typename Config>
+u32 EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::val_ref_frame_off()
     const noexcept {
     if (std::holds_alternative<ValuePartRef>(state)) {
         const auto &val_ref = std::get<ValuePartRef>(state);
@@ -380,10 +387,11 @@ u32 EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::val_ref_frame_off()
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-typename EncodeCompiler<Adaptor, Derived, BaseTy>::AsmReg
-    EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::as_reg(
-        EncodeCompiler<Adaptor, Derived, BaseTy> *compiler) noexcept {
+          class BaseTy,
+          typename Config>
+typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
+    EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::as_reg(
+        EncodeCompiler<Adaptor, Derived, BaseTy, Config> *compiler) noexcept {
     if (std::holds_alternative<ScratchReg>(state)) {
         return std::get<ScratchReg>(state).cur_reg;
     }
@@ -413,8 +421,9 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy>::AsmReg
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::try_salvage(
     ScratchReg &dst_scratch, const u8 bank) noexcept {
     if (!dst_scratch.cur_reg.invalid()) {
         return false;
@@ -456,8 +465,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     try_salvage_if_nonalloc(ScratchReg &dst_scratch, const u8 bank) noexcept {
     if (!dst_scratch.cur_reg.invalid()) {
         return false;
@@ -468,8 +478,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::try_salvage(
     AsmReg &dst_reg, ScratchReg &dst_scratch, const u8 bank) noexcept {
     const auto res = try_salvage(dst_scratch, bank);
     dst_reg        = dst_scratch.cur_reg;
@@ -479,8 +490,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     try_salvage_or_materialize(EncodeCompiler *compiler,
                                AsmReg         &dst_reg,
                                ScratchReg     &dst_scratch,
@@ -493,8 +505,9 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     try_salvage_or_materialize(EncodeCompiler *compiler,
                                ScratchReg     &dst_scratch,
                                u8              bank,
@@ -553,16 +566,18 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::reset() noexcept {
+          class BaseTy,
+          typename Config>
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::reset() noexcept {
     state = std::monostate{};
 }
 
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void EncodeCompiler<Adaptor, Derived, BaseTy>::scratch_alloc_specific(
+          class BaseTy,
+          typename Config>
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
     AsmReg                              reg,
     ScratchReg                         &scratch,
     std::initializer_list<AsmOperand *> operands,
@@ -669,8 +684,9 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::scratch_alloc_specific(
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void EncodeCompiler<Adaptor, Derived, BaseTy>::scratch_check_fixed_backup(
+          class BaseTy,
+          typename Config>
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_check_fixed_backup(
     ScratchReg     &scratch,
     FixedRegBackup &backup_reg,
     const bool      is_ret_reg) noexcept {

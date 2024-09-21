@@ -15,6 +15,9 @@
 
 namespace tpde {
 
+template <bool B>
+concept IsTrue = (B == true);
+
 template <typename T, typename Config>
 concept Compiler = CompilerConfig<Config> && requires(T a) {
     // mostly platform things
@@ -87,6 +90,13 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
     ///
     /// (func_ref, idx)
     { a.define_func_idx(ARG(typename T::IRFuncRef), ARG(u32)) };
+
+    /// When the default variable reference handling is disabled, the
+    /// implementation has to provide a few helpers to tell us what to do
+    requires IsTrue<Config::DEFAULT_VAR_REF_HANDLING> || requires {
+        { a.setup_var_ref_assignments_in_prologue() };
+        { a.reset_var_ref(ARG(typename T::ValuePartRef *)) };
+    };
 
     {
         a.compile_inst(ARG(typename T::IRValueRef))

@@ -31,9 +31,10 @@ using namespace tpde;
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          typename BaseTy>
+          typename BaseTy,
+          typename Config>
 struct EncodeCompiler {
-    using CompilerX64  = tpde::x64::CompilerX64<Adaptor, Derived, BaseTy>;
+    using CompilerX64  = tpde::x64::CompilerX64<Adaptor, Derived, BaseTy, Config>;
     using ScratchReg   = typename CompilerX64::ScratchReg;
     using AsmReg       = typename CompilerX64::AsmReg;
     using ValuePartRef = typename CompilerX64::ValuePartRef;
@@ -382,8 +383,9 @@ struct EncodeCompiler {
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::encodeable_as_imm64()
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::encodeable_as_imm64()
     const noexcept {
     if (!is_imm() || std::get<Immediate>(state).size > 8) {
         return false;
@@ -396,8 +398,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::encodeable_as_imm64()
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     encodeable_as_imm32_sext() const noexcept {
     if (!is_imm()) {
         return false;
@@ -417,8 +420,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     encodeable_as_imm16_sext() const noexcept {
     if (!is_imm()) {
         return false;
@@ -435,8 +439,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     encodeable_as_imm8_sext() const noexcept {
     if (!is_imm()) {
         return false;
@@ -453,8 +458,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     val_ref_prefers_mem_enc() const noexcept {
     const ValuePartRef *ptr;
     if (std::holds_alternative<ValuePartRef>(state)) {
@@ -476,8 +482,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-u32 EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::val_ref_frame_off()
+          class BaseTy,
+          typename Config>
+u32 EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::val_ref_frame_off()
     const noexcept {
     if (std::holds_alternative<ValuePartRef>(state)) {
         const auto &val_ref = std::get<ValuePartRef>(state);
@@ -498,10 +505,11 @@ u32 EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::val_ref_frame_off()
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-typename EncodeCompiler<Adaptor, Derived, BaseTy>::AsmReg
-    EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::as_reg(
-        EncodeCompiler<Adaptor, Derived, BaseTy> *compiler) noexcept {
+          class BaseTy,
+          typename Config>
+typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
+    EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::as_reg(
+        EncodeCompiler<Adaptor, Derived, BaseTy, Config> *compiler) noexcept {
     if (std::holds_alternative<ScratchReg>(state)) {
         return std::get<ScratchReg>(state).cur_reg;
     }
@@ -531,8 +539,9 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy>::AsmReg
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::try_salvage(
     ScratchReg &dst_scratch, const u8 bank) noexcept {
     if (!dst_scratch.cur_reg.invalid()) {
         return false;
@@ -574,8 +583,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     try_salvage_if_nonalloc(ScratchReg &dst_scratch, const u8 bank) noexcept {
     if (!dst_scratch.cur_reg.invalid()) {
         return false;
@@ -586,8 +596,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
+          class BaseTy,
+          typename Config>
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::try_salvage(
     AsmReg &dst_reg, ScratchReg &dst_scratch, const u8 bank) noexcept {
     const auto res = try_salvage(dst_scratch, bank);
     dst_reg        = dst_scratch.cur_reg;
@@ -597,8 +608,9 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::try_salvage(
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     try_salvage_or_materialize(EncodeCompiler *compiler,
                                AsmReg         &dst_reg,
                                ScratchReg     &dst_scratch,
@@ -611,8 +623,9 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
+          class BaseTy,
+          typename Config>
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     try_salvage_or_materialize(EncodeCompiler *compiler,
                                ScratchReg     &dst_scratch,
                                u8              bank,
@@ -671,16 +684,18 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void EncodeCompiler<Adaptor, Derived, BaseTy>::AsmOperand::reset() noexcept {
+          class BaseTy,
+          typename Config>
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::reset() noexcept {
     state = std::monostate{};
 }
 
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void EncodeCompiler<Adaptor, Derived, BaseTy>::scratch_alloc_specific(
+          class BaseTy,
+          typename Config>
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
     AsmReg                              reg,
     ScratchReg                         &scratch,
     std::initializer_list<AsmOperand *> operands,
@@ -787,8 +802,9 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::scratch_alloc_specific(
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-void EncodeCompiler<Adaptor, Derived, BaseTy>::scratch_check_fixed_backup(
+          class BaseTy,
+          typename Config>
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_check_fixed_backup(
     ScratchReg     &scratch,
     FixedRegBackup &backup_reg,
     const bool      is_ret_reg) noexcept {
@@ -829,8 +845,8 @@ void EncodeCompiler<Adaptor, Derived, BaseTy>::scratch_check_fixed_backup(
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi8(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadi8(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadi8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -884,8 +900,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi8(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi16(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadi16(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadi16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -939,8 +955,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi16(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadi32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -994,8 +1010,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadi64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -1049,8 +1065,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi24(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadi24(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadi24: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -1162,8 +1178,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi24(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi40(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadi40(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadi40: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -1279,8 +1295,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi40(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi48(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadi48(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadi48: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -1396,8 +1412,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi48(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi56(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadi56(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadi56: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -1580,8 +1596,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi56(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi128(AsmOperand param_0, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadi128(AsmOperand param_0, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function loadi128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -1668,8 +1684,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadi128(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadf32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadf32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -1718,8 +1734,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadf32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadf64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadf64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -1768,8 +1784,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadf64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadv128(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadv128(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadv128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -1818,8 +1834,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadv128(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadv256(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadv256(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadv256: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -1868,8 +1884,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadv256(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadv512(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadv512(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function loadv512: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -1918,8 +1934,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_loadv512(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei8(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storei8(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storei8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $esi
     // 
@@ -1994,8 +2010,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei8(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei16(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storei16(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storei16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $esi
     // 
@@ -2070,8 +2086,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei16(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei32(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storei32(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storei32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $esi
     // 
@@ -2141,8 +2157,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei64(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storei64(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storei64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -2212,8 +2228,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei24(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storei24(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storei24: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $esi
     // 
@@ -2329,8 +2345,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei24(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei40(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storei40(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storei40: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -2446,8 +2462,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei40(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei48(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storei48(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storei48: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -2563,8 +2579,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei48(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei56(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storei56(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storei56: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -2736,8 +2752,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei56(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storei128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2) {
     // # Machine code for function storei128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -2869,8 +2885,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storei128(AsmOperand param
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storef32(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storef32(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storef32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $xmm0
     // 
@@ -2919,8 +2935,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storef32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storef64(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storef64(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storef64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $xmm0
     // 
@@ -2969,8 +2985,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storef64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storev128(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storev128(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storev128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $xmm0
     // 
@@ -3019,8 +3035,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storev128(AsmOperand param
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storev256(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storev256(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storev256: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $ymm0
     // 
@@ -3074,8 +3090,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storev256(AsmOperand param
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storev512(AsmOperand param_0, AsmOperand param_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storev512(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storev512: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $zmm0
     // 
@@ -3129,8 +3145,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_storev512(AsmOperand param
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_addi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function addi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -3210,8 +3226,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addi32(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_subi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function subi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -3285,8 +3301,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi32(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_muli32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function muli32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -3350,8 +3366,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli32(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_udivi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function udivi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -3446,8 +3462,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sdivi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_sdivi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function sdivi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -3533,8 +3549,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sdivi32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_uremi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function uremi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -3636,8 +3652,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_sremi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function sremi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -3730,8 +3746,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_landi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function landi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -3805,8 +3821,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_lori32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function lori32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -3880,8 +3896,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori32(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_lxori32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function lxori32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -3955,8 +3971,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_shli32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function shli32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -4037,8 +4053,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli32(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_shri32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function shri32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -4119,8 +4135,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri32(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ashri32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function ashri32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -4201,8 +4217,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_addi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function addi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -4272,8 +4288,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addi64(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_subi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function subi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -4347,8 +4363,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi64(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_muli64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function muli64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -4412,8 +4428,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli64(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_udivi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function udivi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -4510,8 +4526,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_udivi64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sdivi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_sdivi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function sdivi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -4597,8 +4613,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sdivi64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_uremi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function uremi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -4702,8 +4718,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_uremi64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_sremi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function sremi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -4796,8 +4812,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sremi64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_landi64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function landi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -4871,8 +4887,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_lori64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function lori64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -4946,8 +4962,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori64(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_lxori64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function lxori64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -5021,8 +5037,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_shli64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function shli64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -5103,8 +5119,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli64(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_shri64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function shri64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -5185,8 +5201,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri64(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ashri64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function ashri64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi
     // 
@@ -5267,8 +5283,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addi128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_addi128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function addi128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx, $rcx
     // 
@@ -5395,8 +5411,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addi128(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_subi128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function subi128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx, $rcx
     // 
@@ -5523,8 +5539,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subi128(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_muli128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function muli128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx, $rcx
     // 
@@ -5690,8 +5706,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_muli128(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_landi128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function landi128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx, $rcx
     // 
@@ -5818,8 +5834,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_landi128(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_lori128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function lori128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx, $rcx
     // 
@@ -5946,8 +5962,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lori128(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_lxori128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function lxori128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx, $rcx
     // 
@@ -6074,8 +6090,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_lxori128(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_shli128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function shli128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -6334,8 +6350,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_shri128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function shri128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -6608,8 +6624,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ashri128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function ashri128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -6885,8 +6901,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128_lt64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_shli128_lt64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function shli128_lt64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -7068,8 +7084,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128_lt64(AsmOperand pa
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128_ge64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_shli128_ge64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function shli128_ge64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rdx
     // 
@@ -7172,8 +7188,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shli128_ge64(AsmOperand pa
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128_lt64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_shri128_lt64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function shri128_lt64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -7366,8 +7382,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128_lt64(AsmOperand pa
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128_ge64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_shri128_ge64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function shri128_ge64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rsi, $rdx
     // 
@@ -7470,8 +7486,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_shri128_ge64(AsmOperand pa
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128_lt64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ashri128_lt64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function ashri128_lt64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -7664,8 +7680,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128_lt64(AsmOperand p
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128_ge64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ashri128_ge64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function ashri128_ge64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rsi, $rdx
     // 
@@ -7767,8 +7783,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_ashri128_ge64(AsmOperand p
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_addf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function addf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0, $xmm1
     // 
@@ -7825,8 +7841,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addf32(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_subf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function subf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0, $xmm1
     // 
@@ -7883,8 +7899,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subf32(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mulf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_mulf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function mulf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0, $xmm1
     // 
@@ -7941,8 +7957,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mulf32(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_divf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_divf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function divf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0, $xmm1
     // 
@@ -7999,8 +8015,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_divf32(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_addf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function addf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0, $xmm1
     // 
@@ -8057,8 +8073,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_addf64(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_subf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function subf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0, $xmm1
     // 
@@ -8115,8 +8131,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_subf64(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mulf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_mulf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function mulf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0, $xmm1
     // 
@@ -8173,8 +8189,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_mulf64(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_divf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_divf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function divf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0, $xmm1
     // 
@@ -8231,8 +8247,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_divf64(AsmOperand param_0,
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_fnegf32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fnegf32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function fnegf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Constant Pool:
     //   cp#0: <float -0.000000e+00, float -0.000000e+00, float -0.000000e+00, float -0.000000e+00>, align=16
@@ -8282,8 +8298,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_fnegf32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_fnegf64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fnegf64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function fnegf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Constant Pool:
     //   cp#0: <double -0.000000e+00, double -0.000000e+00>, align=16
@@ -8333,8 +8349,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_fnegf64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64tof32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_f64tof32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function f64tof32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0
     // 
@@ -8389,8 +8405,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64tof32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32tof64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_f32tof64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function f32tof64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0
     // 
@@ -8445,8 +8461,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32tof64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32toi32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_f32toi32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function f32toi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0
     // 
@@ -8497,8 +8513,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32toi32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32tou32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_f32tou32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function f32tou32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0
     // 
@@ -8554,8 +8570,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32tou32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32toi64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_f32toi64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function f32toi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0
     // 
@@ -8606,8 +8622,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32toi64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32tou64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_f32tou64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function f32tou64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Constant Pool:
     //   cp#0: 0x43E0000000000000, align=4
@@ -8749,8 +8765,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f32tou64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64toi32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_f64toi32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function f64toi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0
     // 
@@ -8801,8 +8817,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64toi32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64tou32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_f64tou32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function f64tou32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0
     // 
@@ -8858,8 +8874,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64tou32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64toi64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_f64toi64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function f64toi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $xmm0
     // 
@@ -8910,8 +8926,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64toi64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64tou64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_f64tou64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function f64tou64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Constant Pool:
     //   cp#0: 0x43E0000000000000, align=8
@@ -9053,8 +9069,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_f64tou64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i8tof32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_i8tof32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function i8tof32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -9129,8 +9145,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i8tof32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i16tof32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_i16tof32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function i16tof32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -9205,8 +9221,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i16tof32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i32tof32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_i32tof32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function i32tof32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -9257,8 +9273,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i32tof32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i64tof32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_i64tof32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function i64tof32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -9309,8 +9325,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i64tof32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u8tof32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_u8tof32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function u8tof32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -9385,8 +9401,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u8tof32(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u16tof32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_u16tof32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function u16tof32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -9461,8 +9477,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u16tof32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u32tof32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_u32tof32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function u32tof32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -9544,8 +9560,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u32tof32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u64tof32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_u64tof32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function u64tof32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -9738,8 +9754,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u64tof32(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i8tof64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_i8tof64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function i8tof64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -9814,8 +9830,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i8tof64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i16tof64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_i16tof64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function i16tof64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -9890,8 +9906,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i16tof64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i32tof64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_i32tof64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function i32tof64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -9942,8 +9958,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i32tof64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i64tof64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_i64tof64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function i64tof64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -9994,8 +10010,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_i64tof64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u8tof64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_u8tof64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function u8tof64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -10070,8 +10086,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u8tof64(AsmOperand param_0
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u16tof64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_u16tof64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function u16tof64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -10146,8 +10162,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u16tof64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u32tof64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_u32tof64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function u32tof64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -10229,8 +10245,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u32tof64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u64tof64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_u64tof64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function u64tof64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Constant Pool:
     //   cp#0: <i32 1127219200, i32 1160773632, i32 0, i32 0>, align=16
@@ -10372,8 +10388,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_u64tof64(AsmOperand param_
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_8_to_32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_sext_8_to_32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function sext_8_to_32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -10434,8 +10450,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_8_to_32(AsmOperand pa
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_8_to_64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_sext_8_to_64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function sext_8_to_64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -10501,8 +10517,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_8_to_64(AsmOperand pa
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_16_to_32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_sext_16_to_32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function sext_16_to_32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -10563,8 +10579,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_16_to_32(AsmOperand p
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_16_to_64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_sext_16_to_64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function sext_16_to_64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -10630,8 +10646,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_16_to_64(AsmOperand p
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_32_to_64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_sext_32_to_64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function sext_32_to_64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -10687,8 +10703,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_32_to_64(AsmOperand p
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_arbitrary_to_32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_sext_arbitrary_to_32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function sext_arbitrary_to_32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi, $esi
     // 
@@ -10796,8 +10812,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_arbitrary_to_32(AsmOp
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_arbitrary_to_64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_sext_arbitrary_to_64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function sext_arbitrary_to_64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $esi
     // 
@@ -10905,8 +10921,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_sext_arbitrary_to_64(AsmOp
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_fill_with_sign64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fill_with_sign64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function fill_with_sign64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi
     // 
@@ -10951,8 +10967,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_fill_with_sign64(AsmOperan
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_8_to_32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_zext_8_to_32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function zext_8_to_32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -11013,8 +11029,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_8_to_32(AsmOperand pa
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_16_to_32(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_zext_16_to_32(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function zext_16_to_32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -11075,8 +11091,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_16_to_32(AsmOperand p
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_32_to_64(AsmOperand param_0, ScratchReg &result_0) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_zext_32_to_64(AsmOperand param_0, ScratchReg &result_0) {
     // # Machine code for function zext_32_to_64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $edi
     // 
@@ -11144,8 +11160,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_32_to_64(AsmOperand p
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_monotonic_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cmpxchg_u64_monotonic_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function cmpxchg_u64_monotonic_monotonic: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -11225,8 +11241,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_monotonic_mono
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acquire_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cmpxchg_u64_acquire_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function cmpxchg_u64_acquire_monotonic: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -11306,8 +11322,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acquire_monoto
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acquire_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cmpxchg_u64_acquire_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function cmpxchg_u64_acquire_acquire: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -11387,8 +11403,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acquire_acquir
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_release_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cmpxchg_u64_release_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function cmpxchg_u64_release_monotonic: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -11468,8 +11484,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_release_monoto
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_release_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cmpxchg_u64_release_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function cmpxchg_u64_release_acquire: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -11549,8 +11565,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_release_acquir
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acqrel_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cmpxchg_u64_acqrel_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function cmpxchg_u64_acqrel_monotonic: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -11630,8 +11646,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acqrel_monoton
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acqrel_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cmpxchg_u64_acqrel_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function cmpxchg_u64_acqrel_acquire: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -11711,8 +11727,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acqrel_acquire
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_seqcst_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cmpxchg_u64_seqcst_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function cmpxchg_u64_seqcst_monotonic: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -11792,8 +11808,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_seqcst_monoton
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_seqcst_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cmpxchg_u64_seqcst_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function cmpxchg_u64_seqcst_acquire: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
@@ -11873,8 +11889,8 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_seqcst_acquire
 template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
-          class BaseTy>
-bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_seqcst_seqcst(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cmpxchg_u64_seqcst_seqcst(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function cmpxchg_u64_seqcst_seqcst: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $rdi, $rsi, $rdx
     // 
