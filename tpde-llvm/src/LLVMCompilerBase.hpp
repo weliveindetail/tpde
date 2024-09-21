@@ -108,6 +108,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_ptr_to_int(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_int_to_ptr(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_bitcast(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -395,6 +396,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::PtrToInt: return compile_ptr_to_int(val_idx, i);
     case llvm::Instruction::IntToPtr: return compile_int_to_ptr(val_idx, i);
     case llvm::Instruction::BitCast: return compile_bitcast(val_idx, i);
+    case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(val_idx, i);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -1572,6 +1574,100 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
         derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
     }
     this->set_value(res_ref, res_ref.cur_reg());
+
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    using AsmOperand = typename Derived::AsmOperand;
+
+    auto *cmpxchg = llvm::cast<llvm::AtomicCmpXchgInst>(inst);
+
+    const auto succ_order = cmpxchg->getSuccessOrdering();
+    const auto fail_order = cmpxchg->getFailureOrdering();
+
+    // ptr, cmp, new_val, old_val, success
+    bool (Derived::*encode_ptr)(
+        AsmOperand, AsmOperand, AsmOperand, ScratchReg &, ScratchReg &) =
+        nullptr;
+
+    if (succ_order == llvm::AtomicOrdering::Monotonic) {
+        assert(fail_order == llvm::AtomicOrdering::Monotonic);
+        encode_ptr = &Derived::encode_cmpxchg_u64_monotonic_monotonic;
+    } else if (succ_order == llvm::AtomicOrdering::Acquire) {
+        if (fail_order == llvm::AtomicOrdering::Acquire) {
+            encode_ptr = &Derived::encode_cmpxchg_u64_acquire_acquire;
+        } else {
+            assert(fail_order == llvm::AtomicOrdering::Monotonic);
+            encode_ptr = &Derived::encode_cmpxchg_u64_acquire_monotonic;
+        }
+    } else if (succ_order == llvm::AtomicOrdering::Release) {
+        if (fail_order == llvm::AtomicOrdering::Acquire) {
+            encode_ptr = &Derived::encode_cmpxchg_u64_release_acquire;
+        } else {
+            assert(fail_order == llvm::AtomicOrdering::Monotonic);
+            encode_ptr = &Derived::encode_cmpxchg_u64_release_monotonic;
+        }
+    } else if (succ_order == llvm::AtomicOrdering::AcquireRelease) {
+        if (fail_order == llvm::AtomicOrdering::Acquire) {
+            encode_ptr = &Derived::encode_cmpxchg_u64_acqrel_acquire;
+        } else {
+            assert(fail_order == llvm::AtomicOrdering::Monotonic);
+            encode_ptr = &Derived::encode_cmpxchg_u64_acqrel_monotonic;
+        }
+    } else if (succ_order == llvm::AtomicOrdering::SequentiallyConsistent) {
+        if (fail_order == llvm::AtomicOrdering::SequentiallyConsistent) {
+            encode_ptr = &Derived::encode_cmpxchg_u64_seqcst_seqcst;
+        } else if (fail_order == llvm::AtomicOrdering::Acquire) {
+            encode_ptr = &Derived::encode_cmpxchg_u64_seqcst_acquire;
+        } else {
+            assert(fail_order == llvm::AtomicOrdering::Monotonic);
+            encode_ptr = &Derived::encode_cmpxchg_u64_seqcst_monotonic;
+        }
+    }
+
+    auto *ptr_val = cmpxchg->getPointerOperand();
+    assert(ptr_val->getType()->isPointerTy());
+    auto ptr_ref = this->val_ref(llvm_val_idx(ptr_val), 0);
+
+    auto *cmp_val = cmpxchg->getCompareOperand();
+    auto *new_val = cmpxchg->getNewValOperand();
+
+    assert(new_val->getType()->isIntegerTy(64)
+           || new_val->getType()->isPointerTy());
+
+    auto cmp_ref = this->val_ref(llvm_val_idx(cmp_val), 0);
+    auto new_ref = this->val_ref(llvm_val_idx(new_val), 0);
+
+    auto res_ref = this->result_ref_lazy(inst_idx, 0);
+    res_ref.inc_ref_count();
+    auto res_ref_high = this->result_ref_lazy(inst_idx, 1);
+
+    ScratchReg orig_scratch{derived()};
+    ScratchReg succ_scratch{derived()};
+
+    assert(encode_ptr != nullptr);
+    if (!(derived()->*encode_ptr)(std::move(ptr_ref),
+                                  std::move(cmp_ref),
+                                  std::move(new_ref),
+                                  orig_scratch,
+                                  succ_scratch)) {
+        return false;
+    }
+
+    this->set_value(res_ref, orig_scratch);
+    this->set_value(res_ref, succ_scratch);
+
+    // clang-format off
+    // TODO(ts): fusing with subsequent extractvalues + br's
+    // e.g. clang generates
+    // %4 = cmpxchg ptr %0, i64 %3, i64 1 seq_cst seq_cst, align 8
+    // %5 = extractvalue { i64, i1 } %4, 1
+    // %6 = extractvalue { i64, i1 } %4, 0
+    // br i1 %5, label %7, label %2, !llvm.loop !3
+    // clang-format on
 
     return true;
 }

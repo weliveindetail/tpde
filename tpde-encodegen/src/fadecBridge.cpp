@@ -37,43 +37,44 @@ llvm::StringMap<InstInfo> manualMappings{
      InstInfo{2,
      {{GPREG, 0}, {GPREG | IMM8, 1}},
      "BT64",
-     false}                                                              }, //  BT64mr is NOT a variant => incorrect variant
+     false}                                                                     }, //  BT64mr is NOT a variant => incorrect variant
     {      "LEA64r",
      InstInfo{2,
      {{GPREG, 0}, {MEM, 1}},
      "LEA64rm",
-     true}                                                               }, //  The operand type is UNKNOWN instead of OPERAND_MEMORY
-    {   "LEA64_32r", InstInfo{2, {{GPREG, 0}, {MEM, 1}}, "LEA32rm", true}},
+     true}                                                                      }, //  The operand type is UNKNOWN instead of OPERAND_MEMORY
+    {   "LEA64_32r",        InstInfo{2, {{GPREG, 0}, {MEM, 1}}, "LEA32rm", true}},
     {"CVTSI642SSrr",
      InstInfo{2,
      {{XMMREG, 0}, {XMMREG | MEM, 1}},
      "SSE_CVTSI2SS64",
-     false}                                                              }, // the width is not properly recognized
+     false}                                                                     }, // the width is not properly recognized
     {"CVTSI642SSrm",
      InstInfo{2,
      {{XMMREG, 0}, {MEM, 1}},
      "SSE_CVTSI2SS64rm",
-     true}                                                               }, // the width is not properly recognized
+     true}                                                                      }, // the width is not properly recognized
     {"CVTSI642SDrr",
      InstInfo{2,
      {{XMMREG, 0}, {XMMREG | MEM, 1}},
      "SSE_CVTSI2SD64",
-     false}                                                              }, // the width is not properly recognized
+     false}                                                                     }, // the width is not properly recognized
     {"CVTSI642SDrm",
      InstInfo{2,
      {{XMMREG, 0}, {MEM, 1}},
      "SSE_CVTSI2SD64rm",
-     true}                                                               }, // the width is not properly recognized
+     true}                                                                      }, // the width is not properly recognized
     {  "CVTSI2SDrr",
      InstInfo{2,
      {{XMMREG, 0}, {XMMREG | MEM, 1}},
      "SSE_CVTSI2SD32",
-     false}                                                              }, // the width is not properly recognized
+     false}                                                                     }, // the width is not properly recognized
     {  "CVTSI2SDrm",
      InstInfo{2,
      {{XMMREG, 0}, {MEM, 1}},
      "SSE_CVTSI2SD32rm",
-     true}                                                               }, // the width is not properly recognized
+     true}                                                                      }, // the width is not properly recognized
+    {  "LCMPXCHG64", InstInfo{2, {{MEM, 0}, {REG, 5}}, "LOCK_CMPXCHG64mr", true}},
 
     // => mapping fails
 };

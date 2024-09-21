@@ -351,6 +351,16 @@ struct EncodeCompiler {
     bool encode_zext_8_to_32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_zext_16_to_32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_zext_32_to_64(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_cmpxchg_u64_monotonic_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_cmpxchg_u64_acquire_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_cmpxchg_u64_acquire_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_cmpxchg_u64_release_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_cmpxchg_u64_release_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_cmpxchg_u64_acqrel_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_cmpxchg_u64_acqrel_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_cmpxchg_u64_seqcst_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_cmpxchg_u64_seqcst_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_cmpxchg_u64_seqcst_seqcst(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
 
 
     SymRef sym_fnegf32_cp0 = Assembler::INVALID_SYM_REF;
@@ -11127,6 +11137,816 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_zext_32_to_64(AsmOperand p
     // RET64 killed $rax
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_monotonic_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function cmpxchg_u64_monotonic_monotonic: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi, $rsi, $rdx
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $rdi, $rdx, $rsi
+    //   $rax = MOV64rr killed $rsi
+    //   LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store monotonic monotonic (s64) on %ir.0)
+    //   renamable $dl = SETCCr 4, implicit killed $eflags
+    //   RET64 killed $rax, killed $dl
+    // 
+    // # End machine code for function cmpxchg_u64_monotonic_monotonic.
+    // 
+
+    // Mapping di to param_0
+    // Mapping si to param_1
+    // Mapping dx to param_2
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2}, reg_backup_ax);
+
+
+    // $rax = MOV64rr killed $rsi
+    // aliasing ax to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store monotonic monotonic (s64) on %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst1_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.addr();
+        // no index/disp in LLVM, can simply use the operand address
+        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst1_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+    // operand 1 is dx
+    // dx is mapped to param_2
+    AsmReg inst1_op1 = param_2.as_reg(this);
+    // Handling implicit operand ax
+    // Need to break alias from ax to operand param_1 and copy the value
+    AsmReg inst1_op8_tmp = param_1.as_reg(this);
+    ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op8_tmp);
+
+    ASMD(LOCK_CMPXCHG64mr, inst1_op0, inst1_op1);
+    // argument di is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 4, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETZ8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $dl
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg dx as result_1
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acquire_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function cmpxchg_u64_acquire_monotonic: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi, $rsi, $rdx
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $rdi, $rdx, $rsi
+    //   $rax = MOV64rr killed $rsi
+    //   LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store acquire monotonic (s64) on %ir.0)
+    //   renamable $dl = SETCCr 4, implicit killed $eflags
+    //   RET64 killed $rax, killed $dl
+    // 
+    // # End machine code for function cmpxchg_u64_acquire_monotonic.
+    // 
+
+    // Mapping di to param_0
+    // Mapping si to param_1
+    // Mapping dx to param_2
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2}, reg_backup_ax);
+
+
+    // $rax = MOV64rr killed $rsi
+    // aliasing ax to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store acquire monotonic (s64) on %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst1_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.addr();
+        // no index/disp in LLVM, can simply use the operand address
+        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst1_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+    // operand 1 is dx
+    // dx is mapped to param_2
+    AsmReg inst1_op1 = param_2.as_reg(this);
+    // Handling implicit operand ax
+    // Need to break alias from ax to operand param_1 and copy the value
+    AsmReg inst1_op8_tmp = param_1.as_reg(this);
+    ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op8_tmp);
+
+    ASMD(LOCK_CMPXCHG64mr, inst1_op0, inst1_op1);
+    // argument di is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 4, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETZ8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $dl
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg dx as result_1
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acquire_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function cmpxchg_u64_acquire_acquire: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi, $rsi, $rdx
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $rdi, $rdx, $rsi
+    //   $rax = MOV64rr killed $rsi
+    //   LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store acquire acquire (s64) on %ir.0)
+    //   renamable $dl = SETCCr 4, implicit killed $eflags
+    //   RET64 killed $rax, killed $dl
+    // 
+    // # End machine code for function cmpxchg_u64_acquire_acquire.
+    // 
+
+    // Mapping di to param_0
+    // Mapping si to param_1
+    // Mapping dx to param_2
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2}, reg_backup_ax);
+
+
+    // $rax = MOV64rr killed $rsi
+    // aliasing ax to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store acquire acquire (s64) on %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst1_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.addr();
+        // no index/disp in LLVM, can simply use the operand address
+        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst1_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+    // operand 1 is dx
+    // dx is mapped to param_2
+    AsmReg inst1_op1 = param_2.as_reg(this);
+    // Handling implicit operand ax
+    // Need to break alias from ax to operand param_1 and copy the value
+    AsmReg inst1_op8_tmp = param_1.as_reg(this);
+    ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op8_tmp);
+
+    ASMD(LOCK_CMPXCHG64mr, inst1_op0, inst1_op1);
+    // argument di is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 4, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETZ8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $dl
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg dx as result_1
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_release_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function cmpxchg_u64_release_monotonic: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi, $rsi, $rdx
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $rdi, $rdx, $rsi
+    //   $rax = MOV64rr killed $rsi
+    //   LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store release monotonic (s64) on %ir.0)
+    //   renamable $dl = SETCCr 4, implicit killed $eflags
+    //   RET64 killed $rax, killed $dl
+    // 
+    // # End machine code for function cmpxchg_u64_release_monotonic.
+    // 
+
+    // Mapping di to param_0
+    // Mapping si to param_1
+    // Mapping dx to param_2
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2}, reg_backup_ax);
+
+
+    // $rax = MOV64rr killed $rsi
+    // aliasing ax to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store release monotonic (s64) on %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst1_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.addr();
+        // no index/disp in LLVM, can simply use the operand address
+        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst1_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+    // operand 1 is dx
+    // dx is mapped to param_2
+    AsmReg inst1_op1 = param_2.as_reg(this);
+    // Handling implicit operand ax
+    // Need to break alias from ax to operand param_1 and copy the value
+    AsmReg inst1_op8_tmp = param_1.as_reg(this);
+    ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op8_tmp);
+
+    ASMD(LOCK_CMPXCHG64mr, inst1_op0, inst1_op1);
+    // argument di is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 4, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETZ8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $dl
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg dx as result_1
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_release_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function cmpxchg_u64_release_acquire: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi, $rsi, $rdx
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $rdi, $rdx, $rsi
+    //   $rax = MOV64rr killed $rsi
+    //   LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store release acquire (s64) on %ir.0)
+    //   renamable $dl = SETCCr 4, implicit killed $eflags
+    //   RET64 killed $rax, killed $dl
+    // 
+    // # End machine code for function cmpxchg_u64_release_acquire.
+    // 
+
+    // Mapping di to param_0
+    // Mapping si to param_1
+    // Mapping dx to param_2
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2}, reg_backup_ax);
+
+
+    // $rax = MOV64rr killed $rsi
+    // aliasing ax to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store release acquire (s64) on %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst1_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.addr();
+        // no index/disp in LLVM, can simply use the operand address
+        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst1_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+    // operand 1 is dx
+    // dx is mapped to param_2
+    AsmReg inst1_op1 = param_2.as_reg(this);
+    // Handling implicit operand ax
+    // Need to break alias from ax to operand param_1 and copy the value
+    AsmReg inst1_op8_tmp = param_1.as_reg(this);
+    ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op8_tmp);
+
+    ASMD(LOCK_CMPXCHG64mr, inst1_op0, inst1_op1);
+    // argument di is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 4, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETZ8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $dl
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg dx as result_1
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acqrel_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function cmpxchg_u64_acqrel_monotonic: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi, $rsi, $rdx
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $rdi, $rdx, $rsi
+    //   $rax = MOV64rr killed $rsi
+    //   LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store acq_rel monotonic (s64) on %ir.0)
+    //   renamable $dl = SETCCr 4, implicit killed $eflags
+    //   RET64 killed $rax, killed $dl
+    // 
+    // # End machine code for function cmpxchg_u64_acqrel_monotonic.
+    // 
+
+    // Mapping di to param_0
+    // Mapping si to param_1
+    // Mapping dx to param_2
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2}, reg_backup_ax);
+
+
+    // $rax = MOV64rr killed $rsi
+    // aliasing ax to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store acq_rel monotonic (s64) on %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst1_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.addr();
+        // no index/disp in LLVM, can simply use the operand address
+        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst1_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+    // operand 1 is dx
+    // dx is mapped to param_2
+    AsmReg inst1_op1 = param_2.as_reg(this);
+    // Handling implicit operand ax
+    // Need to break alias from ax to operand param_1 and copy the value
+    AsmReg inst1_op8_tmp = param_1.as_reg(this);
+    ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op8_tmp);
+
+    ASMD(LOCK_CMPXCHG64mr, inst1_op0, inst1_op1);
+    // argument di is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 4, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETZ8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $dl
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg dx as result_1
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_acqrel_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function cmpxchg_u64_acqrel_acquire: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi, $rsi, $rdx
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $rdi, $rdx, $rsi
+    //   $rax = MOV64rr killed $rsi
+    //   LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store acq_rel acquire (s64) on %ir.0)
+    //   renamable $dl = SETCCr 4, implicit killed $eflags
+    //   RET64 killed $rax, killed $dl
+    // 
+    // # End machine code for function cmpxchg_u64_acqrel_acquire.
+    // 
+
+    // Mapping di to param_0
+    // Mapping si to param_1
+    // Mapping dx to param_2
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2}, reg_backup_ax);
+
+
+    // $rax = MOV64rr killed $rsi
+    // aliasing ax to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store acq_rel acquire (s64) on %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst1_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.addr();
+        // no index/disp in LLVM, can simply use the operand address
+        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst1_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+    // operand 1 is dx
+    // dx is mapped to param_2
+    AsmReg inst1_op1 = param_2.as_reg(this);
+    // Handling implicit operand ax
+    // Need to break alias from ax to operand param_1 and copy the value
+    AsmReg inst1_op8_tmp = param_1.as_reg(this);
+    ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op8_tmp);
+
+    ASMD(LOCK_CMPXCHG64mr, inst1_op0, inst1_op1);
+    // argument di is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 4, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETZ8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $dl
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg dx as result_1
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_seqcst_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function cmpxchg_u64_seqcst_monotonic: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi, $rsi, $rdx
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $rdi, $rdx, $rsi
+    //   $rax = MOV64rr killed $rsi
+    //   LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store seq_cst monotonic (s64) on %ir.0)
+    //   renamable $dl = SETCCr 4, implicit killed $eflags
+    //   RET64 killed $rax, killed $dl
+    // 
+    // # End machine code for function cmpxchg_u64_seqcst_monotonic.
+    // 
+
+    // Mapping di to param_0
+    // Mapping si to param_1
+    // Mapping dx to param_2
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2}, reg_backup_ax);
+
+
+    // $rax = MOV64rr killed $rsi
+    // aliasing ax to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store seq_cst monotonic (s64) on %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst1_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.addr();
+        // no index/disp in LLVM, can simply use the operand address
+        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst1_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+    // operand 1 is dx
+    // dx is mapped to param_2
+    AsmReg inst1_op1 = param_2.as_reg(this);
+    // Handling implicit operand ax
+    // Need to break alias from ax to operand param_1 and copy the value
+    AsmReg inst1_op8_tmp = param_1.as_reg(this);
+    ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op8_tmp);
+
+    ASMD(LOCK_CMPXCHG64mr, inst1_op0, inst1_op1);
+    // argument di is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 4, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETZ8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $dl
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg dx as result_1
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_seqcst_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function cmpxchg_u64_seqcst_acquire: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi, $rsi, $rdx
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $rdi, $rdx, $rsi
+    //   $rax = MOV64rr killed $rsi
+    //   LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store seq_cst acquire (s64) on %ir.0)
+    //   renamable $dl = SETCCr 4, implicit killed $eflags
+    //   RET64 killed $rax, killed $dl
+    // 
+    // # End machine code for function cmpxchg_u64_seqcst_acquire.
+    // 
+
+    // Mapping di to param_0
+    // Mapping si to param_1
+    // Mapping dx to param_2
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2}, reg_backup_ax);
+
+
+    // $rax = MOV64rr killed $rsi
+    // aliasing ax to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store seq_cst acquire (s64) on %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst1_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.addr();
+        // no index/disp in LLVM, can simply use the operand address
+        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst1_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+    // operand 1 is dx
+    // dx is mapped to param_2
+    AsmReg inst1_op1 = param_2.as_reg(this);
+    // Handling implicit operand ax
+    // Need to break alias from ax to operand param_1 and copy the value
+    AsmReg inst1_op8_tmp = param_1.as_reg(this);
+    ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op8_tmp);
+
+    ASMD(LOCK_CMPXCHG64mr, inst1_op0, inst1_op1);
+    // argument di is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 4, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETZ8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $dl
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg dx as result_1
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy>
+bool EncodeCompiler<Adaptor, Derived, BaseTy>::encode_cmpxchg_u64_seqcst_seqcst(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function cmpxchg_u64_seqcst_seqcst: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi, $rsi, $rdx
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $rdi, $rdx, $rsi
+    //   $rax = MOV64rr killed $rsi
+    //   LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store seq_cst seq_cst (s64) on %ir.0)
+    //   renamable $dl = SETCCr 4, implicit killed $eflags
+    //   RET64 killed $rax, killed $dl
+    // 
+    // # End machine code for function cmpxchg_u64_seqcst_seqcst.
+    // 
+
+    // Mapping di to param_0
+    // Mapping si to param_1
+    // Mapping dx to param_2
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2}, reg_backup_ax);
+
+
+    // $rax = MOV64rr killed $rsi
+    // aliasing ax to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // LCMPXCHG64 killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rdx, implicit-def $rax, implicit-def $eflags, implicit killed $rax :: (load store seq_cst seq_cst (s64) on %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst1_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.addr();
+        // no index/disp in LLVM, can simply use the operand address
+        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst1_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+    // operand 1 is dx
+    // dx is mapped to param_2
+    AsmReg inst1_op1 = param_2.as_reg(this);
+    // Handling implicit operand ax
+    // Need to break alias from ax to operand param_1 and copy the value
+    AsmReg inst1_op8_tmp = param_1.as_reg(this);
+    ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op8_tmp);
+
+    ASMD(LOCK_CMPXCHG64mr, inst1_op0, inst1_op1);
+    // argument di is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 4, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETZ8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $dl
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg dx as result_1
+    result_1 = std::move(scratch_dx);
     return true;
 
 }
