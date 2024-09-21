@@ -108,6 +108,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_ptr_to_int(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_int_to_ptr(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_bitcast(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_extract_value(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
 };
 
@@ -396,6 +397,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::PtrToInt: return compile_ptr_to_int(val_idx, i);
     case llvm::Instruction::IntToPtr: return compile_int_to_ptr(val_idx, i);
     case llvm::Instruction::BitCast: return compile_bitcast(val_idx, i);
+    case llvm::Instruction::ExtractValue:
+        return compile_extract_value(val_idx, i);
     case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(val_idx, i);
 
     default: {
@@ -1576,6 +1579,64 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
     this->set_value(res_ref, res_ref.cur_reg());
 
     return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_value(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    auto *extract = llvm::cast<llvm::ExtractValueInst>(inst);
+    assert(extract->getNumIndices() == 1);
+
+    auto *src_val = inst->getOperand(0);
+    auto *src_ty  = src_val->getType();
+    auto  src_idx = llvm_val_idx(src_val);
+    assert(src_ty->isAggregateType());
+
+    const auto target_idx = extract->getIndices()[0];
+
+    const auto llvm_part_count = src_ty->getNumContainedTypes();
+    const auto ty_idx = this->adaptor->values[src_idx].complex_part_tys_idx;
+
+    u32 part_idx = 0;
+    for (u32 llvm_part_idx = 0; llvm_part_idx < llvm_part_count;
+         ++llvm_part_idx) {
+        const auto part_ty =
+            this->adaptor->complex_part_types[ty_idx + part_idx];
+        assert(part_ty != LLVMBasicValType::complex);
+        if (llvm_part_idx != target_idx) {
+            part_idx += derived()->basic_ty_part_count(part_ty);
+            continue;
+        }
+
+        auto part_ref = this->val_ref(src_idx, part_idx);
+
+        if (part_ty == LLVMBasicValType::i128) {
+            auto part_ref_high = this->val_ref(src_idx, part_idx + 1);
+            part_ref_high.inc_ref_count();
+
+            AsmReg orig;
+            auto   res_ref_high = this->result_ref_salvage_with_original(
+                inst_idx, 1, std::move(part_ref_high), orig, 2);
+
+            if (orig != res_ref_high.cur_reg()) {
+                derived()->mov(res_ref_high.cur_reg(), orig, 8);
+            }
+            this->set_value(res_ref_high, res_ref_high.cur_reg());
+            res_ref_high.reset_without_refcount();
+        }
+
+        AsmReg orig;
+        auto   res_ref = this->result_ref_salvage_with_original(
+            inst_idx, 0, std::move(part_ref), orig);
+
+        if (orig != res_ref.cur_reg()) {
+            derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
+        }
+        this->set_value(res_ref, res_ref.cur_reg());
+        return true;
+    }
+
+    return false;
 }
 
 template <typename Adaptor, typename Derived, typename Config>
