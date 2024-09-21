@@ -14,6 +14,7 @@
 
 #include "base.hpp"
 #include "tpde/util/SmallVector.hpp"
+#include "tpde/util/misc.hpp"
 
 namespace tpde_llvm {
 
@@ -682,6 +683,18 @@ struct LLVMAdaptor {
         return values[idx].type;
     }
 
+    u32 complex_real_part_count(const IRValueRef idx) const noexcept {
+        assert(values[idx].type == LLVMBasicValType::complex);
+        return *reinterpret_cast<const u32 *>(
+            complex_part_types.data() + values[idx].complex_part_tys_idx - 4);
+    }
+
+    u32 &complex_real_part_count(const IRValueRef idx) noexcept {
+        assert(values[idx].type == LLVMBasicValType::complex);
+        return *reinterpret_cast<u32 *>(complex_part_types.data()
+                                        + values[idx].complex_part_tys_idx - 4);
+    }
+
     [[nodiscard]] bool val_fused(const IRValueRef idx) const noexcept {
         return values[idx].fused;
     }
@@ -781,17 +794,38 @@ struct LLVMAdaptor {
             // for now, only support non-nested structs
             const auto type_count = type->getNumContainedTypes();
 
-            const auto part_tys_idx_start = complex_part_types.size();
+            const auto part_tys_len_start =
+                tpde::util::align_up(complex_part_types.size(), 4);
+            const auto part_tys_idx_start = part_tys_len_start + 4;
             complex_part_types.resize(part_tys_idx_start + type_count);
 
-            for (u32 i = 0; i < type_count; ++i) {
+            *reinterpret_cast<u32 *>(complex_part_types.data()
+                                     + part_tys_len_start) = 0xFFFF'FFFF;
+
+            u32 part_idx = 0;
+            for (u32 i = 0; i < type_count; ++i, ++part_idx) {
                 const auto *part_ty = type->getContainedType(i);
                 const auto  ty_id   = part_ty->getTypeID();
                 auto tpde_ty = llvm_ty_to_basic_ty_simple(part_ty, ty_id);
-                // if (tpde_ty == LLVMBasicValType::i128) {
-                //     // TODO(ts): just split into more parts?
-                //     tpde_ty = LLVMBasicValType::invalid;
-                // }
+
+                // TODO(ts): this needs to be templated for the architecture...
+                if (tpde_ty == LLVMBasicValType::i128) {
+                    // since some parts of the code just index into this array
+                    // with the part_idx that TPDE sees we need to actually have
+                    // as many part tys as there are registers used
+                    //
+                    // so pad this with i128 twice so it at least blows up
+                    // properly when some code thinks these are actually two 128
+                    // bit parts
+                    complex_part_types[part_tys_idx_start + part_idx] =
+                        LLVMBasicValType::i128;
+                    complex_part_types[part_tys_idx_start + part_idx + 1] =
+                        LLVMBasicValType::i128;
+                    complex_part_types.emplace_back(LLVMBasicValType::invalid);
+                    ++part_idx;
+                    continue;
+                }
+
                 if (tpde_ty == LLVMBasicValType::invalid) {
                     llvm::errs() << "Full Type: " << type << "\n";
                     llvm::errs() << "Part Type: " << part_ty;
@@ -803,7 +837,7 @@ struct LLVMAdaptor {
                     assert(0);
                     exit(1);
                 }
-                complex_part_types[part_tys_idx_start + i] = tpde_ty;
+                complex_part_types[part_tys_idx_start + part_idx] = tpde_ty;
             }
 
             return std::make_pair(LLVMBasicValType::complex,

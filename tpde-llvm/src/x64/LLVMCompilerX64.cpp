@@ -55,6 +55,10 @@ struct LLVMCompilerX64
         return this->adaptor->values[val_idx].type == LLVMBasicValType::i128;
     }
 
+    static u32 basic_ty_part_count(LLVMBasicValType ty) noexcept;
+
+    u32 calculate_complex_real_part_count(IRValueRef) const noexcept;
+
     u32 val_part_count(IRValueRef) const noexcept;
 
     u32 val_part_size(IRValueRef, u32) const noexcept;
@@ -75,6 +79,52 @@ struct LLVMCompilerX64
                            bool           is_double) noexcept;
 };
 
+u32 LLVMCompilerX64::basic_ty_part_count(const LLVMBasicValType ty) noexcept {
+    switch (ty) {
+        using enum LLVMBasicValType;
+    case i1:
+    case i8:
+    case i16:
+    case i32:
+    case i64:
+    case ptr:
+    case f32:
+    case f64:
+    case v32:
+    case v64:
+    case v128:
+    case v256:
+    case v512: return 1;
+    case i128: return 2;
+    case complex:
+    case none:
+    case invalid: {
+        TPDE_LOG_ERR("basic_ty_part_count for value with none/invalid type");
+        assert(0);
+        __builtin_unreachable();
+    }
+    }
+}
+
+u32 LLVMCompilerX64::calculate_complex_real_part_count(
+    const IRValueRef val_idx) const noexcept {
+    auto *val    = this->adaptor->values[val_idx].val;
+    auto *val_ty = val->getType();
+    assert(val_ty->isAggregateType());
+
+    const auto llvm_part_count = val_ty->getNumContainedTypes();
+    const auto ty_idx = this->adaptor->values[val_idx].complex_part_tys_idx;
+    u32        real_part_count = 0;
+    for (u32 i = 0; i < llvm_part_count; ++i) {
+        // skip over duplicate entries when LLVM part has multiple TPDE parts
+        real_part_count += basic_ty_part_count(
+            this->adaptor->complex_part_types[ty_idx + real_part_count]);
+    }
+
+    this->adaptor->complex_real_part_count(val_idx) = real_part_count;
+    return real_part_count;
+}
+
 u32 LLVMCompilerX64::val_part_count(const IRValueRef val_idx) const noexcept {
     switch (this->adaptor->values[val_idx].type) {
         using enum LLVMBasicValType;
@@ -93,9 +143,11 @@ u32 LLVMCompilerX64::val_part_count(const IRValueRef val_idx) const noexcept {
     case v512: return 1;
     case i128: return 2;
     case complex: {
-        const auto *ty = this->adaptor->values[val_idx].val->getType();
-        assert(ty->isAggregateType());
-        return ty->getNumContainedTypes();
+        const auto real_part_count = adaptor->complex_real_part_count(val_idx);
+        if (real_part_count != 0xFFFF'FFFF) {
+            return real_part_count;
+        }
+        return calculate_complex_real_part_count(val_idx);
     }
     case none:
     case invalid: {

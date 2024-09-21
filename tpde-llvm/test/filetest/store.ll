@@ -773,14 +773,14 @@ define void @store_struct_i128_i1(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx edx, byte ptr [rdi + 0x10]
 ; X64:    mov qword ptr [rdi + 0x8], rcx
 ; X64:    mov qword ptr [rdi], rax
 ; X64:    mov byte ptr [rdi + 0x10], dl
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al

@@ -523,7 +523,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
         for (u32 part_idx = 0; part_idx < part_count;
              ++part_idx, ++res_part_idx) {
             const auto part_ty =
-                this->adaptor->complex_part_types[ty_idx + part_idx];
+                this->adaptor->complex_part_types[ty_idx + res_part_idx];
 
             auto part_addr = typename Derived::AsmOperand::Address{
                 ptr_reg,
@@ -722,7 +722,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
         for (u32 part_idx = 0; part_idx < part_count;
              ++part_idx, ++res_part_idx) {
             const auto part_ty =
-                this->adaptor->complex_part_types[ty_idx + part_idx];
+                this->adaptor->complex_part_types[ty_idx + res_part_idx];
 
             auto part_addr = typename Derived::AsmOperand::Address{
                 ptr_reg,
