@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 
+#include <llvm/AsmParser/Parser.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/CodeGen/MachineFunction.h>
 #include <llvm/CodeGen/MachineModuleInfo.h>
@@ -14,6 +15,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/MemoryBuffer.h>
@@ -24,17 +26,22 @@
 #include "encode_gen.hpp"
 #include "x64/EncCompilerTemplate.hpp"
 
+#include <llvm/Support/SourceMgr.h>
+
 namespace tpde_encgen {
 llvm::cl::OptionCategory tpde_category("Code Generation Options");
 llvm::cl::opt<std::string>
-                           output_filename("o",
+    output_filename("o",
                     llvm::cl::desc("Specify output filename"),
                     llvm::cl::value_desc("filename"),
                     llvm::cl::init("/dev/stdout"),
                     llvm::cl::cat(tpde_category));
-llvm::cl::opt<std::string> input_filename(llvm::cl::Positional,
-                                          llvm::cl::desc("<bitcode file>"),
-                                          llvm::cl::cat(tpde_category));
+llvm::cl::opt<bool>
+    input_is_bitcode("is-bitcode", llvm::cl::Optional, llvm::cl::init(true));
+llvm::cl::list<std::string> input_filename(llvm::cl::Positional,
+                                           llvm::cl::ZeroOrMore,
+                                           llvm::cl::desc("<bitcode file>"),
+                                           llvm::cl::cat(tpde_category));
 llvm::cl::opt<bool>
     dumpIR("dump-ir",
            llvm::cl::desc("Dump llvm-IR and Machine-IR to stdout"),
@@ -114,55 +121,75 @@ int main(const int argc, char *argv[]) {
     // leave it at that. (Memory leaks anyone? :eyes:)
     auto *MMIWP   = new llvm::MachineModuleInfoWrapperPass{target_machine};
     auto  context = std::make_unique<llvm::LLVMContext>();
-    std::unique_ptr<llvm::Module> mod{};
+    auto  modules = std::vector<std::unique_ptr<llvm::Module>>{};
 
-
-    // TODO(ts): replace with new code from tpde2-llvm
     // open and parse a bitcode file into an llvm-module
-    // Basically copy-pasted from tpde-llvm/main.cpp
-    auto bitcode = llvm::MemoryBuffer::getFile(input_filename.c_str());
-    if (!bitcode) {
-        std::cerr << std::format("Failed to read bitcode file: '{}'\n",
-                                 bitcode.getError().message());
-        return 1;
-    }
+    const auto parse_mod =
+        [&modules,
+         &context](std::unique_ptr<llvm::MemoryBuffer> &&bitcode_buf) {
+            auto mod = std::unique_ptr<llvm::Module>{};
+            if (input_is_bitcode) {
+                if (auto E = llvm::parseBitcodeFile(*bitcode_buf, *context)
+                                 .moveInto(mod)) {
+                    std::cerr << std::format("Failed to parse bitcode: '{}'\n",
+                                             llvm::toString(std::move(E)));
+                    return 1;
+                }
+            } else {
+                auto diag = llvm::SMDiagnostic{};
+                mod       = llvm::parseAssembly(*bitcode_buf, diag, *context);
+                if (!mod) {
+                    std::string              buf;
+                    llvm::raw_string_ostream os{buf};
+
+                    diag.print(nullptr, os);
+                    std::cerr << "Failed to parse IR:\n";
+                    std::cerr << buf << '\n';
+                    return 1;
+                }
+
+                {
+                    std::string              buf;
+                    llvm::raw_string_ostream os{buf};
+                    if (llvm::verifyModule(*mod, &os)) {
+                        std::cerr << "Invalid LLVM module supplied:\n"
+                                  << buf << '\n';
+                        return 1;
+                    }
+                }
+            }
+            modules.push_back(std::move(mod));
+            return 0;
+        };
 
     std::unique_ptr<llvm::MemoryBuffer> bitcode_buf;
-    bitcode_buf.swap(bitcode.get());
+    if (!input_filename.empty()) {
+        for (auto &file : input_filename) {
+            auto bitcode = llvm::MemoryBuffer::getFile(file);
+            if (!bitcode) {
+                std::cerr << std::format("Failed to read bitcode file: '{}'\n",
+                                         bitcode.getError().message());
+                return 1;
+            }
 
-    auto mod_res = llvm::parseBitcodeFile(*bitcode_buf, *context);
-    if (auto E = mod_res.takeError()) {
-        std::cerr << std::format("Failed to parse bitcode: '{}'\n",
-                                 llvm::toString(std::move(E)));
-        return 1;
-    }
-
-    mod.swap(*mod_res);
-
-    // TODO(ts): switch all functions to regcall so that the code does not try
-    // to spill for the calling convention when it wouldn't have to in the
-    // generated code
-    const auto regcall_prefix = std::string_view{"__regcall3__"};
-    for (llvm::Function &f : *mod) {
-        const auto func_name = f.getName().str();
-        if (func_name.starts_with(regcall_prefix)) {
-            f.setName(func_name.substr(regcall_prefix.size()));
-        } else {
-            // TODO(ts): sometimes you seem to need it (e.g. when passing struct
-            // {char a,b,c;} since that seems to get treated differently) so add
-            // something to suppress that warning
-            std::cerr << std::format(
-                "WARN: function {} does not seem to use the regcall calling "
-                "convention "
-                "(name not prefixed with \"__regcall3__\"), though "
-                "its use is highly recommended.\n",
-                func_name);
+            bitcode_buf.swap(bitcode.get());
+            const auto res = parse_mod(std::move(bitcode_buf));
+            if (res) {
+                return res;
+            }
         }
+    } else {
+        auto bitcode = llvm::MemoryBuffer::getSTDIN();
+        if (!bitcode) {
+            std::cerr << std::format("Failed to read bitcode file: '{}'\n",
+                                     bitcode.getError().message());
+            return 1;
+        }
+
+        bitcode_buf.swap(bitcode.get());
+        parse_mod(std::move(bitcode_buf));
     }
 
-    if (dumpIR) {
-        mod->print(llvm::outs(), nullptr);
-    }
 
     // Now, we basically do what is done in addPassesToGenerateCode
     // (https://llvm.org/doxygen/LLVMTargetMachine_8cpp_source.html#l00112)
@@ -180,12 +207,6 @@ int main(const int argc, char *argv[]) {
     pass_config->addMachinePasses();
     pass_config->setInitialized();
 
-    // Everything is set up, now run all passes
-    pass_manager->run(*mod);
-
-    // Get the MachineModule and the MachineFunction for our input
-    llvm::MachineModuleInfo &MMI = MMIWP->getMMI();
-
     /*
     ** Set up our output file
     */
@@ -199,38 +220,84 @@ int main(const int argc, char *argv[]) {
     // separate the declarations from the encode implementations
     std::string decl_lines{}, impl_lines{}, sym_lines{};
 
-    // For every input function, query the resulting MachineFunction
-    for (llvm::Function &fn : *mod) {
-        std::string              tmp{};
-        llvm::raw_string_ostream os{tmp};
-        fn.printAsOperand(os);
-        std::cerr << std::format(
-            "Handling function {}: {}\n", fn.getName().str(), tmp);
-
-        if (fn.isIntrinsic() || fn.isDeclaration()) {
-            std::cerr << std::format(
-                "WARN: Intrinsic function {} was skipped\n",
-                fn.getName().str());
-            continue;
+    const auto compile_mod = [&](llvm::Module &mod) {
+        // TODO(ts): switch all functions to regcall so that the code does not
+        // try to spill for the calling convention when it wouldn't have to in
+        // the generated code
+        const auto regcall_prefix = std::string_view{"__regcall3__"};
+        for (llvm::Function &f : mod) {
+            const auto func_name = f.getName().str();
+            if (func_name.starts_with(regcall_prefix)) {
+                f.setName(func_name.substr(regcall_prefix.size()));
+            } else {
+                // TODO(ts): sometimes you seem to need it (e.g. when passing
+                // struct {char a,b,c;} since that seems to get treated
+                // differently) so add something to suppress that warning
+                std::cerr << std::format(
+                    "WARN: function {} does not seem to use the regcall "
+                    "calling "
+                    "convention "
+                    "(name not prefixed with \"__regcall3__\"), though "
+                    "its use is highly recommended.\n",
+                    func_name);
+            }
         }
-        llvm::MachineFunction *machine_func =
-            &MMI.getOrCreateMachineFunction(fn);
+
+        // TODO(ts): add ability to set CPU features here?
+
         if (dumpIR) {
-            machine_func->print(llvm::outs(), nullptr);
+            mod.print(llvm::outs(), nullptr);
         }
 
-        // auto live_intervals = std::make_unique<llvm::LiveIntervals>();
-        // live_intervals->runOnMachineFunction(*machine_func);
+        // Everything is set up, now run all passes
+        pass_manager->run(mod);
 
-        if (!create_encode_function(machine_func,
-                                    fn.getName(),
-                                    decl_lines,
-                                    sym_lines,
-                                    impl_lines)) {
+        // Get the MVachineModule and the MachineFunction for our input
+        llvm::MachineModuleInfo &MMI = MMIWP->getMMI();
+
+
+        // For every input function, query the resulting MachineFunction
+        for (llvm::Function &fn : mod) {
+            std::string              tmp{};
+            llvm::raw_string_ostream os{tmp};
+            fn.printAsOperand(os);
             std::cerr << std::format(
-                "Failed to generate code for function {}\n",
-                fn.getName().str());
-            return 1;
+                "Handling function {}: {}\n", fn.getName().str(), tmp);
+
+            if (fn.isIntrinsic() || fn.isDeclaration()) {
+                std::cerr << std::format(
+                    "WARN: Intrinsic function {} was skipped\n",
+                    fn.getName().str());
+                continue;
+            }
+            llvm::MachineFunction *machine_func =
+                &MMI.getOrCreateMachineFunction(fn);
+            if (dumpIR) {
+                machine_func->print(llvm::outs(), nullptr);
+            }
+
+            // auto live_intervals = std::make_unique<llvm::LiveIntervals>();
+            // live_intervals->runOnMachineFunction(*machine_func);
+
+            if (!create_encode_function(machine_func,
+                                        fn.getName(),
+                                        decl_lines,
+                                        sym_lines,
+                                        impl_lines)) {
+                std::cerr << std::format(
+                    "Failed to generate code for function {}\n",
+                    fn.getName().str());
+                return 1;
+            }
+        }
+
+        return 0;
+    };
+
+    for (auto &mod : modules) {
+        const auto res = compile_mod(*mod);
+        if (res) {
+            return res;
         }
     }
 
