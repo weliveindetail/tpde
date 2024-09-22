@@ -91,6 +91,10 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_alloca(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_br(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_call_inner(IRValueRef,
+                            llvm::CallInst *,
+                            std::variant<SymRef, ValuePartRef> &,
+                            bool) noexcept;
 };
 
 u32 LLVMCompilerX64::basic_ty_part_count(const LLVMBasicValType ty) noexcept {
@@ -561,6 +565,67 @@ bool LLVMCompilerX64::compile_br(IRValueRef, llvm::Instruction *inst) noexcept {
     }
 
     this->release_spilled_regs(spilled);
+    return true;
+}
+
+bool LLVMCompilerX64::compile_call_inner(
+    IRValueRef                          inst_idx,
+    llvm::CallInst                     *call,
+    std::variant<SymRef, ValuePartRef> &target,
+    bool                                var_arg) noexcept {
+    tpde::util::SmallVector<CallArg, 16> args;
+    tpde::util::
+        SmallVector<std::variant<ValuePartRef, std::pair<ScratchReg, u8>>, 4>
+            results;
+
+    const auto num_args = call->arg_size();
+    args.reserve(num_args);
+
+    for (u32 i = 0; i < num_args; ++i) {
+        auto      *op          = call->getArgOperand(i);
+        const auto op_idx      = llvm_val_idx(op);
+        auto       flag        = CallArg::Flag::none;
+        u32        byval_align = 0, byval_size = 0;
+
+        if (call->paramHasAttr(i, llvm::Attribute::AttrKind::ZExt)) {
+            flag = CallArg::Flag::zext;
+        } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::SExt)) {
+            flag = CallArg::Flag::sext;
+        } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::ByVal)) {
+            flag        = CallArg::Flag::byval;
+            byval_align = call->getParamAlign(i).valueOrOne().value();
+            byval_size  = this->adaptor->mod.getDataLayout().getTypeAllocSize(
+                call->getParamByValType(i));
+        }
+        assert(!call->paramHasAttr(i, llvm::Attribute::AttrKind::InAlloca));
+        assert(!call->paramHasAttr(i, llvm::Attribute::AttrKind::Preallocated));
+
+        args.push_back(CallArg{op_idx, flag, byval_align, byval_size});
+    }
+
+    if (!call->getType()->isVoidTy()) {
+        const auto res_part_count = val_part_count(inst_idx);
+        for (u32 part_idx = 0; part_idx < res_part_count; ++part_idx) {
+            auto res_ref = this->result_ref_lazy(inst_idx, part_idx);
+            if (part_idx != res_part_count - 1) {
+                res_ref.inc_ref_count();
+            }
+            results.push_back(std::move(res_ref));
+        }
+    }
+
+    std::variant<SymRef, ScratchReg, ValuePartRef> call_target;
+    if (std::holds_alternative<SymRef>(target)) {
+        call_target = std::get<SymRef>(target);
+    } else {
+        call_target = std::move(std::get<ValuePartRef>(target));
+    }
+
+    generate_call(std::move(call_target),
+                  args,
+                  results,
+                  tpde::x64::CallingConv::SYSV_CC,
+                  var_arg);
     return true;
 }
 

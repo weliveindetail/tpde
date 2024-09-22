@@ -158,6 +158,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_phi(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_freeze(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_call(IRValueRef, llvm::Instruction *) noexcept;
 
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept {
         return false;
@@ -168,6 +169,13 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     }
 
     bool compile_br(IRValueRef, llvm::Instruction *) noexcept { return false; }
+
+    bool compile_call_inner(IRValueRef,
+                            llvm::CallInst *,
+                            std::variant<SymRef, ValuePartRef> &,
+                            bool) noexcept {
+        return false;
+    }
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -922,6 +930,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::Alloca:
         return derived()->compile_alloca(val_idx, i);
     case llvm::Instruction::Br: return derived()->compile_br(val_idx, i);
+    case llvm::Instruction::Call: return compile_call(val_idx, i);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -2375,5 +2384,43 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_freeze(
     }
 
     return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    auto *call = llvm::cast<llvm::CallInst>(inst);
+
+    std::variant<SymRef, ValuePartRef> call_target;
+    auto                               var_arg = false;
+
+    if (auto *fn = call->getCalledFunction(); fn) {
+        if (fn->isIntrinsic()) {
+            assert(0);
+            return false;
+        }
+
+        // this is a direct call
+        call_target = global_sym(fn);
+        var_arg     = fn->getFunctionType()->isVarArg();
+    } else {
+        // either indirect call or call with mismatch of arguments
+        var_arg  = call->getFunctionType()->isVarArg();
+        auto *op = call->getCalledOperand();
+        if (auto *fn = llvm::dyn_cast<llvm::Function>(op); fn) {
+            call_target = global_sym(fn);
+        } else if (auto *ga = llvm::dyn_cast<llvm::GlobalAlias>(op); fn) {
+            // aliases also show up here
+            // TODO(ts): do we need to check if the alias target is a function
+            // and not a variable?
+            call_target = global_sym(ga);
+        } else {
+            // indirect call
+            auto target_ref = this->val_ref(llvm_val_idx(op), 0);
+            call_target     = std::move(target_ref);
+        }
+    }
+
+    return derived()->compile_call_inner(inst_idx, call, call_target, var_arg);
 }
 } // namespace tpde_llvm
