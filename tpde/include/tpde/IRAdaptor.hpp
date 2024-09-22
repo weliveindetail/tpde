@@ -129,6 +129,10 @@ concept IRAdaptor = requires(T a) {
     /// Note: One of these has to be true
     { T::TPDE_LIVENESS_VISIT_ARGS } -> SameBaseAs<bool>;
 
+    /// Iterator type for instructions
+    typename T::IRInstIter;
+    requires IRIter<typename T::IRInstIter, typename T::IRValueRef>;
+
     // Can the adaptor store two 32 bit values for efficient access through the
     // block reference?
     // { T::TPDE_CAN_STORE_BLOCK_AUX } -> std::same_as<bool>;
@@ -220,6 +224,14 @@ concept IRAdaptor = requires(T a) {
     {
         a.block_values(ARG(typename T::IRBlockRef))
     } -> IRRange<typename T::IRValueRef>;
+
+    /// The iterator for values must be of type InstIter
+    {
+        a.block_values(ARG(typename T::IRBlockRef)).begin()
+    } -> std::convertible_to<typename T::IRInstIter>;
+    {
+        a.block_values(ARG(typename T::IRBlockRef)).end()
+    } -> std::convertible_to<typename T::IRInstIter>;
 
     /// Provides an iterator over the PHIs in a block
     {

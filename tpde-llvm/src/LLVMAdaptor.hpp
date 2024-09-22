@@ -295,6 +295,8 @@ struct LLVMAdaptor {
         }
     };
 
+    using IRInstIter = BlockValIter::Iterator;
+
     [[nodiscard]] auto block_values(const IRBlockRef block) const noexcept {
         const auto &aux = blocks[block].aux;
         return BlockValIter{.start_idx = aux.idx_start, .end_idx = aux.idx_end};

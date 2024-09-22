@@ -366,34 +366,36 @@ struct TestIRAdaptor {
         return Range{data + info.succ_begin_idx, data + info.succ_end_idx};
     }
 
-    [[nodiscard]] auto block_values(const IRBlockRef block) const noexcept {
-        struct Range {
-            const u32 beg, last;
+    struct BlockInstRange {
+        const u32 beg, last;
 
-            struct Iter {
-                u32 val;
+        struct Iter {
+            u32 val;
 
-                Iter &operator++() {
-                    ++val;
-                    return *this;
-                }
+            Iter &operator++() {
+                ++val;
+                return *this;
+            }
 
-                bool operator!=(const Iter &other) const noexcept {
-                    return other.val != val;
-                }
+            bool operator!=(const Iter &other) const noexcept {
+                return other.val != val;
+            }
 
-                IRValueRef operator*() const noexcept {
-                    return static_cast<IRValueRef>(val);
-                }
-            };
-
-            [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
-
-            [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
+            IRValueRef operator*() const noexcept {
+                return static_cast<IRValueRef>(val);
+            }
         };
 
+        [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
+
+        [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
+    };
+
+    using IRInstIter = BlockInstRange::Iter;
+
+    [[nodiscard]] auto block_values(const IRBlockRef block) const noexcept {
         const auto &info = ir->blocks[static_cast<u32>(block)];
-        return Range{info.inst_begin_idx, info.inst_end_idx};
+        return BlockInstRange{info.inst_begin_idx, info.inst_end_idx};
     }
 
     [[nodiscard]] auto block_phis(const IRBlockRef block) const noexcept {
@@ -557,6 +559,8 @@ struct TestIRAdaptor {
         case call: return true;
         }
     }
+
+    static bool val_fused(IRValueRef) noexcept { return false; }
 
     [[nodiscard]] bool val_is_arg(IRValueRef value) const noexcept {
         return ir->values[static_cast<u32>(value)].type

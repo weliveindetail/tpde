@@ -153,6 +153,10 @@ struct CompilerBase {
     struct ValuePartRef;
 #pragma endregion
 
+    struct InstRange {
+        typename Adaptor::IRInstIter from, to;
+    };
+
     /// Initialize a CompilerBase, should be called by the derived classes
     explicit CompilerBase(Adaptor *adaptor, const bool generate_object)
         : adaptor(adaptor), analyzer(adaptor), assembler(generate_object) {
@@ -1709,12 +1713,18 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
         static_cast<typename Analyzer<Adaptor>::BlockIndex>(block_idx);
 
     assembler.label_place(block_labels[block_idx]);
-    for (const IRValueRef value : adaptor->block_values(block)) {
+    const auto &val_range = adaptor->block_values(block);
+    const auto  end       = val_range.end();
+    for (auto it = val_range.begin(); it != end; ++it) {
+        const IRValueRef value = *it;
         if (this->adaptor->val_fused(value)) {
             continue;
         }
 
-        if (!derived()->compile_inst(value)) {
+        auto it_cpy = it;
+        ++it_cpy;
+        if (!derived()->compile_inst(value,
+                                     InstRange{.from = it_cpy, .to = end})) {
             return false;
         }
     }

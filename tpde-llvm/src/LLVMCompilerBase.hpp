@@ -19,6 +19,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     using ScratchReg   = typename Base::ScratchReg;
     using ValuePartRef = typename Base::ValuePartRef;
     using ValLocalIdx  = typename Base::ValLocalIdx;
+    using InstRange    = typename Base::InstRange;
 
     using Assembler = typename Base::Assembler;
     using SymRef    = typename Assembler::SymRef;
@@ -127,7 +128,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
 
     void setup_var_ref_assignments() noexcept;
 
-    bool compile_inst(IRValueRef) noexcept;
+    bool compile_inst(IRValueRef, InstRange) noexcept;
 
     bool compile_ret(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_load(IRValueRef, llvm::Instruction *) noexcept;
@@ -854,7 +855,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
-    IRValueRef val_idx) noexcept {
+    IRValueRef val_idx, InstRange) noexcept {
     auto *i =
         llvm::dyn_cast<llvm::Instruction>(this->adaptor->values[val_idx].val);
     const auto opcode = i->getOpcode();

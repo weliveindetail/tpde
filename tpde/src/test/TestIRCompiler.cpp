@@ -7,7 +7,7 @@
 namespace tpde::test {
 using namespace tpde::x64;
 
-bool TestIRCompilerX64::compile_inst(IRValueRef val_idx) noexcept {
+bool TestIRCompilerX64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
     const TestIR::Value &value =
         this->analyzer.adaptor->ir->values[static_cast<u32>(val_idx)];
 
@@ -34,7 +34,7 @@ bool TestIRCompilerX64::compile_inst(IRValueRef val_idx) noexcept {
             ValuePartRef val_ref   = this->val_ref(op, 0);
             const auto   call_conv = this->cur_calling_convention();
             if (val_ref.assignment().fixed_assignment()) {
-                val_ref.reload_into_specific(call_conv.ret_regs_gp()[0]);
+                val_ref.reload_into_specific(this, call_conv.ret_regs_gp()[0]);
             } else {
                 val_ref.move_into_specific(call_conv.ret_regs_gp()[0]);
             }

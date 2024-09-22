@@ -16,6 +16,7 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
     using ValLocalIdx  = typename Base::ValLocalIdx;
     using ScratchReg   = typename Base::ScratchReg;
     using AsmReg       = typename Base::AsmReg;
+    using InstRange    = typename Base::InstRange;
 
     bool no_fixed_assignments;
 
@@ -63,7 +64,7 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
         assert(static_cast<u32>(func) == idx);
     }
 
-    [[nodiscard]] bool compile_inst(IRValueRef) noexcept;
+    [[nodiscard]] bool compile_inst(IRValueRef, InstRange) noexcept;
 
     TestIR *ir() noexcept { return this->adaptor->ir; }
 
