@@ -160,6 +160,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_phi(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_freeze(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_call(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_select(IRValueRef, llvm::Instruction *) noexcept;
 
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept {
         return false;
@@ -932,6 +933,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
         return derived()->compile_alloca(val_idx, i);
     case llvm::Instruction::Br: return derived()->compile_br(val_idx, i);
     case llvm::Instruction::Call: return compile_call(val_idx, i);
+    case llvm::Instruction::Select: return compile_select(val_idx, i);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -2423,5 +2425,77 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
     }
 
     return derived()->compile_call_inner(inst_idx, call, call_target, var_arg);
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    auto ty = inst->getType();
+
+    auto cond = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto lhs  = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    auto rhs  = this->val_ref(llvm_val_idx(inst->getOperand(2)), 0);
+
+    ScratchReg res_scratch{derived()};
+    auto       res_ref = this->result_ref_lazy(inst_idx, 0);
+
+    if (ty->isIntegerTy()) {
+        const auto width = ty->getIntegerBitWidth();
+        if (width == 128) {
+            lhs.inc_ref_count();
+            rhs.inc_ref_count();
+            auto lhs_high = this->val_ref(llvm_val_idx(inst->getOperand(1)), 1);
+            auto rhs_high = this->val_ref(llvm_val_idx(inst->getOperand(2)), 1);
+
+            ScratchReg res_scratch_high{derived()};
+            auto       res_ref_high = this->result_ref_lazy(inst_idx, 1);
+
+            if (!derived()->encode_select_i128(std::move(cond),
+                                               std::move(lhs),
+                                               std::move(lhs_high),
+                                               std::move(rhs),
+                                               std::move(rhs_high),
+                                               res_scratch,
+                                               res_scratch_high)) {
+                return false;
+            }
+            this->set_value(res_ref, res_scratch);
+            this->set_value(res_ref_high, res_scratch_high);
+            res_ref_high.reset_without_refcount();
+            return true;
+        }
+        if (width <= 32) {
+            if (!derived()->encode_select_i32(std::move(cond),
+                                              std::move(lhs),
+                                              std::move(rhs),
+                                              res_scratch)) {
+                return false;
+            }
+        } else if (width <= 64) {
+            if (!derived()->encode_select_i64(std::move(cond),
+                                              std::move(lhs),
+                                              std::move(rhs),
+                                              res_scratch)) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    } else if (ty->isFloatTy()) {
+        if (!derived()->encode_select_f32(
+                std::move(cond), std::move(lhs), std::move(rhs), res_scratch)) {
+            return false;
+        }
+    } else if (ty->isDoubleTy()) {
+        if (!derived()->encode_select_f64(
+                std::move(cond), std::move(lhs), std::move(rhs), res_scratch)) {
+            return false;
+        }
+    } else {
+        return false;
+    }
+
+    this->set_value(res_ref, res_scratch);
+    return true;
 }
 } // namespace tpde_llvm
