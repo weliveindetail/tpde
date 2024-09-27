@@ -2590,74 +2590,38 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
                      .start = 0,
                      .end   = (u32)indices.size()});
 
-    auto  final_idx = inst_idx;
-    auto *final_gep = gep;
-
     // fuse geps
     // TODO: use llvm statistic or analyzer liveness stat?
-    if (gep->hasOneUser()) {
-        auto       *prev_gep = gep;
-        llvm::Type *res_ty   = nullptr;
-        while (remaining.from != remaining.to) {
-            auto  next_inst_idx = *remaining.from;
-            auto *next_val      = this->adaptor->values[next_inst_idx].val;
-            auto *next_gep = llvm::dyn_cast<llvm::GetElementPtrInst>(next_val);
-            if (!next_gep) {
-                break;
-            }
+    auto final_idx = inst_idx;
+    while (gep->hasOneUser() && remaining.from != remaining.to) {
+        auto  next_inst_idx = *remaining.from;
+        auto *next_val      = this->adaptor->values[next_inst_idx].val;
+        auto *next_gep      = llvm::dyn_cast<llvm::GetElementPtrInst>(next_val);
+        if (!next_gep || next_gep->getPointerOperand() != gep
+            || gep->getResultElementType() != next_gep->getResultElementType()
+            || !next_gep->hasAllConstantIndices()) {
+            break;
+        }
 
-            if (next_gep->getPointerOperand() != prev_gep) {
-                break;
-            }
-
-            if (!next_gep->hasAllConstantIndices()) {
-                break;
-            }
-
-            auto idx_begin = next_gep->idx_begin(),
-                 idx_end   = next_gep->idx_end();
-            if (next_gep->hasIndices()) {
-                auto *idx = llvm::dyn_cast<llvm::ConstantInt>(idx_begin->get());
-                assert(idx);
-
-                if (!idx->isZero()) {
-                    // TODO: we should be able to fuse as long as this is a
-                    // constant int
-                    break;
-                }
-            }
-
-            res_ty = prev_gep->getResultElementType();
-
-            auto *ty = next_gep->getResultElementType();
-            if (res_ty != ty) {
-                // in case of unions, the types might not be the same
-                // TODO: now that there is type info attached, we should be able
-                // to also fuse union GEPs
+        if (next_gep->hasIndices()) {
+            // TODO: we should be able to fuse as long as this is a constant int
+            auto *idx =
+                llvm::cast<llvm::ConstantInt>(next_gep->idx_begin()->get());
+            if (!idx->isZero()) {
                 break;
             }
 
             u32 start = indices.size();
-            while (idx_begin != idx_end) {
-                indices.push_back(idx_begin->get());
-                ++idx_begin;
-            }
+            indices.append(next_gep->idx_begin(), next_gep->idx_end());
             types.push_back({.ty    = next_gep->getSourceElementType(),
                              .start = start,
                              .end   = (u32)indices.size()});
-
-            this->adaptor->val_set_fused(next_inst_idx, true);
-            final_idx = next_inst_idx; // we set the result for nextInst
-            final_gep = next_gep;
-            ++remaining.from;
-
-            // check if we can continue
-            if (!next_gep->hasOneUser()) {
-                break;
-            }
-            prev_gep = next_gep;
-            res_ty   = ty;
         }
+
+        this->adaptor->val_set_fused(next_inst_idx, true);
+        final_idx = next_inst_idx; // we set the result for nextInst
+        gep       = next_gep;
+        ++remaining.from;
     }
 
     auto resolved = ResolvedGEP{};
@@ -2687,7 +2651,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     resolved.displacement = disp;
 
     // TODO(ts): fusing
-    (void)final_gep;
 
     auto addr    = derived()->resolved_gep_to_addr(resolved);
     auto res_ref = this->result_ref_lazy(final_idx, 0);
