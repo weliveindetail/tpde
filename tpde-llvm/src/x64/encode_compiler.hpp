@@ -44,14 +44,57 @@ struct EncodeCompiler {
     using SymRef       = typename Assembler::SymRef;
 
     struct AsmOperand {
-        struct Address {
-            AsmReg  base;
-            AsmReg  index;
-            uint8_t scale;
-            int32_t disp;
+        struct ArbitraryAddress {
+            std::variant<AsmReg, ScratchReg> base;
+            std::variant<AsmReg, ScratchReg> index;
+            i64                              scale;
+            i64                              disp;
 
-            explicit Address(AsmReg base, int32_t disp = 0)
+            explicit ArbitraryAddress()
+                : base{AsmReg::make_invalid()}, scale{0}, disp{0} {}
+
+            explicit ArbitraryAddress(AsmReg base, i64 disp = 0)
                 : base(base), scale(0), disp(disp) {}
+
+            explicit ArbitraryAddress(ScratchReg &&base, i64 disp = 0)
+                : base(std::move(base)), scale(0), disp(disp) {}
+
+            AsmReg base_reg() const noexcept {
+                if (std::holds_alternative<AsmReg>(base)) {
+                    return std::get<AsmReg>(base);
+                }
+                return std::get<ScratchReg>(base).cur_reg;
+            }
+
+            AsmReg index_reg() const noexcept {
+                if (std::holds_alternative<AsmReg>(index)) {
+                    return std::get<AsmReg>(index);
+                }
+                return std::get<ScratchReg>(index).cur_reg;
+            }
+
+            [[nodiscard]] bool has_index() const noexcept { return scale != 0; }
+        };
+
+        struct LegalAddress {
+            std::variant<AsmReg, ScratchReg> base;
+            std::variant<AsmReg, ScratchReg> index;
+            u8                               scale;
+            i32                              disp;
+
+            AsmReg base_reg() const noexcept {
+                if (std::holds_alternative<AsmReg>(base)) {
+                    return std::get<AsmReg>(base);
+                }
+                return std::get<ScratchReg>(base).cur_reg;
+            }
+
+            AsmReg index_reg() const noexcept {
+                if (std::holds_alternative<AsmReg>(index)) {
+                    return std::get<AsmReg>(index);
+                }
+                return std::get<ScratchReg>(index).cur_reg;
+            }
 
             [[nodiscard]] bool has_index() const noexcept { return scale != 0; }
         };
@@ -73,7 +116,8 @@ struct EncodeCompiler {
                      ValuePartRef,
                      ValuePartRef *,
                      AsmReg,
-                     Address,
+                     ArbitraryAddress,
+                     LegalAddress,
                      Immediate>
             state;
 
@@ -139,7 +183,9 @@ struct EncodeCompiler {
             state = std::move(ref);
         }
 
-        AsmOperand(Address addr) noexcept { state = addr; }
+        AsmOperand(ArbitraryAddress &&addr) noexcept {
+            state = std::move(addr);
+        }
 
         AsmOperand(Immediate imm) noexcept { state = imm; }
 
@@ -147,15 +193,12 @@ struct EncodeCompiler {
         // ReSharper restore CppNonExplicitConvertingConstructor
 
         [[nodiscard]] bool is_addr() const noexcept {
-            return std::holds_alternative<Address>(state);
+            return std::holds_alternative<ArbitraryAddress>(state)
+                   || std::holds_alternative<LegalAddress>(state);
         }
 
         [[nodiscard]] bool is_imm() const noexcept {
             return std::holds_alternative<Immediate>(state);
-        }
-
-        [[nodiscard]] Address &addr() noexcept {
-            return std::get<Address>(state);
         }
 
         [[nodiscard]] Immediate &imm() noexcept {
@@ -174,19 +217,24 @@ struct EncodeCompiler {
         [[nodiscard]] u32  val_ref_frame_off() const noexcept;
         AsmReg             as_reg(EncodeCompiler *compiler) noexcept;
         bool               try_salvage(ScratchReg &, u8 bank) noexcept;
-        bool try_salvage_if_nonalloc(ScratchReg &, u8 bank) noexcept;
-        void try_salvage_or_materialize(EncodeCompiler *compiler,
-                                        ScratchReg     &dst_scratch,
-                                        u8              bank,
-                                        u32             size) noexcept;
+        bool          try_salvage_if_nonalloc(ScratchReg &, u8 bank) noexcept;
+        void          try_salvage_or_materialize(EncodeCompiler *compiler,
+                                                 ScratchReg     &dst_scratch,
+                                                 u8              bank,
+                                                 u32             size) noexcept;
         // compatibility
-        bool try_salvage(AsmReg &, ScratchReg &, u8 bank) noexcept;
-        void try_salvage_or_materialize(EncodeCompiler *compiler,
-                                        AsmReg         &dst_reg,
-                                        ScratchReg     &dst_scratch,
-                                        u8              bank,
-                                        u32             size) noexcept;
-        void reset() noexcept;
+        bool          try_salvage(AsmReg &, ScratchReg &, u8 bank) noexcept;
+        void          try_salvage_or_materialize(EncodeCompiler *compiler,
+                                                 AsmReg         &dst_reg,
+                                                 ScratchReg     &dst_scratch,
+                                                 u8              bank,
+                                                 u32             size) noexcept;
+        LegalAddress &legalize_address(EncodeCompiler *compiler) noexcept;
+        void          reset() noexcept;
+
+        static LegalAddress
+            arbitrary_to_legal_address(EncodeCompiler    *compiler,
+                                       ArbitraryAddress &&src_addr) noexcept;
     };
 
     CompilerX64 *derived() noexcept {
@@ -390,8 +438,8 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy,
           typename Config>
-bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::encodeable_as_imm64()
-    const noexcept {
+bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
+    encodeable_as_imm64() const noexcept {
     if (!is_imm() || std::get<Immediate>(state).size > 8) {
         return false;
     }
@@ -489,8 +537,8 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy,
           typename Config>
-u32 EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::val_ref_frame_off()
-    const noexcept {
+u32 EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
+    val_ref_frame_off() const noexcept {
     if (std::holds_alternative<ValuePartRef>(state)) {
         const auto &val_ref = std::get<ValuePartRef>(state);
         assert(!val_ref.is_const);
@@ -630,6 +678,26 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy,
           typename Config>
+typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
+    LegalAddress &
+    EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
+        legalize_address(EncodeCompiler *compiler) noexcept {
+    assert(is_addr());
+
+    if (std::holds_alternative<LegalAddress>(state)) {
+        return std::get<LegalAddress>(state);
+    }
+
+    state = arbitrary_to_legal_address(
+        compiler, std::move(std::get<ArbitraryAddress>(state)));
+    return std::get<LegalAddress>(state);
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>
 void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     try_salvage_or_materialize(EncodeCompiler *compiler,
                                ScratchReg     &dst_scratch,
@@ -691,8 +759,90 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy,
           typename Config>
-void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::reset() noexcept {
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
+    reset() noexcept {
     state = std::monostate{};
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>
+typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
+    LegalAddress
+    EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
+        arbitrary_to_legal_address(EncodeCompiler    *compiler,
+                                   ArbitraryAddress &&src_addr) noexcept {
+    LegalAddress res{};
+    res.base = std::move(src_addr.base);
+
+    if (src_addr.has_index()) {
+        if (src_addr.scale != 1 && src_addr.scale != 2 && src_addr.scale != 4
+            && src_addr.scale != 8) {
+            ScratchReg   scratch{compiler->derived()};
+            const AsmReg index_reg = src_addr.index_reg();
+            AsmReg       tmp;
+            if (std::holds_alternative<ScratchReg>(src_addr.index)) {
+                scratch = std::move(std::get<ScratchReg>(src_addr.index));
+                tmp     = scratch.cur_reg;
+            } else {
+                tmp = scratch.alloc_gp();
+            }
+            if ((src_addr.scale & (src_addr.scale - 1)) == 0) {
+                const auto shift = __builtin_ctzl(src_addr.scale);
+                if (tmp != index_reg) {
+                    ASMC(compiler->derived(), MOV64rr, tmp, index_reg);
+                }
+                ASMC(compiler->derived(), SHL64ri, tmp, shift);
+            } else {
+                if (src_addr.scale >= std::numeric_limits<i32>::min()
+                    && src_addr.scale <= std::numeric_limits<i32>::max()) {
+                    ASMC(compiler->derived(),
+                         IMUL64rri,
+                         tmp,
+                         index_reg,
+                         src_addr.scale);
+                } else {
+                    ScratchReg scratch2{compiler->derived()};
+                    auto       tmp2 = scratch2.alloc_gp();
+                    ASMC(compiler->derived(), MOV64ri, tmp2, src_addr.scale);
+                    if (tmp != index_reg) {
+                        ASMC(compiler->derived(), MOV64rr, tmp, index_reg);
+                    }
+                    ASMC(compiler->derived(), IMUL64rr, tmp, tmp2);
+                }
+            }
+            res.index = std::move(scratch);
+            res.scale = 1;
+        } else {
+            res.index = std::move(src_addr.index);
+            res.scale = src_addr.scale;
+        }
+    }
+
+    if (src_addr.disp >= std::numeric_limits<i32>::min()
+        && src_addr.disp <= std::numeric_limits<i32>::max()) [[likely]] {
+        res.disp = src_addr.disp;
+        return res;
+    }
+
+    ScratchReg scratch{compiler->derived()};
+    auto       tmp = scratch.alloc_gp();
+    ASMC(compiler->derived(), MOV64ri, tmp, src_addr.disp);
+    ASMC(compiler->derived(), ADD64rr, tmp, res.base_reg());
+    if (res.has_index()) {
+        ASMC(compiler->derived(),
+             LEA64rm,
+             tmp,
+             FE_MEM(tmp, res.scale, res.index_reg(), 0));
+    }
+
+    res.base  = std::move(scratch);
+    res.index = AsmReg::make_invalid();
+    res.scale = 0;
+    res.disp  = 0;
+    return res;
 }
 
 template <typename Adaptor,
@@ -783,16 +933,59 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
             continue;
         }
 
-        if (std::holds_alternative<typename AsmOperand::Address>(op)) {
-            auto &addr = std::get<typename AsmOperand::Address>(op);
-            if (addr.base == reg) {
-                alloc_backup();
-                addr.base = backup_reg.scratch.cur_reg;
+        if (std::holds_alternative<typename AsmOperand::ArbitraryAddress>(op)) {
+            auto &addr = std::get<typename AsmOperand::ArbitraryAddress>(op);
+            if (addr.base_reg() == reg) {
+                if (std::holds_alternative<ScratchReg>(addr.base)) {
+                    auto &op_scratch = std::get<ScratchReg>(addr.base);
+                    scratch          = std::move(op_scratch);
+                    op_scratch.alloc_from_bank(bank);
+                    ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                } else {
+                    alloc_backup();
+                    addr.base = backup_reg.scratch.cur_reg;
+                }
                 return;
             }
-            if (addr.scale != 0 && addr.index == reg) {
-                alloc_backup();
-                addr.index = backup_reg.scratch.cur_reg;
+            if (addr.scale != 0 && addr.index_reg() == reg) {
+                if (std::holds_alternative<ScratchReg>(addr.index)) {
+                    auto &op_scratch = std::get<ScratchReg>(addr.index);
+                    scratch          = std::move(op_scratch);
+                    op_scratch.alloc_from_bank(bank);
+                    ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                } else {
+                    alloc_backup();
+                    addr.index = backup_reg.scratch.cur_reg;
+                }
+                return;
+            }
+            continue;
+        }
+
+        if (std::holds_alternative<typename AsmOperand::LegalAddress>(op)) {
+            auto &addr = std::get<typename AsmOperand::LegalAddress>(op);
+            if (addr.base_reg() == reg) {
+                if (std::holds_alternative<ScratchReg>(addr.base)) {
+                    auto &op_scratch = std::get<ScratchReg>(addr.base);
+                    scratch          = std::move(op_scratch);
+                    op_scratch.alloc_from_bank(bank);
+                    ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                } else {
+                    alloc_backup();
+                    addr.base = backup_reg.scratch.cur_reg;
+                }
+                return;
+            }
+            if (addr.scale != 0 && addr.index_reg() == reg) {
+                if (std::holds_alternative<ScratchReg>(addr.index)) {
+                    auto &op_scratch = std::get<ScratchReg>(addr.index);
+                    scratch          = std::move(op_scratch);
+                    op_scratch.alloc_from_bank(bank);
+                    ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                } else {
+                    alloc_backup();
+                    addr.index = backup_reg.scratch.cur_reg;
+                }
                 return;
             }
             continue;
@@ -809,10 +1002,10 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy,
           typename Config>
-void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_check_fixed_backup(
-    ScratchReg     &scratch,
-    FixedRegBackup &backup_reg,
-    const bool      is_ret_reg) noexcept {
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
+    scratch_check_fixed_backup(ScratchReg     &scratch,
+                               FixedRegBackup &backup_reg,
+                               const bool      is_ret_reg) noexcept {
     if (backup_reg.scratch.cur_reg.invalid()) [[likely]] {
         return;
     }
@@ -874,9 +1067,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base;
@@ -929,9 +1122,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base;
@@ -984,9 +1177,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base;
@@ -1039,9 +1232,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base;
@@ -1098,9 +1291,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -1120,14 +1313,14 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
         if (disp_add_encodeable(addr.disp, 2)) {
-            inst1_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 2);
+            inst1_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 2);
         } else {
             // displacements not encodeable together, need to materialize the addr
             AsmReg base_tmp = inst1_op1_scratch.alloc_from_bank(0);
-            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
             inst1_op1 = FE_MEM(base_tmp, 0, FE_NOREG, 2);
         }
     } else {
@@ -1211,9 +1404,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -1235,14 +1428,14 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
         if (disp_add_encodeable(addr.disp, 4)) {
-            inst1_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 4);
+            inst1_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 4);
         } else {
             // displacements not encodeable together, need to materialize the addr
             AsmReg base_tmp = inst1_op1_scratch.alloc_from_bank(0);
-            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
             inst1_op1 = FE_MEM(base_tmp, 0, FE_NOREG, 4);
         }
     } else {
@@ -1328,9 +1521,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -1352,14 +1545,14 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
         if (disp_add_encodeable(addr.disp, 4)) {
-            inst1_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 4);
+            inst1_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 4);
         } else {
             // displacements not encodeable together, need to materialize the addr
             AsmReg base_tmp = inst1_op1_scratch.alloc_from_bank(0);
-            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
             inst1_op1 = FE_MEM(base_tmp, 0, FE_NOREG, 4);
         }
     } else {
@@ -1449,14 +1642,14 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
         if (disp_add_encodeable(addr.disp, 4)) {
-            inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 4);
+            inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 4);
         } else {
             // displacements not encodeable together, need to materialize the addr
             AsmReg base_tmp = inst0_op1_scratch.alloc_from_bank(0);
-            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
             inst0_op1 = FE_MEM(base_tmp, 0, FE_NOREG, 4);
         }
     } else {
@@ -1478,14 +1671,14 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
         if (disp_add_encodeable(addr.disp, 6)) {
-            inst1_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 6);
+            inst1_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 6);
         } else {
             // displacements not encodeable together, need to materialize the addr
             AsmReg base_tmp = inst1_op1_scratch.alloc_from_bank(0);
-            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
             inst1_op1 = FE_MEM(base_tmp, 0, FE_NOREG, 6);
         }
     } else {
@@ -1554,9 +1747,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst5_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst5_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base;
@@ -1627,9 +1820,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -1649,14 +1842,14 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
         if (disp_add_encodeable(addr.disp, 8)) {
-            inst1_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 8);
+            inst1_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 8);
         } else {
             // displacements not encodeable together, need to materialize the addr
             AsmReg base_tmp = inst1_op1_scratch.alloc_from_bank(0);
-            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
             inst1_op1 = FE_MEM(base_tmp, 0, FE_NOREG, 8);
         }
     } else {
@@ -1713,9 +1906,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -1763,9 +1956,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -1813,9 +2006,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -1863,9 +2056,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -1913,9 +2106,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op1 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -1966,9 +2159,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -1986,9 +2179,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2042,9 +2235,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2062,9 +2255,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2118,9 +2311,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2136,9 +2329,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2189,9 +2382,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2207,9 +2400,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2262,9 +2455,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2280,9 +2473,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2315,14 +2508,14 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
         if (disp_add_encodeable(addr.disp, 2)) {
-            inst2_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 2);
+            inst2_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 2);
         } else {
             // displacements not encodeable together, need to materialize the addr
             AsmReg base_tmp = inst2_op0_scratch.alloc_from_bank(0);
-            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
             inst2_op0 = FE_MEM(base_tmp, 0, FE_NOREG, 2);
         }
     } else {
@@ -2379,9 +2572,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2397,9 +2590,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2432,14 +2625,14 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
         if (disp_add_encodeable(addr.disp, 4)) {
-            inst2_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 4);
+            inst2_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 4);
         } else {
             // displacements not encodeable together, need to materialize the addr
             AsmReg base_tmp = inst2_op0_scratch.alloc_from_bank(0);
-            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
             inst2_op0 = FE_MEM(base_tmp, 0, FE_NOREG, 4);
         }
     } else {
@@ -2496,9 +2689,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2514,9 +2707,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2549,14 +2742,14 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
         if (disp_add_encodeable(addr.disp, 4)) {
-            inst2_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 4);
+            inst2_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 4);
         } else {
             // displacements not encodeable together, need to materialize the addr
             AsmReg base_tmp = inst2_op0_scratch.alloc_from_bank(0);
-            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
             inst2_op0 = FE_MEM(base_tmp, 0, FE_NOREG, 4);
         }
     } else {
@@ -2617,9 +2810,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2635,9 +2828,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2677,14 +2870,14 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
         if (disp_add_encodeable(addr.disp, 6)) {
-            inst3_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 6);
+            inst3_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 6);
         } else {
             // displacements not encodeable together, need to materialize the addr
             AsmReg base_tmp = inst3_op0_scratch.alloc_from_bank(0);
-            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
             inst3_op0 = FE_MEM(base_tmp, 0, FE_NOREG, 6);
         }
     } else {
@@ -2722,14 +2915,14 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
         if (disp_add_encodeable(addr.disp, 4)) {
-            inst5_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 4);
+            inst5_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 4);
         } else {
             // displacements not encodeable together, need to materialize the addr
             AsmReg base_tmp = inst5_op0_scratch.alloc_from_bank(0);
-            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+            ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
             inst5_op0 = FE_MEM(base_tmp, 0, FE_NOREG, 4);
         }
     } else {
@@ -2788,14 +2981,14 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
             if (disp_add_encodeable(addr.disp, 8)) {
-                inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 8);
+                inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 8);
             } else {
                 // displacements not encodeable together, need to materialize the addr
                 AsmReg base_tmp = inst0_op0_scratch.alloc_from_bank(0);
-                ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+                ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
                 inst0_op0 = FE_MEM(base_tmp, 0, FE_NOREG, 8);
             }
         } else {
@@ -2814,14 +3007,14 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // LLVM memory operand has displacement, check if it is encodeable with the disp from addr
             if (disp_add_encodeable(addr.disp, 8)) {
-                inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp + 8);
+                inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp + 8);
             } else {
                 // displacements not encodeable together, need to materialize the addr
                 AsmReg base_tmp = inst0_op0_scratch.alloc_from_bank(0);
-                ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+                ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
                 inst0_op0 = FE_MEM(base_tmp, 0, FE_NOREG, 8);
             }
         } else {
@@ -2846,9 +3039,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2864,9 +3057,9 @@ template <typename Adaptor,
         // looking at base di
         // di maps to param_0, so could be an address
         if (param_0.is_addr()) {
-            const auto& addr = param_0.addr();
+            const auto& addr = param_0.legalize_address(this);
             // no index/disp in LLVM, can simply use the operand address
-            inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+            inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
         } else {
             // di maps to operand param_0
             AsmReg base = param_0.as_reg(this);
@@ -2915,9 +3108,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -2965,9 +3158,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -3015,9 +3208,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -3066,9 +3259,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -3121,9 +3314,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst0_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -3187,10 +3380,10 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has index, need to materialize the addr
         AsmReg base_tmp = inst2_op1_scratch.alloc_from_bank(0);
-        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
         // gather the LLVM memory operand index si
         // si maps to operand param_1
         AsmReg index_tmp = param_1.as_reg(this);
@@ -4249,10 +4442,10 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // LLVM memory operand has index, need to materialize the addr
         AsmReg base_tmp = inst0_op1_scratch.alloc_from_bank(0);
-        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
         // gather the LLVM memory operand index si
         // si maps to operand param_1
         AsmReg index_tmp = param_1.as_reg(this);
@@ -6439,10 +6632,10 @@ template <typename Adaptor,
     // looking at base si
     // si maps to param_1, so could be an address
     if (param_1.is_addr()) {
-        const auto& addr = param_1.addr();
+        const auto& addr = param_1.legalize_address(this);
         // LLVM memory operand has index, need to materialize the addr
         AsmReg base_tmp = inst3_op1_scratch.alloc_from_bank(0);
-        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
         // gather the LLVM memory operand index si
         // si maps to operand param_1
         AsmReg index_tmp = param_1.as_reg(this);
@@ -6714,10 +6907,10 @@ template <typename Adaptor,
     // looking at base si
     // si maps to param_1, so could be an address
     if (param_1.is_addr()) {
-        const auto& addr = param_1.addr();
+        const auto& addr = param_1.legalize_address(this);
         // LLVM memory operand has index, need to materialize the addr
         AsmReg base_tmp = inst3_op1_scratch.alloc_from_bank(0);
-        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
         // gather the LLVM memory operand index si
         // si maps to operand param_1
         AsmReg index_tmp = param_1.as_reg(this);
@@ -7238,10 +7431,10 @@ template <typename Adaptor,
     // looking at base si
     // si maps to param_1, so could be an address
     if (param_1.is_addr()) {
-        const auto& addr = param_1.addr();
+        const auto& addr = param_1.legalize_address(this);
         // LLVM memory operand has index, need to materialize the addr
         AsmReg base_tmp = inst1_op1_scratch.alloc_from_bank(0);
-        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
         // gather the LLVM memory operand index si
         // si maps to operand param_1
         AsmReg index_tmp = param_1.as_reg(this);
@@ -7536,10 +7729,10 @@ template <typename Adaptor,
     // looking at base si
     // si maps to param_1, so could be an address
     if (param_1.is_addr()) {
-        const auto& addr = param_1.addr();
+        const auto& addr = param_1.legalize_address(this);
         // LLVM memory operand has index, need to materialize the addr
         AsmReg base_tmp = inst1_op1_scratch.alloc_from_bank(0);
-        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp));
+        ASMD(LEA64rm, base_tmp, FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp));
         // gather the LLVM memory operand index si
         // si maps to operand param_1
         AsmReg index_tmp = param_1.as_reg(this);
@@ -11202,9 +11395,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -11283,9 +11476,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -11364,9 +11557,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -11445,9 +11638,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -11526,9 +11719,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -11607,9 +11800,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -11688,9 +11881,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -11769,9 +11962,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -11850,9 +12043,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);
@@ -11931,9 +12124,9 @@ template <typename Adaptor,
     // looking at base di
     // di maps to param_0, so could be an address
     if (param_0.is_addr()) {
-        const auto& addr = param_0.addr();
+        const auto& addr = param_0.legalize_address(this);
         // no index/disp in LLVM, can simply use the operand address
-        inst1_op0 = FE_MEM(addr.base, addr.scale, addr.scale ? addr.index : FE_NOREG, addr.disp);
+        inst1_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
     } else {
         // di maps to operand param_0
         AsmReg base = param_0.as_reg(this);

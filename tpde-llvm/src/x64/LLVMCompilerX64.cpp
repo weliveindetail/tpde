@@ -95,6 +95,11 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                             llvm::CallInst *,
                             std::variant<SymRef, ValuePartRef> &,
                             bool) noexcept;
+
+    AsmOperand::ArbitraryAddress
+         resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
+    void addr_to_reg(AsmOperand::ArbitraryAddress &&addr,
+                     ScratchReg                    &result) noexcept;
 };
 
 u32 LLVMCompilerX64::basic_ty_part_count(const LLVMBasicValType ty) noexcept {
@@ -627,6 +632,86 @@ bool LLVMCompilerX64::compile_call_inner(
                   tpde::x64::CallingConv::SYSV_CC,
                   var_arg);
     return true;
+}
+
+tpde_encodegen::EncodeCompiler<LLVMAdaptor,
+                               LLVMCompilerX64,
+                               LLVMCompilerBase,
+                               CompilerConfig>::AsmOperand::ArbitraryAddress
+    LLVMCompilerX64::resolved_gep_to_addr(ResolvedGEP &resolved) noexcept {
+    ScratchReg   base_scratch{this}, index_scratch{this};
+    const AsmReg base = this->val_as_reg(resolved.base, base_scratch);
+
+    AsmOperand::ArbitraryAddress addr{};
+    if (base_scratch.cur_reg.valid()) {
+        addr.base = std::move(base_scratch);
+    } else {
+        if (resolved.base.can_salvage()) {
+            base_scratch.alloc_specific(resolved.base.salvage());
+            addr.base = std::move(base_scratch);
+        } else {
+            addr.base = base;
+        }
+    }
+
+    if (resolved.scale) {
+        assert(resolved.index);
+        // check for sign-extension
+        // TODO(ts): I think technically we need the LLVM bitwidth, no?
+        const auto idx_size = resolved.index->part_size();
+        if (idx_size == 1 || idx_size == 2 || idx_size == 4) {
+            ScratchReg scratch{this};
+            if (idx_size == 1) {
+                this->encode_sext_8_to_64(std::move(*resolved.index), scratch);
+            } else if (idx_size == 2) {
+                this->encode_sext_16_to_64(std::move(*resolved.index), scratch);
+            } else {
+                assert(idx_size == 4);
+                this->encode_sext_32_to_64(std::move(*resolved.index), scratch);
+            }
+            addr.index = std::move(scratch);
+        } else {
+            assert(idx_size == 8);
+            addr.index = this->val_as_reg(*resolved.index, index_scratch);
+        }
+    }
+
+    addr.scale = resolved.scale;
+    addr.disp  = resolved.displacement;
+
+    return addr;
+}
+
+void LLVMCompilerX64::addr_to_reg(AsmOperand::ArbitraryAddress &&addr,
+                                  ScratchReg &result) noexcept {
+    // not the most efficient but it's okay for now
+    AsmOperand::LegalAddress legal_addr =
+        AsmOperand::arbitrary_to_legal_address(this, std::move(addr));
+    AsmReg       res_reg;
+    const AsmReg base_reg = legal_addr.base_reg();
+    if (std::holds_alternative<ScratchReg>(legal_addr.base)) {
+        result  = std::move(std::get<ScratchReg>(legal_addr.base));
+        res_reg = result.cur_reg;
+    } else {
+        res_reg = result.alloc_gp();
+    }
+
+    if (legal_addr.has_index()) {
+        ASM(LEA64rm,
+            res_reg,
+            FE_MEM(base_reg,
+                   legal_addr.scale,
+                   legal_addr.index_reg(),
+                   legal_addr.disp));
+    } else {
+        if (legal_addr.disp != 0) {
+            ASM(LEA64rm,
+                res_reg,
+                FE_MEM(base_reg, 0, FE_NOREG, legal_addr.disp));
+        } else if (res_reg != base_reg) {
+            ASM(MOV64rr, res_reg, base_reg);
+        }
+    }
 }
 
 extern bool compile_llvm(llvm::LLVMContext    &ctx,

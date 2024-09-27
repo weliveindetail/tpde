@@ -38,6 +38,13 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
         RELOC_TYPE type = RELOC_ABS;
     };
 
+    struct ResolvedGEP {
+        ValuePartRef                base;
+        std::optional<ValuePartRef> index;
+        u64                         scale;
+        i64                         displacement;
+    };
+
     struct VarRefInfo {
         IRValueRef val;
         bool       alloca;
@@ -161,6 +168,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_freeze(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_call(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_select(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_gep(IRValueRef, llvm::Instruction *, InstRange) noexcept;
 
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept {
         return false;
@@ -856,7 +864,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
-    IRValueRef val_idx, InstRange) noexcept {
+    IRValueRef val_idx, InstRange remaining) noexcept {
     auto *i =
         llvm::dyn_cast<llvm::Instruction>(this->adaptor->values[val_idx].val);
     const auto opcode = i->getOpcode();
@@ -934,6 +942,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::Br: return derived()->compile_br(val_idx, i);
     case llvm::Instruction::Call: return compile_call(val_idx, i);
     case llvm::Instruction::Select: return compile_select(val_idx, i);
+    case llvm::Instruction::GetElementPtr:
+        return compile_gep(val_idx, i, remaining);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -1062,7 +1072,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
             const auto part_ty =
                 this->adaptor->complex_part_types[ty_idx + res_part_idx];
 
-            auto part_addr = typename Derived::AsmOperand::Address{
+            auto part_addr = typename Derived::AsmOperand::ArbitraryAddress{
                 ptr_reg,
                 static_cast<tpde::i32>(
                     ty_sl->getElementOffset(part_idx).getFixedValue())};
@@ -1079,37 +1089,48 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
                     load_ty->getContainedType(part_idx)->getIntegerBitWidth();
                 switch (bit_width) {
                 case 1:
-                case 8: derived()->encode_loadi8(part_addr, res_scratch); break;
+                case 8:
+                    derived()->encode_loadi8(std::move(part_addr), res_scratch);
+                    break;
                 case 16:
-                    derived()->encode_loadi16(part_addr, res_scratch);
+                    derived()->encode_loadi16(std::move(part_addr),
+                                              res_scratch);
                     break;
                 case 24:
-                    derived()->encode_loadi24(part_addr, res_scratch);
+                    derived()->encode_loadi24(std::move(part_addr),
+                                              res_scratch);
                     break;
                 case 32:
-                    derived()->encode_loadi32(part_addr, res_scratch);
+                    derived()->encode_loadi32(std::move(part_addr),
+                                              res_scratch);
                     break;
                 case 40:
-                    derived()->encode_loadi40(part_addr, res_scratch);
+                    derived()->encode_loadi40(std::move(part_addr),
+                                              res_scratch);
                     break;
                 case 48:
-                    derived()->encode_loadi48(part_addr, res_scratch);
+                    derived()->encode_loadi48(std::move(part_addr),
+                                              res_scratch);
                     break;
                 case 56:
-                    derived()->encode_loadi56(part_addr, res_scratch);
+                    derived()->encode_loadi56(std::move(part_addr),
+                                              res_scratch);
                     break;
                 case 64:
-                    derived()->encode_loadi64(part_addr, res_scratch);
+                    derived()->encode_loadi64(std::move(part_addr),
+                                              res_scratch);
                     break;
                 default: assert(0); return false;
                 }
                 break;
             }
-            case ptr: derived()->encode_loadi64(part_addr, res_scratch); break;
+            case ptr:
+                derived()->encode_loadi64(std::move(part_addr), res_scratch);
+                break;
             case i128: {
                 ScratchReg res_scratch_high{derived()};
                 derived()->encode_loadi128(
-                    part_addr, res_scratch, res_scratch_high);
+                    std::move(part_addr), res_scratch, res_scratch_high);
 
                 auto part_ref_high =
                     this->result_ref_lazy(load_idx, ++res_part_idx);
@@ -1118,19 +1139,25 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
                 break;
             }
             case v32:
-            case f32: derived()->encode_loadf32(part_addr, res_scratch); break;
+            case f32:
+                derived()->encode_loadf32(std::move(part_addr), res_scratch);
+                break;
             case v64:
-            case f64: derived()->encode_loadf64(part_addr, res_scratch); break;
+            case f64:
+                derived()->encode_loadf64(std::move(part_addr), res_scratch);
+                break;
             case v128:
-                derived()->encode_loadv128(part_addr, res_scratch);
+                derived()->encode_loadv128(std::move(part_addr), res_scratch);
                 break;
             case v256:
-                if (!derived()->encode_loadv256(part_addr, res_scratch)) {
+                if (!derived()->encode_loadv256(std::move(part_addr),
+                                                res_scratch)) {
                     return false;
                 }
                 break;
             case v512:
-                if (!derived()->encode_loadv512(part_addr, res_scratch)) {
+                if (!derived()->encode_loadv512(std::move(part_addr),
+                                                res_scratch)) {
                     return false;
                 }
                 break;
@@ -1261,7 +1288,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
             const auto part_ty =
                 this->adaptor->complex_part_types[ty_idx + res_part_idx];
 
-            auto part_addr = typename Derived::AsmOperand::Address{
+            auto part_addr = typename Derived::AsmOperand::ArbitraryAddress{
                 ptr_reg,
                 static_cast<tpde::i32>(
                     ty_sl->getElementOffset(part_idx).getFixedValue())};
@@ -1278,38 +1305,65 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
                     store_ty->getContainedType(part_idx)->getIntegerBitWidth();
                 switch (bit_width) {
                 case 1:
-                case 8: derived()->encode_storei8(part_addr, part_ref); break;
-                case 16: derived()->encode_storei16(part_addr, part_ref); break;
-                case 24: derived()->encode_storei24(part_addr, part_ref); break;
-                case 32: derived()->encode_storei32(part_addr, part_ref); break;
-                case 40: derived()->encode_storei40(part_addr, part_ref); break;
-                case 48: derived()->encode_storei48(part_addr, part_ref); break;
-                case 56: derived()->encode_storei56(part_addr, part_ref); break;
-                case 64: derived()->encode_storei64(part_addr, part_ref); break;
+                case 8:
+                    derived()->encode_storei8(std::move(part_addr), part_ref);
+                    break;
+                case 16:
+                    derived()->encode_storei16(std::move(part_addr), part_ref);
+                    break;
+                case 24:
+                    derived()->encode_storei24(std::move(part_addr), part_ref);
+                    break;
+                case 32:
+                    derived()->encode_storei32(std::move(part_addr), part_ref);
+                    break;
+                case 40:
+                    derived()->encode_storei40(std::move(part_addr), part_ref);
+                    break;
+                case 48:
+                    derived()->encode_storei48(std::move(part_addr), part_ref);
+                    break;
+                case 56:
+                    derived()->encode_storei56(std::move(part_addr), part_ref);
+                    break;
+                case 64:
+                    derived()->encode_storei64(std::move(part_addr), part_ref);
+                    break;
                 default: assert(0); return false;
                 }
                 break;
             }
-            case ptr: derived()->encode_storei64(part_addr, part_ref); break;
+            case ptr:
+                derived()->encode_storei64(std::move(part_addr), part_ref);
+                break;
             case i128: {
                 auto part_ref_high = this->val_ref(op_idx, ++res_part_idx);
-                derived()->encode_storei128(part_addr, part_ref, part_ref_high);
+                derived()->encode_storei128(
+                    std::move(part_addr), part_ref, part_ref_high);
 
                 part_ref_high.reset_without_refcount();
                 break;
             }
             case v32:
-            case f32: derived()->encode_storef32(part_addr, part_ref); break;
+            case f32:
+                derived()->encode_storef32(std::move(part_addr), part_ref);
+                break;
             case v64:
-            case f64: derived()->encode_storef64(part_addr, part_ref); break;
-            case v128: derived()->encode_storev128(part_addr, part_ref); break;
+            case f64:
+                derived()->encode_storef64(std::move(part_addr), part_ref);
+                break;
+            case v128:
+                derived()->encode_storev128(std::move(part_addr), part_ref);
+                break;
             case v256:
-                if (!derived()->encode_storev256(part_addr, part_ref)) {
+                if (!derived()->encode_storev256(std::move(part_addr),
+                                                 part_ref)) {
                     return false;
                 }
                 break;
             case v512:
-                if (!derived()->encode_storev512(part_addr, part_ref)) {
+                if (!derived()->encode_storev512(std::move(part_addr),
+                                                 part_ref)) {
                     return false;
                 }
                 break;
@@ -2496,6 +2550,151 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
     }
 
     this->set_value(res_ref, res_scratch);
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
+    IRValueRef         inst_idx,
+    llvm::Instruction *inst,
+    InstRange          remaining) noexcept {
+    auto *gep = llvm::cast<llvm::GetElementPtrInst>(inst);
+
+    auto                                      ptr = gep->getPointerOperand();
+    tpde::util::SmallVector<llvm::Value *, 8> indices;
+    std::optional<IRValueRef>                 variable_off = {};
+
+    {
+        auto idx_begin = gep->idx_begin(), idx_end = gep->idx_end();
+        if (llvm::dyn_cast<llvm::Constant>(idx_begin->get()) == nullptr) {
+            variable_off = llvm_val_idx(idx_begin->get());
+            indices.push_back(llvm::ConstantInt::get(
+                llvm::IntegerType::getInt64Ty(this->adaptor->context), 0));
+            ++idx_begin;
+        }
+
+        for (auto it = idx_begin; it != idx_end; ++it) {
+            assert(llvm::dyn_cast<llvm::Constant>(it->get()) != nullptr);
+            indices.push_back(it->get());
+        }
+    }
+
+    struct GEPTypeRange {
+        llvm::Type *ty;
+        uint32_t    start;
+        uint32_t    end;
+    };
+
+    tpde::util::SmallVector<GEPTypeRange, 8> types;
+    types.push_back({.ty    = gep->getSourceElementType(),
+                     .start = 0,
+                     .end   = (u32)indices.size()});
+
+    auto  final_idx = inst_idx;
+    auto *final_gep = gep;
+
+    // fuse geps
+    // TODO: use llvm statistic or analyzer liveness stat?
+    if (gep->hasOneUser()) {
+        auto       *prev_gep = gep;
+        llvm::Type *res_ty   = nullptr;
+        while (remaining.from != remaining.to) {
+            auto  next_inst_idx = *remaining.from;
+            auto *next_val      = this->adaptor->values[next_inst_idx].val;
+            auto *next_gep = llvm::dyn_cast<llvm::GetElementPtrInst>(next_val);
+            if (!next_gep) {
+                break;
+            }
+
+            if (next_gep->getPointerOperand() != prev_gep) {
+                break;
+            }
+
+            if (!next_gep->hasAllConstantIndices()) {
+                break;
+            }
+
+            auto idx_begin = next_gep->idx_begin(),
+                 idx_end   = next_gep->idx_end();
+            auto *idx = llvm::dyn_cast<llvm::ConstantInt>(idx_begin->get());
+            assert(idx);
+
+            if (!idx->isZero()) {
+                // TODO: we should be able to fuse as long as this is a constant
+                // int
+                break;
+            }
+
+            if (!res_ty) {
+                res_ty = prev_gep->getResultElementType();
+            }
+
+            auto *ty = next_gep->getResultElementType();
+            if (res_ty != ty) {
+                // in case of unions, the types might not be the same
+                break;
+            }
+
+            u32 start = indices.size();
+            while (idx_begin != idx_end) {
+                indices.push_back(idx_begin->get());
+                ++idx_begin;
+            }
+            types.push_back({.ty    = next_gep->getSourceElementType(),
+                             .start = start,
+                             .end   = (u32)indices.size()});
+
+            this->adaptor->val_set_fused(next_inst_idx, true);
+            final_idx = next_inst_idx; // we set the result for nextInst
+            final_gep = next_gep;
+            ++remaining.from;
+
+            // check if we can continue
+            if (!next_gep->hasOneUser()) {
+                break;
+            }
+            prev_gep = next_gep;
+            res_ty   = ty;
+        }
+    }
+
+    auto resolved = ResolvedGEP{};
+    resolved.base = this->val_ref(llvm_val_idx(ptr), 0);
+
+    auto &data_layout = this->adaptor->mod.getDataLayout();
+
+    if (variable_off) {
+        resolved.index          = this->val_ref(*variable_off, 0);
+        const auto base_ty_size = data_layout.getTypeAllocSize(types[0].ty);
+        resolved.scale          = base_ty_size;
+    }
+
+    i64 disp = 0;
+    for (auto &[ty, start, end] : types) {
+        if (start == end) {
+            continue;
+        }
+
+        assert(start < indices.size());
+        assert(end <= indices.size());
+        disp += data_layout.getIndexedOffsetInType(
+            ty,
+            llvm::ArrayRef<llvm::Value *>{indices.data() + start,
+                                          indices.data() + end});
+    }
+    resolved.displacement = disp;
+
+    // TODO(ts): fusing
+    (void)final_gep;
+
+    auto addr    = derived()->resolved_gep_to_addr(resolved);
+    auto res_ref = this->result_ref_lazy(final_idx, 0);
+
+    ScratchReg res_scratch{derived()};
+    derived()->addr_to_reg(std::move(addr), res_scratch);
+
+    this->set_value(res_ref, res_scratch);
+
     return true;
 }
 } // namespace tpde_llvm

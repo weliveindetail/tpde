@@ -2413,7 +2413,7 @@ bool generate_inst_inner(std::string           &buf,
                     state.value_map[base_reg_aliased_id].operand_name);
                 std::format_to(
                     std::back_inserter(buf),
-                    "{:>{}}const auto& addr = {}.addr();\n",
+                    "{:>{}}const auto& addr = {}.legalize_address(this);\n",
                     "",
                     indent + 4,
                     state.value_map[base_reg_aliased_id].operand_name);
@@ -2428,8 +2428,8 @@ bool generate_inst_inner(std::string           &buf,
                     state.fmt_line(
                         buf,
                         indent + 4,
-                        "inst{}_op{} = FE_MEM(addr.base, addr.scale, "
-                        "addr.scale ? addr.index : FE_NOREG, "
+                        "inst{}_op{} = FE_MEM(addr.base_reg(), addr.scale, "
+                        "addr.scale ? addr.index_reg() : FE_NOREG, "
                         "addr.disp);",
                         inst_id,
                         op_idx);
@@ -2462,8 +2462,8 @@ bool generate_inst_inner(std::string           &buf,
                     state.fmt_line(buf,
                                    indent + 4,
                                    "ASMD(LEA64rm, base_tmp, "
-                                   "FE_MEM(addr.base, addr.scale, "
-                                   "addr.scale ? addr.index : "
+                                   "FE_MEM(addr.base_reg(), addr.scale, "
+                                   "addr.scale ? addr.index_reg() : "
                                    "FE_NOREG, addr.disp));");
 
                     state.fmt_line(buf,
@@ -2519,8 +2519,8 @@ bool generate_inst_inner(std::string           &buf,
                     state.fmt_line(
                         buf,
                         indent + 8,
-                        "inst{}_op{} = FE_MEM(addr.base, addr.scale, "
-                        "addr.scale ? addr.index : FE_NOREG, addr.disp "
+                        "inst{}_op{} = FE_MEM(addr.base_reg(), addr.scale, "
+                        "addr.scale ? addr.index_reg() : FE_NOREG, addr.disp "
                         "+ {});",
                         inst_id,
                         op_idx,
@@ -2548,8 +2548,8 @@ bool generate_inst_inner(std::string           &buf,
                     state.fmt_line(buf,
                                    indent + 8,
                                    "ASMD(LEA64rm, base_tmp, "
-                                   "FE_MEM(addr.base, addr.scale, "
-                                   "addr.scale ? addr.index : "
+                                   "FE_MEM(addr.base_reg(), addr.scale, "
+                                   "addr.scale ? addr.index_reg() : "
                                    "FE_NOREG, addr.disp));");
                     state.fmt_line(buf,
                                    indent + 8,
