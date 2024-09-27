@@ -2564,7 +2564,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     tpde::util::SmallVector<llvm::Value *, 8> indices;
     std::optional<IRValueRef>                 variable_off = {};
 
-    {
+    if (gep->hasIndices()) {
         auto idx_begin = gep->idx_begin(), idx_end = gep->idx_end();
         if (llvm::dyn_cast<llvm::Constant>(idx_begin->get()) == nullptr) {
             variable_off = llvm_val_idx(idx_begin->get());
@@ -2616,22 +2616,24 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
             auto idx_begin = next_gep->idx_begin(),
                  idx_end   = next_gep->idx_end();
-            auto *idx = llvm::dyn_cast<llvm::ConstantInt>(idx_begin->get());
-            assert(idx);
+            if (next_gep->hasIndices()) {
+                auto *idx = llvm::dyn_cast<llvm::ConstantInt>(idx_begin->get());
+                assert(idx);
 
-            if (!idx->isZero()) {
-                // TODO: we should be able to fuse as long as this is a constant
-                // int
-                break;
+                if (!idx->isZero()) {
+                    // TODO: we should be able to fuse as long as this is a
+                    // constant int
+                    break;
+                }
             }
 
-            if (!res_ty) {
-                res_ty = prev_gep->getResultElementType();
-            }
+            res_ty = prev_gep->getResultElementType();
 
             auto *ty = next_gep->getResultElementType();
             if (res_ty != ty) {
                 // in case of unions, the types might not be the same
+                // TODO: now that there is type info attached, we should be able
+                // to also fuse union GEPs
                 break;
             }
 

@@ -8,6 +8,24 @@
 %struct.two_ints = type { i32, i32 }
 %struct.three_floats = type { float, float, float }
 
+define ptr @gep_ptr_no_idx(ptr %0) {
+; X64-LABEL: gep_ptr_no_idx>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x10
+; X64:    mov rax, rdi
+; X64:    add rsp, 0x10
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %1 = getelementptr inbounds ptr, ptr %0
+  ret ptr %1
+}
 
 define ptr @gep_ptr_zero(ptr %0) {
 ; X64-LABEL: gep_ptr_zero>:
@@ -1070,6 +1088,45 @@ define ptr @gep_stf_varoff_i64_one(ptr %0, i64 %1) {
 }
 
 
+define ptr @gep_ptr_no_idx_fuse_zero(ptr %0) {
+; X64-LABEL: gep_ptr_no_idx_fuse_zero>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x10
+; X64:    mov rax, rdi
+; X64:    add rsp, 0x10
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %1 = getelementptr inbounds ptr, ptr %0
+  %2 = getelementptr inbounds ptr, ptr %1, i64 0
+  ret ptr %2
+}
+
+define ptr @gep_ptr_zero_fuse_no_idx(ptr %0) {
+; X64-LABEL: gep_ptr_zero_fuse_no_idx>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x10
+; X64:    mov rax, rdi
+; X64:    add rsp, 0x10
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %1 = getelementptr inbounds ptr, ptr %0, i64 0
+  %2 = getelementptr inbounds ptr, ptr %1
+  ret ptr %2
+}
 
 define ptr @gep_ptr_zero_fuse_zero(ptr %0) {
 ; X64-LABEL: gep_ptr_zero_fuse_zero>:
