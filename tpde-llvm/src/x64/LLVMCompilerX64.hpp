@@ -16,4 +16,9 @@ extern bool compile_llvm(llvm::LLVMContext    &ctx,
                          llvm::Module         &mod,
                          std::vector<uint8_t> &out_path,
                          bool                  print_liveness);
+
+extern bool compile_llvm(llvm::LLVMContext       &ctx,
+                         llvm::Module            &mod,
+                         llvm::raw_pwrite_stream &llvm_stream,
+                         bool                     print_liveness);
 } // namespace tpde_llvm::x64

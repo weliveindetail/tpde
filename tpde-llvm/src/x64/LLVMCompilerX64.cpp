@@ -1115,4 +1115,25 @@ extern bool compile_llvm(llvm::LLVMContext    &ctx,
     return true;
 }
 
+extern bool compile_llvm(llvm::LLVMContext       &ctx,
+                         llvm::Module            &mod,
+                         llvm::raw_pwrite_stream &out,
+                         [[maybe_unused]] bool    print_liveness) {
+    auto adaptor  = std::make_unique<LLVMAdaptor>(ctx, mod);
+    auto compiler = std::make_unique<LLVMCompilerX64>(std::move(adaptor));
+
+#ifdef TPDE_TESTING
+    compiler->analyzer.test_print_liveness = print_liveness;
+#endif
+
+    if (!compiler->compile()) {
+        return false;
+    }
+
+    std::vector<u8> data = compiler->assembler.build_object_file();
+    out.pwrite(reinterpret_cast<char *>(data.data()), data.size(), 0);
+
+    return true;
+}
+
 } // namespace tpde_llvm::x64
