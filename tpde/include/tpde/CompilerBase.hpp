@@ -785,10 +785,9 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::val_as_reg(
         ValuePartRef &val_ref, ScratchReg &scratch) noexcept {
     if (val_ref.is_const) {
-        // TODO(ts): materialize constant
-        (void)scratch;
-        assert(0);
-        exit(1);
+        derived()->materialize_constant(val_ref, scratch);
+        assert(scratch.cur_reg.valid());
+        return scratch.cur_reg;
     }
 
     const auto reg = val_ref.alloc_reg(true);
@@ -801,10 +800,8 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::val_as_specific_reg(
         ValuePartRef &val_ref, AsmReg reg) noexcept {
     if (val_ref.is_const) {
-        // TODO(ts): materialize constant
-        (void)reg;
-        assert(0);
-        exit(1);
+        derived()->materialize_constant(val_ref, reg);
+        return reg;
     }
 
     assert(!val_ref.assignment().fixed_assignment());
@@ -859,6 +856,30 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     assert(val_assignment(local_idx) != nullptr);
 
     return result_ref_eager(local_idx, part);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::result_ref_salvage(
+        ValLocalIdx    local_idx,
+        u32            part,
+        ValuePartRef &&arg,
+        u32            ref_adjust) noexcept {
+    AsmReg orig;
+    return result_ref_salvage_with_original(
+        local_idx, part, std::move(arg), orig, ref_adjust);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
+    CompilerBase<Adaptor, Derived, Config>::result_ref_salvage(
+        IRValueRef     value,
+        u32            part,
+        ValuePartRef &&arg,
+        u32            ref_adjust) noexcept {
+    AsmReg orig;
+    return result_ref_salvage_with_original(
+        value, part, std::move(arg), orig, ref_adjust);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -940,7 +961,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
         lhs_reg = arg.alloc_reg();
 
         const auto &liveness = analyzer.liveness_info((u32)arg.local_idx());
-        if (arg.ref_count() <= ref_adjust
+        if (!ap_res.fixed_assignment() && arg.ref_count() <= ref_adjust
             && (liveness.last < cur_block_idx
                 || (liveness.last == cur_block_idx && !liveness.last_full))) {
             // can salvage

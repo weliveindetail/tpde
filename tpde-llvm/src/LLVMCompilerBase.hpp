@@ -186,6 +186,10 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
                             bool) noexcept {
         return false;
     }
+
+    bool compile_icmp(IRValueRef, llvm::Instruction *, InstRange) noexcept {
+        return false;
+    }
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -944,6 +948,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::Select: return compile_select(val_idx, i);
     case llvm::Instruction::GetElementPtr:
         return compile_gep(val_idx, i, remaining);
+    case llvm::Instruction::ICmp:
+        return derived()->compile_icmp(val_idx, i, remaining);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",

@@ -491,6 +491,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
     };
 
     Jump invert_jump(Jump jmp) noexcept;
+    Jump swap_jump(Jump jmp) noexcept;
 
     void generate_branch_to_block(Jump       jmp,
                                   IRBlockRef target,
@@ -498,6 +499,8 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
                                   bool       last_inst) noexcept;
 
     void generate_raw_jump(Jump jmp, Assembler::Label target) noexcept;
+
+    void generate_raw_set(Jump jmp, AsmReg dst) noexcept;
 
     void spill_before_call(CallingConv calling_conv, u64 except_mask = 0);
 
@@ -1537,6 +1540,35 @@ typename CompilerX64<Adaptor, Derived, BaseTy, Config>::Jump
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
+          class BaseTy,
+          typename Config>
+typename CompilerX64<Adaptor, Derived, BaseTy, Config>::Jump
+    CompilerX64<Adaptor, Derived, BaseTy, Config>::swap_jump(
+        Jump jmp) noexcept {
+    switch (jmp) {
+    case Jump::ja: return Jump::jb;
+    case Jump::jae: return Jump::jbe;
+    case Jump::jb: return Jump::ja;
+    case Jump::jbe: return Jump::jae;
+    case Jump::je: return Jump::je;
+    case Jump::jg: return Jump::jl;
+    case Jump::jge: return Jump::jle;
+    case Jump::jl: return Jump::jg;
+    case Jump::jle: return Jump::jge;
+    case Jump::jmp: return Jump::jmp;
+    case Jump::jne: return Jump::jne;
+    case Jump::jno: return Jump::jno;
+    case Jump::jo: return Jump::jo;
+    case Jump::js: return Jump::js;
+    case Jump::jns: return Jump::jns;
+    case Jump::jp: return Jump::jp;
+    case Jump::jnp: return Jump::jnp;
+    }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
           typename BaseTy,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_branch_to_block(
@@ -1619,6 +1651,35 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
         case Jump::jp: ASMNC(JP, target); break;
         case Jump::jnp: ASMNC(JNP, target); break;
         }
+    }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_set(
+    Jump jmp, AsmReg dst) noexcept {
+    ASM(MOV32ri, dst, 0);
+    switch (jmp) {
+    case Jump::ja: ASM(SETA8r, dst); break;
+    case Jump::jae: ASM(SETNC8r, dst); break;
+    case Jump::jb: ASM(SETC8r, dst); break;
+    case Jump::jbe: ASM(SETBE8r, dst); break;
+    case Jump::je: ASM(SETZ8r, dst); break;
+    case Jump::jg: ASM(SETG8r, dst); break;
+    case Jump::jge: ASM(SETGE8r, dst); break;
+    case Jump::jl: ASM(SETL8r, dst); break;
+    case Jump::jle: ASM(SETLE8r, dst); break;
+    case Jump::jmp: ASM(MOV32ri, dst, 1); break;
+    case Jump::jne: ASM(SETNZ8r, dst); break;
+    case Jump::jno: ASM(SETNO8r, dst); break;
+    case Jump::jo: ASM(SETO8r, dst); break;
+    case Jump::js: ASM(SETS8r, dst); break;
+    case Jump::jns: ASM(SETNS8r, dst); break;
+    case Jump::jp: ASM(SETP8r, dst); break;
+    case Jump::jnp: ASM(SETNP8r, dst); break;
     }
 }
 

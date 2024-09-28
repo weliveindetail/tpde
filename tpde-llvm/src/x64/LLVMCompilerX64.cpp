@@ -91,10 +91,14 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_alloca(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_br(IRValueRef, llvm::Instruction *) noexcept;
+    void generate_conditional_branch(Jump       jmp,
+                                     IRBlockRef true_target,
+                                     IRBlockRef false_target) noexcept;
     bool compile_call_inner(IRValueRef,
                             llvm::CallInst *,
                             std::variant<SymRef, ValuePartRef> &,
                             bool) noexcept;
+    bool compile_icmp(IRValueRef, llvm::Instruction *, InstRange) noexcept;
 
     AsmOperand::ArbitraryAddress
          resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
@@ -540,10 +544,6 @@ bool LLVMCompilerX64::compile_br(IRValueRef, llvm::Instruction *inst) noexcept {
 
     const auto true_block  = adaptor->block_lookup[br->getSuccessor(0)];
     const auto false_block = adaptor->block_lookup[br->getSuccessor(1)];
-    const auto next_block  = this->analyzer.block_ref(this->next_block());
-
-    const auto true_needs_split  = this->branch_needs_split(true_block);
-    const auto false_needs_split = this->branch_needs_split(false_block);
 
     {
         ScratchReg scratch{this};
@@ -552,25 +552,35 @@ bool LLVMCompilerX64::compile_br(IRValueRef, llvm::Instruction *inst) noexcept {
         ASM(TEST32ri, cond_reg, 1);
     }
 
+    generate_conditional_branch(Jump::jne, true_block, false_block);
+
+    return true;
+}
+
+void LLVMCompilerX64::generate_conditional_branch(
+    Jump jmp, IRBlockRef true_target, IRBlockRef false_target) noexcept {
+    const auto next_block = this->analyzer.block_ref(this->next_block());
+
+    const auto true_needs_split  = this->branch_needs_split(true_target);
+    const auto false_needs_split = this->branch_needs_split(false_target);
+
     const auto spilled = this->spill_before_branch();
 
-    if (next_block == true_block
-        || (next_block != false_block && true_needs_split)) {
+    if (next_block == true_target
+        || (next_block != false_target && true_needs_split)) {
         generate_branch_to_block(
-            Jump::je, false_block, false_needs_split, false);
-        generate_branch_to_block(Jump::jmp, true_block, false, true);
-    } else if (next_block == false_block) {
-        generate_branch_to_block(
-            Jump::jne, true_block, true_needs_split, false);
-        generate_branch_to_block(Jump::jmp, false_block, false, true);
+            invert_jump(jmp), false_target, false_needs_split, false);
+        generate_branch_to_block(Jump::jmp, true_target, false, true);
+    } else if (next_block == false_target) {
+        generate_branch_to_block(jmp, true_target, true_needs_split, false);
+        generate_branch_to_block(Jump::jmp, false_target, false, true);
     } else {
         assert(true_needs_split);
-        this->generate_branch_to_block(Jump::jne, true_block, false, false);
-        this->generate_branch_to_block(Jump::jmp, false_block, false, true);
+        this->generate_branch_to_block(jmp, true_target, false, false);
+        this->generate_branch_to_block(Jump::jmp, false_target, false, true);
     }
 
     this->release_spilled_regs(spilled);
-    return true;
 }
 
 bool LLVMCompilerX64::compile_call_inner(
@@ -631,6 +641,253 @@ bool LLVMCompilerX64::compile_call_inner(
                   results,
                   tpde::x64::CallingConv::SYSV_CC,
                   var_arg);
+    return true;
+}
+
+bool LLVMCompilerX64::compile_icmp(IRValueRef         inst_idx,
+                                   llvm::Instruction *inst,
+                                   InstRange          remaining) noexcept {
+    auto *cmp    = llvm::cast<llvm::ICmpInst>(inst);
+    auto *cmp_ty = cmp->getOperand(0)->getType();
+    assert(cmp_ty->isIntegerTy() || cmp_ty->isPointerTy());
+    u32 int_width = 64;
+    if (cmp_ty->isIntegerTy()) {
+        int_width = cmp_ty->getIntegerBitWidth();
+    }
+
+    Jump jump;
+    bool is_signed = false;
+    switch (cmp->getPredicate()) {
+        using enum llvm::CmpInst::Predicate;
+    case ICMP_EQ: jump = Jump::je; break;
+    case ICMP_NE: jump = Jump::jne; break;
+    case ICMP_UGT: jump = Jump::ja; break;
+    case ICMP_UGE: jump = Jump::jae; break;
+    case ICMP_ULT: jump = Jump::jb; break;
+    case ICMP_ULE: jump = Jump::jbe; break;
+    case ICMP_SGT:
+        jump      = Jump::jg;
+        is_signed = true;
+        break;
+    case ICMP_SGE:
+        jump      = Jump::jge;
+        is_signed = true;
+        break;
+    case ICMP_SLT:
+        jump      = Jump::jl;
+        is_signed = true;
+        break;
+    case ICMP_SLE:
+        jump      = Jump::jle;
+        is_signed = true;
+        break;
+    default: __builtin_unreachable();
+    }
+
+    auto lhs = this->val_ref(llvm_val_idx(cmp->getOperand(0)), 0);
+    auto rhs = this->val_ref(llvm_val_idx(cmp->getOperand(1)), 0);
+
+    const auto try_fuse_compare =
+        [&](std::variant<ValuePartRef, ScratchReg> &&lhs) {
+            if ((remaining.from != remaining.to)
+                && (analyzer.liveness_info((u32)val_idx(inst_idx)).ref_count
+                    <= 2)) {
+                // Check if the next instruction is a condbr
+                auto *next = llvm::dyn_cast<llvm::Instruction>(
+                    adaptor->values[*remaining.from].val);
+
+                if (next->getOpcode() == llvm::Instruction::Br) {
+                    // Check if the branch uses our result
+                    auto *branch = llvm::dyn_cast<llvm::BranchInst>(next);
+                    if (branch->isConditional()
+                        && branch->getCondition() == cmp) {
+                        // free the operands of the compare if possible
+                        if (std::holds_alternative<ValuePartRef>(lhs)) {
+                            std::get<ValuePartRef>(lhs).reset();
+                        } else {
+                            std::get<ScratchReg>(lhs).reset();
+                        }
+                        rhs.reset();
+
+                        // generate the branch
+                        const auto true_block =
+                            adaptor->block_lookup[branch->getSuccessor(0)];
+                        const auto false_block =
+                            adaptor->block_lookup[branch->getSuccessor(1)];
+
+                        generate_conditional_branch(
+                            jump, true_block, false_block);
+
+                        this->adaptor->val_set_fused(*remaining.from, true);
+                        return;
+                    }
+                }
+            }
+
+            if (std::holds_alternative<ValuePartRef>(lhs)) {
+                auto res_ref = result_ref_salvage(
+                    inst_idx, 0, std::move(std::get<ValuePartRef>(lhs)));
+                generate_raw_set(jump, res_ref.cur_reg());
+                set_value(res_ref, res_ref.cur_reg());
+            } else {
+                auto res_ref = result_ref_lazy(inst_idx, 0);
+                generate_raw_set(jump, std::get<ScratchReg>(lhs).cur_reg);
+                set_value(res_ref, std::get<ScratchReg>(lhs));
+            }
+        };
+
+    if (int_width == 128) {
+        auto lhs_high = this->val_ref(llvm_val_idx(cmp->getOperand(0)), 1);
+        auto rhs_high = this->val_ref(llvm_val_idx(cmp->getOperand(1)), 1);
+
+        // for 128 bit compares, we need to swap the operands sometimes
+        if ((jump == Jump::ja) || (jump == Jump::jbe) || (jump == Jump::jle)
+            || (jump == Jump::jg)) {
+            std::swap(lhs, rhs);
+            std::swap(lhs_high, rhs_high);
+            jump = swap_jump(jump);
+        }
+
+        // Compare the ints using carried subtraction
+        ScratchReg scratch1{this}, scratch2{this}, scratch3{this},
+            scratch4{this};
+        if ((jump == Jump::je) || (jump == Jump::jne)) {
+            // for eq,neq do something a bit quicker
+            lhs.reload_into_specific_fixed(this, scratch1.alloc_gp());
+            lhs_high.reload_into_specific_fixed(this, scratch2.alloc_gp());
+            const auto rhs_reg      = this->val_as_reg(rhs, scratch3);
+            const auto rhs_reg_high = this->val_as_reg(rhs_high, scratch4);
+
+            ASM(XOR64rr, scratch1.cur_reg, rhs_reg);
+            ASM(XOR64rr, scratch2.cur_reg, rhs_reg_high);
+            ASM(OR64rr, scratch1.cur_reg, scratch2.cur_reg);
+        } else {
+            const auto lhs_reg      = this->val_as_reg(lhs, scratch1);
+            const auto lhs_reg_high = this->val_as_reg(lhs_high, scratch2);
+            const auto rhs_reg      = this->val_as_reg(rhs, scratch3);
+            const auto rhs_reg_high = this->val_as_reg(rhs_high, scratch4);
+
+            ASM(CMP64rr, lhs_reg, rhs_reg);
+            ASM(SBB64rr, lhs_reg_high, rhs_reg_high);
+        }
+        lhs_high.reset_without_refcount();
+        rhs_high.reset_without_refcount();
+        try_fuse_compare(std::move(lhs));
+        return true;
+    }
+
+    if (lhs.is_const && !rhs.is_const) {
+        std::swap(lhs, rhs);
+        jump = swap_jump(jump);
+    }
+
+    ScratchReg scratch1{this}, scratch2{this};
+    AsmOperand lhs_op = std::move(lhs);
+    AsmOperand rhs_op = std::move(rhs);
+
+    if (int_width == 8) {
+        if (is_signed) {
+            encode_sext_8_to_32(std::move(lhs_op), scratch1);
+        } else {
+            encode_zext_8_to_32(std::move(lhs_op), scratch1);
+        }
+        lhs_op = std::move(scratch1);
+    } else if (int_width == 16) {
+        if (is_signed) {
+            encode_sext_16_to_32(std::move(lhs_op), scratch1);
+        } else {
+            encode_zext_16_to_32(std::move(lhs_op), scratch1);
+        }
+        lhs_op = std::move(scratch1);
+    } else if (int_width < 32) {
+        if (is_signed) {
+            const auto shift_amount = 32 - int_width;
+            encode_sext_arbitrary_to_32(
+                std::move(lhs_op), EncodeImm{shift_amount}, scratch1);
+        } else {
+            const u32 mask = (1ull << int_width) - 1;
+            encode_landi32(std::move(lhs_op), EncodeImm{mask}, scratch1);
+        }
+        lhs_op = std::move(scratch1);
+    } else if (int_width != 32 && int_width < 64) {
+        if (is_signed) {
+            const auto shift_amount = 64 - int_width;
+            encode_sext_arbitrary_to_64(
+                std::move(lhs_op), EncodeImm{shift_amount}, scratch1);
+        } else {
+            const u64 mask = (1ull << int_width) - 1;
+            encode_landi64(std::move(lhs_op), EncodeImm{mask}, scratch1);
+        }
+        lhs_op = std::move(scratch1);
+    }
+
+
+    if (!rhs_op.is_imm()) {
+        if (int_width == 8) {
+            if (is_signed) {
+                encode_sext_8_to_32(std::move(rhs_op), scratch2);
+            } else {
+                encode_zext_8_to_32(std::move(rhs_op), scratch2);
+            }
+            rhs_op = std::move(scratch2);
+        } else if (int_width == 16) {
+            if (is_signed) {
+                encode_sext_16_to_32(std::move(rhs_op), scratch2);
+            } else {
+                encode_zext_16_to_32(std::move(rhs_op), scratch2);
+            }
+            rhs_op = std::move(scratch2);
+        } else if (int_width < 32) {
+            if (is_signed) {
+                const auto shift_amount = 32 - int_width;
+                encode_sext_arbitrary_to_32(
+                    std::move(rhs_op), EncodeImm{shift_amount}, scratch2);
+            } else {
+                const u32 mask = (1ull << int_width) - 1;
+                encode_landi32(std::move(rhs_op), EncodeImm{mask}, scratch2);
+            }
+            rhs_op = std::move(scratch2);
+        } else if (int_width != 32 && int_width < 64) {
+            if (is_signed) {
+                const auto shift_amount = 64 - int_width;
+                encode_sext_arbitrary_to_64(
+                    std::move(rhs_op), EncodeImm{shift_amount}, scratch2);
+            } else {
+                const u64 mask = (1ull << int_width) - 1;
+                encode_landi64(std::move(rhs_op), EncodeImm{mask}, scratch2);
+            }
+            rhs_op = std::move(scratch2);
+        }
+    } else if (is_signed && int_width != 64 && int_width != 32) {
+        u64 mask  = (1ull << int_width) - 1;
+        u64 shift = 64 - int_width;
+        rhs_op.imm().const_u64 =
+            ((i64)((rhs_op.imm().const_u64 & mask) << shift)) >> shift;
+    }
+
+    const auto lhs_reg = lhs_op.as_reg(this);
+    if (int_width <= 32) {
+        if (rhs_op.encodeable_as_imm32_sext()) {
+            ASM(CMP32ri, lhs_reg, rhs_op.imm().const_u64);
+        } else {
+            const auto rhs_reg = rhs_op.as_reg(this);
+            ASM(CMP32rr, lhs_reg, rhs_reg);
+        }
+    } else {
+        if (rhs_op.encodeable_as_imm32_sext()) {
+            ASM(CMP64ri, lhs_reg, rhs_op.imm().const_u64);
+        } else {
+            const auto rhs_reg = rhs_op.as_reg(this);
+            ASM(CMP64rr, lhs_reg, rhs_reg);
+        }
+    }
+
+    if (std::holds_alternative<ValuePartRef>(lhs_op.state)) {
+        try_fuse_compare(std::move(std::get<ValuePartRef>(lhs_op.state)));
+    } else {
+        assert(std::holds_alternative<ScratchReg>(lhs_op.state));
+        try_fuse_compare(std::move(std::get<ScratchReg>(lhs_op.state)));
+    }
     return true;
 }
 
