@@ -320,3 +320,32 @@ i64 TARGET_V1 select_i64(u8 cond, i64 val1, i64 val2) { return ((cond & 1) ? val
 i128 TARGET_V1 select_i128(u8 cond, i128 val1, i128 val2) { return ((cond & 1) ? val1 : val2); }
 float TARGET_V1 select_f32(u8 cond, float val1, float val2) { return ((cond & 1) ? val1 : val2); }
 double TARGET_V1 select_f64(u8 cond, double val1, double val2) { return ((cond & 1) ? val1 : val2); }
+
+// --------------------------
+// float comparisons
+// --------------------------
+
+#define FOP_ORD(ty, name, op) u32 TARGET_V1 fcmp_##name##_##ty(ty a, ty b) { return !__builtin_isunordered(a, b) && (a op b); }
+#define FOP_UNRD(ty, name, op) u32 TARGET_V1 fcmp_##name##_##ty(ty a, ty b) { return __builtin_isunordered(a, b) || (a op b); }
+#define FOPS(ty) FOP_ORD(ty, oeq, ==) \
+    FOP_ORD(ty, ogt, >) \
+    FOP_ORD(ty, oge, >=) \
+    FOP_ORD(ty, olt, <) \
+    FOP_ORD(ty, ole, <=) \
+    FOP_ORD(ty, one, !=) \
+    u32 TARGET_V1 fcmp_ord_##ty(ty a, ty b) { return !__builtin_isunordered(a, b); } \
+    FOP_UNRD(ty, ueq, ==) \
+    FOP_UNRD(ty, ugt, >) \
+    FOP_UNRD(ty, uge, >=) \
+    FOP_UNRD(ty, ult, <) \
+    FOP_UNRD(ty, ule, <=) \
+    FOP_UNRD(ty, une, !=) \
+    u32 TARGET_V1 fcmp_uno_##ty(ty a, ty b) { return __builtin_isunordered(a, b); }
+
+FOPS(float)
+FOPS(double)
+
+
+#undef FOP_ORD
+#undef FOP_UNORD
+#undef FOPS

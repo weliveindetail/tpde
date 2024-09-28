@@ -169,6 +169,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_call(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_select(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_gep(IRValueRef, llvm::Instruction *, InstRange) noexcept;
+    bool compile_fcmp(IRValueRef, llvm::Instruction *) noexcept;
 
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept {
         return false;
@@ -950,6 +951,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
         return compile_gep(val_idx, i, remaining);
     case llvm::Instruction::ICmp:
         return derived()->compile_icmp(val_idx, i, remaining);
+    case llvm::Instruction::FCmp: return compile_fcmp(val_idx, i);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -2666,6 +2668,85 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
     this->set_value(res_ref, res_scratch);
 
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    using AsmOperand = typename Derived::AsmOperand;
+
+    auto *cmp    = llvm::cast<llvm::FCmpInst>(inst);
+    auto *cmp_ty = cmp->getOperand(0)->getType();
+    assert(cmp_ty->isFloatTy() || cmp_ty->isDoubleTy());
+    const auto is_double = cmp_ty->isDoubleTy();
+    const auto pred      = cmp->getPredicate();
+
+    if (pred == llvm::CmpInst::FCMP_FALSE || pred == llvm::CmpInst::FCMP_TRUE) {
+        auto res_ref   = this->result_ref_eager(inst_idx, 0);
+        auto const_ref = ValuePartRef{
+            (pred == llvm::CmpInst::FCMP_FALSE ? 0u : 1u), Config::GP_BANK, 1};
+        derived()->materialize_constant(const_ref, res_ref.cur_reg());
+        this->set_value(res_ref, res_ref.cur_reg());
+        return true;
+    }
+
+    using EncodeFnTy = bool (Derived::*)(AsmOperand, AsmOperand, ScratchReg &);
+    using Pred       = llvm::CmpInst::Predicate;
+
+// disable Wpedantic here since these are compiler extensions
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wc99-designator"
+    constexpr u32 F               = Pred::FIRST_FCMP_PREDICATE;
+    EncodeFnTy encode_fns[Pred::LAST_FCMP_PREDICATE - Pred::FIRST_FCMP_PREDICATE
+                          + 1][2] = {
+        [Pred::FCMP_FALSE - F] = {                        nullptr,nullptr                                                                  },
+        [Pred::FCMP_TRUE - F]  = {                        nullptr, nullptr},
+        [Pred::FCMP_OEQ - F]   = {&Derived::encode_fcmp_oeq_float,
+                                  &Derived::encode_fcmp_oeq_double        },
+        [Pred::FCMP_OGT - F]   = {&Derived::encode_fcmp_ogt_float,
+                                  &Derived::encode_fcmp_ogt_double        },
+        [Pred::FCMP_OGE - F]   = {&Derived::encode_fcmp_oge_float,
+                                  &Derived::encode_fcmp_oge_double        },
+        [Pred::FCMP_OLT - F]   = {&Derived::encode_fcmp_olt_float,
+                                  &Derived::encode_fcmp_olt_double        },
+        [Pred::FCMP_OLE - F]   = {&Derived::encode_fcmp_ole_float,
+                                  &Derived::encode_fcmp_ole_double        },
+        [Pred::FCMP_ONE - F]   = {&Derived::encode_fcmp_one_float,
+                                  &Derived::encode_fcmp_one_double        },
+        [Pred::FCMP_ORD - F]   = {&Derived::encode_fcmp_ord_float,
+                                  &Derived::encode_fcmp_ord_double        },
+        [Pred::FCMP_UEQ - F]   = {&Derived::encode_fcmp_ueq_float,
+                                  &Derived::encode_fcmp_ueq_double        },
+        [Pred::FCMP_UGT - F]   = {&Derived::encode_fcmp_ugt_float,
+                                  &Derived::encode_fcmp_ugt_double        },
+        [Pred::FCMP_UGE - F]   = {&Derived::encode_fcmp_uge_float,
+                                  &Derived::encode_fcmp_uge_double        },
+        [Pred::FCMP_ULT - F]   = {&Derived::encode_fcmp_ult_float,
+                                  &Derived::encode_fcmp_ult_double        },
+        [Pred::FCMP_ULE - F]   = {&Derived::encode_fcmp_ule_float,
+                                  &Derived::encode_fcmp_ule_double        },
+        [Pred::FCMP_UNE - F]   = {&Derived::encode_fcmp_une_float,
+                                  &Derived::encode_fcmp_une_double        },
+        [Pred::FCMP_UNO - F]   = {&Derived::encode_fcmp_uno_float,
+                                  &Derived::encode_fcmp_uno_double        },
+    };
+#pragma GCC diagnostic pop
+
+    AsmOperand lhs_op = this->val_ref(llvm_val_idx(cmp->getOperand(0)), 0);
+    AsmOperand rhs_op = this->val_ref(llvm_val_idx(cmp->getOperand(1)), 0);
+    ScratchReg res_scratch{derived()};
+    auto       res_ref = this->result_ref_lazy(inst_idx, 0);
+
+    if (!(derived()
+              ->*encode_fns[pred - Pred::FIRST_FCMP_PREDICATE]
+                           [is_double ? 1 : 0])(
+            std::move(lhs_op), std::move(rhs_op), res_scratch)) {
+        return false;
+    }
+
+    this->set_value(res_ref, res_scratch);
     return true;
 }
 } // namespace tpde_llvm

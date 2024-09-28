@@ -415,6 +415,34 @@ struct EncodeCompiler {
     bool encode_select_i128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, AsmOperand param_4, ScratchReg &result_0, ScratchReg &result_1);
     bool encode_select_f32(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0);
     bool encode_select_f64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0);
+    bool encode_fcmp_oeq_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ogt_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_oge_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_olt_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ole_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_one_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ord_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ueq_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ugt_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_uge_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ult_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ule_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_une_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_uno_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_oeq_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ogt_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_oge_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_olt_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ole_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_one_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ord_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ueq_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ugt_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_uge_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ult_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_ule_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_une_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_fcmp_uno_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
 
 
     SymRef sym_fnegf32_cp0 = Assembler::INVALID_SYM_REF;
@@ -12737,6 +12765,2482 @@ template <typename Adaptor,
     // Placing the convergence point for registers here
     derived()->assembler.label_place(ret_converge_label);
     result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_oeq_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_oeq_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept CMPSSrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
+    //   renamable $eax = MOVSS2DIrr killed renamable $xmm0
+    //   renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_oeq_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept CMPSSrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
+    // SSE_CMPSSrri has a preferred encoding as SSE_CMPSSrmi if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // operand 2 is an immediate operand
+
+        ASMD(SSE_CMPSSrmi, scratch_xmm0.cur_reg, inst0_op1, 0);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+        // operand 2 is an immediate operand
+
+        ASMD(SSE_CMPSSrri, scratch_xmm0.cur_reg, inst0_op1, 0);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // renamable $eax = MOVSS2DIrr killed renamable $xmm0
+    // operand 1 is xmm0
+    // operand 1(xmm0) is a simple register
+    AsmReg inst1_op1 = scratch_xmm0.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(SSE_MOVD_X2Grr, scratch_ax.cur_reg, inst1_op1);
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(AND32ri, scratch_ax.cur_reg, 1);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ogt_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ogt_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ogt_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETA8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_oge_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_oge_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_oge_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETNC8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_olt_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_olt_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_olt_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op1 = param_0.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm1 is killed and marked as dead
+    // argument xmm0 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETA8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ole_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ole_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ole_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op1 = param_0.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm1 is killed and marked as dead
+    // argument xmm0 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETNC8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_one_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_one_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 5, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_one_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 5, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETNZ8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ord_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ord_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 11, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ord_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 11, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETNP8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ueq_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ueq_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 4, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ueq_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 4, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETZ8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ugt_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ugt_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ugt_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op1 = param_0.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm1 is killed and marked as dead
+    // argument xmm0 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_uge_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_uge_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_uge_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op1 = param_0.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm1 is killed and marked as dead
+    // argument xmm0 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETBE8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ult_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ult_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ult_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ule_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ule_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ule_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETBE8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_une_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_une_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept CMPSSrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
+    //   renamable $eax = MOVSS2DIrr killed renamable $xmm0
+    //   renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_une_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept CMPSSrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
+    // SSE_CMPSSrri has a preferred encoding as SSE_CMPSSrmi if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // operand 2 is an immediate operand
+
+        ASMD(SSE_CMPSSrmi, scratch_xmm0.cur_reg, inst0_op1, 4);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+        // operand 2 is an immediate operand
+
+        ASMD(SSE_CMPSSrri, scratch_xmm0.cur_reg, inst0_op1, 4);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // renamable $eax = MOVSS2DIrr killed renamable $xmm0
+    // operand 1 is xmm0
+    // operand 1(xmm0) is a simple register
+    AsmReg inst1_op1 = scratch_xmm0.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(SSE_MOVD_X2Grr, scratch_ax.cur_reg, inst1_op1);
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(AND32ri, scratch_ax.cur_reg, 1);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_uno_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_uno_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 10, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_uno_float.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISSrr has a preferred encoding as SSE_UCOMISSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISSrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISSrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 10, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETP8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_oeq_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_oeq_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept CMPSDrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
+    //   renamable $rax = MOVSDto64rr killed renamable $xmm0
+    //   renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags, implicit killed $rax, implicit-def $rax
+    //   $eax = KILL killed renamable $eax, implicit killed $rax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_oeq_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept CMPSDrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
+    // SSE_CMPSDrri has a preferred encoding as SSE_CMPSDrmi if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // operand 2 is an immediate operand
+
+        ASMD(SSE_CMPSDrmi, scratch_xmm0.cur_reg, inst0_op1, 0);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+        // operand 2 is an immediate operand
+
+        ASMD(SSE_CMPSDrri, scratch_xmm0.cur_reg, inst0_op1, 0);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // renamable $rax = MOVSDto64rr killed renamable $xmm0
+    // operand 1 is xmm0
+    // operand 1(xmm0) is a simple register
+    AsmReg inst1_op1 = scratch_xmm0.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(SSE_MOVQ_X2Grr, scratch_ax.cur_reg, inst1_op1);
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags, implicit killed $rax, implicit-def $rax
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+    // Handling implicit operand ax
+    // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+    // Ignoring implicit def RAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(AND32ri, scratch_ax.cur_reg, 1);
+    // argument ax is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // $eax = KILL killed renamable $eax, implicit killed $rax
+    // KILL is a no-op
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ogt_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ogt_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ogt_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETA8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_oge_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_oge_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_oge_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETNC8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_olt_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_olt_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_olt_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op1 = param_0.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm1 is killed and marked as dead
+    // argument xmm0 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETA8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ole_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ole_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ole_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op1 = param_0.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm1 is killed and marked as dead
+    // argument xmm0 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETNC8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_one_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_one_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 5, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_one_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 5, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETNZ8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ord_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ord_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 11, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ord_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 11, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETNP8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ueq_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ueq_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 4, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ueq_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 4, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETZ8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ugt_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ugt_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ugt_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op1 = param_0.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm1 is killed and marked as dead
+    // argument xmm0 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_uge_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_uge_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_uge_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm1, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm0 is base for memory operand to use
+        // xmm0 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // operand 1 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op1 = param_0.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm1 is killed and marked as dead
+    // argument xmm0 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETBE8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ult_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ult_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ult_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_ule_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_ule_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_ule_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETBE8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_une_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_une_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $xmm0 = nofpexcept CMPSDrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
+    //   renamable $rax = MOVSDto64rr killed renamable $xmm0
+    //   renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags, implicit killed $rax, implicit-def $rax
+    //   $eax = KILL killed renamable $eax, implicit killed $rax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_une_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = nofpexcept CMPSDrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
+    // SSE_CMPSDrri has a preferred encoding as SSE_CMPSDrmi if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // operand 2 is an immediate operand
+
+        ASMD(SSE_CMPSDrmi, scratch_xmm0.cur_reg, inst0_op1, 4);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+        // operand 2 is an immediate operand
+
+        ASMD(SSE_CMPSDrri, scratch_xmm0.cur_reg, inst0_op1, 4);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // renamable $rax = MOVSDto64rr killed renamable $xmm0
+    // operand 1 is xmm0
+    // operand 1(xmm0) is a simple register
+    AsmReg inst1_op1 = scratch_xmm0.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(SSE_MOVQ_X2Grr, scratch_ax.cur_reg, inst1_op1);
+    // argument xmm0 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags, implicit killed $rax, implicit-def $rax
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+    // Handling implicit operand ax
+    // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+    // Ignoring implicit def RAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(AND32ri, scratch_ax.cur_reg, 1);
+    // argument ax is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // $eax = KILL killed renamable $eax, implicit killed $rax
+    // KILL is a no-op
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fcmp_uno_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function fcmp_uno_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $xmm0, $xmm1
+    //   renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    //   nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 10, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function fcmp_uno_double.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $eax = XOR32rr undef $eax(tied-def 0), undef $eax, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is ax
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is ax
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_ax.alloc_from_bank(0);
+
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_ax.cur_reg, inst0_op1);
+    // result ax is marked as alive
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm1, implicit-def $eflags, implicit $mxcsr
+    // SSE_UCOMISDrr has a preferred encoding as SSE_UCOMISDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_UCOMISDrm, inst1_op0, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        AsmReg inst1_op0 = param_0.as_reg(this);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_UCOMISDrr, inst1_op0, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 10, implicit killed $eflags, implicit killed $eax, implicit-def $eax
+    // Handling implicit operand ax
+    // Value is already in register, no need to copy
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETP8r, scratch_ax.cur_reg);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
     return true;
 
 }
