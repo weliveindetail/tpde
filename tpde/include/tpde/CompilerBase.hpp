@@ -1216,8 +1216,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
         auto local_idx = register_file.reg_local_idx(AsmReg{reg});
         auto part      = register_file.reg_part(AsmReg{reg});
         if (local_idx == INVALID_VAL_LOCAL_IDX) {
-            // TODO(ts): can this actually happen?
-            assert(0);
+            // scratch regs can never be held across blocks
             return false;
         }
         auto *assignment = val_assignment(local_idx);

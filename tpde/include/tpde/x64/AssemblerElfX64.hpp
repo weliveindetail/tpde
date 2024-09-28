@@ -22,6 +22,8 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
     // TODO(ts): maybe move Labels into the compiler since they are kind of more
     // arch specific and probably don't change if u compile Elf/PE/Mach-O? then
     // we could just turn the assemblers into "ObjectWriters"
+    // TODO(ts): also reset labels after each function since we basically
+    // only use SymRefs for cross-function references now?
     enum class Label : u32 {
     };
 
@@ -31,13 +33,19 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
 
     util::SmallBitSet<512> unresolved_labels;
 
+    enum class UnresolvedEntryKind : u8 {
+        JMP_OR_MEM_DISP,
+        JUMP_TABLE,
+    };
+
     struct UnresolvedEntry {
         u32 text_off        = 0u;
         u32 next_list_entry = ~0u;
     };
 
-    std::vector<UnresolvedEntry> unresolved_entries;
-    u32                          unresolved_next_free_entry = ~0u;
+    std::vector<UnresolvedEntry>     unresolved_entries;
+    std::vector<UnresolvedEntryKind> unresolved_entry_kinds;
+    u32                              unresolved_next_free_entry = ~0u;
 
     explicit AssemblerElfX64(const bool gen_obj) : Base{gen_obj} {}
 
@@ -50,9 +58,13 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
     [[nodiscard]] bool label_is_pending(Label label) const noexcept;
 
     void label_add_unresolved_jump_offset(Label, u32 text_imm32_off) noexcept;
+    void add_unresolved_entry(Label label,
+                              u32   text_off,
+                              UnresolvedEntryKind) noexcept;
 
     void label_place(Label label) noexcept;
 
+    void emit_jump_table(Label table, std::span<Label> labels) noexcept;
 
     // relocs
     void reloc_text_plt32(SymRef, u32 text_imm32_off) noexcept;
@@ -134,20 +146,30 @@ inline bool
 
 inline void AssemblerElfX64::label_add_unresolved_jump_offset(
     Label label, const u32 text_imm32_off) noexcept {
+    add_unresolved_entry(
+        label, text_imm32_off, UnresolvedEntryKind::JMP_OR_MEM_DISP);
+}
+
+inline void AssemblerElfX64::add_unresolved_entry(
+    Label label, u32 text_off, UnresolvedEntryKind kind) noexcept {
+    assert(label_is_pending(label));
+
     const auto idx = static_cast<u32>(label);
     assert(label_is_pending(label));
 
     auto pending_head = label_offsets[idx];
     if (unresolved_next_free_entry != ~0u) {
         auto entry                         = unresolved_next_free_entry;
-        unresolved_entries[entry].text_off = text_imm32_off;
+        unresolved_entries[entry].text_off = text_off;
+        unresolved_entry_kinds[entry]      = kind;
         unresolved_next_free_entry = unresolved_entries[entry].next_list_entry;
         unresolved_entries[entry].next_list_entry = pending_head;
         label_offsets[idx]                        = entry;
     } else {
         auto entry = static_cast<u32>(unresolved_entries.size());
         unresolved_entries.push_back(UnresolvedEntry{
-            .text_off = text_imm32_off, .next_list_entry = pending_head});
+            .text_off = text_off, .next_list_entry = pending_head});
+        unresolved_entry_kinds.push_back(kind);
         label_offsets[idx] = entry;
     }
 }
@@ -161,9 +183,22 @@ inline void AssemblerElfX64::label_place(Label label) noexcept {
     auto cur_entry = label_offsets[idx];
     while (cur_entry != ~0u) {
         auto &entry = unresolved_entries[cur_entry];
-        // fix the jump immediate
-        *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off) =
-            (text_off - entry.text_off) - 4;
+        switch (unresolved_entry_kinds[cur_entry]) {
+        case UnresolvedEntryKind::JMP_OR_MEM_DISP: {
+            // fix the jump immediate
+            *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off) =
+                (text_off - entry.text_off) - 4;
+            break;
+        }
+        case UnresolvedEntryKind::JUMP_TABLE: {
+            const auto table_off =
+                *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off);
+            const auto diff = (i32)text_off - (i32)table_off;
+            *reinterpret_cast<i32 *>(sec_text.data.data() + entry.text_off) =
+                diff;
+            break;
+        }
+        }
         auto next                  = entry.next_list_entry;
         entry.next_list_entry      = unresolved_next_free_entry;
         unresolved_next_free_entry = cur_entry;
@@ -172,6 +207,28 @@ inline void AssemblerElfX64::label_place(Label label) noexcept {
 
     label_offsets[idx] = text_off;
     unresolved_labels.mark_unset(idx);
+}
+
+inline void
+    AssemblerElfX64::emit_jump_table(const Label            table,
+                                     const std::span<Label> labels) noexcept {
+    text_ensure_space(4 + 4 * labels.size());
+    text_align_4();
+    label_place(table);
+    const auto table_off = text_cur_off();
+    for (u32 i = 0; i < labels.size(); i++) {
+        const auto entry_off = table_off + 4 * i;
+        if (label_is_pending(labels[i])) {
+            *reinterpret_cast<u32 *>(text_write_ptr) = table_off;
+            add_unresolved_entry(
+                labels[i], entry_off, UnresolvedEntryKind::JUMP_TABLE);
+        } else {
+            const auto label_off = this->label_offset(labels[i]);
+            const auto diff      = (i32)label_off - (i32)table_off;
+            *reinterpret_cast<i32 *>(text_write_ptr) = diff;
+        }
+        text_write_ptr += 4;
+    }
 }
 
 inline void
@@ -239,6 +296,7 @@ inline void AssemblerElfX64::eh_write_initial_cie_instrs() noexcept {
 inline void AssemblerElfX64::reset() noexcept {
     label_offsets.clear();
     unresolved_entries.clear();
+    unresolved_entry_kinds.clear();
     unresolved_labels.clear();
     unresolved_next_free_entry = ~0u;
     Base::reset();

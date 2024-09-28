@@ -15,6 +15,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     using Base = tpde::CompilerBase<LLVMAdaptor, Derived, Config>;
 
     using IRValueRef   = typename Base::IRValueRef;
+    using IRBlockRef   = typename Base::IRBlockRef;
     using IRFuncRef    = typename Base::IRFuncRef;
     using ScratchReg   = typename Base::ScratchReg;
     using ValuePartRef = typename Base::ValuePartRef;
@@ -170,6 +171,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_select(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_gep(IRValueRef, llvm::Instruction *, InstRange) noexcept;
     bool compile_fcmp(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_switch(IRValueRef, llvm::Instruction *) noexcept;
 
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept {
         return false;
@@ -952,6 +954,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     case llvm::Instruction::ICmp:
         return derived()->compile_icmp(val_idx, i, remaining);
     case llvm::Instruction::FCmp: return compile_fcmp(val_idx, i);
+    case llvm::Instruction::Switch: return compile_switch(val_idx, i);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -2747,6 +2750,190 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
     }
 
     this->set_value(res_ref, res_scratch);
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
+    IRValueRef, llvm::Instruction *inst) noexcept {
+    using EncodeImm   = typename Derived::EncodeImm;
+    auto *switch_inst = llvm::cast<llvm::SwitchInst>(inst);
+
+    ScratchReg scratch{this};
+    AsmReg     cmp_reg;
+    bool       width_is_32 = false;
+    {
+        auto arg_ref =
+            this->val_ref(llvm_val_idx(switch_inst->getCondition()), 0);
+        auto *arg_ty = switch_inst->getCondition()->getType();
+        assert(arg_ty->isIntegerTy() || arg_ty->isPointerTy());
+        u32 width = 64;
+        if (arg_ty->isIntegerTy()) {
+            width = arg_ty->getIntegerBitWidth();
+            assert(width <= 64);
+        }
+
+        if (width < 32) {
+            width_is_32 = true;
+            if (width == 8) {
+                derived()->encode_zext_8_to_32(std::move(arg_ref), scratch);
+            } else if (width == 16) {
+                derived()->encode_zext_16_to_32(std::move(arg_ref), scratch);
+            } else {
+                u32 mask = (1ull << width) - 1;
+                derived()->encode_landi32(
+                    std::move(arg_ref), EncodeImm{mask}, scratch);
+            }
+            cmp_reg = scratch.cur_reg;
+        } else if (width == 32) {
+            width_is_32 = true;
+            cmp_reg     = this->val_as_reg(arg_ref, scratch);
+            // make sure we can overwrite the register when we generate a jump
+            // table
+            if (arg_ref.can_salvage()) {
+                scratch.alloc_specific(arg_ref.salvage());
+            } else if (!arg_ref.is_const) {
+                arg_ref.reload_into_specific_fixed(this, scratch.alloc_gp());
+                cmp_reg = scratch.cur_reg;
+            }
+        } else if (width < 64) {
+            u64 mask = (1ull << width) - 1;
+            derived()->encode_landi64(
+                std::move(arg_ref), EncodeImm{mask}, scratch);
+            cmp_reg = scratch.cur_reg;
+        } else {
+            cmp_reg = this->val_as_reg(arg_ref, scratch);
+            // make sure we can overwrite the register when we generate a jump
+            // table
+            if (arg_ref.can_salvage()) {
+                scratch.alloc_specific(arg_ref.salvage());
+            } else if (!arg_ref.is_const) {
+                arg_ref.reload_into_specific_fixed(this, scratch.alloc_gp());
+                cmp_reg = scratch.cur_reg;
+            }
+        }
+    }
+
+    const auto spilled = this->spill_before_branch();
+
+    // get all cases, their target block and sort them in ascending order
+    tpde::util::SmallVector<std::pair<u64, IRBlockRef>, 64> cases;
+    assert(switch_inst->getNumCases() <= 200000);
+    cases.reserve(switch_inst->getNumCases());
+    for (auto case_val : switch_inst->cases()) {
+        cases.push_back(std::make_pair(
+            case_val.getCaseValue()->getZExtValue(),
+            this->adaptor->block_lookup[case_val.getCaseSuccessor()]));
+    }
+    std::sort(cases.begin(), cases.end(), [](const auto &lhs, const auto &rhs) {
+        return lhs.first < rhs.first;
+    });
+
+    // because some blocks might have PHI-values we need to first jump to a
+    // label which then fixes the registers and then jumps to the block
+    // TODO(ts): check which blocks need PHIs and otherwise jump directly to
+    // them? probably better for branch predictor
+
+    tpde::util::SmallVector<typename Assembler::Label, 64> case_labels;
+    for (auto i = 0u; i < cases.size(); ++i) {
+        case_labels.push_back(this->assembler.label_create());
+    }
+
+    const auto default_label = this->assembler.label_create();
+
+    const auto build_range = [&, this](
+                                 size_t begin, size_t end, const auto &self) {
+        assert(begin < end);
+        const auto num_cases = end - begin;
+        if (num_cases <= 4) {
+            // if there are four or less cases we just compare the values
+            // against each of them
+            for (auto i = 0u; i < num_cases; ++i) {
+                derived()->switch_emit_cmpeq(case_labels[begin + i],
+                                             cmp_reg,
+                                             cases[begin + i].first,
+                                             width_is_32);
+            }
+
+            derived()->generate_raw_jump(Derived::Jump::jmp, default_label);
+            return;
+        }
+
+        // check if the density of the values is high enough to warrant building
+        // a jump table
+        auto range = cases[end - 1].first - cases[begin].first;
+        // we will get wrong results if range is -1 so skip the jump table if
+        // that is the case
+        if (range != 0xFFFF'FFFF'FFFF'FFFF && (range / num_cases) < 8) {
+            // for gcc, it seems that if there are less than 8 values per
+            // case it will build a jump table so we do that, too
+
+            // the actual range is one greater than the result we get from
+            // subtracting so adjust for that
+            range += 1;
+
+            tpde::util::SmallVector<typename Assembler::Label, 32> label_vec;
+            std::span<typename Assembler::Label>                   labels;
+            if (range == num_cases) {
+                labels = std::span{case_labels.begin() + begin, num_cases};
+            } else {
+                label_vec.resize(range, default_label);
+                for (auto i = 0u; i < num_cases; ++i) {
+                    label_vec[cases[begin + i].first - cases[begin].first] =
+                        case_labels[begin + i];
+                }
+                labels = std::span{label_vec.begin(), range};
+            }
+
+            derived()->switch_emit_jump_table(default_label,
+                                              labels,
+                                              cmp_reg,
+                                              cases[begin].first,
+                                              cases[end - 1].first,
+                                              width_is_32);
+            return;
+        }
+
+        // do a binary search step
+        const auto half_len   = num_cases / 2;
+        const auto half_value = cases[begin + half_len].first;
+        const auto gt_label   = this->assembler.label_create();
+
+        // this will cmp against the input value, jump to the case if it is
+        // equal or to gt_label if the value is greater. Otherwise it will
+        // fall-through
+        derived()->switch_emit_binary_step(case_labels[begin + half_len],
+                                           gt_label,
+                                           cmp_reg,
+                                           half_value,
+                                           width_is_32);
+        // search the lower half
+        self(begin, begin + half_len, self);
+
+        // and the upper half
+        this->assembler.label_place(gt_label);
+        self(begin + half_len + 1, end, self);
+    };
+
+    build_range(0, case_labels.size(), build_range);
+
+    // write out the labels
+    this->assembler.label_place(default_label);
+    // TODO(ts): factor into arch-code?
+    derived()->generate_branch_to_block(
+        Derived::Jump::jmp,
+        this->adaptor->block_lookup[switch_inst->getDefaultDest()],
+        false,
+        false);
+
+    for (auto i = 0u; i < cases.size(); ++i) {
+        this->assembler.label_place(case_labels[i]);
+        derived()->generate_branch_to_block(
+            Derived::Jump::jmp, cases[i].second, false, false);
+    }
+
+    this->release_spilled_regs(spilled);
+
     return true;
 }
 } // namespace tpde_llvm

@@ -137,6 +137,9 @@ struct AssemblerElf {
     /// Align the text write pointer to 16 bytes
     void text_align_16() noexcept;
 
+    /// Align the text write pointer to 4 bytes
+    void text_align_4() noexcept;
+
     /// \returns The current used space in the text section
     [[nodiscard]] u32 text_cur_off() const noexcept;
 
@@ -532,6 +535,13 @@ void AssemblerElf<Derived>::text_align_16() noexcept {
     text_ensure_space(16);
     text_write_ptr = reinterpret_cast<u8 *>(
         util::align_up(reinterpret_cast<uintptr_t>(text_write_ptr), 16));
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::text_align_4() noexcept {
+    text_ensure_space(4);
+    text_write_ptr = reinterpret_cast<u8 *>(
+        util::align_up(reinterpret_cast<uintptr_t>(text_write_ptr), 4));
 }
 
 template <typename Derived>
