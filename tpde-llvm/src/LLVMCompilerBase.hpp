@@ -172,6 +172,9 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_gep(IRValueRef, llvm::Instruction *, InstRange) noexcept;
     bool compile_fcmp(IRValueRef, llvm::Instruction *) noexcept;
     bool compile_switch(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_intrin(IRValueRef,
+                        llvm::Instruction *,
+                        llvm::Function *) noexcept;
 
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept {
         return false;
@@ -2464,8 +2467,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
 
     if (auto *fn = call->getCalledFunction(); fn) {
         if (fn->isIntrinsic()) {
-            assert(0);
-            return false;
+            return compile_intrin(inst_idx, inst, fn);
         }
 
         // this is a direct call
@@ -2935,5 +2937,22 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
     this->release_spilled_regs(spilled);
 
     return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
+    IRValueRef, llvm::Instruction *, llvm::Function *intrin) noexcept {
+    const auto intrin_id = intrin->getIntrinsicID();
+
+    switch (intrin_id) {
+    default: {
+        std::string buf{};
+        auto        os = llvm::raw_string_ostream{buf};
+        intrin->print(os);
+        llvm::errs() << "Unknown intrinsic:\n" << buf << '\n';
+        assert(0);
+        return false;
+    }
+    }
 }
 } // namespace tpde_llvm
