@@ -14,6 +14,8 @@ project(tpde_encodegen)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+add_link_options("-fuse-ld=lld")
+
 add_executable(tpde_encodegen)
 add_executable(tpde::tpde_encodegen ALIAS tpde_encodegen)
 

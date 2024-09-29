@@ -58,6 +58,8 @@ endif ()
 # set(LLVM_ABI_BREAKING_CHECKS "FORCE_OFF")
 
 find_package(LLVM 19 REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 if (TPDE_LINK_LLVM_STATIC)
     llvm_map_components_to_libnames(llvm_libs core irreader irprinter passes support bitreader bitstreamreader)
 else ()
