@@ -94,7 +94,12 @@ struct Analyzer {
     void reset();
 
     IRBlockRef block_ref(const BlockIndex idx) const noexcept {
-        assert(static_cast<u32>(idx) < block_layout.size());
+        assert(static_cast<u32>(idx) <= block_layout.size());
+        if (static_cast<u32>(idx) == block_layout.size()) {
+            // this might be called with next_block() which is invalid for the
+            // last block
+            return INVALID_BLOCK_REF;
+        }
         return block_layout[static_cast<u32>(idx)];
     }
 
