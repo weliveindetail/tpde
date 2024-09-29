@@ -547,6 +547,8 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::init_assignment(
     IRValueRef value, ValLocalIdx local_idx) noexcept {
     assert(val_assignment(local_idx) == nullptr);
+    TPDE_LOG_TRACE("Initializing assignment for value {}",
+                   static_cast<u32>(local_idx));
 
     const u32 part_count = derived()->val_part_count(value);
     assert(part_count > 0);
@@ -644,6 +646,9 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::free_assignment(
     const ValLocalIdx local_idx) noexcept {
+    TPDE_LOG_TRACE("Freeing assignment for value {}",
+                   static_cast<u32>(local_idx));
+
     ValueAssignment *assignment =
         assignments.value_ptrs[static_cast<u32>(local_idx)];
     const auto is_var_ref = AssignmentPartRef{assignment, 0}.variable_ref();
@@ -1202,7 +1207,16 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
             const IRValueRef inc_val =
                 phi_ref.incoming_val_for_block(cur_block_ref);
             auto *assignment = val_assignment(val_idx(inc_val));
-            u32   part_count = derived()->val_part_count(inc_val);
+            if (assignment == nullptr) {
+#ifdef TPDE_ASSERTS
+                // this should only happen if the value is a constant
+                auto ref = this->val_ref(inc_val, 0);
+                assert(ref.is_const);
+                ref.reset_without_refcount();
+#endif
+                continue;
+            }
+            u32 part_count = derived()->val_part_count(inc_val);
             for (u32 i = 0; i < part_count; ++i) {
                 auto ap = AssignmentPartRef{assignment, i};
                 if (ap.register_valid()) {
@@ -1356,9 +1370,9 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
 
             AsmReg reg{};
             if (val_ref.is_const) {
-                // TODO(ts): materialize constant
-                assert(0);
-                exit(1);
+                derived()->materialize_constant(val_ref, scratch);
+                reg = scratch.cur_reg;
+                assert(reg.valid());
             } else if (val_ref.assignment().register_valid()
                        || val_ref.assignment().fixed_assignment()) {
                 reg = AsmReg{val_ref.assignment().full_reg_id()};

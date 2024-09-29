@@ -67,7 +67,7 @@ struct SmallBitSet {
     }
 
     void push_back(const bool val) noexcept {
-        if (bit_size / 64 != (bit_size + 1) / 64) {
+        if (bit_size / 64 != (bit_size - 1) / 64) {
             data.push_back(0);
             if (val) {
                 mark_set(bit_size);
