@@ -13,9 +13,9 @@ define ptr @gep_ptr_no_idx(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -32,9 +32,9 @@ define ptr @gep_ptr_zero(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -51,10 +51,10 @@ define ptr @gep_ptr_zero_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -70,9 +70,9 @@ define ptr @gep_i16_zero(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -89,10 +89,10 @@ define ptr @gep_i16_zero_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -108,9 +108,9 @@ define ptr @gep_sti_zero(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -127,10 +127,10 @@ define ptr @gep_sti_zero_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -148,10 +148,10 @@ define ptr @gep_ptr_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x8]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -166,11 +166,11 @@ define ptr @gep_ptr_one_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi + 0x8]
 ; X64:    lea rdi, [rdi + 0x8]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -187,10 +187,10 @@ define ptr @gep_i16_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x2]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -205,11 +205,11 @@ define ptr @gep_i16_one_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi + 0x2]
 ; X64:    lea rdi, [rdi + 0x2]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -226,10 +226,10 @@ define ptr @gep_sti_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x8]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -244,11 +244,11 @@ define ptr @gep_sti_one_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi + 0x8]
 ; X64:    lea rdi, [rdi + 0x8]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -265,10 +265,10 @@ define ptr @gep_sti_zero_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -283,11 +283,11 @@ define ptr @gep_sti_zero_one_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi + 0x4]
 ; X64:    lea rdi, [rdi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -304,10 +304,10 @@ define ptr @gep_sti_one_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0xc]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -322,11 +322,11 @@ define ptr @gep_sti_one_one_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi + 0xc]
 ; X64:    lea rdi, [rdi + 0xc]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -345,10 +345,10 @@ define ptr @gep_ptr_neg_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi - 0x8]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -363,11 +363,11 @@ define ptr @gep_ptr_neg_one_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi - 0x8]
 ; X64:    lea rdi, [rdi - 0x8]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -384,10 +384,10 @@ define ptr @gep_i16_neg_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi - 0x2]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -402,11 +402,11 @@ define ptr @gep_i16_neg_one_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi - 0x2]
 ; X64:    lea rdi, [rdi - 0x2]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -423,10 +423,10 @@ define ptr @gep_sti_neg_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi - 0x8]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -441,11 +441,11 @@ define ptr @gep_sti_neg_one_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi - 0x8]
 ; X64:    lea rdi, [rdi - 0x8]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -462,10 +462,10 @@ define ptr @gep_sti_neg_one_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi - 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -480,11 +480,11 @@ define ptr @gep_sti_neg_one_one_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi - 0x4]
 ; X64:    lea rdi, [rdi - 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -503,10 +503,10 @@ define ptr @gep_i16_ffff(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x1fffe]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
   entry:
@@ -519,11 +519,11 @@ define ptr @gep_i16_ffff_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi + 0x1fffe]
 ; X64:    lea rdi, [rdi + 0x1fffe]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -541,11 +541,11 @@ define ptr @gep_i8_varoff_i32(ptr %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
   entry:
@@ -558,13 +558,13 @@ define ptr @gep_i8_varoff_i32_no_salvage(ptr %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsxd rax, esi
 ; X64:    lea rcx, [rdi + rax]
 ; X64:    movsxd rsi, esi
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -580,11 +580,11 @@ define ptr @gep_i16_varoff_i32(ptr %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    lea rdi, [rdi + 2*rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
   entry:
@@ -597,13 +597,13 @@ define ptr @gep_i16_varoff_i32_no_salvage(ptr %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsxd rax, esi
 ; X64:    lea rcx, [rdi + 2*rax]
 ; X64:    movsxd rsi, esi
 ; X64:    lea rdi, [rdi + 2*rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -619,11 +619,11 @@ define ptr @gep_i32_varoff_i32(ptr %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    lea rdi, [rdi + 4*rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
   entry:
@@ -636,11 +636,11 @@ define ptr @gep_i64_varoff_i32(ptr %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    lea rdi, [rdi + 8*rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
   entry:
@@ -653,11 +653,11 @@ define ptr @gep_sti_varoff_i32_zero(ptr %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    lea rdi, [rdi + 8*rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
   entry:
@@ -670,12 +670,12 @@ define ptr @gep_i128_varoff_i32(ptr %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    shl rsi, 0x4
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -691,10 +691,10 @@ define ptr @gep_i8_varoff_i64(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -709,11 +709,11 @@ define ptr @gep_i8_varoff_i64_no_salvage(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi + rsi]
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -730,10 +730,10 @@ define ptr @gep_i64_varoff_i64(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 8*rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -748,11 +748,11 @@ define ptr @gep_i64_varoff_i64_no_salvage(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi + 8*rsi]
 ; X64:    lea rdi, [rdi + 8*rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -769,10 +769,10 @@ define ptr @gep_sti_varoff_i64_zero(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 8*rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -787,12 +787,12 @@ define ptr @gep_i2048_varoff_i64(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rsi
 ; X64:    shl rax, 0x8
 ; X64:    lea rdi, [rdi + rax]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -807,11 +807,11 @@ define ptr @gep_i8_varoff_i8(ptr %0, i8 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, sil
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -827,13 +827,13 @@ define ptr @gep_i8_varoff_i8_no_salvage(ptr %0, i8 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsx rax, sil
 ; X64:    lea rcx, [rdi + rax]
 ; X64:    movsx rsi, sil
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -851,11 +851,11 @@ define ptr @gep_i32_varoff_i8(ptr %0, i8 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, sil
 ; X64:    lea rdi, [rdi + 4*rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -871,12 +871,12 @@ define ptr @gep_stf_varoff_i8_zero(ptr %0, i8 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, sil
 ; X64:    imul rsi, rsi, 0xc
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -892,11 +892,11 @@ define ptr @gep_i8_varoff_i16(ptr %0, i16 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, si
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -912,11 +912,11 @@ define ptr @gep_i32_varoff_i16(ptr %0, i16 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, si
 ; X64:    lea rdi, [rdi + 4*rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -932,12 +932,12 @@ define ptr @gep_stf_varoff_i16_zero(ptr %0, i16 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, si
 ; X64:    imul rsi, rsi, 0xc
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -953,12 +953,12 @@ define ptr @gep_i512_varoff_i32(ptr %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    shl rsi, 0x6
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -972,12 +972,12 @@ define ptr @gep_stf_varoff_i32_zero(ptr %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    imul rsi, rsi, 0xc
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -991,11 +991,11 @@ define ptr @gep_stf_varoff_i64_zero(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    imul rax, rsi, 0xc
 ; X64:    lea rdi, [rdi + rax]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1012,12 +1012,12 @@ define ptr @gep_stf_varoff_i8_one(ptr %0, i8 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, sil
 ; X64:    imul rsi, rsi, 0xc
 ; X64:    lea rdi, [rdi + rsi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1032,12 +1032,12 @@ define ptr @gep_stf_varoff_i16_one(ptr %0, i16 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, si
 ; X64:    imul rsi, rsi, 0xc
 ; X64:    lea rdi, [rdi + rsi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1052,12 +1052,12 @@ define ptr @gep_stf_varoff_i32_one(ptr %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    imul rsi, rsi, 0xc
 ; X64:    lea rdi, [rdi + rsi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1073,11 +1073,11 @@ define ptr @gep_stf_varoff_i64_one(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    imul rax, rsi, 0xc
 ; X64:    lea rdi, [rdi + rax + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1093,9 +1093,9 @@ define ptr @gep_ptr_no_idx_fuse_zero(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1113,9 +1113,9 @@ define ptr @gep_ptr_zero_fuse_no_idx(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1133,9 +1133,9 @@ define ptr @gep_ptr_zero_fuse_zero(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1153,10 +1153,10 @@ define ptr @gep_ptr_one_fuse_zero(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x8]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1172,10 +1172,10 @@ define ptr @gep_ptr_zero_fuse_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x8]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1192,9 +1192,9 @@ define ptr @gep_stf_zero_fuse_zero(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1212,10 +1212,10 @@ define ptr @gep_stf_one_fuse_zero(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0xc]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1231,10 +1231,10 @@ define ptr @gep_stf_zero_fuse_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0xc]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1250,10 +1250,10 @@ define ptr @gep_stf_one_zero_fuse_zero(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0xc]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1270,11 +1270,11 @@ define ptr @gep_stf_one_zero_fuse_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0xc]
 ; X64:    lea rdi, [rdi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1291,13 +1291,13 @@ define ptr @gep_stf_one_zero_fuse_one_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi + 0xc]
 ; X64:    lea rax, [rax + 0x4]
 ; X64:    lea rdi, [rdi + 0xc]
 ; X64:    lea rdi, [rdi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1317,10 +1317,10 @@ define ptr @gep_stf_one_one_fuse_zero(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x10]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1337,11 +1337,11 @@ define ptr @gep_stf_one_one_fuse_one(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x10]
 ; X64:    lea rdi, [rdi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1358,13 +1358,13 @@ define ptr @gep_stf_one_one_fuse_one_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    lea rax, [rdi + 0x10]
 ; X64:    lea rax, [rax + 0x4]
 ; X64:    lea rdi, [rdi + 0xc]
 ; X64:    lea rdi, [rdi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1386,10 +1386,10 @@ define ptr @gep_ptr_varoff_fuse_zero(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 8*rsi]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1406,11 +1406,11 @@ define ptr @gep_ptr_varoff_fuse_one(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 8*rsi]
 ; X64:    lea rdi, [rdi + 0x8]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1427,11 +1427,11 @@ define ptr @gep_stf_varoff_fuse_zero(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    imul rax, rsi, 0xc
 ; X64:    lea rdi, [rdi + rax]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1448,11 +1448,11 @@ define ptr @gep_stf_varoff_zero_fuse_zero(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    imul rax, rsi, 0xc
 ; X64:    lea rdi, [rdi + rax]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1470,12 +1470,12 @@ define ptr @gep_stf_varoff_zero_fuse_one(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    imul rax, rsi, 0xc
 ; X64:    lea rdi, [rdi + rax]
 ; X64:    lea rdi, [rdi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1492,7 +1492,7 @@ define ptr @gep_stf_varoff_zero_fuse_one_no_salvage(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x50
 ; X64:    imul rax, rsi, 0xc
 ; X64:    lea rcx, [rdi + rax]
 ; X64:    lea rcx, [rcx + 0x4]
@@ -1500,7 +1500,7 @@ define ptr @gep_stf_varoff_zero_fuse_one_no_salvage(ptr %0, i64 %1) {
 ; X64:    lea rdi, [rdi + rax]
 ; X64:    lea rdi, [rdi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -1522,9 +1522,9 @@ define ptr @gep_zai32_zero_zero_i64(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1541,10 +1541,10 @@ define ptr @gep_zai32_zero_one_i64(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1559,9 +1559,9 @@ define ptr @gep_zai32_one_zero_i64(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1578,10 +1578,10 @@ define ptr @gep_zai32_one_one_i64(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1596,9 +1596,9 @@ define ptr @gep_zai32_varoff_zero_i64(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -1615,10 +1615,10 @@ define ptr @gep_zai32_varoff_one_i64(ptr %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    lea rdi, [rdi + 0x4]
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

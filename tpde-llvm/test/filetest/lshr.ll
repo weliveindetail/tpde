@@ -11,10 +11,10 @@ define void @lshr_i8_3(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    shr edi, 0x3
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -29,12 +29,12 @@ define void @lshr_i8_i8(i8 %0, i8 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    movzx esi, sil
 ; X64:    mov ecx, esi
 ; X64:    shr edi, cl
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -49,10 +49,10 @@ define void @lshr_i16_3(i16 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, di
 ; X64:    shr edi, 0x3
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -67,12 +67,12 @@ define void @lshr_i16_i16(i16 %0, i16 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, di
 ; X64:    movzx esi, si
 ; X64:    mov ecx, esi
 ; X64:    shr edi, cl
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 entry:
@@ -85,9 +85,9 @@ define void @lshr_i32_3(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    shr edi, 0x3
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -104,10 +104,10 @@ define void @lshr_i32_i32(i32 %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov ecx, esi
 ; X64:    shr edi, cl
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -123,9 +123,9 @@ define void @lshr_i64_3(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    shr rdi, 0x3
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -141,10 +141,10 @@ define void @lshr_i64_i64(i64 %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov ecx, esi
 ; X64:    shr rdi, cl
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -160,11 +160,11 @@ define void @lshr_i37_3(i37 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0x1fffffffff
 ; X64:    and rdi, rax
 ; X64:    shr rdi, 0x3
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -179,10 +179,10 @@ define void @lshr_i21_3(i21 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    and edi, 0x1fffff
 ; X64:    shr edi, 0x3
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
@@ -196,12 +196,12 @@ define void @lshr_i21_i21(i21 %0, i21 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    and edi, 0x1fffff
 ; X64:    and esi, 0x1fffff
 ; X64:    mov ecx, esi
 ; X64:    shr edi, cl
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -216,14 +216,14 @@ define void @lshr_i37_i37(i37 %0, i37 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movabs rax, 0x1fffffffff
 ; X64:    and rdi, rax
 ; X64:    movabs rax, 0x1fffffffff
 ; X64:    and rsi, rax
 ; X64:    mov ecx, esi
 ; X64:    shr rdi, cl
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -240,7 +240,7 @@ define i128 @lshr_i128_3(i128 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x50
 ; X64:    lea rax, [rsi + rsi]
 ; X64:    mov rdx, rsi
 ; X64:    shr rdx, 0x3
@@ -250,7 +250,7 @@ define i128 @lshr_i128_3(i128 %0) {
 ; X64:    not cl
 ; X64:    shl rax, cl
 ; X64:    or rax, rbx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x50
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -266,12 +266,12 @@ define i128 @lshr_i128_74(i128 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rsi
 ; X64:    shr rax, 0xa
 ; X64:    xor ecx, ecx
 ; X64:    mov rdx, rcx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -287,7 +287,7 @@ define i128 @lshr_i128_128(i128 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x50
 ; X64:    lea rax, [rsi + rsi]
 ; X64:    mov rdx, rsi
 ; X64:    shr rdx, 0x80
@@ -297,7 +297,7 @@ define i128 @lshr_i128_128(i128 %0) {
 ; X64:    not cl
 ; X64:    shl rax, cl
 ; X64:    or rax, rbx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x50
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -314,12 +314,12 @@ define void @lshr_i64_no_salvage_imm(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    shr rax, 0x3
 ; X64:    mov ecx, eax
 ; X64:    shr rdi, cl
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -335,13 +335,13 @@ define void @lshr_i64_no_salvage_reg(i64 %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    mov ecx, esi
 ; X64:    shr rax, cl
 ; X64:    mov ecx, eax
 ; X64:    shr rdi, cl
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -357,7 +357,7 @@ define void @lshr_i37_no_salvage_imm(i37 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    movabs rcx, 0x1fffffffff
 ; X64:    and rax, rcx
@@ -368,7 +368,7 @@ define void @lshr_i37_no_salvage_imm(i37 %0) {
 ; X64:    and rax, rcx
 ; X64:    mov ecx, eax
 ; X64:    shr rdi, cl
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -386,7 +386,7 @@ define void @lshr_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    movabs rcx, 0x1fffffffff
 ; X64:    and rax, rcx
@@ -400,7 +400,7 @@ define void @lshr_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; X64:    and rax, rcx
 ; X64:    mov ecx, eax
 ; X64:    shr rdi, cl
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

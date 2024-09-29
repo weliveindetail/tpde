@@ -11,9 +11,9 @@ define i1 @trunc_i64_i1(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -27,9 +27,9 @@ define i8 @trunc_i64_i8(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -43,9 +43,9 @@ define i16 @trunc_i64_i16(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -59,9 +59,9 @@ define i32 @trunc_i64_i32(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -75,9 +75,9 @@ define i37 @trunc_i64_i37(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -94,9 +94,9 @@ define i64 @trunc_i128_i64(i128 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -113,10 +113,10 @@ define i1 @trunc_i64_i37_no_salvage(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

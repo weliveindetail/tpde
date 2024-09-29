@@ -12,10 +12,10 @@ define i64 @br_simple1(i64 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov rbx, rdi
 ; X64:    mov rax, rbx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -33,19 +33,19 @@ define i64 @condbr0(i64 %0, i1 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rbx, rdi
 ; X64:    test esi, 0x1
 ; X64:    je <L0>
 ; X64:    mov rax, rbx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    lea rbx, [rbx + 0xa]
 ; X64:    mov rax, rbx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -67,18 +67,18 @@ define i64 @condbr1(i64 %0, i1 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rbx, rdi
 ; X64:    test esi, 0x1
 ; X64:    jne <L0>
 ; X64:    lea rax, [rbx + 0xa]
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov rax, rbx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret

@@ -11,9 +11,9 @@ define i32 @f32toi32(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cvttss2si eax, xmm0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -29,9 +29,9 @@ define i32 @f32tou32(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cvttss2si rax, xmm0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -47,9 +47,9 @@ define i64 @f32toi64(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    cvttss2si rax, xmm0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -65,7 +65,7 @@ define i64 @f32tou64(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    cvttss2si rax, xmm0
 ; X64:    mov rcx, rax
 ; X64:    sar rcx, 0x3f
@@ -75,7 +75,7 @@ define i64 @f32tou64(float %0) {
 ; X64:    and rdx, rcx
 ; X64:    or rdx, rax
 ; X64:    mov rax, rdx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -90,9 +90,9 @@ define i32 @f64toi32(double %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    cvttsd2si eax, xmm0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -108,9 +108,9 @@ define i32 @f64tou32(double %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    cvttsd2si rax, xmm0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -126,9 +126,9 @@ define i64 @f64toi64(double %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    cvttsd2si rax, xmm0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -144,7 +144,7 @@ define i64 @f64tou64(double %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    cvttsd2si rax, xmm0
 ; X64:    mov rcx, rax
 ; X64:    sar rcx, 0x3f
@@ -154,7 +154,7 @@ define i64 @f64tou64(double %0) {
 ; X64:    and rdx, rcx
 ; X64:    or rdx, rax
 ; X64:    mov rax, rdx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

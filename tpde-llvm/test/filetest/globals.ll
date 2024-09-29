@@ -19,11 +19,11 @@ define i32 @load_basic_int() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    lea rcx, <load_basic_int+0x13>
 ; X64:     R_X86_64_PC32 basic_int-0x4
 ; X64:    mov eax, dword ptr [rcx]
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
@@ -37,11 +37,11 @@ define ptr @load_func_ptr() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov rcx, qword ptr <load_func_ptr+0x13>
 ; X64:     R_X86_64_GOTPCREL func_ptr-0x4
 ; X64:    mov rax, qword ptr [rcx]
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 entry:
@@ -54,11 +54,11 @@ define void @store_global_ptr(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov rax, qword ptr <store_global_ptr+0x13>
 ; X64:     R_X86_64_GOTPCREL global_ptr-0x4
 ; X64:    mov qword ptr [rax], rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

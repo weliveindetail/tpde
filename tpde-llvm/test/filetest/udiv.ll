@@ -11,13 +11,13 @@ define void @udiv_i8_1(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    xor edx, edx
 ; X64:    mov ecx, 0x1
 ; X64:    mov eax, edi
 ; X64:    div ecx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -33,13 +33,13 @@ define void @udiv_i8_28(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    xor edx, edx
 ; X64:    mov ecx, 0x1c
 ; X64:    mov eax, edi
 ; X64:    div ecx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -55,13 +55,13 @@ define void @udiv_i8_i8(i8 %0, i8 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    movzx esi, sil
 ; X64:    xor edx, edx
 ; X64:    mov eax, edi
 ; X64:    div esi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -75,13 +75,13 @@ define void @udiv_i8_32(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    xor edx, edx
 ; X64:    mov ecx, 0x20
 ; X64:    mov eax, edi
 ; X64:    div ecx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -97,13 +97,13 @@ define void @udiv_i16_1(i16 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, di
 ; X64:    xor edx, edx
 ; X64:    mov ecx, 0x1
 ; X64:    mov eax, edi
 ; X64:    div ecx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -117,13 +117,13 @@ define void @udiv_i16_28(i16 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, di
 ; X64:    xor edx, edx
 ; X64:    mov ecx, 0x1c
 ; X64:    mov eax, edi
 ; X64:    div ecx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -137,13 +137,13 @@ define void @udiv_i16_32(i16 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, di
 ; X64:    xor edx, edx
 ; X64:    mov ecx, 0x20
 ; X64:    mov eax, edi
 ; X64:    div ecx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -157,13 +157,13 @@ define void @udiv_i16_i16(i16 %0, i16 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, di
 ; X64:    movzx esi, si
 ; X64:    xor edx, edx
 ; X64:    mov eax, edi
 ; X64:    div esi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -178,12 +178,12 @@ define void @udiv_i32_1(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    xor edx, edx
 ; X64:    mov ecx, 0x1
 ; X64:    mov eax, edi
 ; X64:    div ecx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -199,12 +199,12 @@ define void @udiv_i32_28(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    xor edx, edx
 ; X64:    mov ecx, 0x1c
 ; X64:    mov eax, edi
 ; X64:    div ecx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -220,12 +220,12 @@ define void @udiv_i32_32(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    xor edx, edx
 ; X64:    mov ecx, 0x20
 ; X64:    mov eax, edi
 ; X64:    div ecx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -241,11 +241,11 @@ define void @udiv_i32_i32(i32 %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    xor edx, edx
 ; X64:    mov eax, edi
 ; X64:    div esi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -260,12 +260,12 @@ define void @udiv_i64_1(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    xor edx, edx
 ; X64:    mov rcx, 0x1
 ; X64:    mov rax, rdi
 ; X64:    div rcx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -281,12 +281,12 @@ define void @udiv_i64_28(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    xor edx, edx
 ; X64:    mov rcx, 0x1c
 ; X64:    mov rax, rdi
 ; X64:    div rcx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -302,12 +302,12 @@ define void @udiv_i64_32(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    xor edx, edx
 ; X64:    mov rcx, 0x20
 ; X64:    mov rax, rdi
 ; X64:    div rcx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -323,11 +323,11 @@ define void @udiv_i64_i64(i64 %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    xor edx, edx
 ; X64:    mov rax, rdi
 ; X64:    div rsi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -341,13 +341,13 @@ define void @udiv_i8_salvage(i8 %0, i8 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    movzx esi, sil
 ; X64:    xor edx, edx
 ; X64:    mov eax, edi
 ; X64:    div esi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -361,13 +361,13 @@ define void @udiv_i16_salvage(i16 %0, i16 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, di
 ; X64:    movzx esi, si
 ; X64:    xor edx, edx
 ; X64:    mov eax, edi
 ; X64:    div esi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -382,11 +382,11 @@ define void @udiv_i32_salvage(i32 %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    xor edx, edx
 ; X64:    mov eax, edi
 ; X64:    div esi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -401,11 +401,11 @@ define void @udiv_i64_salvage(i64 %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    xor edx, edx
 ; X64:    mov rax, rdi
 ; X64:    div rsi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -419,7 +419,7 @@ define void @udiv_i8_no_salvage(i8 %0, i8 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx eax, dil
 ; X64:    movzx esi, sil
 ; X64:    mov rcx, rax
@@ -432,7 +432,7 @@ define void @udiv_i8_no_salvage(i8 %0, i8 %1) {
 ; X64:    xor edx, edx
 ; X64:    mov eax, edi
 ; X64:    div ecx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -448,7 +448,7 @@ define void @udiv_i16_no_salvage(i16 %0, i16 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx eax, di
 ; X64:    movzx esi, si
 ; X64:    mov rcx, rax
@@ -461,7 +461,7 @@ define void @udiv_i16_no_salvage(i16 %0, i16 %1) {
 ; X64:    xor edx, edx
 ; X64:    mov eax, edi
 ; X64:    div ecx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -476,15 +476,15 @@ define void @udiv_i32_no_salvage(i32 %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    xor edx, edx
 ; X64:    mov eax, edi
 ; X64:    div esi
-; X64:    mov dword ptr [rbp - 0xc], eax
+; X64:    mov dword ptr [rbp - 0x34], eax
 ; X64:    xor edx, edx
 ; X64:    mov eax, edi
-; X64:    div dword ptr [rbp - 0xc]
-; X64:    add rsp, 0x10
+; X64:    div dword ptr [rbp - 0x34]
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -500,15 +500,15 @@ define void @udiv_i64_no_salvage(i64 %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    xor edx, edx
 ; X64:    mov rax, rdi
 ; X64:    div rsi
-; X64:    mov qword ptr [rbp - 0x18], rax
+; X64:    mov qword ptr [rbp - 0x40], rax
 ; X64:    xor edx, edx
 ; X64:    mov rax, rdi
-; X64:    div qword ptr [rbp - 0x18]
-; X64:    add rsp, 0x20
+; X64:    div qword ptr [rbp - 0x40]
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

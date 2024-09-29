@@ -421,10 +421,13 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
     u64 fixed_assignment_nonallocatable_mask =
         create_bitmask({AsmReg::AX, AsmReg::DX, AsmReg::CX});
     u32 func_start_off = 0u, func_reg_save_off = 0u, func_reg_save_alloc = 0u,
-        func_reg_restore_alloc                        = 0u;
+        func_reg_restore_alloc  = 0u;
     /// Offset to the `sub rsp, XXX` instruction that sets up the frame
-    u32                       frame_size_setup_offset = 0u;
-    util::SmallVector<u32, 8> func_ret_offs           = {};
+    u32 frame_size_setup_offset = 0u;
+    u32 scalar_arg_count = 0xFFFF'FFFF, vec_arg_count = 0xFFFF'FFFF;
+    u32 reg_save_frame_off                  = 0;
+    u32 var_arg_stack_off                   = 0;
+    util::SmallVector<u32, 8> func_ret_offs = {};
 
     // for now, always generate an object
     explicit CompilerX64(Adaptor           *adaptor,
@@ -438,6 +441,8 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
     // note: this has to call assembler->end_func
     void finish_func() noexcept;
+
+    u32 func_reserved_frame_size() noexcept;
 
     void reset_register_file() noexcept;
 
@@ -647,6 +652,9 @@ void CallingConv::handle_func_args(
     }
 
     compiler->fixed_assignment_nonallocatable_mask &= ~arg_regs_mask();
+    compiler->scalar_arg_count                      = scalar_reg_count;
+    compiler->vec_arg_count                         = xmm_reg_count;
+    compiler->var_arg_stack_off                     = frame_off;
 }
 
 template <typename Adaptor,
@@ -1001,13 +1009,10 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::
     // calls into account
 
     func_ret_offs.clear();
-    func_start_off = this->assembler.text_cur_off();
+    func_start_off   = this->assembler.text_cur_off();
+    scalar_arg_count = vec_arg_count = 0xFFFF'FFFF;
     ASM(PUSHr, FE_BP);
     ASM(MOV64rr, FE_BP, FE_SP);
-
-    if (this->adaptor->cur_is_vararg()) {
-        assert(0);
-    }
 
     const CallingConv call_conv = derived()->cur_calling_convention();
     {
@@ -1036,6 +1041,42 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::
     assert((this->assembler.text_cur_off() - frame_size_setup_offset) == 7);
 #endif
 
+    if (this->adaptor->cur_is_vararg()) {
+        reg_save_frame_off = 8u * call_conv.callee_saved_regs().size() + 176;
+        auto mem = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)reg_save_frame_off);
+        ASM(MOV64mr, mem, FE_DI);
+        mem.off += 8;
+        ASM(MOV64mr, mem, FE_SI);
+        mem.off += 8;
+        ASM(MOV64mr, mem, FE_DX);
+        mem.off += 8;
+        ASM(MOV64mr, mem, FE_CX);
+        mem.off += 8;
+        ASM(MOV64mr, mem, FE_R8);
+        mem.off += 8;
+        ASM(MOV64mr, mem, FE_R9);
+        auto skip_fp = this->assembler.label_create();
+        ASM(TEST8rr, FE_AX, FE_AX);
+        generate_raw_jump(Jump::je, skip_fp);
+        mem.off += 8;
+        ASM(SSE_MOVDQUmr, mem, FE_XMM0);
+        mem.off += 16;
+        ASM(SSE_MOVDQUmr, mem, FE_XMM1);
+        mem.off += 16;
+        ASM(SSE_MOVDQUmr, mem, FE_XMM2);
+        mem.off += 16;
+        ASM(SSE_MOVDQUmr, mem, FE_XMM3);
+        mem.off += 16;
+        ASM(SSE_MOVDQUmr, mem, FE_XMM4);
+        mem.off += 16;
+        ASM(SSE_MOVDQUmr, mem, FE_XMM5);
+        mem.off += 16;
+        ASM(SSE_MOVDQUmr, mem, FE_XMM6);
+        mem.off += 16;
+        ASM(SSE_MOVDQUmr, mem, FE_XMM7);
+        this->assembler.label_place(skip_fp);
+    }
+
     call_conv.handle_func_args(this);
 }
 
@@ -1045,7 +1086,23 @@ template <IRAdaptor Adaptor,
           typename BaseTy,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
-    const auto final_frame_size = util::align_up(this->stack.frame_size, 16);
+    const CallingConv conv = Base::derived()->cur_calling_convention();
+
+    auto *write_ptr = this->assembler.sec_text.data.data() + func_reg_save_off;
+    const u64 saved_regs =
+        this->register_file.clobbered & conv.callee_saved_mask();
+    u32 num_saved_regs = 0u;
+    for (auto reg : util::BitSetIterator{saved_regs}) {
+        assert(reg <= AsmReg::R15);
+        write_ptr +=
+            fe64_PUSHr(write_ptr, 0, AsmReg{static_cast<AsmReg::REG>(reg)});
+        ++num_saved_regs;
+    }
+
+    // The frame_size contains the reserved frame size so we need to subtract
+    // the stack space we used for the saved registers
+    const auto final_frame_size =
+        util::align_up(this->stack.frame_size - num_saved_regs * 8, 16);
     *reinterpret_cast<u32 *>(this->assembler.sec_text.data.data()
                              + frame_size_setup_offset + 3) = final_frame_size;
 #ifdef TPDE_ASSERTS
@@ -1064,17 +1121,6 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     assert(FD_OP_SIZE(&instr, 1) == 8);
     assert(FD_OP_IMM(&instr, 1) == final_frame_size);
 #endif
-
-    const CallingConv conv = Base::derived()->cur_calling_convention();
-
-    auto *write_ptr = this->assembler.sec_text.data.data() + func_reg_save_off;
-    const u64 saved_regs =
-        this->register_file.clobbered & conv.callee_saved_mask();
-    for (auto reg : util::BitSetIterator{saved_regs}) {
-        assert(reg <= AsmReg::R15);
-        write_ptr +=
-            fe64_PUSHr(write_ptr, 0, AsmReg{static_cast<AsmReg::REG>(reg)});
-    }
 
     // nop out the rest
     const auto reg_save_end = this->assembler.sec_text.data.data()
@@ -1121,6 +1167,23 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
         std::memcpy(
             text_data + func_ret_offs[i], text_data + first_ret_off, ret_size);
     }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>
+u32 CompilerX64<Adaptor, Derived, BaseTy, Config>::
+    func_reserved_frame_size() noexcept {
+    const CallingConv call_conv     = derived()->cur_calling_convention();
+    // when indexing into the stack frame, the code needs to skip over the saved
+    // registers and the reg-save area if it exists
+    u32               reserved_size = call_conv.callee_saved_regs().size() * 8;
+    if (this->adaptor->cur_is_vararg()) {
+        reserved_size += 176;
+    }
+    return reserved_size;
 }
 
 template <IRAdaptor Adaptor,

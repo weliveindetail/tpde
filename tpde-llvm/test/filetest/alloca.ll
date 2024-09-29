@@ -11,11 +11,11 @@ define void @dyn_alloca_const() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    sub rsp, 0x10
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -33,11 +33,11 @@ define void @dyn_alloca_const_align_32() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    sub rsp, 0x10
 ; X64:    and rsp, -0x20
 ; X64:    mov rax, rsp
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -57,12 +57,12 @@ define void @dyn_alloca_dyn_i8_cnt_i64(i64 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov rbx, rdi
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -81,12 +81,12 @@ define void @dyn_alloca_dyn_i8_cnt_i32(i32 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov ebx, edi
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -106,13 +106,13 @@ define void @dyn_alloca_dyn_i32_cnt_i64(i64 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov rbx, rdi
 ; X64:    shl rbx, 0x2
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -131,13 +131,13 @@ define void @dyn_alloca_dyn_i32_cnt_i32(i32 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov ebx, edi
 ; X64:    shl rbx, 0x2
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -159,13 +159,13 @@ define void @dyn_alloca_dyn_si3_cnt_i64(i64 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov rbx, rdi
 ; X64:    imul rbx, rbx, 0xc
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -184,13 +184,13 @@ define void @dyn_alloca_dyn_si3_cnt_i32(i32 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov ebx, edi
 ; X64:    imul rbx, rbx, 0xc
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -211,13 +211,13 @@ define void @dyn_alloca_dyn_si3_cnt_i16(i16 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov ebx, edi
 ; X64:    imul rbx, rbx, 0xc
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -238,14 +238,14 @@ define i64 @dyn_alloca_dyn_i8_cnt_i64_no_salvage(i64 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov rbx, rdi
 ; X64:    mov rax, rbx
 ; X64:    sub rsp, rax
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
 ; X64:    mov rax, rbx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -266,7 +266,7 @@ define i32 @dyn_alloca_dyn_i32_cnt_i32_no_salvage(i32 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov ebx, edi
 ; X64:    mov eax, ebx
 ; X64:    shl rax, 0x2
@@ -274,7 +274,7 @@ define i32 @dyn_alloca_dyn_i32_cnt_i32_no_salvage(i32 %0) {
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
 ; X64:    mov eax, ebx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -294,7 +294,7 @@ define i64 @dyn_alloca_dyn_si3_cnt_i64_no_salvage(i64 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov rbx, rdi
 ; X64:    mov rax, rbx
 ; X64:    imul rax, rax, 0xc
@@ -302,7 +302,7 @@ define i64 @dyn_alloca_dyn_si3_cnt_i64_no_salvage(i64 %0) {
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
 ; X64:    mov rax, rbx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -321,7 +321,7 @@ define i32 @dyn_alloca_dyn_si3_cnt_i32_no_salvage(i32 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov ebx, edi
 ; X64:    mov eax, ebx
 ; X64:    imul rax, rax, 0xc
@@ -329,7 +329,7 @@ define i32 @dyn_alloca_dyn_si3_cnt_i32_no_salvage(i32 %0) {
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
 ; X64:    mov eax, ebx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -349,7 +349,7 @@ define i16 @dyn_alloca_dyn_si3_cnt_i16_no_salvage(i16 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov ebx, edi
 ; X64:    mov eax, ebx
 ; X64:    imul rax, rax, 0xc
@@ -357,7 +357,7 @@ define i16 @dyn_alloca_dyn_si3_cnt_i16_no_salvage(i16 %0) {
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
 ; X64:    mov eax, ebx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret

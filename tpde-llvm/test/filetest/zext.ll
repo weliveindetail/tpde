@@ -11,10 +11,10 @@ define i16 @zext_i8_to_i16(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -29,10 +29,10 @@ define i21 @zext_i8_to_i21(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -47,10 +47,10 @@ define i32 @zext_i8_to_i32(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -65,10 +65,10 @@ define i37 @zext_i8_to_i37(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movzx edi, dil
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -83,10 +83,10 @@ define i64 @zext_i8_to_i64(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movzx edi, dil
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -101,13 +101,13 @@ define i128 @zext_i8_to_i128(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movzx edi, dil
 ; X64:    mov eax, 0x0
-; X64:    mov qword ptr [rbp - 0x18], rax
+; X64:    mov qword ptr [rbp - 0x38], rax
 ; X64:    mov rax, rdi
-; X64:    mov rdx, qword ptr [rbp - 0x18]
-; X64:    add rsp, 0x20
+; X64:    mov rdx, qword ptr [rbp - 0x38]
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -124,10 +124,10 @@ define i21 @zext_i16_to_i21(i16 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, di
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -143,10 +143,10 @@ define i32 @zext_i16_to_i32(i16 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, di
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -162,10 +162,10 @@ define i37 @zext_i16_to_i37(i16 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movzx edi, di
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -180,10 +180,10 @@ define i64 @zext_i16_to_i64(i16 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movzx edi, di
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -198,13 +198,13 @@ define i128 @zext_i16_to_i128(i16 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movzx edi, di
 ; X64:    mov eax, 0x0
-; X64:    mov qword ptr [rbp - 0x18], rax
+; X64:    mov qword ptr [rbp - 0x38], rax
 ; X64:    mov rax, rdi
-; X64:    mov rdx, qword ptr [rbp - 0x18]
-; X64:    add rsp, 0x20
+; X64:    mov rdx, qword ptr [rbp - 0x38]
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -222,10 +222,10 @@ define i32 @zext_i21_to_i32(i21 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    and edi, 0x1fffff
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -239,10 +239,10 @@ define i37 @zext_i21_to_i37(i21 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    and edi, 0x1fffff
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
@@ -256,10 +256,10 @@ define i64 @zext_i21_to_i64(i21 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    and edi, 0x1fffff
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
@@ -273,13 +273,13 @@ define i128 @zext_i21_to_i128(i21 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    and edi, 0x1fffff
 ; X64:    mov eax, 0x0
-; X64:    mov qword ptr [rbp - 0x18], rax
+; X64:    mov qword ptr [rbp - 0x38], rax
 ; X64:    mov rax, rdi
-; X64:    mov rdx, qword ptr [rbp - 0x18]
-; X64:    add rsp, 0x20
+; X64:    mov rdx, qword ptr [rbp - 0x38]
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -295,10 +295,10 @@ define i37 @zext_i32_to_i37(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov edi, edi
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -314,10 +314,10 @@ define i64 @zext_i32_to_i64(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov edi, edi
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -333,13 +333,13 @@ define i128 @zext_i32_to_i128(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov edi, edi
 ; X64:    mov eax, 0x0
-; X64:    mov qword ptr [rbp - 0x18], rax
+; X64:    mov qword ptr [rbp - 0x38], rax
 ; X64:    mov rax, rdi
-; X64:    mov rdx, qword ptr [rbp - 0x18]
-; X64:    add rsp, 0x20
+; X64:    mov rdx, qword ptr [rbp - 0x38]
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -354,11 +354,11 @@ define i64 @zext_i37_to_i64(i37 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0x1fffffffff
 ; X64:    and rdi, rax
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -373,14 +373,14 @@ define i128 @zext_i37_to_i128(i37 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movabs rax, 0x1fffffffff
 ; X64:    and rdi, rax
 ; X64:    mov eax, 0x0
-; X64:    mov qword ptr [rbp - 0x18], rax
+; X64:    mov qword ptr [rbp - 0x38], rax
 ; X64:    mov rax, rdi
-; X64:    mov rdx, qword ptr [rbp - 0x18]
-; X64:    add rsp, 0x20
+; X64:    mov rdx, qword ptr [rbp - 0x38]
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -396,12 +396,12 @@ define i128 @zext_i64_to_i128(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov eax, 0x0
-; X64:    mov qword ptr [rbp - 0x18], rax
+; X64:    mov qword ptr [rbp - 0x38], rax
 ; X64:    mov rax, rdi
-; X64:    mov rdx, qword ptr [rbp - 0x18]
-; X64:    add rsp, 0x20
+; X64:    mov rdx, qword ptr [rbp - 0x38]
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

@@ -85,8 +85,9 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
 
     tpde::util::SmallVector<VarRefInfo, 16> variable_refs{};
 
-    SymRef sym_fmod  = Assembler::INVALID_SYM_REF;
-    SymRef sym_fmodf = Assembler::INVALID_SYM_REF;
+    SymRef sym_fmod   = Assembler::INVALID_SYM_REF;
+    SymRef sym_fmodf  = Assembler::INVALID_SYM_REF;
+    SymRef sym_memcpy = Assembler::INVALID_SYM_REF;
 
     LLVMCompilerBase(LLVMAdaptor *adaptor, const bool generate_obj)
         : Base{adaptor, generate_obj} {
@@ -194,6 +195,21 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     }
 
     bool compile_icmp(IRValueRef, llvm::Instruction *, InstRange) noexcept {
+        return false;
+    }
+
+    void create_helper_call(std::span<IRValueRef>   args,
+                            std::span<ValuePartRef> results,
+                            SymRef                  sym) {
+        (void)args;
+        (void)results;
+        (void)sym;
+        assert(0);
+    }
+
+    bool handle_intrin(IRValueRef,
+                       llvm::Instruction *,
+                       llvm::Function *) noexcept {
         return false;
     }
 };
@@ -2952,11 +2968,33 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
-    IRValueRef, llvm::Instruction *, llvm::Function *intrin) noexcept {
+    IRValueRef         inst_idx,
+    llvm::Instruction *inst,
+    llvm::Function    *intrin) noexcept {
     const auto intrin_id = intrin->getIntrinsicID();
 
     switch (intrin_id) {
+    case llvm::Intrinsic::memcpy: {
+        const auto dst = llvm_val_idx(inst->getOperand(0));
+        const auto src = llvm_val_idx(inst->getOperand(1));
+        const auto len = llvm_val_idx(inst->getOperand(2));
+
+        std::array<IRValueRef, 3> args{dst, src, len};
+
+        const auto sym = get_or_create_sym_ref(sym_memcpy, "memcpy");
+        derived()->create_helper_call(args, {}, sym);
+        return true;
+    }
+    case llvm::Intrinsic::vaend: {
+        // no-op
+        this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        return true;
+    }
     default: {
+        if (derived()->handle_intrin(inst_idx, inst, intrin)) {
+            return true;
+        }
+
         std::string buf{};
         auto        os = llvm::raw_string_ostream{buf};
         intrin->print(os);

@@ -14,9 +14,9 @@ define void @store_i8(ptr %a, i8 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov byte ptr [rdi], sil
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -33,9 +33,9 @@ define void @store_i8_const(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov byte ptr [rdi], 0xd
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -53,9 +53,9 @@ define void @store_i16(ptr %a, i16 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov word ptr [rdi], si
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -72,9 +72,9 @@ define void @store_i16_const(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov word ptr [rdi], 0x1337
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -91,9 +91,9 @@ define void @store_i32(ptr %a, i32 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov dword ptr [rdi], esi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -107,9 +107,9 @@ define void @store_i32_const(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov dword ptr [rdi], 0x13371337
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -125,9 +125,9 @@ define void @store_i64(ptr %a, i64 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov qword ptr [rdi], rsi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -144,9 +144,9 @@ define void @store_i64_const1(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov qword ptr [rdi], 0x13371337
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -161,10 +161,10 @@ define void @store_i64_const2(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0xf3371337
 ; X64:    mov qword ptr [rdi], rax
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -179,9 +179,9 @@ define void @store_i64_const3(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov qword ptr [rdi], -0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -197,10 +197,10 @@ define void @store_i128(ptr %a, i128 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov qword ptr [rdi + 0x8], rdx
 ; X64:    mov qword ptr [rdi], rsi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -215,12 +215,12 @@ define void @store_i128_const1(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0x1337133713371337
 ; X64:    mov qword ptr [rdi + 0x8], rax
 ; X64:    movabs rcx, 0x1337133713371337
 ; X64:    mov qword ptr [rdi], rcx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -236,12 +236,12 @@ define void @store_i128_const2(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0xf3371337
 ; X64:    mov qword ptr [rdi + 0x8], rax
 ; X64:    movabs rcx, 0xf3371337
 ; X64:    mov qword ptr [rdi], rcx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -257,10 +257,10 @@ define void @store_i128_const3(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov qword ptr [rdi + 0x8], -0x1
 ; X64:    mov qword ptr [rdi], -0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -277,9 +277,9 @@ define void @store_f32(ptr %a, float %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movss dword ptr [rdi], xmm0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -295,11 +295,11 @@ define void @store_f32_const(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0x3f800000
 ; X64:    movd xmm0, eax
 ; X64:    movss dword ptr [rdi], xmm0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -315,9 +315,9 @@ define void @store_f64(ptr %a, double %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movsd qword ptr [rdi], xmm0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -333,11 +333,11 @@ define void @store_f64_const(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0x3ff0000000000000
 ; X64:    movq xmm0, rax
 ; X64:    movsd qword ptr [rdi], xmm0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -355,11 +355,11 @@ define void @store_i24(ptr %a, i24 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov word ptr [rdi], si
 ; X64:    shr esi, 0x10
 ; X64:    mov byte ptr [rdi + 0x2], sil
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 entry:
@@ -372,12 +372,12 @@ define void @store_i24_const(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0x371337
 ; X64:    mov word ptr [rdi], ax
 ; X64:    shr eax, 0x10
 ; X64:    mov byte ptr [rdi + 0x2], al
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -392,11 +392,11 @@ define void @store_i40(ptr %a, i40 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov dword ptr [rdi], esi
 ; X64:    shr rsi, 0x20
 ; X64:    mov byte ptr [rdi + 0x4], sil
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 entry:
@@ -409,12 +409,12 @@ define void @store_i40_const(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0x3713371337
 ; X64:    mov dword ptr [rdi], eax
 ; X64:    shr rax, 0x20
 ; X64:    mov byte ptr [rdi + 0x4], al
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -432,11 +432,11 @@ define void @store_i48(ptr %a, i48 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov dword ptr [rdi], esi
 ; X64:    shr rsi, 0x20
 ; X64:    mov word ptr [rdi + 0x4], si
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 entry:
@@ -449,12 +449,12 @@ define void @store_i48_const(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0x133713371337
 ; X64:    mov dword ptr [rdi], eax
 ; X64:    shr rax, 0x20
 ; X64:    mov word ptr [rdi + 0x4], ax
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -471,14 +471,14 @@ define void @store_i56(ptr %a, i56 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov dword ptr [rdi], esi
 ; X64:    mov rax, rsi
 ; X64:    shr rax, 0x30
 ; X64:    mov byte ptr [rdi + 0x6], al
 ; X64:    shr rsi, 0x20
 ; X64:    mov word ptr [rdi + 0x4], si
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -494,7 +494,7 @@ define void @store_i56_const(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0x37133713371337
 ; X64:    mov dword ptr [rdi], eax
 ; X64:    mov rcx, rax
@@ -502,7 +502,7 @@ define void @store_i56_const(ptr %a) {
 ; X64:    mov byte ptr [rdi + 0x6], cl
 ; X64:    shr rax, 0x20
 ; X64:    mov word ptr [rdi + 0x4], ax
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -517,9 +517,9 @@ define void @store_4f(ptr %a, <4 x float> %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movaps xmmword ptr [rdi], xmm0
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -556,10 +556,10 @@ define void @store_struct_i8_i1(ptr %a, %struct.i8_i1 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov byte ptr [rdi], sil
 ; X64:    mov byte ptr [rdi + 0x1], dl
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -574,10 +574,10 @@ define void @store_struct_i8_i8(ptr %a, %struct.i8_i8 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov byte ptr [rdi], sil
 ; X64:    mov byte ptr [rdi + 0x1], dl
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -592,10 +592,10 @@ define void @store_struct_i8_i16(ptr %a, %struct.i8_i16 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov byte ptr [rdi], sil
 ; X64:    mov word ptr [rdi + 0x2], dx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -610,10 +610,10 @@ define void @store_struct_i8_i32(ptr %a, %struct.i8_i32 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov byte ptr [rdi], sil
 ; X64:    mov dword ptr [rdi + 0x4], edx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -628,10 +628,10 @@ define void @store_struct_i8_i64(ptr %a, %struct.i8_i64 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov byte ptr [rdi], sil
 ; X64:    mov qword ptr [rdi + 0x8], rdx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -647,10 +647,10 @@ define void @store_struct_i1_i32(ptr %a, %struct.i1_i32 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov byte ptr [rdi], sil
 ; X64:    mov dword ptr [rdi + 0x4], edx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -665,10 +665,10 @@ define void @store_struct_i16_i32(ptr %a, %struct.i16_i32 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov word ptr [rdi], si
 ; X64:    mov dword ptr [rdi + 0x4], edx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -683,10 +683,10 @@ define void @store_struct_i32_i32(ptr %a, %struct.i32_i32 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov dword ptr [rdi], esi
 ; X64:    mov dword ptr [rdi + 0x4], edx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -702,10 +702,10 @@ define void @store_struct_i64_i32(ptr %a, %struct.i64_i32 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov qword ptr [rdi], rsi
 ; X64:    mov dword ptr [rdi + 0x8], edx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -720,10 +720,10 @@ define void @store_struct_ptr_i32(ptr %a, %struct.ptr_i32 %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov qword ptr [rdi], rsi
 ; X64:    mov dword ptr [rdi + 0x8], edx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -738,10 +738,10 @@ define void @store_struct_i32_ptr(ptr %a, %struct.i32_ptr %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov dword ptr [rdi], esi
 ; X64:    mov qword ptr [rdi + 0x8], rdx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -756,10 +756,10 @@ define void @store_struct_f32_ptr(ptr %a, %struct.f32_ptr %b) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movss dword ptr [rdi], xmm0
 ; X64:    mov qword ptr [rdi + 0x8], rsi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -773,14 +773,14 @@ define void @store_struct_i128_i1(ptr %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x40
+; X64:    sub rsp, 0x60
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx edx, byte ptr [rdi + 0x10]
 ; X64:    mov qword ptr [rdi + 0x8], rcx
 ; X64:    mov qword ptr [rdi], rax
 ; X64:    mov byte ptr [rdi + 0x10], dl
-; X64:    add rsp, 0x40
+; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -797,17 +797,17 @@ define void @store_struct_i32_i32_i32_i32_i32_i32(ptr %a, %struct.i32_i32_i32_i3
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x40
+; X64:    sub rsp, 0x60
 ; X64:    mov eax, dword ptr [rbp + 0x10]
-; X64:    mov dword ptr [rbp - 0x24], eax
+; X64:    mov dword ptr [rbp - 0x44], eax
 ; X64:    mov dword ptr [rdi], esi
 ; X64:    mov dword ptr [rdi + 0x4], edx
 ; X64:    mov dword ptr [rdi + 0x8], ecx
 ; X64:    mov dword ptr [rdi + 0xc], r8d
 ; X64:    mov dword ptr [rdi + 0x10], r9d
-; X64:    mov eax, dword ptr [rbp - 0x24]
+; X64:    mov eax, dword ptr [rbp - 0x44]
 ; X64:    mov dword ptr [rdi + 0x14], eax
-; X64:    add rsp, 0x40
+; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

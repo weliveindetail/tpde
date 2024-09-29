@@ -1646,7 +1646,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     adaptor->switch_func(func);
     analyzer.switch_func(func);
 
-    stack.frame_size = 0;
+    stack.frame_size = derived()->func_reserved_frame_size();
     for (auto &e : stack.fixed_free_lists) {
         e.clear();
     }

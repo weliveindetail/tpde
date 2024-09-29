@@ -10,7 +10,7 @@ define i32 @basic_switch(i32 %0) {
 ; X64:    0: 55 push rbp
 ; X64:    1: 48 89 e5 mov rbp, rsp
 ; X64:    4: 66 0f 1f 84 00 00 00 00 00 nop word ptr [rax + rax]
-; X64:    d: 48 81 ec 10 00 00 00 sub rsp, 0x10
+; X64:    d: 48 81 ec 30 00 00 00 sub rsp, 0x30
 ; X64:    14: 83 ff 00 cmp edi, 0x0
 ; X64:    17: 0f 84 1c 00 00 00 je <L0>
 ; X64:    1d: 83 ff 01 cmp edi, 0x1
@@ -28,22 +28,22 @@ define i32 @basic_switch(i32 %0) {
 ; X64:    43: e9 2e 00 00 00 jmp <L7>
 ; X64:  <L5>:
 ; X64:    48: b8 00 00 00 00 mov eax, 0x0
-; X64:    4d: 48 83 c4 10 add rsp, 0x10
+; X64:    4d: 48 83 c4 30 add rsp, 0x30
 ; X64:    51: 5d pop rbp
 ; X64:    52: c3 ret
 ; X64:  <L6>:
 ; X64:    5f: b8 01 00 00 00 mov eax, 0x1
-; X64:    64: 48 83 c4 10 add rsp, 0x10
+; X64:    64: 48 83 c4 30 add rsp, 0x30
 ; X64:    68: 5d pop rbp
 ; X64:    69: c3 ret
 ; X64:  <L7>:
 ; X64:    76: b8 02 00 00 00 mov eax, 0x2
-; X64:    7b: 48 83 c4 10 add rsp, 0x10
+; X64:    7b: 48 83 c4 30 add rsp, 0x30
 ; X64:    7f: 5d pop rbp
 ; X64:    80: c3 ret
 ; X64:  <L4>:
 ; X64:    8d: b8 ff ff ff ff mov eax, 0xffffffff
-; X64:    92: 48 83 c4 10 add rsp, 0x10
+; X64:    92: 48 83 c4 30 add rsp, 0x30
 ; X64:    96: 5d pop rbp
 ; X64:    97: c3 ret
 ; X64:     ...
@@ -134,7 +134,7 @@ define i32 @switch_table(i32 %0) {
 ; X64:    b0: 55 push rbp
 ; X64:    b1: 48 89 e5 mov rbp, rsp
 ; X64:    b4: 66 0f 1f 84 00 00 00 00 00 nop word ptr [rax + rax]
-; X64:    bd: 48 81 ec 10 00 00 00 sub rsp, 0x10
+; X64:    bd: 48 81 ec 30 00 00 00 sub rsp, 0x30
 ; X64:    c4: 83 ff 06 cmp edi, 0x6
 ; X64:    c7: 0f 87 2f 00 00 00 ja <L0>
 ; X64:    cd: 89 ff mov edi, edi
@@ -165,36 +165,36 @@ define i32 @switch_table(i32 %0) {
 ; X64:    11a: e9 73 00 00 00 jmp <L6>
 ; X64:  <L1>:
 ; X64:    11f: b8 00 00 00 00 mov eax, 0x0
-; X64:    124: 48 83 c4 10 add rsp, 0x10
+; X64:    124: 48 83 c4 30 add rsp, 0x30
 ; X64:    128: 5d pop rbp
 ; X64:    129: c3 ret
 ; X64:  <L2>:
 ; X64:    136: b8 01 00 00 00 mov eax, 0x1
-; X64:    13b: 48 83 c4 10 add rsp, 0x10
+; X64:    13b: 48 83 c4 30 add rsp, 0x30
 ; X64:    13f: 5d pop rbp
 ; X64:    140: c3 ret
 ; X64:  <L3>:
 ; X64:    14d: b8 02 00 00 00 mov eax, 0x2
-; X64:    152: 48 83 c4 10 add rsp, 0x10
+; X64:    152: 48 83 c4 30 add rsp, 0x30
 ; X64:    156: 5d pop rbp
 ; X64:    157: c3 ret
 ; X64:  <L4>:
 ; X64:    164: b8 04 00 00 00 mov eax, 0x4
-; X64:    169: 48 83 c4 10 add rsp, 0x10
+; X64:    169: 48 83 c4 30 add rsp, 0x30
 ; X64:    16d: 5d pop rbp
 ; X64:    16e: c3 ret
 ; X64:  <L5>:
 ; X64:    17b: b8 05 00 00 00 mov eax, 0x5
-; X64:    180: 48 83 c4 10 add rsp, 0x10
+; X64:    180: 48 83 c4 30 add rsp, 0x30
 ; X64:    184: 5d pop rbp
 ; X64:    185: c3 ret
 ; X64:  <L6>:
 ; X64:    192: b8 06 00 00 00 mov eax, 0x6
-; X64:    197: 48 83 c4 10 add rsp, 0x10
+; X64:    197: 48 83 c4 30 add rsp, 0x30
 ; X64:    19b: 5d pop rbp
 ; X64:    19c: c3 ret
 ; X64:    1a9: b8 ff ff ff ff mov eax, 0xffffffff
-; X64:    1ae: 48 83 c4 10 add rsp, 0x10
+; X64:    1ae: 48 83 c4 30 add rsp, 0x30
 ; X64:    1b2: 5d pop rbp
 ; X64:    1b3: c3 ret
 entry:
@@ -226,7 +226,7 @@ define i32 @switch_table2(i32 %0) {
 ; X64:    1c0: 55 push rbp
 ; X64:    1c1: 48 89 e5 mov rbp, rsp
 ; X64:    1c4: 66 0f 1f 84 00 00 00 00 00 nop word ptr [rax + rax]
-; X64:    1cd: 48 81 ec 10 00 00 00 sub rsp, 0x10
+; X64:    1cd: 48 81 ec 30 00 00 00 sub rsp, 0x30
 ; X64:    1d4: 83 ff 03 cmp edi, 0x3
 ; X64:    1d7: 0f 82 3b 00 00 00 jb <L0>
 ; X64:    1dd: 83 ff 09 cmp edi, 0x9
@@ -259,36 +259,36 @@ define i32 @switch_table2(i32 %0) {
 ; X64:    236: e9 73 00 00 00 jmp <L6>
 ; X64:  <L1>:
 ; X64:    23b: b8 03 00 00 00 mov eax, 0x3
-; X64:    240: 48 83 c4 10 add rsp, 0x10
+; X64:    240: 48 83 c4 30 add rsp, 0x30
 ; X64:    244: 5d pop rbp
 ; X64:    245: c3 ret
 ; X64:  <L2>:
 ; X64:    252: b8 04 00 00 00 mov eax, 0x4
-; X64:    257: 48 83 c4 10 add rsp, 0x10
+; X64:    257: 48 83 c4 30 add rsp, 0x30
 ; X64:    25b: 5d pop rbp
 ; X64:    25c: c3 ret
 ; X64:  <L3>:
 ; X64:    269: b8 05 00 00 00 mov eax, 0x5
-; X64:    26e: 48 83 c4 10 add rsp, 0x10
+; X64:    26e: 48 83 c4 30 add rsp, 0x30
 ; X64:    272: 5d pop rbp
 ; X64:    273: c3 ret
 ; X64:  <L4>:
 ; X64:    280: b8 07 00 00 00 mov eax, 0x7
-; X64:    285: 48 83 c4 10 add rsp, 0x10
+; X64:    285: 48 83 c4 30 add rsp, 0x30
 ; X64:    289: 5d pop rbp
 ; X64:    28a: c3 ret
 ; X64:  <L5>:
 ; X64:    297: b8 08 00 00 00 mov eax, 0x8
-; X64:    29c: 48 83 c4 10 add rsp, 0x10
+; X64:    29c: 48 83 c4 30 add rsp, 0x30
 ; X64:    2a0: 5d pop rbp
 ; X64:    2a1: c3 ret
 ; X64:  <L6>:
 ; X64:    2ae: b8 09 00 00 00 mov eax, 0x9
-; X64:    2b3: 48 83 c4 10 add rsp, 0x10
+; X64:    2b3: 48 83 c4 30 add rsp, 0x30
 ; X64:    2b7: 5d pop rbp
 ; X64:    2b8: c3 ret
 ; X64:    2c5: b8 ff ff ff ff mov eax, 0xffffffff
-; X64:    2ca: 48 83 c4 10 add rsp, 0x10
+; X64:    2ca: 48 83 c4 30 add rsp, 0x30
 ; X64:    2ce: 5d pop rbp
 ; X64:    2cf: c3 ret
 ; X64:    2dc: 00 00 add byte ptr [rax], al
@@ -323,7 +323,7 @@ define i32 @switch_binsearch(i32 %0) {
 ; X64:    2e0: 55 push rbp
 ; X64:    2e1: 48 89 e5 mov rbp, rsp
 ; X64:    2e4: 66 0f 1f 84 00 00 00 00 00 nop word ptr [rax + rax]
-; X64:    2ed: 48 81 ec 10 00 00 00 sub rsp, 0x10
+; X64:    2ed: 48 81 ec 30 00 00 00 sub rsp, 0x30
 ; X64:    2f4: 83 ff 03 cmp edi, 0x3
 ; X64:    2f7: 0f 84 43 00 00 00 je <L0>
 ; X64:    2fd: 0f 87 17 00 00 00 ja <L1>
@@ -352,32 +352,32 @@ define i32 @switch_binsearch(i32 %0) {
 ; X64:    34a: e9 5c 00 00 00 jmp <L12>
 ; X64:  <L8>:
 ; X64:    34f: b8 01 00 00 00 mov eax, 0x1
-; X64:    354: 48 83 c4 10 add rsp, 0x10
+; X64:    354: 48 83 c4 30 add rsp, 0x30
 ; X64:    358: 5d pop rbp
 ; X64:    359: c3 ret
 ; X64:  <L9>:
 ; X64:    366: b8 02 00 00 00 mov eax, 0x2
-; X64:    36b: 48 83 c4 10 add rsp, 0x10
+; X64:    36b: 48 83 c4 30 add rsp, 0x30
 ; X64:    36f: 5d pop rbp
 ; X64:    370: c3 ret
 ; X64:  <L10>:
 ; X64:    37d: b8 03 00 00 00 mov eax, 0x3
-; X64:    382: 48 83 c4 10 add rsp, 0x10
+; X64:    382: 48 83 c4 30 add rsp, 0x30
 ; X64:    386: 5d pop rbp
 ; X64:    387: c3 ret
 ; X64:  <L11>:
 ; X64:    394: b8 64 00 00 00 mov eax, 0x64
-; X64:    399: 48 83 c4 10 add rsp, 0x10
+; X64:    399: 48 83 c4 30 add rsp, 0x30
 ; X64:    39d: 5d pop rbp
 ; X64:    39e: c3 ret
 ; X64:  <L12>:
 ; X64:    3ab: b8 65 00 00 00 mov eax, 0x65
-; X64:    3b0: 48 83 c4 10 add rsp, 0x10
+; X64:    3b0: 48 83 c4 30 add rsp, 0x30
 ; X64:    3b4: 5d pop rbp
 ; X64:    3b5: c3 ret
 ; X64:  <L7>:
 ; X64:    3c2: b8 ff ff ff ff mov eax, 0xffffffff
-; X64:    3c7: 48 83 c4 10 add rsp, 0x10
+; X64:    3c7: 48 83 c4 30 add rsp, 0x30
 ; X64:    3cb: 5d pop rbp
 ; X64:    3cc: c3 ret
 ; X64:     ...

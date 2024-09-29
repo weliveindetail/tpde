@@ -10,9 +10,9 @@ define void @xor_i8_3(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    xor edi, 0x3
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -29,9 +29,9 @@ define void @xor_i8_9(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    xor edi, 0x9
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -48,9 +48,9 @@ define void @xor_i8_i8(i8 %0, i8 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    xor edi, esi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -64,9 +64,9 @@ define void @xor_i16_1ff0(i16 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    xor edi, 0x1ff0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -81,9 +81,9 @@ define void @xor_i16_1ff1(i16 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    xor edi, 0x1ff1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -98,9 +98,9 @@ define void @xor_i16_i16(i16 %0, i16 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    xor edi, esi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -114,9 +114,9 @@ define void @xor_i32_1fffff0(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    xor edi, 0x1fffff0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -131,9 +131,9 @@ define void @xor_i32_1fffff1(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    xor edi, 0x1fffff1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -148,9 +148,9 @@ define void @xor_i32_i32(i32 %0, i32 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    xor edi, esi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -164,9 +164,9 @@ define void @xor_i64_fffffffffff1ffff(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    xor rdi, -0xe0001
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -181,9 +181,9 @@ define void @xor_i64_fffffffffff2ffff(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    xor rdi, -0xd0001
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -198,9 +198,9 @@ define void @xor_i64_i64(i64 %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    xor rdi, rsi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -217,9 +217,9 @@ define void @xor_i37_3(i37 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    xor rdi, 0x3
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -235,9 +235,9 @@ define void @xor_i37_i37(i37 %0, i37 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    xor rdi, rsi
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -254,12 +254,12 @@ define void @xor_i128_3(i128 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rdi
 ; X64:    xor rax, 0x3
 ; X64:    mov rcx, rsi
 ; X64:    xor rcx, 0x0
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -273,12 +273,12 @@ define void @xor_i128_30000000000000003(i128 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rdi
 ; X64:    xor rax, 0x3
 ; X64:    mov rcx, rsi
 ; X64:    xor rcx, 0x3
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -292,12 +292,12 @@ define void @xor_i128_90000000000000003(i128 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rdi
 ; X64:    xor rax, 0x3
 ; X64:    mov rcx, rsi
 ; X64:    xor rcx, 0x9
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -311,12 +311,12 @@ define void @xor_i128_90000000000000009(i128 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rdi
 ; X64:    xor rax, 0x9
 ; X64:    mov rcx, rsi
 ; X64:    xor rcx, 0x9
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -331,12 +331,12 @@ define void @xor_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x60
 ; X64:    mov rax, rdi
 ; X64:    xor rax, rdx
 ; X64:    mov rbx, rsi
 ; X64:    xor rbx, rcx
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x60
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -352,11 +352,11 @@ define void @xor_i64_no_salvage_imm(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    xor rax, 0x3
 ; X64:    xor rdi, rax
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 entry:
@@ -370,11 +370,11 @@ define void @xor_i64_no_salvage_reg(i64 %0, i64 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    xor rax, rsi
 ; X64:    xor rdi, rax
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
@@ -389,11 +389,11 @@ define void @xor_i37_no_salvage_imm(i37 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    xor rax, 0x3
 ; X64:    xor rdi, rax
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 entry:
@@ -407,11 +407,11 @@ define void @xor_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    xor rax, rsi
 ; X64:    xor rdi, rax
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
@@ -427,7 +427,7 @@ define void @xor_i128_no_salvage_imm(i128 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x60
 ; X64:    mov rax, rdi
 ; X64:    xor rax, 0x3
 ; X64:    mov rcx, rsi
@@ -436,7 +436,7 @@ define void @xor_i128_no_salvage_imm(i128 %0) {
 ; X64:    xor rdx, rax
 ; X64:    mov rbx, rsi
 ; X64:    xor rbx, rcx
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x60
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret

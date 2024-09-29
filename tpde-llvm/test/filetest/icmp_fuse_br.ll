@@ -11,17 +11,17 @@ define i8 @icmp_eq_i8_0_br(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    cmp edi, 0x0
 ; X64:    jne <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
@@ -39,16 +39,16 @@ define i8 @icmp_eq_i32_0_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x0
 ; X64:    jne <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -68,16 +68,16 @@ define i8 @icmp_ne_i32_0_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x0
 ; X64:    je <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -97,16 +97,16 @@ define i8 @icmp_ne_i64_0_br(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp rdi, 0x0
 ; X64:    je <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -125,17 +125,17 @@ define i8 @icmp_eq_i8_1_br(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movzx edi, dil
 ; X64:    cmp edi, 0x1
 ; X64:    jne <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
@@ -153,16 +153,16 @@ define i8 @icmp_eq_i32_1_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x1
 ; X64:    jne <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -182,16 +182,16 @@ define i8 @icmp_ne_i32_1_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x1
 ; X64:    je <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -212,16 +212,16 @@ define i8 @icmp_ugt_i32_1_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x1
 ; X64:    jbe <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -241,16 +241,16 @@ define i8 @icmp_uge_i32_1_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x1
 ; X64:    jb <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -270,16 +270,16 @@ define i8 @icmp_ult_i32_1_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x1
 ; X64:    jae <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -299,16 +299,16 @@ define i8 @icmp_ule_i32_1_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x1
 ; X64:    ja <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -328,16 +328,16 @@ define i8 @icmp_sgt_i32_1_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x1
 ; X64:    jle <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -357,16 +357,16 @@ define i8 @icmp_sge_i32_1_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x1
 ; X64:    jl <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -386,16 +386,16 @@ define i8 @icmp_slt_i32_1_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x1
 ; X64:    jge <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -415,16 +415,16 @@ define i8 @icmp_sle_i32_1_br(i32 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x1
 ; X64:    jg <L0>
 ; X64:    mov eax, 0x1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -447,7 +447,7 @@ define i8 @icmp_eq_i32_0_br_no_salvage(i32 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    cmp edi, 0x0
 ; X64:    mov ebx, 0x0
 ; X64:    sete bl
@@ -455,13 +455,13 @@ define i8 @icmp_eq_i32_0_br_no_salvage(i32 %0) {
 ; X64:    je <L0>
 ; X64:    and ebx, 0x1
 ; X64:    mov eax, ebx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret

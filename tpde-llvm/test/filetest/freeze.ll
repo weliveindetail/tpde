@@ -11,9 +11,9 @@ define i8 @freeze_i8(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -27,10 +27,10 @@ define i8 @freeze_i8_no_salvage(i8 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -48,9 +48,9 @@ define i64 @freeze_i64(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -67,10 +67,10 @@ define i64 @freeze_i64_no_salvage(i64 %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -87,8 +87,8 @@ define float @freeze_float(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
-; X64:    add rsp, 0x10
+; X64:    sub rsp, 0x30
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -103,9 +103,9 @@ define float @freeze_float_no_salvage(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movupd xmm1, xmm0
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -125,14 +125,14 @@ define void @freeze_i128_i1(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x60
+; X64:    sub rsp, 0x80
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx edx, byte ptr [rdi + 0x10]
 ; X64:    mov qword ptr [rdi + 0x8], rcx
 ; X64:    mov qword ptr [rdi], rax
 ; X64:    mov byte ptr [rdi + 0x10], dl
-; X64:    add rsp, 0x60
+; X64:    add rsp, 0x80
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -150,7 +150,7 @@ define void @freeze_i128_i1_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x80
+; X64:    sub rsp, 0xa0
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx edx, byte ptr [rdi + 0x10]
@@ -160,7 +160,7 @@ define void @freeze_i128_i1_no_salvage(ptr %0) {
 ; X64:    mov qword ptr [rdi + 0x8], rsi
 ; X64:    mov qword ptr [rdi], rbx
 ; X64:    mov byte ptr [rdi + 0x10], r8b
-; X64:    add rsp, 0x80
+; X64:    add rsp, 0xa0
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

@@ -16,10 +16,10 @@ define i8 @extract_i8_i32_0(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movzx eax, byte ptr [rdi]
 ; X64:    mov ecx, dword ptr [rdi + 0x4]
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -35,11 +35,11 @@ define i32 @extract_i8_i32_1(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movzx eax, byte ptr [rdi]
 ; X64:    mov ecx, dword ptr [rdi + 0x4]
 ; X64:    mov eax, ecx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -54,14 +54,14 @@ define i8 @extract_i8_i32_0_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movzx eax, byte ptr [rdi]
 ; X64:    mov ecx, dword ptr [rdi + 0x4]
 ; X64:    mov edx, eax
 ; X64:    mov byte ptr [rdi], al
 ; X64:    mov dword ptr [rdi + 0x4], ecx
 ; X64:    mov eax, edx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -79,14 +79,14 @@ define i32 @extract_i8_i32_1_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movzx eax, byte ptr [rdi]
 ; X64:    mov ecx, dword ptr [rdi + 0x4]
 ; X64:    mov edx, ecx
 ; X64:    mov byte ptr [rdi], al
 ; X64:    mov dword ptr [rdi + 0x4], ecx
 ; X64:    mov eax, edx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -105,10 +105,10 @@ define ptr @extract_ptr_i32_0(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov ecx, dword ptr [rdi + 0x8]
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -124,11 +124,11 @@ define i32 @extract_ptr_i32_1(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov ecx, dword ptr [rdi + 0x8]
 ; X64:    mov eax, ecx
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -143,14 +143,14 @@ define ptr @extract_ptr_i32_0_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov ecx, dword ptr [rdi + 0x8]
 ; X64:    mov rdx, rax
 ; X64:    mov qword ptr [rdi], rax
 ; X64:    mov dword ptr [rdi + 0x8], ecx
 ; X64:    mov rax, rdx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -166,14 +166,14 @@ define i32 @extract_ptr_i32_1_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov ecx, dword ptr [rdi + 0x8]
 ; X64:    mov edx, ecx
 ; X64:    mov qword ptr [rdi], rax
 ; X64:    mov dword ptr [rdi + 0x8], ecx
 ; X64:    mov eax, edx
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -191,10 +191,10 @@ define float @extract_f32_ptr_0(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    movss xmm0, dword ptr [rdi]
 ; X64:    mov rax, qword ptr [rdi + 0x8]
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -209,10 +209,10 @@ define ptr @extract_f32_ptr_1(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movss xmm0, dword ptr [rdi]
 ; X64:    mov rax, qword ptr [rdi + 0x8]
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -227,14 +227,14 @@ define float @extract_f32_ptr_0_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    movss xmm0, dword ptr [rdi]
 ; X64:    mov rax, qword ptr [rdi + 0x8]
 ; X64:    movupd xmm1, xmm0
 ; X64:    movss dword ptr [rdi], xmm0
 ; X64:    mov qword ptr [rdi + 0x8], rax
 ; X64:    movupd xmm0, xmm1
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -250,14 +250,14 @@ define ptr @extract_f32_ptr_1_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x50
 ; X64:    movss xmm0, dword ptr [rdi]
 ; X64:    mov rax, qword ptr [rdi + 0x8]
 ; X64:    mov rcx, rax
 ; X64:    movss dword ptr [rdi], xmm0
 ; X64:    mov qword ptr [rdi + 0x8], rax
 ; X64:    mov rax, rcx
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -275,12 +275,12 @@ define i128 @extract_i128_i1_0(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x40
+; X64:    sub rsp, 0x60
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx edx, byte ptr [rdi + 0x10]
 ; X64:    mov rdx, rcx
-; X64:    add rsp, 0x40
+; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -295,12 +295,12 @@ define i1 @extract_i128_i1_1(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x50
+; X64:    sub rsp, 0x70
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx edx, byte ptr [rdi + 0x10]
 ; X64:    mov eax, edx
-; X64:    add rsp, 0x50
+; X64:    add rsp, 0x70
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -316,7 +316,7 @@ define i128 @extract_i128_i1_0_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x40
+; X64:    sub rsp, 0x60
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx edx, byte ptr [rdi + 0x10]
@@ -327,7 +327,7 @@ define i128 @extract_i128_i1_0_no_salvage(ptr %0) {
 ; X64:    mov byte ptr [rdi + 0x10], dl
 ; X64:    mov rax, rsi
 ; X64:    mov rdx, rbx
-; X64:    add rsp, 0x40
+; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -344,7 +344,7 @@ define i1 @extract_i128_i1_1_no_salvage(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x50
+; X64:    sub rsp, 0x70
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx edx, byte ptr [rdi + 0x10]
@@ -353,7 +353,7 @@ define i1 @extract_i128_i1_1_no_salvage(ptr %0) {
 ; X64:    mov qword ptr [rdi], rax
 ; X64:    mov byte ptr [rdi + 0x10], dl
 ; X64:    mov eax, ebx
-; X64:    add rsp, 0x50
+; X64:    add rsp, 0x70
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

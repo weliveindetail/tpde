@@ -12,12 +12,12 @@ define void @cmpxchg_mono_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rsi
 ; X64:    lock
 ; X64:    cmpxchg qword ptr [rdi], rdx
 ; X64:    sete cl
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -34,12 +34,12 @@ define void @cmpxchg_acq_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rsi
 ; X64:    lock
 ; X64:    cmpxchg qword ptr [rdi], rdx
 ; X64:    sete cl
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -55,12 +55,12 @@ define void @cmpxchg_acq_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rsi
 ; X64:    lock
 ; X64:    cmpxchg qword ptr [rdi], rdx
 ; X64:    sete cl
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -77,12 +77,12 @@ define void @cmpxchg_rel_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rsi
 ; X64:    lock
 ; X64:    cmpxchg qword ptr [rdi], rdx
 ; X64:    sete cl
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -98,12 +98,12 @@ define void @cmpxchg_rel_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rsi
 ; X64:    lock
 ; X64:    cmpxchg qword ptr [rdi], rdx
 ; X64:    sete cl
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -120,12 +120,12 @@ define void @cmpxchg_acqrel_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rsi
 ; X64:    lock
 ; X64:    cmpxchg qword ptr [rdi], rdx
 ; X64:    sete cl
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -141,12 +141,12 @@ define void @cmpxchg_acqrel_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rsi
 ; X64:    lock
 ; X64:    cmpxchg qword ptr [rdi], rdx
 ; X64:    sete cl
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -163,12 +163,12 @@ define void @cmpxchg_seqcst_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rsi
 ; X64:    lock
 ; X64:    cmpxchg qword ptr [rdi], rdx
 ; X64:    sete cl
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -184,12 +184,12 @@ define void @cmpxchg_seqcst_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rsi
 ; X64:    lock
 ; X64:    cmpxchg qword ptr [rdi], rdx
 ; X64:    sete cl
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -205,12 +205,12 @@ define void @cmpxchg_seqcst_seqcst(ptr %0, i64 %1, i64 %2) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, rsi
 ; X64:    lock
 ; X64:    cmpxchg qword ptr [rdi], rdx
 ; X64:    sete cl
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

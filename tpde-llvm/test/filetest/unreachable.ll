@@ -11,7 +11,7 @@ define void @test() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    ud2
 ; X64:     ...
 ; X64:    add byte ptr [rax], al

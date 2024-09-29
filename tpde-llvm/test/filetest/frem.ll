@@ -10,13 +10,13 @@ define float @frem_f32_1(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0x3f800000
 ; X64:    movd xmm1, eax
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fmodf-0x4
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -30,13 +30,13 @@ define float @frem_f32_5_32(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0x40aa3d71
 ; X64:    movd xmm1, eax
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fmodf-0x4
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -50,11 +50,11 @@ define float @frem_f32_f32(float %0, float %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fmodf-0x4
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -70,13 +70,13 @@ define double @frem_f64_1(double %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movabs rax, 0x3ff0000000000000
 ; X64:    movq xmm1, rax
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fmod-0x4
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -92,13 +92,13 @@ define double @frem_f64_5_32(double %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movabs rax, 0x401547ae147ae148
 ; X64:    movq xmm1, rax
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fmod-0x4
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -114,11 +114,11 @@ define double @frem_f64_f64(double %0, double %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fmod-0x4
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -134,20 +134,20 @@ define float @frem_f32_no_salvage_imm(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
-; X64:    movd dword ptr [rbp - 0x4], xmm0
+; X64:    sub rsp, 0x40
+; X64:    movd dword ptr [rbp - 0x2c], xmm0
 ; X64:    mov eax, 0x3f800000
 ; X64:    movd xmm1, eax
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fmodf-0x4
-; X64:    movd dword ptr [rbp - 0x8], xmm0
-; X64:    movd xmm0, dword ptr [rbp - 0x4]
-; X64:    movd xmm1, dword ptr [rbp - 0x8]
+; X64:    movd dword ptr [rbp - 0x30], xmm0
+; X64:    movd xmm0, dword ptr [rbp - 0x2c]
+; X64:    movd xmm1, dword ptr [rbp - 0x30]
 ; X64:  <L1>:
 ; X64:    call <L1>
 ; X64:     R_X86_64_PLT32 fmodf-0x4
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -163,18 +163,18 @@ define float @frem_f32_no_salvage_reg(float %0, float %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
-; X64:    movd dword ptr [rbp - 0x4], xmm0
+; X64:    sub rsp, 0x40
+; X64:    movd dword ptr [rbp - 0x2c], xmm0
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fmodf-0x4
-; X64:    movd dword ptr [rbp - 0xc], xmm0
-; X64:    movd xmm0, dword ptr [rbp - 0x4]
-; X64:    movd xmm1, dword ptr [rbp - 0xc]
+; X64:    movd dword ptr [rbp - 0x34], xmm0
+; X64:    movd xmm0, dword ptr [rbp - 0x2c]
+; X64:    movd xmm1, dword ptr [rbp - 0x34]
 ; X64:  <L1>:
 ; X64:    call <L1>
 ; X64:     R_X86_64_PLT32 fmodf-0x4
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -189,20 +189,20 @@ define double @frem_f64_no_salvage_imm(double %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
-; X64:    movq qword ptr [rbp - 0x8], xmm0
+; X64:    sub rsp, 0x40
+; X64:    movq qword ptr [rbp - 0x30], xmm0
 ; X64:    movabs rax, 0x3ff0000000000000
 ; X64:    movq xmm1, rax
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fmod-0x4
-; X64:    movq qword ptr [rbp - 0x10], xmm0
-; X64:    movq xmm0, qword ptr [rbp - 0x8]
-; X64:    movq xmm1, qword ptr [rbp - 0x10]
+; X64:    movq qword ptr [rbp - 0x38], xmm0
+; X64:    movq xmm0, qword ptr [rbp - 0x30]
+; X64:    movq xmm1, qword ptr [rbp - 0x38]
 ; X64:  <L1>:
 ; X64:    call <L1>
 ; X64:     R_X86_64_PLT32 fmod-0x4
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -218,18 +218,18 @@ define double @frem_f64_no_salvage_reg(double %0, double %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
-; X64:    movq qword ptr [rbp - 0x8], xmm0
+; X64:    sub rsp, 0x40
+; X64:    movq qword ptr [rbp - 0x30], xmm0
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fmod-0x4
-; X64:    movq qword ptr [rbp - 0x18], xmm0
-; X64:    movq xmm0, qword ptr [rbp - 0x8]
-; X64:    movq xmm1, qword ptr [rbp - 0x18]
+; X64:    movq qword ptr [rbp - 0x40], xmm0
+; X64:    movq xmm0, qword ptr [rbp - 0x30]
+; X64:    movq xmm1, qword ptr [rbp - 0x40]
 ; X64:  <L1>:
 ; X64:    call <L1>
 ; X64:     R_X86_64_PLT32 fmod-0x4
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

@@ -10,11 +10,11 @@ define float @fadd_f32_1(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0x3f800000
 ; X64:    movd xmm1, eax
 ; X64:    addss xmm0, xmm1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -29,11 +29,11 @@ define float @fadd_f32_5_32(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0x40aa3d71
 ; X64:    movd xmm1, eax
 ; X64:    addss xmm0, xmm1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -48,9 +48,9 @@ define float @fadd_f32_f32(float %0, float %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    addss xmm0, xmm1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -66,11 +66,11 @@ define double @fadd_f64_1(double %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movabs rax, 0x3ff0000000000000
 ; X64:    movq xmm1, rax
 ; X64:    addsd xmm0, xmm1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -87,11 +87,11 @@ define double @fadd_f64_5_32(double %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movabs rax, 0x401547ae147ae148
 ; X64:    movq xmm1, rax
 ; X64:    addsd xmm0, xmm1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -108,9 +108,9 @@ define double @fadd_f64_f64(double %0, double %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    addsd xmm0, xmm1
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -126,13 +126,13 @@ define float @fadd_f32_no_salvage_imm(float %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movapd xmm1, xmm0
 ; X64:    mov eax, 0x3f800000
 ; X64:    movd xmm2, eax
 ; X64:    addss xmm1, xmm2
 ; X64:    addss xmm0, xmm1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -149,11 +149,11 @@ define float @fadd_f32_no_salvage_reg(float %0, float %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    movapd xmm2, xmm0
 ; X64:    addss xmm2, xmm1
 ; X64:    addss xmm0, xmm2
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -169,13 +169,13 @@ define double @fadd_f64_no_salvage_imm(double %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movapd xmm1, xmm0
 ; X64:    movabs rax, 0x3ff0000000000000
 ; X64:    movq xmm2, rax
 ; X64:    addsd xmm1, xmm2
 ; X64:    addsd xmm0, xmm1
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -192,11 +192,11 @@ define double @fadd_f64_no_salvage_reg(double %0, double %1) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x20
+; X64:    sub rsp, 0x40
 ; X64:    movapd xmm2, xmm0
 ; X64:    addsd xmm2, xmm1
 ; X64:    addsd xmm0, xmm2
-; X64:    add rsp, 0x20
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

@@ -124,6 +124,14 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                                  AsmReg cmp_reg,
                                  u64    case_value,
                                  bool   width_is_32) noexcept;
+
+    void create_helper_call(std::span<IRValueRef>   args,
+                            std::span<ValuePartRef> results,
+                            SymRef                  sym) noexcept;
+
+    bool handle_intrin(IRValueRef,
+                       llvm::Instruction *,
+                       llvm::Function *) noexcept;
 };
 
 u32 LLVMCompilerX64::basic_ty_part_count(const LLVMBasicValType ty) noexcept {
@@ -435,10 +443,8 @@ void LLVMCompilerX64::load_address_of_var_reference(
         // default handling from CompilerX64
         ASM(LEA64rm,
             dst,
-            FE_MEM(FE_BP,
-                   0,
-                   FE_NOREG,
-                   -static_cast<i32>(ap.assignment->frame_off)));
+            FE_MEM(
+                FE_BP, 0, FE_NOREG, -static_cast<i32>(info.alloca_frame_off)));
     } else {
         const auto sym = global_sym(
             llvm::cast<llvm::GlobalValue>(adaptor->values[info.val].val));
@@ -595,7 +601,7 @@ void LLVMCompilerX64::generate_conditional_branch(
         generate_branch_to_block(jmp, true_target, true_needs_split, false);
         generate_branch_to_block(Jump::jmp, false_target, false, true);
     } else {
-        assert(true_needs_split);
+        assert(!true_needs_split);
         this->generate_branch_to_block(jmp, true_target, false, false);
         this->generate_branch_to_block(Jump::jmp, false_target, false, true);
     }
@@ -1072,6 +1078,56 @@ void LLVMCompilerX64::switch_emit_binary_step(const Label  case_label,
     generate_raw_jump(Jump::ja, gt_label);
 }
 
+void LLVMCompilerX64::create_helper_call(std::span<IRValueRef>   args,
+                                         std::span<ValuePartRef> results,
+                                         SymRef                  sym) noexcept {
+    tpde::util::SmallVector<CallArg, 8> arg_vec{};
+    for (auto arg : args) {
+        arg_vec.push_back(CallArg{arg});
+    }
+
+    tpde::util::SmallVector<
+        std::variant<ValuePartRef, std::pair<ScratchReg, u8>>>
+        res_vec{};
+    for (auto &res : results) {
+        res_vec.push_back(std::move(res));
+    }
+
+    generate_call(
+        sym, arg_vec, res_vec, tpde::x64::CallingConv::SYSV_CC, false);
+}
+
+bool LLVMCompilerX64::handle_intrin(IRValueRef,
+                                    llvm::Instruction *inst,
+                                    llvm::Function    *fn) noexcept {
+    const auto intrin_id = fn->getIntrinsicID();
+    switch (intrin_id) {
+    case llvm::Intrinsic::vastart: {
+        auto list_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        ScratchReg scratch1{this}, scratch2{this};
+        auto       list_reg = this->val_as_reg(list_ref, scratch1);
+        auto       tmp_reg  = scratch1.alloc_gp();
+
+        u64 combined_off = (((static_cast<u64>(vec_arg_count) * 16) + 48) << 32)
+                           | (static_cast<u64>(scalar_arg_count) * 8);
+        ASM(MOV64ri, tmp_reg, combined_off);
+        ASM(MOV64mr, FE_MEM(list_reg, 0, FE_NOREG, 0), tmp_reg);
+
+        ASM(LEA64rm,
+            tmp_reg,
+            FE_MEM(FE_BP, 0, FE_NOREG, -(i32)reg_save_frame_off));
+        ASM(MOV64mr, FE_MEM(list_reg, 0, FE_NOREG, 16), tmp_reg);
+
+        ASM(LEA64rm,
+            tmp_reg,
+            FE_MEM(FE_BP, 0, FE_NOREG, (i32)var_arg_stack_off));
+        ASM(MOV64mr, FE_MEM(list_reg, 0, FE_NOREG, 8), tmp_reg);
+        return true;
+    }
+    default: return false;
+    }
+}
+
 extern bool compile_llvm(llvm::LLVMContext    &ctx,
                          llvm::Module         &mod,
                          const char           *out_path,
@@ -1084,6 +1140,7 @@ extern bool compile_llvm(llvm::LLVMContext    &ctx,
 
 
     if (!compiler->compile()) {
+        assert(0);
         return false;
     }
 

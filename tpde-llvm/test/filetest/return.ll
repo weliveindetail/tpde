@@ -10,9 +10,9 @@ define i8 @ret_i8(i8 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -25,10 +25,10 @@ define signext i8 @ret_i8_sext(i8 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
 ; X64:    movsx rax, al
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -42,10 +42,10 @@ define zeroext i8 @ret_i8_zext(i8 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
 ; X64:    movzx eax, al
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -60,9 +60,9 @@ define i8 @ret_i8_const() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0xd
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -77,9 +77,9 @@ define zeroext i8 @ret_i8_const_zext() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0xd
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -94,10 +94,10 @@ define signext i8 @ret_i8_const_sext() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0xff
 ; X64:    movsx rax, al
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
@@ -111,9 +111,9 @@ define i16 @ret_i16(i16 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -126,10 +126,10 @@ define signext i16 @ret_i16_sext(i16 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
 ; X64:    movsx rax, ax
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -143,10 +143,10 @@ define zeroext i16 @ret_i16_zext(i16 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
 ; X64:    movzx eax, ax
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -161,9 +161,9 @@ define i16 @ret_i16_const() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0x539
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -178,9 +178,9 @@ define i16 @ret_i16_const2() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0xfffe
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -195,9 +195,9 @@ define zeroext i16 @ret_i16_const_zext() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0x53a
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -212,10 +212,10 @@ define signext i16 @ret_i16_const_sext() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0xffff
 ; X64:    movsx rax, ax
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
@@ -229,9 +229,9 @@ define i32 @ret_i32(i32 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -244,10 +244,10 @@ define signext i32 @ret_i32_sext(i32 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
 ; X64:    movsxd rax, eax
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -262,10 +262,10 @@ define zeroext i32 @ret_i32_zext(i32 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
 ; X64:    mov eax, eax
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -280,9 +280,9 @@ define i32 @ret_i32_const() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0xcc07c9
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -297,9 +297,9 @@ define i32 @ret_i32_const2() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0xfffffffe
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -315,9 +315,9 @@ define i64 @ret_i64(i64 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov rax, rdi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -333,9 +333,9 @@ define i64 @ret_i64_const() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov rax, 0x539
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -349,9 +349,9 @@ define i64 @ret_i64_const2() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0x4c01db400b0c9
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 entry:
@@ -363,9 +363,9 @@ define i64 @ret_i64_const3() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov rax, -0x2
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -379,9 +379,9 @@ define i64 @ret_i64_const4() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, -0xfffffffff
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 entry:
@@ -394,10 +394,10 @@ define i128 @ret_i128(i128 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x40
 ; X64:    mov rax, rdi
 ; X64:    mov rdx, rsi
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -411,10 +411,10 @@ define i128 @ret_i128_const1() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov rax, 0x539
 ; X64:    mov edx, 0x0
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -428,10 +428,10 @@ define i128 @ret_i128_const2() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov rax, -0x2
 ; X64:    mov rdx, -0x1
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -445,10 +445,10 @@ define zeroext i24 @ret_i24_zext(i24 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
 ; X64:    and eax, 0xffffff
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -462,9 +462,9 @@ define zeroext i24 @ret_i24_const_zext() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0xfffffe
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -479,11 +479,11 @@ define signext i24 @ret_i24_sext(i24 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, edi
 ; X64:    shl eax, 0x8
 ; X64:    sar eax, 0x8
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -496,11 +496,11 @@ define signext i24 @ret_i24_const_sext() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0xfffffe
 ; X64:    shl eax, 0x8
 ; X64:    sar eax, 0x8
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -516,11 +516,11 @@ define zeroext i41 @ret_i41_zext(i41 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov rax, rdi
 ; X64:    movabs rcx, 0x1ffffffffff
 ; X64:    and rax, rcx
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -534,9 +534,9 @@ define zeroext i41 @ret_i41_const_zext() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0x1fffffffffe
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 entry:
@@ -548,11 +548,11 @@ define signext i41 @ret_i41_sext(i41 %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    mov rax, rdi
 ; X64:    shl rax, 0x17
 ; X64:    sar rax, 0x17
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -567,11 +567,11 @@ define signext i41 @ret_i41_const_sext() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0x1fffffffffe
 ; X64:    shl rax, 0x17
 ; X64:    sar rax, 0x17
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -585,8 +585,8 @@ define float @ret_f32(float %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
-; X64:    add rsp, 0x10
+; X64:    sub rsp, 0x30
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -600,10 +600,10 @@ define float @ret_f32_const() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    mov eax, 0x3f800000
 ; X64:    movd xmm0, eax
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
@@ -616,8 +616,8 @@ define double @ret_f64(double %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
-; X64:    add rsp, 0x10
+; X64:    sub rsp, 0x30
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -631,10 +631,10 @@ define double @ret_f64_const() {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x0
+; X64:    sub rsp, 0x30
 ; X64:    movabs rax, 0x3ff0000000000000
 ; X64:    movq xmm0, rax
-; X64:    add rsp, 0x0
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -650,9 +650,9 @@ define float @ret_f32_2(float %b, float %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movupd xmm0, xmm1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
@@ -667,9 +667,9 @@ define double @ret_f64_2(double %b, double %a) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x10
+; X64:    sub rsp, 0x30
 ; X64:    movupd xmm0, xmm1
-; X64:    add rsp, 0x10
+; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
