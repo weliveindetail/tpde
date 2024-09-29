@@ -961,9 +961,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
 
     if (arg.is_const) {
         lhs_reg = res_ref.alloc_reg(false);
-        // TODO(ts): materialize constant
-        assert(0);
-        exit(1);
+        derived()->materialize_constant(arg, lhs_reg);
     } else {
         lhs_reg = arg.alloc_reg();
 
@@ -1233,7 +1231,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
         auto part      = register_file.reg_part(AsmReg{reg});
         if (local_idx == INVALID_VAL_LOCAL_IDX) {
             // scratch regs can never be held across blocks
-            return false;
+            return true;
         }
         auto *assignment = val_assignment(local_idx);
         auto  ap         = AssignmentPartRef{assignment, part};

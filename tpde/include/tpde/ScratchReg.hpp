@@ -104,6 +104,7 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
         cur_reg = AsmReg::make_invalid();
     }
 
+    // TODO(ts): try to first find a non callee-saved/clobbered register...
     auto reg = reg_file.find_first_free_excluding(bank, exclusion_mask);
     if (reg.invalid()) {
         // TODO(ts): use clock here?
