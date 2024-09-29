@@ -333,6 +333,14 @@ struct LLVMAdaptor {
         return std::string{"Name unavailable in non-debug builds"};
     #endif
     }
+
+    [[nodiscard]] std::string
+        value_fmt_ref(const IRValueRef value) const noexcept {
+        std::string              buf;
+        llvm::raw_string_ostream os{buf};
+        values[value].val->print(os);
+        return buf;
+    }
 #endif
 
 

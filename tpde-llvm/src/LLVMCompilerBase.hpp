@@ -2506,8 +2506,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
     ScratchReg res_scratch{derived()};
     auto       res_ref = this->result_ref_lazy(inst_idx, 0);
 
-    if (ty->isIntegerTy()) {
-        const auto width = ty->getIntegerBitWidth();
+    if (ty->isIntegerTy() || ty->isPointerTy()) {
+        auto width = 64u;
+        if (ty->isIntegerTy()) {
+            width = ty->getIntegerBitWidth();
+        }
+
         if (width == 128) {
             lhs.inc_ref_count();
             rhs.inc_ref_count();
@@ -2524,6 +2528,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
                                                std::move(rhs_high),
                                                res_scratch,
                                                res_scratch_high)) {
+                TPDE_LOG_ERR("Failed to encode select for i128");
                 return false;
             }
             this->set_value(res_ref, res_scratch);
@@ -2536,6 +2541,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
                                               std::move(lhs),
                                               std::move(rhs),
                                               res_scratch)) {
+                TPDE_LOG_ERR("Failed to encode select for i32");
                 return false;
             }
         } else if (width <= 64) {
@@ -2543,22 +2549,27 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
                                               std::move(lhs),
                                               std::move(rhs),
                                               res_scratch)) {
+                TPDE_LOG_ERR("Failed to encode select for i64");
                 return false;
             }
         } else {
+            TPDE_LOG_ERR("Invalid select width {}", width);
             return false;
         }
     } else if (ty->isFloatTy()) {
         if (!derived()->encode_select_f32(
                 std::move(cond), std::move(lhs), std::move(rhs), res_scratch)) {
+            TPDE_LOG_ERR("Failed to encode select for f32");
             return false;
         }
     } else if (ty->isDoubleTy()) {
         if (!derived()->encode_select_f64(
                 std::move(cond), std::move(lhs), std::move(rhs), res_scratch)) {
+            TPDE_LOG_ERR("Failed to encode select for f64");
             return false;
         }
     } else {
+        TPDE_LOG_ERR("Invalid type for select");
         return false;
     }
 

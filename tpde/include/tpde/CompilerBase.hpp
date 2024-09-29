@@ -392,6 +392,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile() {
 
         TPDE_LOG_TRACE("Compiling func {}", adaptor->func_link_name(func));
         if (!derived()->compile_func(func, func_idx)) {
+            TPDE_LOG_ERR("Failed to compile function {}",
+                         adaptor->func_link_name(func));
             return false;
         }
         ++func_idx;
@@ -1728,6 +1730,9 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
         TPDE_LOG_TRACE(
             "Compiling block {} ({})", i, adaptor->block_fmt_ref(block_ref));
         if (!derived()->compile_block(block_ref, i)) {
+            TPDE_LOG_ERR("Failed to compile block {} ({})",
+                         i,
+                         adaptor->block_fmt_ref(block_ref));
             return false;
         }
     }
@@ -1759,6 +1764,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
         ++it_cpy;
         if (!derived()->compile_inst(value,
                                      InstRange{.from = it_cpy, .to = end})) {
+            TPDE_LOG_ERR("Failed to compile instruction {}",
+                         this->adaptor->value_fmt_ref(value));
             return false;
         }
     }
