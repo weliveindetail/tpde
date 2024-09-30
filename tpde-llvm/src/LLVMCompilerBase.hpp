@@ -1827,7 +1827,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
     assert(src_ty->isFloatTy() || src_ty->isDoubleTy());
 
     const auto src_double = src_ty->isDoubleTy();
+    (void)src_double;
     const auto dst_double = inst->getType()->isDoubleTy();
+    (void)dst_double;
 
     auto src_ref = this->val_ref(llvm_val_idx(src_val), 0);
 

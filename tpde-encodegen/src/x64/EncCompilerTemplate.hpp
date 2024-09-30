@@ -362,7 +362,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     assert(info.bank == 0);
     assert(info.size <= 8);
 
-    const u64 imm = std::get<Immediate>(state).const_u64;
+    const u64 imm = info.const_u64;
     return static_cast<i64>(static_cast<i16>(imm)) == static_cast<i64>(imm);
 }
 
@@ -381,7 +381,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     assert(info.bank == 0);
     assert(info.size <= 8);
 
-    const u64 imm = std::get<Immediate>(state).const_u64;
+    const u64 imm = info.const_u64;
     return static_cast<i64>(static_cast<i8>(imm)) == static_cast<i8>(imm);
 }
 

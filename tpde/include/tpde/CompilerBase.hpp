@@ -899,6 +899,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     assert(val_assignment(local_idx) != nullptr);
     auto res_ref = ValuePartRef{this, local_idx, part};
     auto ap_res  = res_ref.assignment();
+    (void)ap_res;
     assert(ap_res.bank() == arg.bank());
 
     if (arg.is_const) {
