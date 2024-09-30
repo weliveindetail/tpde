@@ -15,6 +15,7 @@ config.test_exec_root = os.path.join(config.tpde_llvm_bin_dir, 'test/filetest');
 
 config.substitutions.append(('llvm-objdump', os.path.join(config.llvm_tools_dir, 'llvm-objdump')))
 config.substitutions.append(('FileCheck', os.path.join(config.llvm_tools_dir, 'FileCheck')))
+config.substitutions.append(('%clang', os.path.join(config.llvm_tools_dir, 'clang')))
 config.substitutions.append(('tpde_llvm', os.path.join(config.tpde_llvm_bin_dir, 'tpde_llvm')))
 
 # TODO(ts): arch config
