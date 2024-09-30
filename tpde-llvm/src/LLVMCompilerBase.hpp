@@ -3086,6 +3086,29 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         this->set_value(res_ref, res_scratch);
         return true;
     }
+    case llvm::Intrinsic::fmuladd: {
+        auto op1_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        auto op2_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+        auto op3_ref = this->val_ref(llvm_val_idx(inst->getOperand(2)), 0);
+
+        const auto is_double = inst->getOperand(0)->getType()->isDoubleTy();
+
+        auto       res_ref = this->result_ref_lazy(inst_idx, 0);
+        ScratchReg res_scratch{derived()};
+        if (is_double) {
+            derived()->encode_fmaf64(std::move(op1_ref),
+                                     std::move(op2_ref),
+                                     std::move(op3_ref),
+                                     res_scratch);
+        } else {
+            derived()->encode_fmaf32(std::move(op1_ref),
+                                     std::move(op2_ref),
+                                     std::move(op3_ref),
+                                     res_scratch);
+        }
+        this->set_value(res_ref, res_scratch);
+        return true;
+    }
     default: {
         if (derived()->handle_intrin(inst_idx, inst, intrin)) {
             return true;

@@ -211,6 +211,9 @@ double TARGET_V1 fnegf64(double a) { return (-a); }
 float TARGET_V1 fabsf32(float a) { return __builtin_fabsf(a); }
 double TARGET_V1 fabsf64(double a) { return __builtin_fabs(a); }
 
+float TARGET_V1 fmaf32(float a, float b, float c) { return a * b + c; }
+double TARGET_V1 fmaf64(double a, double b, double c) { return a * b + c; }
+
 // --------------------------
 // float conversions
 // --------------------------

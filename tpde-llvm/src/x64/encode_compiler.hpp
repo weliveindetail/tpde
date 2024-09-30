@@ -365,6 +365,8 @@ struct EncodeCompiler {
     bool encode_fnegf64(AsmOperand param_0, ScratchReg &result_0);
     bool encode_fabsf32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_fabsf64(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_fmaf32(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0);
+    bool encode_fmaf64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0);
     bool encode_f64tof32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_f32tof64(AsmOperand param_0, ScratchReg &result_0);
     bool encode_f32toi32(AsmOperand param_0, ScratchReg &result_0);
@@ -8700,6 +8702,182 @@ template <typename Adaptor,
     ASMD(SSE_ANDPSrm, scratch_xmm0.cur_reg, inst0_op1);
     derived()->assembler.reloc_text_pc32(inst0_op1_sym, derived()->assembler.text_cur_off() - 4, -4);
     // argument xmm0 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fmaf32(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0) {
+    // # Machine code for function fmaf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1, $xmm2
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $xmm0, $xmm1, $xmm2
+    //   renamable $xmm0 = nofpexcept MULSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    //   renamable $xmm0 = nofpexcept ADDSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm2, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function fmaf32.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    // Mapping xmm2 to param_2
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+    ScratchReg scratch_xmm2{derived()};
+
+
+    // renamable $xmm0 = nofpexcept MULSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    // SSE_MULSSrr has a preferred encoding as SSE_MULSSrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_MULSSrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_MULSSrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // renamable $xmm0 = nofpexcept ADDSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm2, implicit $mxcsr
+    // SSE_ADDSSrr has a preferred encoding as SSE_ADDSSrm if possible
+    if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // operand 0(xmm0) is the same as its tied destination
+        scratch_xmm0.alloc_from_bank(1);
+        // operand 1 is a memory operand
+        // xmm2 is base for memory operand to use
+        // xmm2 maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+
+        ASMD(SSE_ADDSSrm, scratch_xmm0.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // operand 0(xmm0) is the same as its tied destination
+        scratch_xmm0.alloc_from_bank(1);
+        // operand 1 is xmm2
+        // xmm2 is mapped to param_2
+        AsmReg inst1_op1 = param_2.as_reg(this);
+
+        ASMD(SSE_ADDSSrr, scratch_xmm0.cur_reg, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm2 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fmaf64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0) {
+    // # Machine code for function fmaf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $xmm0, $xmm1, $xmm2
+    // 
+    // bb.0 (%ir-block.3):
+    //   liveins: $xmm0, $xmm1, $xmm2
+    //   renamable $xmm0 = nofpexcept MULSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    //   renamable $xmm0 = nofpexcept ADDSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm2, implicit $mxcsr
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function fmaf64.
+    // 
+
+    // Mapping xmm0 to param_0
+    // Mapping xmm1 to param_1
+    // Mapping xmm2 to param_2
+    ScratchReg scratch_xmm1{derived()};
+    ScratchReg scratch_xmm0{derived()};
+    ScratchReg scratch_xmm2{derived()};
+
+
+    // renamable $xmm0 = nofpexcept MULSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, implicit $mxcsr
+    // SSE_MULSDrr has a preferred encoding as SSE_MULSDrm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is a memory operand
+        // xmm1 is base for memory operand to use
+        // xmm1 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SSE_MULSDrm, scratch_xmm0.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is xmm0
+        // xmm0 is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        // operand 1 is xmm1
+        // xmm1 is mapped to param_1
+        AsmReg inst0_op1 = param_1.as_reg(this);
+
+        ASMD(SSE_MULSDrr, scratch_xmm0.cur_reg, inst0_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm1 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // renamable $xmm0 = nofpexcept ADDSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm2, implicit $mxcsr
+    // SSE_ADDSDrr has a preferred encoding as SSE_ADDSDrm if possible
+    if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is xmm0
+        // operand 0(xmm0) is the same as its tied destination
+        scratch_xmm0.alloc_from_bank(1);
+        // operand 1 is a memory operand
+        // xmm2 is base for memory operand to use
+        // xmm2 maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+
+        ASMD(SSE_ADDSDrm, scratch_xmm0.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is xmm0
+        // operand 0(xmm0) is the same as its tied destination
+        scratch_xmm0.alloc_from_bank(1);
+        // operand 1 is xmm2
+        // xmm2 is mapped to param_2
+        AsmReg inst1_op1 = param_2.as_reg(this);
+
+        ASMD(SSE_ADDSDrr, scratch_xmm0.cur_reg, inst1_op1);
+    }
+    // argument xmm0 is killed and marked as dead
+    // argument xmm2 is killed and marked as dead
     // result xmm0 is marked as alive
 
 
