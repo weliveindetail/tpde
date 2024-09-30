@@ -869,6 +869,14 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
 
         auto size = this->adaptor->val_alloca_size(v);
         size = tpde::util::align_up(size, this->adaptor->val_alloca_align(v));
+        // round up stack allocation to next power of two
+        if (size == 3) {
+            size = 4;
+        } else if (size > 4 && size < 8) {
+            size = 8;
+        } else if (size > 8 && size < 16) {
+            size = 16;
+        }
 
         auto frame_off = this->allocate_stack_slot(size);
         if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
