@@ -648,6 +648,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
         // leave at 0
         return true;
     }
+    if (auto *null = llvm::dyn_cast<llvm::ConstantPointerNull>(constant);
+        null) {
+        // leave at 0
+        return true;
+    }
     if (auto *GV = llvm::dyn_cast<llvm::GlobalVariable>(constant); GV) {
         assert(alloc_size == 8);
         const auto sym = global_sym(GV);
@@ -2828,6 +2833,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
             if (arg_ref.can_salvage()) {
                 scratch.alloc_specific(arg_ref.salvage());
             } else if (!arg_ref.is_const) {
+                arg_ref.unlock();
                 arg_ref.reload_into_specific_fixed(this, scratch.alloc_gp());
                 cmp_reg = scratch.cur_reg;
             }
