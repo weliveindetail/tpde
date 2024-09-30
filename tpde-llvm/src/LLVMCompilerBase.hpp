@@ -893,6 +893,10 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     IRValueRef val_idx, InstRange remaining) noexcept {
+    TPDE_LOG_TRACE("Compiling inst {} ({})",
+                   val_idx,
+                   this->adaptor->value_fmt_ref(val_idx));
+
     auto *i =
         llvm::dyn_cast<llvm::Instruction>(this->adaptor->values[val_idx].val);
     const auto opcode = i->getOpcode();
