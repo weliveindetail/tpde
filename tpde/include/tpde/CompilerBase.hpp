@@ -1300,11 +1300,16 @@ void CompilerBase<Adaptor, Derived, Config>::release_spilled_regs(
         if (!register_file.is_used(reg)) {
             continue;
         }
+        if (register_file.is_fixed(reg)) {
+            // we don't need to release fixed assignments but they should be
+            // real assignments from values
+            assert(register_file.reg_local_idx(reg) != INVALID_VAL_LOCAL_IDX);
+            continue;
+        }
 
         auto local_idx = register_file.reg_local_idx(reg);
         auto part      = register_file.reg_part(reg);
         assert(local_idx != INVALID_VAL_LOCAL_IDX);
-        assert(!register_file.is_fixed(reg));
         auto ap = AssignmentPartRef{val_assignment(local_idx), part};
         ap.set_register_valid(false);
         register_file.unmark_used(reg);
