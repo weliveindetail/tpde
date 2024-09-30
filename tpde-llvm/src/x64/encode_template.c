@@ -349,3 +349,30 @@ FOPS(double)
 #undef FOP_ORD
 #undef FOP_UNORD
 #undef FOPS
+
+// --------------------------
+// is_fpclass
+// --------------------------
+
+#define FOP(ty, name, num) u8 TARGET_V1 is_fpclass_##name##_##ty(u8 c, ty a) { return c | __builtin_isfpclass(a, (num)); }
+#define FOPS(ty) \
+    FOP(ty, snan, 1<<0) \
+    FOP(ty, qnan, 1<<1) \
+    FOP(ty, ninf, 1<<2) \
+    FOP(ty, nnorm, 1<<3) \
+    FOP(ty, nsnorm, 1<<4) \
+    FOP(ty, nzero, 1<<5) \
+    FOP(ty, pzero, 1<<6) \
+    FOP(ty, psnorm, 1<<7) \
+    FOP(ty, pnorm, 1<<8) \
+    FOP(ty, pinf, 1<<9) \
+    FOP(ty, nan, (1<<0)|(1<<1)) \
+    FOP(ty, inf, (1<<2)|(1<<9)) \
+    FOP(ty, norm, (1<<3)|(1<<8)) \
+    FOP(ty, finite, (1<<3)|(1<<4)|(1<<5)|(1<<6)|(1<<7)|(1<<8))
+
+FOPS(float)
+FOPS(double)
+
+#undef FOPS
+#undef FOP

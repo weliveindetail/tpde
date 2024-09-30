@@ -177,6 +177,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_intrin(IRValueRef,
                         llvm::Instruction *,
                         llvm::Function *) noexcept;
+    bool compile_is_fpclass(IRValueRef, llvm::Instruction *) noexcept;
 
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept {
         return false;
@@ -3002,6 +3003,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
         return true;
     }
+    case llvm::Intrinsic::is_fpclass: {
+        return compile_is_fpclass(inst_idx, inst);
+    }
     default: {
         if (derived()->handle_intrin(inst_idx, inst, intrin)) {
             return true;
@@ -3015,5 +3019,98 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         return false;
     }
     }
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    using EncodeImm = typename Derived::EncodeImm;
+
+    auto *op    = inst->getOperand(0);
+    auto *op_ty = op->getType();
+
+    if (!op_ty->isFloatTy() && !op_ty->isDoubleTy()) {
+        TPDE_LOG_ERR("is_fpclass only supports float and doubles");
+        return false;
+    }
+    const auto is_double = op_ty->isDoubleTy();
+    const auto test =
+        llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
+
+    enum {
+        SIGNALING_NAN = 1 << 0,
+        QUIET_NAN     = 1 << 1,
+        NEG_INF       = 1 << 2,
+        NEG_NORM      = 1 << 3,
+        NEG_SUBNORM   = 1 << 4,
+        NEG_ZERO      = 1 << 5,
+        POS_ZERO      = 1 << 6,
+        POS_SUBNORM   = 1 << 7,
+        POS_NORM      = 1 << 8,
+        POS_INF       = 1 << 9,
+
+        IS_NAN    = SIGNALING_NAN | QUIET_NAN,
+        IS_INF    = NEG_INF | POS_INF,
+        IS_NORM   = NEG_NORM | POS_NORM,
+        IS_FINITE = NEG_NORM | NEG_SUBNORM | NEG_ZERO | POS_ZERO | POS_SUBNORM
+                    | POS_NORM,
+    };
+
+    ScratchReg res_scratch{derived()};
+    auto       res_ref = this->result_ref_lazy(inst_idx, 0);
+    auto       op_ref  = this->val_ref(llvm_val_idx(op), 0);
+
+    // handle common case
+#define TEST(cond, name)                                                       \
+    if (test == cond) {                                                        \
+        if (is_double) {                                                       \
+            derived()->encode_is_fpclass_##name##_double(                      \
+                EncodeImm{0u}, std::move(op_ref), res_scratch);                \
+        } else {                                                               \
+            derived()->encode_is_fpclass_##name##_float(                       \
+                EncodeImm{0u}, std::move(op_ref), res_scratch);                \
+        }                                                                      \
+        this->set_value(res_ref, res_scratch);                                 \
+        return true;                                                           \
+    }
+
+    TEST(IS_NAN, nan)
+    TEST(IS_INF, inf)
+    TEST(IS_NORM, norm)
+#undef TEST
+
+    // we OR' together the results from each test so initialize the result with
+    // zero
+    auto const_ref = ValuePartRef{0, Config::GP_BANK, 4};
+    derived()->materialize_constant(const_ref, res_scratch.alloc_gp());
+
+#define TEST(cond, name)                                                       \
+    if (test & cond) {                                                         \
+        if (is_double) {                                                       \
+            /* note that the std::move(res_scratch) here creates a new         \
+             * ScratchReg that manages the register inside the AsmOperand and  \
+             * res_scratch becomes invalid by the time the encode function is  \
+             * entered */                                                      \
+            derived()->encode_is_fpclass_##name##_double(                      \
+                std::move(res_scratch), op_ref, res_scratch);                  \
+        } else {                                                               \
+            derived()->encode_is_fpclass_##name##_float(                       \
+                std::move(res_scratch), op_ref, res_scratch);                  \
+        }                                                                      \
+    }
+    TEST(SIGNALING_NAN, snan)
+    TEST(QUIET_NAN, qnan)
+    TEST(NEG_INF, ninf)
+    TEST(NEG_NORM, nnorm)
+    TEST(NEG_SUBNORM, nsnorm)
+    TEST(NEG_ZERO, nzero)
+    TEST(POS_ZERO, pzero)
+    TEST(POS_SUBNORM, psnorm)
+    TEST(POS_NORM, pnorm)
+    TEST(POS_INF, pinf)
+#undef TEST
+
+    this->set_value(res_ref, res_scratch);
+    return true;
 }
 } // namespace tpde_llvm
