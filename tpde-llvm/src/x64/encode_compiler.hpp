@@ -363,6 +363,8 @@ struct EncodeCompiler {
     bool encode_divf64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_fnegf32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_fnegf64(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_fabsf32(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_fabsf64(AsmOperand param_0, ScratchReg &result_0);
     bool encode_f64tof32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_f32tof64(AsmOperand param_0, ScratchReg &result_0);
     bool encode_f32toi32(AsmOperand param_0, ScratchReg &result_0);
@@ -475,6 +477,8 @@ struct EncodeCompiler {
 
     SymRef sym_fnegf32_cp0 = Assembler::INVALID_SYM_REF;
     SymRef sym_fnegf64_cp0 = Assembler::INVALID_SYM_REF;
+    SymRef sym_fabsf32_cp0 = Assembler::INVALID_SYM_REF;
+    SymRef sym_fabsf64_cp0 = Assembler::INVALID_SYM_REF;
     SymRef sym_f32tou64_cp0 = Assembler::INVALID_SYM_REF;
     SymRef sym_f64tou64_cp0 = Assembler::INVALID_SYM_REF;
     SymRef sym_u64tof64_cp1 = Assembler::INVALID_SYM_REF;
@@ -8592,6 +8596,108 @@ template <typename Adaptor,
     inst0_op1 = FE_MEM(FE_IP, 0, FE_NOREG, 0);
 
     ASMD(SSE_XORPSrm, scratch_xmm0.cur_reg, inst0_op1);
+    derived()->assembler.reloc_text_pc32(inst0_op1_sym, derived()->assembler.text_cur_off() - 4, -4);
+    // argument xmm0 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fabsf32(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function fabsf32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Constant Pool:
+    //   cp#0: <float 0x7FFFFFFFE0000000, float 0x7FFFFFFFE0000000, float 0x7FFFFFFFE0000000, float 0x7FFFFFFFE0000000>, align=16
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $xmm0 = ANDPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function fabsf32.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = ANDPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    // operand 0 is xmm0
+    // xmm0 is mapped to param_0
+    // operand 0(param_0) is tied so try to salvage or materialize
+    param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // operand is a constant-pool reference
+    SymRef inst0_op1_sym = this->sym_fabsf32_cp0;
+    if (inst0_op1_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+        const std::array<u8, 16> data = {0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x7F};
+        inst0_op1_sym = derived()->assembler.sym_def_data("", data, 16, true, false, true, false);
+        this->sym_fabsf32_cp0 = inst0_op1_sym;
+    }
+    inst0_op1 = FE_MEM(FE_IP, 0, FE_NOREG, 0);
+
+    ASMD(SSE_ANDPSrm, scratch_xmm0.cur_reg, inst0_op1);
+    derived()->assembler.reloc_text_pc32(inst0_op1_sym, derived()->assembler.text_cur_off() - 4, -4);
+    // argument xmm0 is killed and marked as dead
+    // result xmm0 is marked as alive
+
+
+    // RET64 killed $xmm0
+    // returning reg xmm0 as result_0
+    result_0 = std::move(scratch_xmm0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_fabsf64(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function fabsf64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Constant Pool:
+    //   cp#0: <double 0x7FFFFFFFFFFFFFFF, double 0x7FFFFFFFFFFFFFFF>, align=16
+    // Function Live Ins: $xmm0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $xmm0
+    //   renamable $xmm0 = ANDPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    //   RET64 killed $xmm0
+    // 
+    // # End machine code for function fabsf64.
+    // 
+
+    // Mapping xmm0 to param_0
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = ANDPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    // operand 0 is xmm0
+    // xmm0 is mapped to param_0
+    // operand 0(param_0) is tied so try to salvage or materialize
+    param_0.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // operand is a constant-pool reference
+    SymRef inst0_op1_sym = this->sym_fabsf64_cp0;
+    if (inst0_op1_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+        const std::array<u8, 16> data = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F};
+        inst0_op1_sym = derived()->assembler.sym_def_data("", data, 16, true, false, true, false);
+        this->sym_fabsf64_cp0 = inst0_op1_sym;
+    }
+    inst0_op1 = FE_MEM(FE_IP, 0, FE_NOREG, 0);
+
+    ASMD(SSE_ANDPSrm, scratch_xmm0.cur_reg, inst0_op1);
     derived()->assembler.reloc_text_pc32(inst0_op1_sym, derived()->assembler.text_cur_off() - 4, -4);
     // argument xmm0 is killed and marked as dead
     // result xmm0 is marked as alive

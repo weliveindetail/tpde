@@ -3064,6 +3064,28 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         derived()->create_helper_call({&val, 1}, {&res_ref, 1}, sym);
         return true;
     }
+    case llvm::Intrinsic::fabs: {
+        auto *val = inst->getOperand(0);
+        auto *ty  = val->getType();
+
+        if (!ty->isFloatTy() && !ty->isDoubleTy()) {
+            assert(0);
+            TPDE_LOG_ERR("only float/double supported for fabs");
+            return false;
+        }
+
+        auto       val_ref = this->val_ref(llvm_val_idx(val), 0);
+        auto       res_ref = this->result_ref_lazy(inst_idx, 0);
+        ScratchReg res_scratch{derived()};
+
+        if (ty->isDoubleTy()) {
+            derived()->encode_fabsf64(std::move(val_ref), res_scratch);
+        } else {
+            derived()->encode_fabsf32(std::move(val_ref), res_scratch);
+        }
+        this->set_value(res_ref, res_scratch);
+        return true;
+    }
     default: {
         if (derived()->handle_intrin(inst_idx, inst, intrin)) {
             return true;
