@@ -1858,7 +1858,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
     assert(dst_ty->isIntegerTy());
 
     const auto bit_width = dst_ty->getIntegerBitWidth();
-    if (bit_width != 64 && bit_width != 32) {
+    if (bit_width != 64 && bit_width != 32 && bit_width != 16
+        && bit_width != 8) {
         assert(0);
         return false;
     }
@@ -1873,14 +1874,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
             if (bit_width == 64) {
                 derived()->encode_f64toi64(std::move(src_ref), res_scratch);
             } else {
-                assert(bit_width == 32);
+                assert(bit_width <= 32);
                 derived()->encode_f64toi32(std::move(src_ref), res_scratch);
             }
         } else {
             if (bit_width == 64) {
                 derived()->encode_f32toi64(std::move(src_ref), res_scratch);
             } else {
-                assert(bit_width == 32);
+                assert(bit_width <= 32);
                 derived()->encode_f32toi32(std::move(src_ref), res_scratch);
             }
         }
@@ -1889,14 +1890,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
             if (bit_width == 64) {
                 derived()->encode_f64tou64(std::move(src_ref), res_scratch);
             } else {
-                assert(bit_width == 32);
+                assert(bit_width <= 32);
                 derived()->encode_f64tou32(std::move(src_ref), res_scratch);
             }
         } else {
             if (bit_width == 64) {
                 derived()->encode_f32tou64(std::move(src_ref), res_scratch);
             } else {
-                assert(bit_width == 32);
+                assert(bit_width <= 32);
                 derived()->encode_f32tou32(std::move(src_ref), res_scratch);
             }
         }
