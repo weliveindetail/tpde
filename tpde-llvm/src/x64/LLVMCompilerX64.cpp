@@ -1124,6 +1124,22 @@ bool LLVMCompilerX64::handle_intrin(IRValueRef,
         ASM(MOV64mr, FE_MEM(list_reg, 0, FE_NOREG, 8), tmp_reg);
         return true;
     }
+    case llvm::Intrinsic::vacopy: {
+        auto dst_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        auto src_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+
+        ScratchReg scratch1{this}, scratch2{this}, scratch3{this};
+        const auto src_reg = this->val_as_reg(src_ref, scratch1);
+        const auto dst_reg = this->val_as_reg(dst_ref, scratch2);
+
+        const auto tmp_reg = scratch3.alloc_from_bank(1);
+        ASM(SSE_MOVDQUrm, tmp_reg, FE_MEM(src_reg, 0, FE_NOREG, 0));
+        ASM(SSE_MOVDQUmr, FE_MEM(dst_reg, 0, FE_NOREG, 0), tmp_reg);
+
+        ASM(SSE_MOVQrm, tmp_reg, FE_MEM(src_reg, 0, FE_NOREG, 16));
+        ASM(SSE_MOVQmr, FE_MEM(dst_reg, 0, FE_NOREG, 16), tmp_reg);
+        return true;
+    }
     default: return false;
     }
 }
