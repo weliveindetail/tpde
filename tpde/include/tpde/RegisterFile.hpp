@@ -40,8 +40,8 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
 
     static constexpr size_t MAX_ID = 63;
 
-    u64 used, free, fixed, clobbered;
-    u32 clocks[2];
+    u64 used = 0, free = 0, fixed = 0, clobbered = 0;
+    u32 clocks[2] = {};
 
     struct Assignment {
         ValLocalIdx local_idx;

@@ -1197,6 +1197,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::
     this->register_file.fixed         = this->register_file.used =
         this->register_file.clobbered = 0;
     this->register_file.free          = conv.initial_free_regs();
+    this->register_file.clocks[0]     = 0;
+    this->register_file.clocks[1]     = 0;
 }
 
 template <IRAdaptor Adaptor,
