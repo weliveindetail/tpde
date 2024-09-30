@@ -87,6 +87,10 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
 
     SymRef sym_fmod   = Assembler::INVALID_SYM_REF;
     SymRef sym_fmodf  = Assembler::INVALID_SYM_REF;
+    SymRef sym_floorf = Assembler::INVALID_SYM_REF;
+    SymRef sym_floor  = Assembler::INVALID_SYM_REF;
+    SymRef sym_ceilf  = Assembler::INVALID_SYM_REF;
+    SymRef sym_ceil   = Assembler::INVALID_SYM_REF;
     SymRef sym_memcpy = Assembler::INVALID_SYM_REF;
     SymRef sym_memset = Assembler::INVALID_SYM_REF;
 
@@ -3015,6 +3019,30 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     }
     case llvm::Intrinsic::is_fpclass: {
         return compile_is_fpclass(inst_idx, inst);
+    }
+    case llvm::Intrinsic::floor:
+    case llvm::Intrinsic::ceil: {
+        auto val = llvm_val_idx(inst->getOperand(0));
+
+        const auto is_double = inst->getOperand(0)->getType()->isDoubleTy();
+        auto       res_ref   = this->result_ref_lazy(inst_idx, 0);
+        SymRef     sym;
+        if (intrin_id == llvm::Intrinsic::floor) {
+            if (is_double) {
+                sym = get_or_create_sym_ref(sym_floor, "floor");
+            } else {
+                sym = get_or_create_sym_ref(sym_floorf, "floorf");
+            }
+        } else {
+            if (is_double) {
+                sym = get_or_create_sym_ref(sym_ceil, "ceil");
+            } else {
+                sym = get_or_create_sym_ref(sym_ceilf, "ceilf");
+            }
+        }
+
+        derived()->create_helper_call({&val, 1}, {&res_ref, 1}, sym);
+        return true;
     }
     default: {
         if (derived()->handle_intrin(inst_idx, inst, intrin)) {
