@@ -85,14 +85,15 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
 
     tpde::util::SmallVector<VarRefInfo, 16> variable_refs{};
 
-    SymRef sym_fmod   = Assembler::INVALID_SYM_REF;
-    SymRef sym_fmodf  = Assembler::INVALID_SYM_REF;
-    SymRef sym_floorf = Assembler::INVALID_SYM_REF;
-    SymRef sym_floor  = Assembler::INVALID_SYM_REF;
-    SymRef sym_ceilf  = Assembler::INVALID_SYM_REF;
-    SymRef sym_ceil   = Assembler::INVALID_SYM_REF;
-    SymRef sym_memcpy = Assembler::INVALID_SYM_REF;
-    SymRef sym_memset = Assembler::INVALID_SYM_REF;
+    SymRef sym_fmod    = Assembler::INVALID_SYM_REF;
+    SymRef sym_fmodf   = Assembler::INVALID_SYM_REF;
+    SymRef sym_floorf  = Assembler::INVALID_SYM_REF;
+    SymRef sym_floor   = Assembler::INVALID_SYM_REF;
+    SymRef sym_ceilf   = Assembler::INVALID_SYM_REF;
+    SymRef sym_ceil    = Assembler::INVALID_SYM_REF;
+    SymRef sym_memcpy  = Assembler::INVALID_SYM_REF;
+    SymRef sym_memset  = Assembler::INVALID_SYM_REF;
+    SymRef sym_memmove = Assembler::INVALID_SYM_REF;
 
     LLVMCompilerBase(LLVMAdaptor *adaptor, const bool generate_obj)
         : Base{adaptor, generate_obj} {
@@ -811,7 +812,7 @@ template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
     LLVMCompilerBase<Adaptor, Derived, Config>::get_or_create_sym_ref(
         SymRef &sym, std::string_view name, const bool local) noexcept {
-    if (sym != Assembler::INVALID_SYM_REF) {
+    if (sym != Assembler::INVALID_SYM_REF) [[likely]] {
         return sym;
     }
 
@@ -3017,6 +3018,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         std::array<IRValueRef, 3> args{dst, val, len};
 
         const auto sym = get_or_create_sym_ref(sym_memset, "memset");
+        derived()->create_helper_call(args, {}, sym);
+        return true;
+    }
+    case llvm::Intrinsic::memmove: {
+        const auto dst = llvm_val_idx(inst->getOperand(0));
+        const auto src = llvm_val_idx(inst->getOperand(1));
+        const auto len = llvm_val_idx(inst->getOperand(2));
+
+        std::array<IRValueRef, 3> args{dst, src, len};
+
+        const auto sym = get_or_create_sym_ref(sym_memmove, "memmove");
         derived()->create_helper_call(args, {}, sym);
         return true;
     }
