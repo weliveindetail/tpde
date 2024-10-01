@@ -2897,7 +2897,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
 
     const auto build_range = [&, this](
                                  size_t begin, size_t end, const auto &self) {
-        assert(begin < end);
+        assert(begin <= end);
         const auto num_cases = end - begin;
         if (num_cases <= 4) {
             // if there are four or less cases we just compare the values
