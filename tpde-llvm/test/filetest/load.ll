@@ -851,11 +851,11 @@ define void @load_struct_i128_i1(ptr %0) {
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x60
+; X64:    sub rsp, 0x50
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx edx, byte ptr [rdi + 0x10]
-; X64:    add rsp, 0x60
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -880,14 +880,14 @@ define void @load_struct_i32_i32_i32_i32_i32_i32(ptr %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x60
+; X64:    sub rsp, 0x50
 ; X64:    mov eax, dword ptr [rdi]
 ; X64:    mov ecx, dword ptr [rdi + 0x4]
 ; X64:    mov edx, dword ptr [rdi + 0x8]
 ; X64:    mov ebx, dword ptr [rdi + 0xc]
 ; X64:    mov esi, dword ptr [rdi + 0x10]
 ; X64:    mov r8d, dword ptr [rdi + 0x14]
-; X64:    add rsp, 0x60
+; X64:    add rsp, 0x50
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
