@@ -513,7 +513,8 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::deallocate_assignment(
     ValLocalIdx local_idx) noexcept {
-    auto *assignment = assignments.value_ptrs[static_cast<u32>(local_idx)];
+    ValueAssignment *assignment =
+        assignments.value_ptrs[static_cast<u32>(local_idx)];
 
     u32 part_count = 0;
     while (true) {
@@ -543,6 +544,8 @@ void CompilerBase<Adaptor, Derived, Config>::deallocate_assignment(
         assignment->next_free_list_entry = entry;
         entry                            = assignment;
     }
+
+    assignments.value_ptrs[static_cast<u32>(local_idx)] = nullptr;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -677,6 +680,14 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
         }
         ++part_idx;
     }
+
+#ifdef TPDE_ASSERTS
+    for (auto reg_id : register_file.used_regs()) {
+        if (register_file.reg_local_idx(AsmReg{reg_id}) == local_idx) {
+            assert(0);
+        }
+    }
+#endif
 
     // variable references do not have a stack slot
     if (!is_var_ref) {

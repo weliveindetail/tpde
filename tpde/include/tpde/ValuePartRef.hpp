@@ -302,6 +302,8 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     if (ap.register_valid()) {
         state.v.compiler->derived()->mov(
             reg, AsmReg{ap.full_reg_id()}, ap.part_size());
+
+        reg_file.unmark_used(AsmReg{ap.full_reg_id()});
     } else {
         if (ap.variable_ref()) {
             state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
