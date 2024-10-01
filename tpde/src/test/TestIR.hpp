@@ -481,6 +481,10 @@ struct TestIRAdaptor {
         return ir->blocks[static_cast<u32>(block)].name;
     }
 
+    [[nodiscard]] std::string_view value_fmt_ref(IRValueRef val) const noexcept {
+        return ir->values[static_cast<u32>(val)].name;
+    }
+
     [[nodiscard]] u32 val_local_idx(IRValueRef val) {
         assert(static_cast<u32>(val) >= ir->functions[cur_func].arg_begin_idx);
         return static_cast<u32>(val) - ir->functions[cur_func].arg_begin_idx;

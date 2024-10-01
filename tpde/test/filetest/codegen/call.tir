@@ -14,11 +14,11 @@ ext_func(%a, %b)!
 impl_func(%p) {
 ; X64: sub rsp
 entry:
-; X64-NEXT: mov QWORD PTR [rbp-0x8],rdi
+; X64-NEXT: mov QWORD PTR [rbp-0x30],rdi
 ; X64-NEXT: call
   %a = call %ext_func2
 ; X64-NEXT: mov rdi,rax
-; X64-NEXT: mov rsi,QWORD PTR [rbp-0x8]
+; X64-NEXT: mov rsi,QWORD PTR [rbp-0x30]
 ; X64-NEXT: call
   %b = call %ext_func, %a, %p
 ; X64-NEXT: add rsp

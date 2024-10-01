@@ -23,7 +23,7 @@ condbr1(%a, %b) {
 entry:
 ; X64: sub rsp
 ; COM: spill
-; X64-NEXT: mov QWORD PTR [rbp-0x10],rsi
+; X64-NEXT: mov QWORD PTR [rbp-0x38],rsi
 ; X64-NEXT: cmp rdi,0
 ; X64-NEXT: je
   condbr %a, %ret1, %ret2
@@ -32,7 +32,7 @@ ret1:
 ; X64-NEXT: add rsp
   terminate %a
 ret2:
-; X64: mov rax,QWORD PTR [rbp-0x10]
+; X64: mov rax,QWORD PTR [rbp-0x38]
 ; X64-NEXT: add rsp
   terminate %b
 }
@@ -42,7 +42,7 @@ condbr2(%a, %b) {
 entry:
 ; X64: sub rsp
 ; COM: spill
-; X64-NEXT: mov QWORD PTR [rbp-0x8],rdi
+; X64-NEXT: mov QWORD PTR [rbp-0x30],rdi
 ; X64-NEXT: cmp rdi,0
 ; X64-NEXT: jne
   condbr %a, %ret1, %ret2
@@ -51,7 +51,7 @@ ret2:
 ; X64-NEXT: add rsp
   terminate %b
 ret1:
-; X64: mov rax,QWORD PTR [rbp-0x8]
+; X64: mov rax,QWORD PTR [rbp-0x30]
 ; X64-NEXT: add rsp
   terminate %a
 }
@@ -60,21 +60,21 @@ ret1:
 condbr3(%a, %b, %c) {
 entry:
 ; X64: sub rsp
-; X64-NEXT: mov QWORD PTR [rbp-0x18],rdx
+; X64-NEXT: mov QWORD PTR [rbp-0x40],rdx
 ; X64-NEXT: cmp rdi,0
 ; X64-NEXT: jne
 ; COM: PHI-resolution for f
-; X64-NEXT: mov QWORD PTR [rbp-0x20],rsi
+; X64-NEXT: mov QWORD PTR [rbp-0x48],rsi
 ; X64-NEXT: jmp
   condbr %a, %t, %f
 t:
 ; X64-NEXT: add rsi,rdx
-; X64-NEXT: mov QWORD PTR [rbp-0x20],rsi
+; X64-NEXT: mov QWORD PTR [rbp-0x48],rsi
   %d = add %b, %c
   br %f
 f:
-; X64-NEXT: mov rax,QWORD PTR [rbp-0x18]
-; X64-NEXT: mov rcx,QWORD PTR [rbp-0x20]
+; X64-NEXT: mov rax,QWORD PTR [rbp-0x40]
+; X64-NEXT: mov rcx,QWORD PTR [rbp-0x48]
   %e = phi [%entry, %b], [%t, %d]
 ; X64-NEXT: sub rax,rcx
   %f = sub %c, %e
@@ -88,23 +88,23 @@ loop1(%a, %b) {
 entry:
 ; X64: sub rsp
 ; COM: spill of %b
-; X64-NEXT: mov QWORD PTR [rbp-0x10],rsi
+; X64-NEXT: mov QWORD PTR [rbp-0x38],rsi
 ; COM: move of %a into %p
-; X64-NEXT: mov QWORD PTR [rbp-0x18],rdi
+; X64-NEXT: mov QWORD PTR [rbp-0x40],rdi
   br %loop_head
 loop_head:
   %p = phi [%entry, %a], [%loop_body, %c]
 ; TODO: make cmp use the memory operand if possible?
-; X64-NEXT: mov rax,QWORD PTR [rbp-0x18]
+; X64-NEXT: mov rax,QWORD PTR [rbp-0x40]
 ; X64-NEXT: cmp rax,0x0
 ; X64-NEXT: je
   condbr %p, %loop_body, %ret
 loop_body:
 ; X64-NEXT: mov rcx,rax
-; X64-NEXT: mov rdx,QWORD PTR [rbp-0x10]
+; X64-NEXT: mov rdx,QWORD PTR [rbp-0x38]
 ; X64-NEXT: sub rcx,rdx
   %c = sub %p, %b
-; X64-NEXT: mov QWORD PTR [rbp-0x18],rcx
+; X64-NEXT: mov QWORD PTR [rbp-0x40],rcx
 ; X64-NEXT: jmp
   br %loop_head
 ret:
@@ -117,24 +117,24 @@ phi_chain1(%a) {
 entry:
 ; X64: sub rsp
 ; COM: move into p1
-; X64-NEXT: mov QWORD PTR [rbp-0x10],rdi
+; X64-NEXT: mov QWORD PTR [rbp-0x38],rdi
 ; COM: move into p2
-; X64-NEXT: mov QWORD PTR [rbp-0x18],rdi
+; X64-NEXT: mov QWORD PTR [rbp-0x40],rdi
   br %loop_head
 loop_head:
   %p1 = phi [%entry, %a], [%loop_body, %c]
   %p2 = phi [%entry, %a], [%loop_body, %p1]
-; X64-NEXT: mov rax,QWORD PTR [rbp-0x18]
+; X64-NEXT: mov rax,QWORD PTR [rbp-0x40]
 ; X64-NEXT: cmp rax,0x0
 ; X64-NEXT: je
   condbr %p2, %loop_body, %ret
 loop_body:
-; X64-NEXT: mov rcx,QWORD PTR [rbp-0x10]
+; X64-NEXT: mov rcx,QWORD PTR [rbp-0x38]
 ; X64-NEXT: lea rdx,[rcx+rax*1]
   %c = add %p1, %p2
 ; COM: move first into p2
-; X64-NEXT: mov QWORD PTR [rbp-0x18],rcx
-; X64-NEXT: mov QWORD PTR [rbp-0x10],rdx
+; X64-NEXT: mov QWORD PTR [rbp-0x40],rcx
+; X64-NEXT: mov QWORD PTR [rbp-0x38],rdx
 ; X64-NEXT: jmp
   br %loop_head
 ret:
@@ -147,25 +147,25 @@ phi_cycle1(%a) {
 entry:
 ; X64: sub rsp
 ; COM: move into p1
-; X64-NEXT: mov QWORD PTR [rbp-0x10],rdi
+; X64-NEXT: mov QWORD PTR [rbp-0x38],rdi
 ; COM: move into p2
-; X64-NEXT: mov QWORD PTR [rbp-0x18],rdi
+; X64-NEXT: mov QWORD PTR [rbp-0x40],rdi
   br %loop_head
 loop_head:
   %p1 = phi [%entry, %a], [%loop_body, %p2]
   %p2 = phi [%entry, %a], [%loop_body, %p1]
-; X64-NEXT: mov rax,QWORD PTR [rbp-0x18]
+; X64-NEXT: mov rax,QWORD PTR [rbp-0x40]
 ; X64-NEXT: cmp rax,0x0
 ; X64-NEXT: je
   condbr %p2, %loop_body, %ret
 loop_body:
-; X64-NEXT: mov rcx,QWORD PTR [rbp-0x10]
+; X64-NEXT: mov rcx,QWORD PTR [rbp-0x38]
 ; X64-NEXT: lea rdx,[rcx+rax*1]
   %c = add %p1, %p2
 ; COM: break cycle by moving p1 into temporary
 ; X64-NEXT: mov rdx,rcx
-; X64-NEXT: mov QWORD PTR [rbp-0x10],rax
-; X64-NEXT: mov QWORD PTR [rbp-0x18],rdx
+; X64-NEXT: mov QWORD PTR [rbp-0x38],rax
+; X64-NEXT: mov QWORD PTR [rbp-0x40],rdx
 ; X64-NEXT: jmp
   br %loop_head
 ret:
