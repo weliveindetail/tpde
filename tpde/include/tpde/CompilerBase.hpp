@@ -631,10 +631,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
     }
 
     const auto size      = max_part_size * part_count;
-    auto       frame_off = allocate_stack_slot(size);
-    if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
-        frame_off += size;
-    }
+    const auto frame_off = allocate_stack_slot(size);
 
     assert(max_part_size <= 256);
     assignment->max_part_size = max_part_size;
@@ -703,7 +700,11 @@ u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
 
         const u32 free_list_idx = util::cnt_tz(size);
         if (!stack.fixed_free_lists[free_list_idx].empty()) {
-            const auto slot = stack.fixed_free_lists[free_list_idx].back();
+            auto slot = stack.fixed_free_lists[free_list_idx].back();
+            if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
+                slot += size;
+            }
+
             stack.fixed_free_lists[free_list_idx].pop_back();
             return slot;
         }
@@ -727,29 +728,39 @@ u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
         }
 
         // align the frame size up to 16
-        for (u32 list_idx = util::cnt_tz(stack.frame_size); list_idx < 5;
+        for (u32 list_idx = util::cnt_tz(stack.frame_size); list_idx < 4;
              list_idx     = util::cnt_tz(stack.frame_size)) {
             stack.fixed_free_lists[list_idx].push_back(stack.frame_size);
             stack.frame_size += 1ull << list_idx;
         }
     }
 
-    const auto slot   = stack.frame_size;
+    auto slot         = stack.frame_size;
     stack.frame_size += size;
+
+    if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
+        slot += size;
+    }
     return slot;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::free_stack_slot(
-    const u32 slot, u32 size) noexcept {
+    u32 slot, u32 size) noexcept {
     if (size <= 16) {
         assert(size == 1 || size == 2 || size == 4 || size == 8 || size == 16);
 
+        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
+            slot -= size;
+        }
         const u32 free_list_idx = util::cnt_tz(size);
         stack.fixed_free_lists[free_list_idx].push_back(slot);
     } else {
         // align the size to 16
         size = util::align_up(size, 16);
+        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
+            slot -= size;
+        }
 
         stack.dynamic_free_lists[size].push_back(slot);
     }
@@ -1512,9 +1523,15 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
             auto phi_ap  = phi_ref.assignment();
             assert(!phi_ap.fixed_assignment());
 
+            auto slot_off = cur_tmp_slot;
+            if (Config::FRAME_INDEXING_NEGATIVE) {
+                slot_off -= phi_ap.part_off();
+            } else {
+                slot_off += phi_ap.part_off();
+            }
+
             auto reg = tmp_reg1.alloc_from_bank(phi_ap.bank());
-            derived()->load_from_stack(
-                reg, cur_tmp_slot + phi_ap.part_off(), phi_ap.part_size());
+            derived()->load_from_stack(reg, slot_off, phi_ap.part_size());
             derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
 
             if (i != cur_tmp_part_count - 1) {
@@ -1543,16 +1560,21 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
                 for (u32 i = 0; i < cur_tmp_part_count; ++i) {
                     auto ap = AssignmentPartRef{assignment, i};
                     assert(!ap.fixed_assignment());
+                    auto slot_off = cur_tmp_slot;
+                    if (Config::FRAME_INDEXING_NEGATIVE) {
+                        slot_off -= ap.part_off();
+                    } else {
+                        slot_off += ap.part_off();
+                    }
+
                     if (ap.register_valid()) {
                         auto reg = AsmReg{ap.full_reg_id()};
-                        derived()->spill_reg(
-                            reg, cur_tmp_slot + ap.part_off(), ap.part_size());
+                        derived()->spill_reg(reg, slot_off, ap.part_size());
                     } else {
                         auto reg = tmp_reg1.alloc_from_bank(ap.bank());
                         derived()->load_from_stack(
                             reg, ap.frame_off(), ap.part_size());
-                        derived()->spill_reg(
-                            reg, cur_tmp_slot + ap.part_off(), ap.part_size());
+                        derived()->spill_reg(reg, slot_off, ap.part_size());
                     }
                 }
             } else {
@@ -1702,11 +1724,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
             auto size = adaptor->val_alloca_size(alloca);
             size      = util::align_up(size, adaptor->val_alloca_align(alloca));
 
-            auto *assignment = allocate_assignment(1, true);
-            auto  frame_off  = allocate_stack_slot(size);
-            if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
-                frame_off += size;
-            }
+            auto      *assignment = allocate_assignment(1, true);
+            const auto frame_off  = allocate_stack_slot(size);
 
             assignment->initialize(frame_off,
                                    size,

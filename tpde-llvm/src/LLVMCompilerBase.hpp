@@ -879,10 +879,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
             size = 16;
         }
 
-        auto frame_off = this->allocate_stack_slot(size);
-        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
-            frame_off += size;
-        }
+        const auto frame_off = this->allocate_stack_slot(size);
 
         variable_refs[cur_idx].alloca_frame_off = frame_off;
         init_assignment(v);
