@@ -692,9 +692,6 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
     // variable references do not have a stack slot
     if (!is_var_ref) {
         auto slot = assignment->frame_off;
-        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
-            slot -= assignment->size;
-        }
         free_stack_slot(slot, assignment->size);
     }
 

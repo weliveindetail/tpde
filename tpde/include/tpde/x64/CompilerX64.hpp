@@ -1245,6 +1245,7 @@ template <IRAdaptor Adaptor,
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::spill_reg(
     const AsmReg reg, const u32 frame_off, const u32 size) noexcept {
     this->assembler.text_ensure_space(16);
+    assert(-static_cast<i32>(frame_off) < 0);
     const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(frame_off));
     if (reg.id() <= AsmReg::R15) {
         switch (size) {
@@ -1281,6 +1282,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
     const u32    size,
     const bool   sign_extend) noexcept {
     this->assembler.text_ensure_space(16);
+    // assert(-static_cast<i32>(frame_off) < 0);
     const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(frame_off));
 
     if (dst.id() <= AsmReg::R15) {
@@ -1328,6 +1330,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::
     load_address_of_var_reference(const AsmReg            dst,
                                   const AssignmentPartRef ap) noexcept {
     static_assert(Config::DEFAULT_VAR_REF_HANDLING);
+    assert(-static_cast<i32>(ap.assignment->frame_off) < 0);
     // per-default, variable references are only used by
     // allocas
     ASM(LEA64rm,
@@ -1857,6 +1860,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
                 auto reg = AsmReg{ap.full_reg_id()};
                 ASM(CALLr, reg);
             } else if (!ap.variable_ref()) {
+                assert(static_cast<i32>(-ap.frame_off()) < 0);
                 ASM(CALLm, FE_MEM(FE_BP, 0, FE_NOREG, (i32)-ap.frame_off()));
             } else {
                 this->register_file.clobbered |= (1ull << AsmReg::R10);

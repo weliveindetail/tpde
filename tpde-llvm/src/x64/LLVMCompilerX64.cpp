@@ -441,6 +441,7 @@ void LLVMCompilerX64::load_address_of_var_reference(
     const auto &info = variable_refs[ap.assignment->var_ref_custom_idx];
     if (info.alloca) {
         // default handling from CompilerX64
+        assert(-static_cast<i32>(info.alloca_frame_off) < 0);
         ASM(LEA64rm,
             dst,
             FE_MEM(
@@ -1113,6 +1114,7 @@ bool LLVMCompilerX64::handle_intrin(IRValueRef,
         ASM(MOV64ri, tmp_reg, combined_off);
         ASM(MOV64mr, FE_MEM(list_reg, 0, FE_NOREG, 0), tmp_reg);
 
+        assert(-static_cast<i32>(reg_save_frame_off) < 0);
         ASM(LEA64rm,
             tmp_reg,
             FE_MEM(FE_BP, 0, FE_NOREG, -(i32)reg_save_frame_off));
