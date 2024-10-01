@@ -125,7 +125,7 @@ struct Analyzer {
     }
 
     bool block_has_multiple_incoming(IRBlockRef block_ref) const noexcept {
-        return adaptor->block_info2(block_ref) == 2;
+        return (adaptor->block_info2(block_ref) & 0b11) == 2;
     }
 
   protected:
@@ -316,10 +316,19 @@ void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
             build_or_get_parent_loop(i, build_or_get_parent_loop);
 
         if (loop_heads.is_set(i)) {
-            const auto loop_idx = loops.size();
-            loops.push_back(Loop{.level  = loops[parent_loop].level + 1,
-                                 .parent = parent_loop});
-            loop_blocks[i].loop_idx = loop_idx;
+            // if the loop is irreducible, we might have already inserted it so
+            // check for that.
+            //
+            // NOTE: we could also get away with unsetting loop_heads for that
+            // loop if it is irreducible if we would not count the loop_head in
+            // its own loop's num_blocks but in its parent
+            auto loop_idx = loop_blocks[i].loop_idx;
+            if (loop_idx == ~0u) [[likely]] {
+                loop_idx = loops.size();
+                loops.push_back(Loop{.level  = loops[parent_loop].level + 1,
+                                     .parent = parent_loop});
+                loop_blocks[i].loop_idx = loop_idx;
+            }
             ++loops[loop_idx].num_blocks;
         } else {
             loop_blocks[i].loop_idx = parent_loop;
@@ -431,6 +440,7 @@ void Analyzer<Adaptor>::build_rpo_block_order(
     util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> &out) const noexcept {
     out.clear();
 
+    u32 num_blocks = 0;
     {
         // Initialize the block info
         u32 idx = 0;
@@ -441,10 +451,13 @@ void Analyzer<Adaptor>::build_rpo_block_order(
             adaptor->block_set_info2(cur, 0);
             ++idx;
         }
+        num_blocks = idx;
     }
+    out.resize(num_blocks);
 
     // implement the RPO generation using a simple stack that also walks in
-    // RPO. However, consider the following CFG
+    // post-order and then reverse at the end. However, consider the following
+    // CFG
     //
     // A:
     //  - B:
@@ -461,36 +474,68 @@ void Analyzer<Adaptor>::build_rpo_block_order(
     util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM / 2> stack;
     stack.push_back(adaptor->cur_entry_block());
 
+    // NOTE(ts): because we process children in reverse order
+    // this gives a bit funky results with irreducible loops
+    // but it should be fine I think
+    auto rpo_idx = num_blocks - 1;
     while (!stack.empty()) {
         const auto cur_node = stack.back();
-        stack.pop_back();
 
-        // visit the current node
-        adaptor->block_set_info(cur_node, out.size());
-        out.push_back(cur_node);
+        // have we already added the block to the RPO list?
+        // if so we just skip it
+        if (adaptor->block_info2(cur_node) & 0b1000) {
+            stack.pop_back();
+            continue;
+        }
+
+        // have we already pushed the children of the nodes to the stack and
+        // processed them? if so we can add the block to the post-order,
+        // otherwise add the children and wait for them to be processed
+        if (adaptor->block_info2(cur_node) & 0b100) {
+            stack.pop_back();
+            // set the blocks RPO index and push it to the RPO list
+            adaptor->block_set_info(cur_node, rpo_idx);
+            // mark the block as already being on the RPO list
+            adaptor->block_set_info2(cur_node,
+                                     adaptor->block_info2(cur_node) | 0b1000);
+            out[rpo_idx] = cur_node;
+            --rpo_idx;
+            continue;
+        }
+
+        // mark as visited and add the successors
+        adaptor->block_set_info2(cur_node,
+                                 adaptor->block_info2(cur_node) | 0b100);
 
         const auto start_idx = stack.size();
         // push the successors onto the stack to visit them
         for (const auto succ : adaptor->block_succs(cur_node)) {
             assert(succ != adaptor->cur_entry_block());
-            if (const u32 info = adaptor->block_info2(succ); info != 0) {
-                if (info == 1) {
+            const u32 info = adaptor->block_info2(succ);
+            if ((info & 0b11) != 0) {
+                if ((info & 0b11) == 1) {
                     // note that succ has more than one incoming edge
-                    adaptor->block_set_info2(succ, 2);
+                    adaptor->block_set_info2(succ, (info & ~0b11) | 2);
                 }
-                // we have already visited the block
+            } else {
+                // TODO(ts): if we just do a post-order traversal and reverse
+                // everything at the end we could use only block_info to check
+                // whether we already saw a block. And I forgot why?
+                adaptor->block_set_info2(succ, info | 1);
+            }
+
+            // if the successor is already on the rpo list or it has been
+            // already visited and children added
+            if (adaptor->block_info2(succ) & 0b1100) {
                 continue;
             }
 
-            // TODO(ts): if we just do a post-order traversal and reverse
-            // everything at the end we could use only block_info to check
-            // whether we already saw a block
-            adaptor->block_set_info2(succ, 1);
             stack.push_back(succ);
         }
 
-        // Order the pushed children by the reverse of their original block
-        // index since the children get visited in reverse
+        // Order the pushed children by their original block
+        // index since the children get visited in reverse and then inserted
+        // in reverse order in the rpo list @_@
         const auto len = stack.size() - start_idx;
         if (len <= 1) {
             continue;
@@ -498,7 +543,7 @@ void Analyzer<Adaptor>::build_rpo_block_order(
 
         if (len == 2) {
             if (adaptor->block_info(stack[start_idx])
-                < adaptor->block_info(stack[start_idx + 1])) {
+                > adaptor->block_info(stack[start_idx + 1])) {
                 std::swap(stack[start_idx], stack[start_idx + 1]);
             }
             continue;
@@ -511,7 +556,7 @@ void Analyzer<Adaptor>::build_rpo_block_order(
                       // characteristics if the block lookup is a hashmap so
                       // maybe cache this for larger lists?
                       return adaptor->block_info(lhs)
-                             > adaptor->block_info(rhs);
+                             < adaptor->block_info(rhs);
                   });
     }
 

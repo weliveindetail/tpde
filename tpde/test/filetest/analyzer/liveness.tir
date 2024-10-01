@@ -70,3 +70,41 @@ entry:
   %b = call %ret, %a
   terminate %b
 }
+
+; CHECK: Liveness for if1
+; CHECK-NEXT: 0: 2 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT: 1: 2 refs, 0->3 (entry->end_block), lf: false
+; CHECK-NEXT: 2: 2 refs, 3->3 (end_block->end_block), lf: false
+; CHECK-NEXT: 3: 0 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT: End Liveness
+if1(%a) {
+entry:
+  %b = %a
+  jump %true_block, %false_block
+true_block:
+  jump %end_block
+false_block:
+  jump %end_block
+end_block:
+  %c = %b
+  terminate %c
+}
+
+; CHECK: Liveness for if2
+; CHECK-NEXT: 0: 2 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT: 1: 2 refs, 0->3 (entry->end_block), lf: false
+; CHECK-NEXT: 2: 2 refs, 3->3 (end_block->end_block), lf: false
+; CHECK-NEXT: 3: 0 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT: End Liveness
+if2(%a) {
+entry:
+  %b = %a
+  jump %true_block, %false_block
+true_block:
+  jump %end_block
+end_block:
+  %c = %b
+  terminate %c
+false_block:
+  jump %end_block
+}

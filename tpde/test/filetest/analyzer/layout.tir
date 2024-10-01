@@ -63,13 +63,13 @@ loop_body:
 
 ; CHECK: Block Layout for loop3
 ; CHECK-NEXT: 0: entry
-; CHECK-NEXT: 1: cont
-; CHECK-NEXT: 2: loop_head
-; CHECK-NEXT: 3: loop_body
+; CHECK-NEXT: 1: loop_head
+; CHECK-NEXT: 2: loop_body
+; CHECK-NEXT: 3: cont
 ; CHECK-NEXT: End Block Layout
 ; CHECK: Loops for loop3
 ; CHECK-NEXT: 0: level 0, parent 0, 0->4
-; CHECK-NEXT: 1: level 1, parent 0, 2->4
+; CHECK-NEXT: 1: level 1, parent 0, 1->3
 ; CHECK-NEXT: End Loops
 loop3() {
 entry:
@@ -145,17 +145,16 @@ ret:
 
 ; CHECK: Block Layout for mixed_loop3
 ; CHECK-NEXT: 0: entry
-; CHECK-NEXT: 1: cont1
-; COM: loop2_head comes first since it is first in RPO
-; CHECK-NEXT: 2: loop2_head
-; CHECK-NEXT: 3: loop2_body
-; CHECK-NEXT: 4: ret
-; CHECK-NEXT: 5: loop1_head
-; CHECK-NEXT: 6: loop1_body
+; CHECK-NEXT: 1: loop1_head
+; CHECK-NEXT: 2: loop1_body
+; CHECK-NEXT: 3: cont1
+; CHECK-NEXT: 4: loop2_head
+; CHECK-NEXT: 5: loop2_body
+; CHECK-NEXT: 6: ret
 ; CHECK: Loops for mixed_loop3
 ; CHECK-NEXT: 0: level 0, parent 0, 0->7
-; CHECK-NEXT: 1: level 1, parent 0, 2->4
-; CHECK-NEXT: 2: level 1, parent 0, 5->7
+; CHECK-NEXT: 1: level 1, parent 0, 1->3
+; CHECK-NEXT: 2: level 1, parent 0, 4->6
 ; CHECK-NEXT: End Loops
 mixed_loop3() {
 entry:
@@ -304,9 +303,9 @@ ret:
 
 ; CHECK: Block Layout for irreducible_loop
 ; CHECK-NEXT: 0: entry
-; CHECK-NEXT: 1: loop1_head
+; CHECK-NEXT: 1: ret
 ; CHECK-NEXT: 2: loop1_body
-; CHECK-NEXT: 3: ret
+; CHECK-NEXT: 3: loop1_head
 ; CHECK-NEXT: End Block Layout
 ; CHECK: Loops for irreducible_loop
 ; CHECK-NEXT: 0: level 0, parent 0, 0->4
