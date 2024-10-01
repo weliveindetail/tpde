@@ -1671,7 +1671,7 @@ define void @icmp_eq_i128_0(i128 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x40
+; X64:    sub rsp, 0x48
 ; X64:    mov rax, rdi
 ; X64:    mov rcx, rsi
 ; X64:    mov edx, 0x0
@@ -1681,7 +1681,7 @@ define void @icmp_eq_i128_0(i128 %0) {
 ; X64:    or rax, rcx
 ; X64:    mov edi, 0x0
 ; X64:    sete dil
-; X64:    add rsp, 0x40
+; X64:    add rsp, 0x48
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -1697,7 +1697,7 @@ define void @icmp_eq_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x50
+; X64:    sub rsp, 0x58
 ; X64:    mov rax, rdi
 ; X64:    mov rbx, rsi
 ; X64:    xor rax, rdx
@@ -1705,7 +1705,7 @@ define void @icmp_eq_i128_i128(i128 %0, i128 %1) {
 ; X64:    or rax, rbx
 ; X64:    mov edi, 0x0
 ; X64:    sete dil
-; X64:    add rsp, 0x50
+; X64:    add rsp, 0x58
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -1721,7 +1721,7 @@ define void @icmp_ne_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x50
+; X64:    sub rsp, 0x58
 ; X64:    mov rax, rdi
 ; X64:    mov rbx, rsi
 ; X64:    xor rax, rdx
@@ -1729,7 +1729,7 @@ define void @icmp_ne_i128_i128(i128 %0, i128 %1) {
 ; X64:    or rax, rbx
 ; X64:    mov edi, 0x0
 ; X64:    setne dil
-; X64:    add rsp, 0x50
+; X64:    add rsp, 0x58
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret

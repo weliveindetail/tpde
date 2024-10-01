@@ -71,14 +71,14 @@ define i128 @select_i128_reg(i1 %0, i128 %1, i128 %2) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x60
+; X64:    sub rsp, 0x58
 ; X64:    test dil, 0x1
 ; X64:    mov rax, rsi
 ; X64:    cmove rax, rcx
 ; X64:    mov rbx, rdx
 ; X64:    cmove rbx, r8
 ; X64:    mov rdx, rbx
-; X64:    add rsp, 0x60
+; X64:    add rsp, 0x58
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret

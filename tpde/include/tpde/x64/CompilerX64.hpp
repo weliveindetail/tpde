@@ -1102,7 +1102,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     // The frame_size contains the reserved frame size so we need to subtract
     // the stack space we used for the saved registers
     const auto final_frame_size =
-        util::align_up(this->stack.frame_size - num_saved_regs * 8, 16);
+        util::align_up(this->stack.frame_size, 16) - num_saved_regs * 8;
     *reinterpret_cast<u32 *>(this->assembler.sec_text.data.data()
                              + frame_size_setup_offset + 3) = final_frame_size;
 #ifdef TPDE_ASSERTS

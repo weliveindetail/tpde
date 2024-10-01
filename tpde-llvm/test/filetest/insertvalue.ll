@@ -313,14 +313,14 @@ define void @insert_i128_i1_0(ptr %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x80
+; X64:    sub rsp, 0x78
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx ebx, byte ptr [rdi + 0x10]
 ; X64:    mov qword ptr [rdi + 0x8], rdx
 ; X64:    mov qword ptr [rdi], rsi
 ; X64:    mov byte ptr [rdi + 0x10], bl
-; X64:    add rsp, 0x80
+; X64:    add rsp, 0x78
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -364,7 +364,7 @@ define void @insert_i128_i1_0_nosalvage(ptr %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x80
+; X64:    sub rsp, 0x78
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx ebx, byte ptr [rdi + 0x10]
@@ -375,7 +375,7 @@ define void @insert_i128_i1_0_nosalvage(ptr %0, i128 %1) {
 ; X64:    mov qword ptr [rdi + 0x8], rdx
 ; X64:    mov qword ptr [rdi], rsi
 ; X64:    mov byte ptr [rdi + 0x10], r8b
-; X64:    add rsp, 0x80
+; X64:    add rsp, 0x78
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret

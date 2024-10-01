@@ -240,7 +240,7 @@ define i128 @lshr_i128_3(i128 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x50
+; X64:    sub rsp, 0x48
 ; X64:    lea rax, [rsi + rsi]
 ; X64:    mov rdx, rsi
 ; X64:    shr rdx, 0x3
@@ -250,7 +250,7 @@ define i128 @lshr_i128_3(i128 %0) {
 ; X64:    not cl
 ; X64:    shl rax, cl
 ; X64:    or rax, rbx
-; X64:    add rsp, 0x50
+; X64:    add rsp, 0x48
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -287,7 +287,7 @@ define i128 @lshr_i128_128(i128 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x50
+; X64:    sub rsp, 0x48
 ; X64:    lea rax, [rsi + rsi]
 ; X64:    mov rdx, rsi
 ; X64:    shr rdx, 0x80
@@ -297,7 +297,7 @@ define i128 @lshr_i128_128(i128 %0) {
 ; X64:    not cl
 ; X64:    shl rax, cl
 ; X64:    or rax, rbx
-; X64:    add rsp, 0x50
+; X64:    add rsp, 0x48
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret

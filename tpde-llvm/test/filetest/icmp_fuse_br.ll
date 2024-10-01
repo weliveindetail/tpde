@@ -447,7 +447,7 @@ define i8 @icmp_eq_i32_0_br_no_salvage(i32 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x28
 ; X64:    cmp edi, 0x0
 ; X64:    mov ebx, 0x0
 ; X64:    sete bl
@@ -455,13 +455,13 @@ define i8 @icmp_eq_i32_0_br_no_salvage(i32 %0) {
 ; X64:    je <L0>
 ; X64:    and ebx, 0x1
 ; X64:    mov eax, ebx
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x28
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:  <L0>:
 ; X64:    mov eax, 0x2
-; X64:    add rsp, 0x30
+; X64:    add rsp, 0x28
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret

@@ -547,12 +547,12 @@ define void @sub_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x60
+; X64:    sub rsp, 0x58
 ; X64:    mov rax, rdi
 ; X64:    sub rax, rdx
 ; X64:    mov rbx, rsi
 ; X64:    sbb rbx, rcx
-; X64:    add rsp, 0x60
+; X64:    add rsp, 0x58
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -625,12 +625,12 @@ define void @sub_i128_salvage_reg(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x60
+; X64:    sub rsp, 0x58
 ; X64:    mov rax, rdi
 ; X64:    sub rax, rdx
 ; X64:    mov rbx, rsi
 ; X64:    sbb rbx, rcx
-; X64:    add rsp, 0x60
+; X64:    add rsp, 0x58
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -721,7 +721,7 @@ define void @sub_i128_no_salvage_imm(i128 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x60
+; X64:    sub rsp, 0x58
 ; X64:    mov rax, rdi
 ; X64:    sub rax, 0x1
 ; X64:    mov rcx, rsi
@@ -730,7 +730,7 @@ define void @sub_i128_no_salvage_imm(i128 %0) {
 ; X64:    sub rdx, rax
 ; X64:    mov rbx, rsi
 ; X64:    sbb rbx, rcx
-; X64:    add rsp, 0x60
+; X64:    add rsp, 0x58
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -746,7 +746,7 @@ define void @sub_i128_no_salvage_reg(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    push rbx
 ; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x60
+; X64:    sub rsp, 0x58
 ; X64:    mov rax, rdi
 ; X64:    sub rax, rdx
 ; X64:    mov rbx, rsi
@@ -755,7 +755,7 @@ define void @sub_i128_no_salvage_reg(i128 %0, i128 %1) {
 ; X64:    sub rcx, rax
 ; X64:    mov rdx, rsi
 ; X64:    sbb rdx, rbx
-; X64:    add rsp, 0x60
+; X64:    add rsp, 0x58
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
