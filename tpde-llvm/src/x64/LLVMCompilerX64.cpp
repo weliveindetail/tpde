@@ -1154,7 +1154,7 @@ void LLVMCompilerX64::create_helper_call(std::span<IRValueRef>   args,
         sym, arg_vec, res_vec, tpde::x64::CallingConv::SYSV_CC, false);
 }
 
-bool LLVMCompilerX64::handle_intrin(IRValueRef,
+bool LLVMCompilerX64::handle_intrin(IRValueRef         inst_idx,
                                     llvm::Instruction *inst,
                                     llvm::Function    *fn) noexcept {
     const auto intrin_id = fn->getIntrinsicID();
@@ -1196,6 +1196,19 @@ bool LLVMCompilerX64::handle_intrin(IRValueRef,
 
         ASM(SSE_MOVQrm, tmp_reg, FE_MEM(src_reg, 0, FE_NOREG, 16));
         ASM(SSE_MOVQmr, FE_MEM(dst_reg, 0, FE_NOREG, 16), tmp_reg);
+        return true;
+    }
+    case llvm::Intrinsic::stacksave: {
+        auto res_ref = this->result_ref_eager(inst_idx, 0);
+        ASM(MOV64rr, res_ref.cur_reg(), FE_SP);
+        this->set_value(res_ref, res_ref.cur_reg());
+        return true;
+    }
+    case llvm::Intrinsic::stackrestore: {
+        auto val_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        ScratchReg scratch{this};
+        auto       val_reg = this->val_as_reg(val_ref, scratch);
+        ASM(MOV64rr, FE_SP, val_reg);
         return true;
     }
     default: return false;
