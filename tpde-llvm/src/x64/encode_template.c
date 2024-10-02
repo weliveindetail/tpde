@@ -100,6 +100,7 @@ u32 TARGET_V1 lxori32(u32 a, u32 b) { return (a ^ b); }
 u32 TARGET_V1 shli32(u32 a, u32 b) { return (a << b); }
 u32 TARGET_V1 shri32(u32 a, u32 b) { return (a >> b); }
 i32 TARGET_V1 ashri32(i32 a, i32 b) { return (a >> b); }
+i32 TARGET_V1 absi32(i32 a) { return (a < 0) ? -a : a; }
 
 u64 TARGET_V1 addi64(u64 a, u64 b) { return (a + b); }
 u64 TARGET_V1 subi64(u64 a, u64 b) { return (a - b); }
@@ -114,6 +115,7 @@ u64 TARGET_V1 lxori64(u64 a, u64 b) { return (a ^ b); }
 u64 TARGET_V1 shli64(u64 a, u64 b) { return (a << b); }
 u64 TARGET_V1 shri64(u64 a, u64 b) { return (a >> b); }
 i64 TARGET_V1 ashri64(i64 a, i64 b) { return (a >> b); }
+i64 TARGET_V1 absi64(i64 a) { return (a < 0) ? -a : a; }
 
 u128 TARGET_V1 addi128(u128 a, u128 b) { return (a + b); }
 u128 TARGET_V1 subi128(u128 a, u128 b) { return (a - b); }

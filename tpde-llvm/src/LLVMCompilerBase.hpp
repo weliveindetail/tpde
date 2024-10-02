@@ -2996,6 +2996,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     IRValueRef         inst_idx,
     llvm::Instruction *inst,
     llvm::Function    *intrin) noexcept {
+    using AsmOperand     = typename Derived::AsmOperand;
+    using EncodeImm      = typename Derived::EncodeImm;
     const auto intrin_id = intrin->getIntrinsicID();
 
     switch (intrin_id) {
@@ -3107,6 +3109,50 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
                                      res_scratch);
         }
         this->set_value(res_ref, res_scratch);
+        return true;
+    }
+    case llvm::Intrinsic::abs: {
+        auto *val    = inst->getOperand(0);
+        auto *val_ty = val->getType();
+        if (!val_ty->isIntegerTy()) {
+            assert(0);
+            return false;
+        }
+        const auto width = val_ty->getIntegerBitWidth();
+        if (width > 64) {
+            assert(0);
+            return false;
+        }
+
+        auto op = AsmOperand{this->val_ref(llvm_val_idx(val), 0)};
+        if (width < 32) {
+            ScratchReg res{derived()};
+            if (width == 8) {
+                derived()->encode_sext_8_to_32(std::move(op), res);
+            } else if (width == 16) {
+                derived()->encode_sext_16_to_32(std::move(op), res);
+            } else {
+                const u32 shift = 32 - width;
+                derived()->encode_sext_arbitrary_to_32(
+                    std::move(op), EncodeImm{shift}, res);
+            }
+            op = std::move(res);
+        } else if (width != 32 && width < 64) {
+            ScratchReg res{derived()};
+            const u32  shift = 64 - width;
+            derived()->encode_sext_arbitrary_to_64(
+                std::move(op), EncodeImm{shift}, res);
+            op = std::move(res);
+        }
+
+        ScratchReg res{derived()};
+        auto       res_ref = this->result_ref_lazy(inst_idx, 0);
+        if (width <= 32) {
+            derived()->encode_absi32(std::move(op), res);
+        } else {
+            derived()->encode_absi64(std::move(op), res);
+        }
+        this->set_value(res_ref, res);
         return true;
     }
     default: {
