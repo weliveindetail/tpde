@@ -560,6 +560,19 @@ void Analyzer<Adaptor>::build_rpo_block_order(
                   });
     }
 
+    if (rpo_idx != 0xFFFF'FFFF) {
+        // there are unreachable blocks
+        // so we did not fill up the whole array and need to shift it
+        // TODO(ts): benchmark this against filling up a vector and always
+        // reversing it tho it should be better i think
+        out.erase(out.begin(), out.begin() + 1 + rpo_idx);
+
+        // need to fixup the RPO index for blocks as well :/
+        for (auto i = 0u; i < out.size(); ++i) {
+            adaptor->block_set_info(out[i], i);
+        }
+    }
+
 #ifdef TPDE_LOGGING
     TPDE_LOG_TRACE("Finished building RPO for blocks:");
     for (u32 i = 0; i < out.size(); ++i) {

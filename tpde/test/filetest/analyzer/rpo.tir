@@ -137,4 +137,17 @@ ret:
   jump %loop1_body
 }
 
+; CHECK: RPO for func unreachable_block
+; CHECK-NEXT: 0: entry
+; CHECK-NEXT: 1: ret
+; CHECK-NEXT: End RPO
+unreachable_block() {
+entry:
+  jump %ret
+ret:
+  terminate
+unreachable:
+  terminate
+}
+
 ; TODO(ts): more advanced tests for larger funcs
