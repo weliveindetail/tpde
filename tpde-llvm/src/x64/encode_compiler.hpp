@@ -635,10 +635,16 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
         return std::get<ScratchReg>(state).cur_reg;
     }
     if (std::holds_alternative<ValuePartRef>(state)) {
-        return std::get<ValuePartRef>(state).alloc_reg();
+        auto      &val_ref = std::get<ValuePartRef>(state);
+        const auto reg     = val_ref.alloc_reg();
+        val_ref.lock();
+        return reg;
     }
     if (std::holds_alternative<ValuePartRef *>(state)) {
-        return std::get<ValuePartRef *>(state)->alloc_reg();
+        auto      &val_ref = *std::get<ValuePartRef *>(state);
+        const auto reg     = val_ref.alloc_reg();
+        val_ref.lock();
+        return reg;
     }
     if (std::holds_alternative<AsmReg>(state)) {
         return std::get<AsmReg>(state);
