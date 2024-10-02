@@ -293,145 +293,201 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
     const auto val_idx = llvm_val_idx(val);
 
     const auto &val_info = this->adaptor->values[val_idx];
-    switch (val_info.type) {
-        using enum LLVMBasicValType;
-    case i1:
-    case i8:
-    case i16:
-    case i32:
-    case i64:
-    case ptr: {
-        assert(val->getType()->isIntegerTy() || val->getType()->isPointerTy());
-        auto       val_ref    = this->val_ref(val_idx, 0);
-        const auto call_conv  = this->cur_calling_convention();
-        const auto target_reg = call_conv.ret_regs_gp()[0];
 
-        if (val_ref.is_const) {
-            this->materialize_constant(val_ref, target_reg);
-        } else {
-            if (val_ref.assignment().fixed_assignment()) {
-                val_ref.reload_into_specific(this, target_reg);
+    u32        gp_reg_idx = 0, xmm_reg_idx = 0;
+    const auto move_simple = [this, &gp_reg_idx, &xmm_reg_idx](
+                                 const LLVMBasicValType ty,
+                                 IRValueRef             val_idx,
+                                 u32                    part,
+                                 llvm::Type            *val_ty,
+                                 bool                   inc_ref_count) {
+        switch (ty) {
+            using enum LLVMBasicValType;
+        case i1:
+        case i8:
+        case i16:
+        case i32:
+        case i64:
+        case ptr: {
+            assert(val_ty->isIntegerTy() || val_ty->isPointerTy());
+            auto val_ref = this->val_ref(val_idx, part);
+            if (inc_ref_count) {
+                val_ref.inc_ref_count();
+            }
+            const auto call_conv  = this->cur_calling_convention();
+            const auto target_reg = call_conv.ret_regs_gp()[gp_reg_idx++];
+
+            if (val_ref.is_const) {
+                this->materialize_constant(val_ref, target_reg);
             } else {
-                val_ref.move_into_specific(target_reg);
-            }
-        }
-
-        if (val_info.type == LLVMBasicValType::ptr) {
-            break;
-        }
-
-        auto *fn = this->adaptor->cur_func;
-        if (!val_ref.is_const && fn->hasRetAttribute(llvm::Attribute::ZExt)) {
-            const auto bit_width = val->getType()->getIntegerBitWidth();
-            // TODO(ts): add zext/sext to ValuePartRef
-            // reload/move_into_specific?
-            switch (bit_width) {
-            case 8: ASM(MOVZXr32r8, target_reg, target_reg); break;
-            case 16: ASM(MOVZXr32r16, target_reg, target_reg); break;
-            case 32: ASM(MOV32rr, target_reg, target_reg); break;
-            case 64: break;
-            default: {
-                if (bit_width <= 32) {
-                    ASM(AND32ri, target_reg, (1ull << bit_width) - 1);
+                if (val_ref.assignment().fixed_assignment()) {
+                    val_ref.reload_into_specific(this, target_reg);
                 } else {
-                    // TODO(ts): instead generate
-                    // shl target_reg, (64 - bit_width)
-                    // shr target_reg, (64 - bit_width)?
-                    ScratchReg scratch{this};
-                    const auto tmp_reg = scratch.alloc_from_bank_excluding(
-                        0, (1ull << target_reg.id()));
-                    ASM(MOV64ri, tmp_reg, (1ull << bit_width) - 1);
-                    ASM(AND64rr, target_reg, tmp_reg);
+                    val_ref.move_into_specific(target_reg);
                 }
+            }
+
+            if (ty == LLVMBasicValType::ptr) {
                 break;
             }
-            }
-        } else if (fn->hasRetAttribute(llvm::Attribute::SExt)) {
-            const auto bit_width = val->getType()->getIntegerBitWidth();
-            switch (bit_width) {
-            case 8: ASM(MOVSXr64r8, target_reg, target_reg); break;
-            case 16: ASM(MOVSXr64r16, target_reg, target_reg); break;
-            case 32: ASM(MOVSXr64r32, target_reg, target_reg); break;
-            case 64: break;
-            default: {
-                if (bit_width <= 32) {
-                    ASM(SHL32ri, target_reg, 32 - bit_width);
-                    ASM(SAR32ri, target_reg, 32 - bit_width);
-                } else {
-                    ASM(SHL64ri, target_reg, 64 - bit_width);
-                    ASM(SAR64ri, target_reg, 64 - bit_width);
+
+            auto *fn = this->adaptor->cur_func;
+            if (!val_ref.is_const
+                && fn->hasRetAttribute(llvm::Attribute::ZExt)) {
+                const auto bit_width = val_ty->getIntegerBitWidth();
+                // TODO(ts): add zext/sext to ValuePartRef
+                // reload/move_into_specific?
+                switch (bit_width) {
+                case 8: ASM(MOVZXr32r8, target_reg, target_reg); break;
+                case 16: ASM(MOVZXr32r16, target_reg, target_reg); break;
+                case 32: ASM(MOV32rr, target_reg, target_reg); break;
+                case 64: break;
+                default: {
+                    if (bit_width <= 32) {
+                        ASM(AND32ri, target_reg, (1ull << bit_width) - 1);
+                    } else {
+                        // TODO(ts): instead generate
+                        // shl target_reg, (64 - bit_width)
+                        // shr target_reg, (64 - bit_width)?
+                        ScratchReg scratch{this};
+                        const auto tmp_reg = scratch.alloc_from_bank_excluding(
+                            0, (1ull << target_reg.id()));
+                        ASM(MOV64ri, tmp_reg, (1ull << bit_width) - 1);
+                        ASM(AND64rr, target_reg, tmp_reg);
+                    }
+                    break;
                 }
+                }
+            } else if (fn->hasRetAttribute(llvm::Attribute::SExt)) {
+                const auto bit_width = val_ty->getIntegerBitWidth();
+                switch (bit_width) {
+                case 8: ASM(MOVSXr64r8, target_reg, target_reg); break;
+                case 16: ASM(MOVSXr64r16, target_reg, target_reg); break;
+                case 32: ASM(MOVSXr64r32, target_reg, target_reg); break;
+                case 64: break;
+                default: {
+                    if (bit_width <= 32) {
+                        ASM(SHL32ri, target_reg, 32 - bit_width);
+                        ASM(SAR32ri, target_reg, 32 - bit_width);
+                    } else {
+                        ASM(SHL64ri, target_reg, 64 - bit_width);
+                        ASM(SAR64ri, target_reg, 64 - bit_width);
+                    }
+                    break;
+                }
+                }
+            }
+            break;
+        }
+        case i128: {
+            assert(val_ty->isIntegerTy());
+            auto val_ref = this->val_ref(val_idx, part);
+            if (inc_ref_count) {
+                val_ref.inc_ref_count();
+            }
+            val_ref.inc_ref_count();
+            auto val_ref_high = this->val_ref(val_idx, part + 1);
+
+            const auto call_conv = this->cur_calling_convention();
+            if (val_ref.is_const) {
+                assert(val_ref_high.is_const);
+                this->materialize_constant(
+                    val_ref, call_conv.ret_regs_gp()[gp_reg_idx++]);
+                this->materialize_constant(
+                    val_ref_high, call_conv.ret_regs_gp()[gp_reg_idx++]);
                 break;
             }
+
+            if (val_ref.assignment().fixed_assignment()) {
+                val_ref.reload_into_specific(
+                    this, call_conv.ret_regs_gp()[gp_reg_idx++]);
+            } else {
+                val_ref.move_into_specific(
+                    call_conv.ret_regs_gp()[gp_reg_idx++]);
             }
-        }
-        break;
-    }
-    case i128: {
-        assert(val->getType()->isIntegerTy());
-        auto val_ref = this->val_ref(val_idx, 0);
-        val_ref.inc_ref_count();
-        auto val_ref_high = this->val_ref(val_idx, 1);
 
-        const auto call_conv = this->cur_calling_convention();
-        if (val_ref.is_const) {
-            assert(val_ref_high.is_const);
-            this->materialize_constant(val_ref, call_conv.ret_regs_gp()[0]);
-            this->materialize_constant(val_ref_high,
-                                       call_conv.ret_regs_gp()[1]);
+            if (val_ref_high.assignment().fixed_assignment()) {
+                val_ref_high.reload_into_specific(
+                    this, call_conv.ret_regs_gp()[gp_reg_idx++]);
+            } else {
+                val_ref_high.move_into_specific(
+                    call_conv.ret_regs_gp()[gp_reg_idx++]);
+            }
             break;
         }
+        case f32:
+        case f64:
+        case v32:
+        case v64:
+        case v128: {
+            assert(ty != LLVMBasicValType::f32 || val_ty->isFloatTy());
+            assert(ty != LLVMBasicValType::f64 || val_ty->isDoubleTy());
+            auto val_ref = this->val_ref(val_idx, part);
+            if (inc_ref_count) {
+                val_ref.inc_ref_count();
+            }
 
-        if (val_ref.assignment().fixed_assignment()) {
-            val_ref.reload_into_specific(this, call_conv.ret_regs_gp()[0]);
-        } else {
-            val_ref.move_into_specific(call_conv.ret_regs_gp()[0]);
-        }
+            const auto call_conv = this->cur_calling_convention();
+            if (val_ref.is_const) {
+                this->materialize_constant(
+                    val_ref, call_conv.ret_regs_vec()[xmm_reg_idx++]);
+                break;
+            }
 
-        if (val_ref_high.assignment().fixed_assignment()) {
-            val_ref_high.reload_into_specific(this, call_conv.ret_regs_gp()[1]);
-        } else {
-            val_ref_high.move_into_specific(call_conv.ret_regs_gp()[1]);
-        }
-        break;
-    }
-    case f32:
-    case f64:
-    case v32:
-    case v64:
-    case v128: {
-        assert(val_info.type != LLVMBasicValType::f32
-               || val->getType()->isFloatTy());
-        assert(val_info.type != LLVMBasicValType::f64
-               || val->getType()->isDoubleTy());
-        auto val_ref = this->val_ref(val_idx, 0);
-
-        const auto call_conv = this->cur_calling_convention();
-        if (val_ref.is_const) {
-            this->materialize_constant(val_ref, call_conv.ret_regs_vec()[0]);
+            if (val_ref.assignment().fixed_assignment()) {
+                val_ref.reload_into_specific(
+                    this, call_conv.ret_regs_vec()[xmm_reg_idx++]);
+            } else {
+                val_ref.move_into_specific(
+                    call_conv.ret_regs_vec()[xmm_reg_idx++]);
+            }
             break;
         }
+        case v256:
+        case v512: {
+            TPDE_LOG_ERR("Vector types not yet supported");
+            assert(0);
+            exit(1);
+        }
+        case invalid:
+        case none:
+        case complex: {
+            TPDE_LOG_ERR("Invalid value type for return: {}",
+                         static_cast<u32>(ty));
+            assert(0);
+            exit(1);
+        }
+        }
+    };
 
-        if (val_ref.assignment().fixed_assignment()) {
-            val_ref.reload_into_specific(this, call_conv.ret_regs_vec()[0]);
-        } else {
-            val_ref.move_into_specific(call_conv.ret_regs_vec()[0]);
+    switch (val_info.type) {
+    case LLVMBasicValType::complex: {
+        auto *val_ty = val->getType();
+        assert(val_ty->isAggregateType());
+
+        const auto llvm_part_count = val_ty->getNumContainedTypes();
+        const auto ty_idx = this->adaptor->values[val_idx].complex_part_tys_idx;
+        u32        real_part_count = 0;
+        for (u32 i = 0; i < llvm_part_count; ++i) {
+            const auto part_ty =
+                this->adaptor->complex_part_types[ty_idx + real_part_count];
+            auto *part_llvm_ty = val_ty->getContainedType(i);
+            move_simple(part_ty,
+                        val_idx,
+                        real_part_count,
+                        part_llvm_ty,
+                        i != llvm_part_count - 1);
+
+            // skip over duplicate entries when LLVM part has multiple TPDE
+            // parts
+            real_part_count += basic_ty_part_count(
+                this->adaptor->complex_part_types[ty_idx + real_part_count]);
         }
         break;
     }
-    case v256:
-    case v512: {
-        TPDE_LOG_ERR("Vector types not yet supported");
-        assert(0);
-        exit(1);
-    }
-    case invalid:
-    case none:
-    case complex: {
-        TPDE_LOG_ERR("Invalid value type for return: {}",
-                     static_cast<u32>(val_info.type));
-        assert(0);
-        exit(1);
+    default: {
+        move_simple(val_info.type, val_idx, 0, val->getType(), false);
+        break;
     }
     }
 }
