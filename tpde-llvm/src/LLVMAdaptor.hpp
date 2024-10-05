@@ -484,21 +484,21 @@ struct LLVMAdaptor {
 
 #if 0
     std::string_view funcName(IRFuncRef func) { return func->getName(); }
-
-    bool funcArgIsByval(u32 idx) {
-        return curFunc->hasParamAttribute(idx,
-                                          llvm::Attribute::AttrKind::ByVal);
+#endif
+    bool cur_arg_is_byval(const u32 idx) const noexcept {
+        return cur_func->hasParamAttribute(idx,
+                                           llvm::Attribute::AttrKind::ByVal);
     }
 
-    u32 funcArgByvalAlign(u32 idx) {
-        return curFunc->getParamAlign(idx)->value();
+    u32 cur_arg_byval_align(const u32 idx) const noexcept {
+        return cur_func->getParamAlign(idx)->value();
     }
 
-    u32 funcArgByvalAllocSize(u32 idx) {
+    u32 cur_arg_byval_size(const u32 idx) const noexcept {
         return mod.getDataLayout().getTypeAllocSize(
-            curFunc->getParamByValType(idx));
+            cur_func->getParamByValType(idx));
     }
-
+#if 0
     std::string valNameDbg(IRValue idx) {
         std::string out;
         auto        stream = llvm::raw_string_ostream(out);

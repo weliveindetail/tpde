@@ -255,6 +255,18 @@ struct TestIRAdaptor {
         return Range{.beg = func.arg_begin_idx, .last = func.arg_end_idx};
     }
 
+    [[nodiscard]] static bool cur_arg_is_byval(u32) noexcept {
+        return false;
+    }
+
+    [[nodiscard]] static u32 cur_arg_byval_align(u32) noexcept {
+        return 0;
+    }
+
+    [[nodiscard]] static u32 cur_arg_byval_size(u32) noexcept {
+        return 0;
+    }
+
     [[nodiscard]] auto cur_static_allocas() const noexcept {
         struct Range {
             const TestIR *self;
@@ -481,7 +493,8 @@ struct TestIRAdaptor {
         return ir->blocks[static_cast<u32>(block)].name;
     }
 
-    [[nodiscard]] std::string_view value_fmt_ref(IRValueRef val) const noexcept {
+    [[nodiscard]] std::string_view
+        value_fmt_ref(IRValueRef val) const noexcept {
         return ir->values[static_cast<u32>(val)].name;
     }
 

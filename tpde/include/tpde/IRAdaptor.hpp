@@ -191,7 +191,17 @@ concept IRAdaptor = requires(T a) {
     /// Provides an iterator over the arguments of the current function
     { a.cur_args() } -> IRRange<typename T::IRValueRef>;
 
-    // TODO(ts): func byval, sret
+    /// Is the argument specified by the given index copied before it is passed
+    /// to the callee argument?
+    { a.cur_arg_is_byval(ARG(u32)) } -> std::convertible_to<bool>;
+
+    /// The size of a byval argument
+    { a.cur_arg_byval_size(ARG(u32)) } -> std::same_as<u32>;
+
+    /// The alignment of a byval argument
+    { a.cur_arg_byval_align(ARG(u32)) } -> std::same_as<u32>;
+
+    // TODO(ts): func sret
 
     /// Provides an iterator of static allocas
     { a.cur_static_allocas() } -> IRRange<typename T::IRValueRef>;

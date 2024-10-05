@@ -579,9 +579,35 @@ void CallingConv::handle_func_args(
     // getters
     compiler->fixed_assignment_nonallocatable_mask |= arg_regs_mask();
 
+    u32 arg_idx = 0;
     for (const IRValueRef arg : compiler->adaptor->cur_args()) {
-        const u32 part_count = compiler->derived()->val_part_count(arg);
+        if (compiler->adaptor->cur_arg_is_byval(arg_idx)) {
+            const u32 size  = compiler->adaptor->cur_arg_byval_size(arg_idx);
+            const u32 align = compiler->adaptor->cur_arg_byval_align(arg_idx);
+            assert(align <= 16);
+            assert((align & (align - 1)) == 0);
+            if (align == 16) {
+                frame_off = util::align_up(frame_off, 16);
+            }
 
+            // need to use a ScratchReg here since otherwise the ValuePartRef
+            // could allocate one of the argument registers
+            ScratchReg ptr_scratch{compiler};
+            auto       arg_ref = compiler->result_ref_lazy(arg, 0);
+            const auto res_reg =
+                ptr_scratch.alloc_from_bank_excluding(0, arg_regs_mask());
+            ASMC(compiler,
+                 LEA64rm,
+                 res_reg,
+                 FE_MEM(FE_BP, 0, FE_NOREG, frame_off));
+            compiler->set_value(arg_ref, ptr_scratch);
+
+            frame_off += util::align_up(size, 8);
+            ++arg_idx;
+            continue;
+        }
+
+        const u32 part_count = compiler->derived()->val_part_count(arg);
         if (compiler->derived()->arg_is_int128(arg)) {
             if (scalar_reg_count + 1 >= gp_regs.size()) {
                 scalar_reg_count = gp_regs.size();
@@ -649,6 +675,8 @@ void CallingConv::handle_func_args(
                 part_ref.inc_ref_count();
             }
         }
+
+        ++arg_idx;
     }
 
     compiler->fixed_assignment_nonallocatable_mask &= ~arg_regs_mask();
@@ -676,18 +704,16 @@ u32 CallingConv::calculate_call_stack_space(
 
     for (auto &arg : arguments) {
         if (arg.flag == CallArg::Flag::byval) {
-            stack_space += util::align_up(arg.byval_size, 8);
+            // the value is passed fully on the stack
             assert(arg.byval_align <= 16);
             assert((arg.byval_align & (arg.byval_align - 1)) == 0);
             if (arg.byval_align == 16) {
                 stack_space = util::align_up(stack_space, 16);
+            } else {
+                assert(stack_space == util::align_up(stack_space, 8));
             }
 
-            if (gp_reg_count < gp_regs.size()) {
-                ++gp_reg_count;
-            } else {
-                stack_space += 8;
-            }
+            stack_space += util::align_up(arg.byval_size, 8);
             continue;
         }
 
@@ -752,16 +778,8 @@ u32 CallingConv::handle_call_args(
             ScratchReg scratch1(compiler), scratch2(compiler);
             auto       ptr_ref = compiler->val_ref(arg.value, 0);
             assert(!ptr_ref.is_const);
-            AsmReg ptr_reg;
-            if (gp_reg_count < gp_regs.size()) {
-                ptr_reg = ptr_ref.reload_into_specific(compiler,
-                                                       gp_regs[gp_reg_count++]);
-                scratch1.alloc_specific(ptr_reg);
-                arg_scratchs.push_back(std::move(scratch1));
-            } else {
-                ptr_reg = ptr_ref.reload_into_specific_fixed(
-                    compiler, scratch1.alloc_gp());
-            }
+            ScratchReg ptr_scratch{compiler};
+            AsmReg     ptr_reg = compiler->val_as_reg(ptr_ref, ptr_scratch);
 
             auto tmp_reg = scratch2.alloc_gp();
 
