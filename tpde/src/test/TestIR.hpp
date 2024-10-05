@@ -255,17 +255,11 @@ struct TestIRAdaptor {
         return Range{.beg = func.arg_begin_idx, .last = func.arg_end_idx};
     }
 
-    [[nodiscard]] static bool cur_arg_is_byval(u32) noexcept {
-        return false;
-    }
+    [[nodiscard]] static bool cur_arg_is_byval(u32) noexcept { return false; }
 
-    [[nodiscard]] static u32 cur_arg_byval_align(u32) noexcept {
-        return 0;
-    }
+    [[nodiscard]] static u32 cur_arg_byval_align(u32) noexcept { return 0; }
 
-    [[nodiscard]] static u32 cur_arg_byval_size(u32) noexcept {
-        return 0;
-    }
+    [[nodiscard]] static u32 cur_arg_byval_size(u32) noexcept { return 0; }
 
     [[nodiscard]] auto cur_static_allocas() const noexcept {
         struct Range {
@@ -328,6 +322,10 @@ struct TestIRAdaptor {
             ++first_alloca;
         }
         return Range{ir, first_alloca, entry.inst_end_idx};
+    }
+
+    [[nodiscard]] static bool cur_has_dynamic_alloca() noexcept {
+        return false;
     }
 
     [[nodiscard]] IRBlockRef cur_entry_block() const noexcept {

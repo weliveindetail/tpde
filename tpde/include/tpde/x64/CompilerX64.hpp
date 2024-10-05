@@ -1161,7 +1161,19 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     {
         write_ptr            = text_data + first_ret_off;
         const auto ret_start = write_ptr;
-        write_ptr += fe64_ADD64ri(write_ptr, 0, FE_SP, final_frame_size);
+        if (this->adaptor->cur_has_dynamic_alloca()) {
+            if (num_saved_regs == 0) {
+                write_ptr += fe64_MOV64rr(write_ptr, 0, FE_SP, FE_BP);
+            } else {
+                write_ptr += fe64_LEA64rm(
+                    write_ptr,
+                    0,
+                    FE_SP,
+                    FE_MEM(FE_BP, 0, FE_NOREG, -(i32)num_saved_regs * 8));
+            }
+        } else {
+            write_ptr += fe64_ADD64ri(write_ptr, 0, FE_SP, final_frame_size);
+        }
         for (auto reg : util::BitSetIterator<true>{
                  this->register_file.clobbered & conv.callee_saved_mask()}) {
             assert(reg <= AsmReg::R15);
@@ -1236,11 +1248,12 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_epilog() noexcept {
     // epilogue:
-    // add rsp, #<frame_size>+<largest_call_frame_usage>
-    // optionally create vararg save-area
-    // reserve space for callee-saved regs
-    //   = 1 byte for each of the lower 8 regs and 2
-    //   bytes for the higher 8 regs
+    // if !func_has_dynamic_alloca:
+    //   add rsp, #<frame_size>+<largest_call_frame_usage>
+    // else:
+    //   lea rsp, [rbp - <size_of_reg_save_area>]
+    // for each saved reg:
+    //   pop <reg>
     // pop rbp
     // ret
     //
@@ -1249,7 +1262,13 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_epilog() noexcept {
 
     func_ret_offs.push_back(this->assembler.text_cur_off());
 
-    u32 epilogue_size = 7 + 1 + 1 + func_reg_restore_alloc; // add + pop + ret
+    // add reg, imm32
+    // and
+    // lea rsp, [rbp - imm32]
+    // both take 7 bytes
+    u32 epilogue_size =
+        7 + 1 + 1
+        + func_reg_restore_alloc; // add/lea + pop + ret + size of reg restore
 
     this->assembler.text_ensure_space(epilogue_size);
     this->assembler.text_write_ptr += epilogue_size;

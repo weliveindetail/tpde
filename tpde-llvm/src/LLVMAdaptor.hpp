@@ -103,6 +103,7 @@ struct LLVMAdaptor {
 
     llvm::Function *cur_func                          = nullptr;
     bool            globals_init                      = false;
+    bool            func_has_dynamic_alloca           = false;
     u32             global_idx_end                    = 0;
     u32             global_complex_part_types_end_idx = 0;
 
@@ -241,6 +242,10 @@ struct LLVMAdaptor {
 
     [[nodiscard]] const auto &cur_static_allocas() const noexcept {
         return initial_stack_slot_indices;
+    }
+
+    [[nodiscard]] bool cur_has_dynamic_alloca() const noexcept {
+        return func_has_dynamic_alloca;
     }
 
     [[nodiscard]] static IRBlockRef cur_entry_block() noexcept { return 0; }
@@ -526,6 +531,7 @@ struct LLVMAdaptor {
         funcs_as_operands.clear();
         func_arg_indices.clear();
         initial_stack_slot_indices.clear();
+        func_has_dynamic_alloca = false;
 
         // we keep globals around for all function compilation
         // and assign their value indices at the start of the compilation
@@ -953,6 +959,13 @@ struct LLVMAdaptor {
                               llvm::BasicBlock::iterator &it,
                               bool                        is_entry_block,
                               bool                       &found_phi_end) {
+        // check if the function contains dynamic allocas
+        if (auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(inst); alloca) {
+            if (!alloca->isStaticAlloca()) {
+                func_has_dynamic_alloca = true;
+            }
+        }
+
         // I don't want to handle constant expressions in a store value operand
         // so we split it up here
         if (auto *store = llvm::dyn_cast<llvm::StoreInst>(inst); store) {

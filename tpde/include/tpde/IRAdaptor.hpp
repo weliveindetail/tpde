@@ -206,6 +206,9 @@ concept IRAdaptor = requires(T a) {
     /// Provides an iterator of static allocas
     { a.cur_static_allocas() } -> IRRange<typename T::IRValueRef>;
 
+    /// Does the current function have dynamically sized stack allocations?
+    { a.cur_has_dynamic_alloca() } -> std::convertible_to<bool>;
+
     /// Provides a reference to the entry block of the current function
     { a.cur_entry_block() } -> std::convertible_to<typename T::IRBlockRef>;
 

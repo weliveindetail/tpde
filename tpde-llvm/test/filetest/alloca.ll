@@ -15,7 +15,7 @@ define void @dyn_alloca_const() {
 ; X64:    sub rsp, 0x10
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
-; X64:    add rsp, 0x30
+; X64:    mov rsp, rbp
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -37,7 +37,7 @@ define void @dyn_alloca_const_align_32() {
 ; X64:    sub rsp, 0x10
 ; X64:    and rsp, -0x20
 ; X64:    mov rax, rsp
-; X64:    add rsp, 0x30
+; X64:    mov rsp, rbp
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
@@ -62,7 +62,7 @@ define void @dyn_alloca_dyn_i8_cnt_i64(i64 %0) {
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -86,7 +86,7 @@ define void @dyn_alloca_dyn_i8_cnt_i32(i32 %0) {
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -112,7 +112,7 @@ define void @dyn_alloca_dyn_i32_cnt_i64(i64 %0) {
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -137,7 +137,7 @@ define void @dyn_alloca_dyn_i32_cnt_i32(i32 %0) {
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -165,7 +165,7 @@ define void @dyn_alloca_dyn_si3_cnt_i64(i64 %0) {
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -190,7 +190,7 @@ define void @dyn_alloca_dyn_si3_cnt_i32(i32 %0) {
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -217,7 +217,7 @@ define void @dyn_alloca_dyn_si3_cnt_i16(i16 %0) {
 ; X64:    sub rsp, rbx
 ; X64:    and rsp, -0x10
 ; X64:    mov rbx, rsp
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -245,7 +245,7 @@ define i64 @dyn_alloca_dyn_i8_cnt_i64_no_salvage(i64 %0) {
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
 ; X64:    mov rax, rbx
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -274,7 +274,7 @@ define i32 @dyn_alloca_dyn_i32_cnt_i32_no_salvage(i32 %0) {
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
 ; X64:    mov eax, ebx
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -302,7 +302,7 @@ define i64 @dyn_alloca_dyn_si3_cnt_i64_no_salvage(i64 %0) {
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
 ; X64:    mov rax, rbx
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -329,7 +329,7 @@ define i32 @dyn_alloca_dyn_si3_cnt_i32_no_salvage(i32 %0) {
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
 ; X64:    mov eax, ebx
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
@@ -357,7 +357,7 @@ define i16 @dyn_alloca_dyn_si3_cnt_i16_no_salvage(i16 %0) {
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
 ; X64:    mov eax, ebx
-; X64:    add rsp, 0x38
+; X64:    lea rsp, [rbp - 0x8]
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
