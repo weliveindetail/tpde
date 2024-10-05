@@ -403,3 +403,17 @@ FOPS(double)
 
 #undef FOPS
 #undef FOP
+
+// --------------------------
+// prefetch
+// --------------------------
+
+void prefetch_rl0(void* addr) { __builtin_prefetch(addr, 0, 0); }
+void prefetch_rl1(void* addr) { __builtin_prefetch(addr, 0, 1); }
+void prefetch_rl2(void* addr) { __builtin_prefetch(addr, 0, 2); }
+void prefetch_rl3(void* addr) { __builtin_prefetch(addr, 0, 3); }
+
+void prefetch_wl0(void* addr) { __builtin_prefetch(addr, 1, 0); }
+void prefetch_wl1(void* addr) { __builtin_prefetch(addr, 1, 1); }
+void prefetch_wl2(void* addr) { __builtin_prefetch(addr, 1, 2); }
+void prefetch_wl3(void* addr) { __builtin_prefetch(addr, 1, 3); }

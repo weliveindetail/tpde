@@ -3260,6 +3260,37 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         this->set_value(res_ref, res);
         return true;
     }
+    case llvm::Intrinsic::prefetch: {
+        auto ptr_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+
+        const auto rw =
+            llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
+        const auto locality =
+            llvm::cast<llvm::ConstantInt>(inst->getOperand(2))->getZExtValue();
+        // for now, ignore instruction/data distinction
+
+        if (rw == 0) {
+            // read
+            switch (locality) {
+            case 0: derived()->encode_prefetch_rl0(std::move(ptr_ref)); break;
+            case 1: derived()->encode_prefetch_rl1(std::move(ptr_ref)); break;
+            case 2: derived()->encode_prefetch_rl2(std::move(ptr_ref)); break;
+            default: assert(0);
+            case 3: derived()->encode_prefetch_rl3(std::move(ptr_ref)); break;
+            }
+        } else {
+            assert(rw == 1);
+            // write
+            switch (locality) {
+            case 0: derived()->encode_prefetch_wl0(std::move(ptr_ref)); break;
+            case 1: derived()->encode_prefetch_wl1(std::move(ptr_ref)); break;
+            case 2: derived()->encode_prefetch_wl2(std::move(ptr_ref)); break;
+            default: assert(0);
+            case 3: derived()->encode_prefetch_wl3(std::move(ptr_ref)); break;
+            }
+        }
+        return true;
+    }
     default: {
         if (derived()->handle_intrin(inst_idx, inst, intrin)) {
             return true;

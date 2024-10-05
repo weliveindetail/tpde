@@ -491,6 +491,14 @@ struct EncodeCompiler {
     bool encode_is_fpclass_inf_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_is_fpclass_norm_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_is_fpclass_finite_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_prefetch_rl0(AsmOperand param_0);
+    bool encode_prefetch_rl1(AsmOperand param_0);
+    bool encode_prefetch_rl2(AsmOperand param_0);
+    bool encode_prefetch_rl3(AsmOperand param_0);
+    bool encode_prefetch_wl0(AsmOperand param_0);
+    bool encode_prefetch_wl1(AsmOperand param_0);
+    bool encode_prefetch_wl2(AsmOperand param_0);
+    bool encode_prefetch_wl3(AsmOperand param_0);
 
 
     SymRef sym_fnegf32_cp0 = Assembler::INVALID_SYM_REF;
@@ -20972,6 +20980,358 @@ template <typename Adaptor,
     // RET64 killed $al
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_prefetch_rl0(AsmOperand param_0) {
+    // # Machine code for function prefetch_rl0: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   PREFETCHNTA killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0)
+    //   RET64
+    // 
+    // # End machine code for function prefetch_rl0.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_di{derived()};
+
+
+    // PREFETCHNTA killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst0_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst0_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    ASMD(PREFETCHNTAm, inst0_op0);
+    // argument di is killed and marked as dead
+
+
+    // RET64
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_prefetch_rl1(AsmOperand param_0) {
+    // # Machine code for function prefetch_rl1: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   PREFETCHT2 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0)
+    //   RET64
+    // 
+    // # End machine code for function prefetch_rl1.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_di{derived()};
+
+
+    // PREFETCHT2 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst0_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst0_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    ASMD(PREFETCHT2m, inst0_op0);
+    // argument di is killed and marked as dead
+
+
+    // RET64
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_prefetch_rl2(AsmOperand param_0) {
+    // # Machine code for function prefetch_rl2: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   PREFETCHT1 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0)
+    //   RET64
+    // 
+    // # End machine code for function prefetch_rl2.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_di{derived()};
+
+
+    // PREFETCHT1 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst0_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst0_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    ASMD(PREFETCHT1m, inst0_op0);
+    // argument di is killed and marked as dead
+
+
+    // RET64
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_prefetch_rl3(AsmOperand param_0) {
+    // # Machine code for function prefetch_rl3: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   PREFETCHT0 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0)
+    //   RET64
+    // 
+    // # End machine code for function prefetch_rl3.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_di{derived()};
+
+
+    // PREFETCHT0 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst0_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst0_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    ASMD(PREFETCHT0m, inst0_op0);
+    // argument di is killed and marked as dead
+
+
+    // RET64
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_prefetch_wl0(AsmOperand param_0) {
+    // # Machine code for function prefetch_wl0: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   PREFETCHNTA killed renamable $rdi, 1, $noreg, 0, $noreg :: (store (s8) into %ir.0)
+    //   RET64
+    // 
+    // # End machine code for function prefetch_wl0.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_di{derived()};
+
+
+    // PREFETCHNTA killed renamable $rdi, 1, $noreg, 0, $noreg :: (store (s8) into %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst0_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst0_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    ASMD(PREFETCHNTAm, inst0_op0);
+    // argument di is killed and marked as dead
+
+
+    // RET64
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_prefetch_wl1(AsmOperand param_0) {
+    // # Machine code for function prefetch_wl1: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   PREFETCHT2 killed renamable $rdi, 1, $noreg, 0, $noreg :: (store (s8) into %ir.0)
+    //   RET64
+    // 
+    // # End machine code for function prefetch_wl1.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_di{derived()};
+
+
+    // PREFETCHT2 killed renamable $rdi, 1, $noreg, 0, $noreg :: (store (s8) into %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst0_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst0_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    ASMD(PREFETCHT2m, inst0_op0);
+    // argument di is killed and marked as dead
+
+
+    // RET64
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_prefetch_wl2(AsmOperand param_0) {
+    // # Machine code for function prefetch_wl2: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   PREFETCHT1 killed renamable $rdi, 1, $noreg, 0, $noreg :: (store (s8) into %ir.0)
+    //   RET64
+    // 
+    // # End machine code for function prefetch_wl2.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_di{derived()};
+
+
+    // PREFETCHT1 killed renamable $rdi, 1, $noreg, 0, $noreg :: (store (s8) into %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst0_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst0_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    ASMD(PREFETCHT1m, inst0_op0);
+    // argument di is killed and marked as dead
+
+
+    // RET64
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_prefetch_wl3(AsmOperand param_0) {
+    // # Machine code for function prefetch_wl3: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   PREFETCHT0 killed renamable $rdi, 1, $noreg, 0, $noreg :: (store (s8) into %ir.0)
+    //   RET64
+    // 
+    // # End machine code for function prefetch_wl3.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_di{derived()};
+
+
+    // PREFETCHT0 killed renamable $rdi, 1, $noreg, 0, $noreg :: (store (s8) into %ir.0)
+    // operand 0 is a memory operand
+    FeMem inst0_op0;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op0 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base = param_0.as_reg(this);
+        inst0_op0 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    ASMD(PREFETCHT0m, inst0_op0);
+    // argument di is killed and marked as dead
+
+
+    // RET64
     return true;
 
 }
