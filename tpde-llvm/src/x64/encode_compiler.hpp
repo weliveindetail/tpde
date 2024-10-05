@@ -355,6 +355,20 @@ struct EncodeCompiler {
     bool encode_shri128_ge64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
     bool encode_ashri128_lt64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
     bool encode_ashri128_ge64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_cttzi32_zero_poison(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_cttzi64_zero_poison(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_cttzi8(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_cttzi16(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_cttzi32(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_cttzi64(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_ctlzi8_zero_poison(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_ctlzi16_zero_poison(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_ctlzi32_zero_poison(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_ctlzi64_zero_poison(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_ctlzi8(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_ctlzi16(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_ctlzi32(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_ctlzi64(AsmOperand param_0, ScratchReg &result_0);
     bool encode_addf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_subf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_mulf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
@@ -553,7 +567,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     assert(info.bank == 0);
     assert(info.size <= 8);
 
-    const u64 imm = std::get<Immediate>(state).const_u64;
+    const u64 imm = info.const_u64;
     return static_cast<i64>(static_cast<i16>(imm)) == static_cast<i64>(imm);
 }
 
@@ -572,7 +586,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
     assert(info.bank == 0);
     assert(info.size <= 8);
 
-    const u64 imm = std::get<Immediate>(state).const_u64;
+    const u64 imm = info.const_u64;
     return static_cast<i64>(static_cast<i8>(imm)) == static_cast<i8>(imm);
 }
 
@@ -8198,6 +8212,1336 @@ template <typename Adaptor,
     result_0 = std::move(scratch_ax);
     // returning reg dx as result_1
     result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cttzi32_zero_poison(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function cttzi32_zero_poison: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $edi
+    //   renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function cttzi32_zero_poison.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
+    // BSF32rr has a preferred encoding as BSF32rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(BSF32rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is di
+        // di is mapped to param_0
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(BSF32rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cttzi64_zero_poison(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function cttzi64_zero_poison: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   renamable $rax = BSF64rr killed renamable $rdi, implicit-def dead $eflags
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function cttzi64_zero_poison.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $rax = BSF64rr killed renamable $rdi, implicit-def dead $eflags
+    // BSF64rr has a preferred encoding as BSF64rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(BSF64rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is di
+        // di is mapped to param_0
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(BSF64rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cttzi8(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function cttzi8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $edi
+    //   renamable $edi = OR32ri killed renamable $edi(tied-def 0), 256, implicit-def dead $eflags
+    //   renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function cttzi8.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $edi = OR32ri killed renamable $edi(tied-def 0), 256, implicit-def dead $eflags
+    // operand 0 is di
+    // di is mapped to param_0
+    // operand 0(param_0) is tied so try to salvage or materialize
+    param_0.try_salvage_or_materialize(this, scratch_di, 0, 4);
+    // operand 1 is an immediate operand
+
+    ASMD(OR32ri, scratch_di.cur_reg, 256);
+    // argument di is killed and marked as dead
+    // result di is marked as alive
+
+
+    // renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
+    // operand 1 is di
+    // operand 1(di) is a simple register
+    AsmReg inst1_op1 = scratch_di.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(BSF32rr, scratch_ax.cur_reg, inst1_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cttzi16(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function cttzi16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $edi
+    //   renamable $edi = OR32ri killed renamable $edi(tied-def 0), 65536, implicit-def dead $eflags
+    //   renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function cttzi16.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $edi = OR32ri killed renamable $edi(tied-def 0), 65536, implicit-def dead $eflags
+    // operand 0 is di
+    // di is mapped to param_0
+    // operand 0(param_0) is tied so try to salvage or materialize
+    param_0.try_salvage_or_materialize(this, scratch_di, 0, 4);
+    // operand 1 is an immediate operand
+
+    ASMD(OR32ri, scratch_di.cur_reg, 65536);
+    // argument di is killed and marked as dead
+    // result di is marked as alive
+
+
+    // renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
+    // operand 1 is di
+    // operand 1(di) is a simple register
+    AsmReg inst1_op1 = scratch_di.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(BSF32rr, scratch_ax.cur_reg, inst1_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cttzi32(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function cttzi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   successors: %bb.2(0x30000000), %bb.1(0x50000000); %bb.2(37.50%), %bb.1(62.50%)
+    //   liveins: $edi
+    //   TEST32rr renamable $edi, renamable $edi, implicit-def $eflags
+    //   JCC_1 %bb.2, 4, implicit killed $eflags
+    // 
+    // bb.1.cond.false:
+    // ; predecessors: %bb.0
+    //   liveins: $edi
+    //   renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
+    //   RET64 killed $eax
+    // 
+    // bb.2.cond.end:
+    // ; predecessors: %bb.0
+    // 
+    //   $eax = MOV32ri 32
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function cttzi32.
+    // 
+
+    // Mapping di to param_0
+
+    // Creating label for convergence point at the end of the function
+    Label ret_converge_label = derived()->assembler.label_create();
+    // Creating labels for blocks that are jump targets
+    Label block1_label = derived()->assembler.label_create();
+    Label block2_label = derived()->assembler.label_create();
+
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // TEST32rr renamable $edi, renamable $edi, implicit-def $eflags
+    // Skipping check for TEST32mr since associated register is used as an operand twice
+    // Skipping check for TEST32ri since associated register is used as an operand twice
+    // operand 0 is di
+    // di is mapped to param_0
+    AsmReg inst0_op0 = param_0.as_reg(this);
+    // operand 1 is di
+    // di is mapped to param_0
+    AsmReg inst0_op1 = param_0.as_reg(this);
+
+    ASMD(TEST32rr, inst0_op0, inst0_op1);
+
+
+    // JCC_1 %bb.2, 4, implicit killed $eflags
+    // Preparing jump to other block
+    // di is live-out
+    // ax is used in the function later on
+    // Handling register ax
+    // ax is not live-out and needs to be allocated
+    scratch_ax.alloc_from_bank(0);
+    // Handling register di
+    // di is mapped to operand param_0, materializing it
+    param_0.try_salvage_or_materialize(this, scratch_di, 0, 4);
+    derived()->generate_raw_jump(CompilerX64::Jump::je, block2_label);
+
+
+    // Starting encoding of block 1
+    derived()->assembler.label_place(block1_label);
+    // Marking di as live
+
+
+    // renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
+    // operand 1 is di
+    // operand 1(di) is a simple register
+    AsmReg inst2_op1 = scratch_di.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(BSF32rr, scratch_ax.cur_reg, inst2_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // handling return for ax
+    // value already in register, nothing to do
+    // Jumping to convergence point at the end of the encoding function
+    derived()->generate_raw_jump(CompilerX64::Jump::jmp, ret_converge_label);
+
+    // Starting encoding of block 2
+    derived()->assembler.label_place(block2_label);
+
+
+    // $eax = MOV32ri 32
+    // operand 1 is an immediate operand
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOV32ri, scratch_ax.cur_reg, 32);
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // handling return for ax
+    // value already in register, nothing to do
+    // Omitting jump to convergence as this is the last block
+
+    // Placing the convergence point for registers here
+    derived()->assembler.label_place(ret_converge_label);
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_cttzi64(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function cttzi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   successors: %bb.2(0x30000000), %bb.1(0x50000000); %bb.2(37.50%), %bb.1(62.50%)
+    //   liveins: $rdi
+    //   TEST64rr renamable $rdi, renamable $rdi, implicit-def $eflags
+    //   JCC_1 %bb.2, 4, implicit killed $eflags
+    // 
+    // bb.1.cond.false:
+    // ; predecessors: %bb.0
+    //   liveins: $rdi
+    //   renamable $rax = BSF64rr killed renamable $rdi, implicit-def dead $eflags
+    //   RET64 killed $rax
+    // 
+    // bb.2.cond.end:
+    // ; predecessors: %bb.0
+    // 
+    //   $eax = MOV32ri 64, implicit-def $rax
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function cttzi64.
+    // 
+
+    // Mapping di to param_0
+
+    // Creating label for convergence point at the end of the function
+    Label ret_converge_label = derived()->assembler.label_create();
+    // Creating labels for blocks that are jump targets
+    Label block1_label = derived()->assembler.label_create();
+    Label block2_label = derived()->assembler.label_create();
+
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // TEST64rr renamable $rdi, renamable $rdi, implicit-def $eflags
+    // Skipping check for TEST64mr since associated register is used as an operand twice
+    // Skipping check for TEST64ri since associated register is used as an operand twice
+    // operand 0 is di
+    // di is mapped to param_0
+    AsmReg inst0_op0 = param_0.as_reg(this);
+    // operand 1 is di
+    // di is mapped to param_0
+    AsmReg inst0_op1 = param_0.as_reg(this);
+
+    ASMD(TEST64rr, inst0_op0, inst0_op1);
+
+
+    // JCC_1 %bb.2, 4, implicit killed $eflags
+    // Preparing jump to other block
+    // di is live-out
+    // ax is used in the function later on
+    // Handling register ax
+    // ax is not live-out and needs to be allocated
+    scratch_ax.alloc_from_bank(0);
+    // Handling register di
+    // di is mapped to operand param_0, materializing it
+    param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
+    derived()->generate_raw_jump(CompilerX64::Jump::je, block2_label);
+
+
+    // Starting encoding of block 1
+    derived()->assembler.label_place(block1_label);
+    // Marking di as live
+
+
+    // renamable $rax = BSF64rr killed renamable $rdi, implicit-def dead $eflags
+    // operand 1 is di
+    // operand 1(di) is a simple register
+    AsmReg inst2_op1 = scratch_di.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(BSF64rr, scratch_ax.cur_reg, inst2_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // handling return for ax
+    // value already in register, nothing to do
+    // Jumping to convergence point at the end of the encoding function
+    derived()->generate_raw_jump(CompilerX64::Jump::jmp, ret_converge_label);
+
+    // Starting encoding of block 2
+    derived()->assembler.label_place(block2_label);
+
+
+    // $eax = MOV32ri 64, implicit-def $rax
+    // operand 1 is an immediate operand
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def RAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(MOV32ri, scratch_ax.cur_reg, 64);
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // handling return for ax
+    // value already in register, nothing to do
+    // Omitting jump to convergence as this is the last block
+
+    // Placing the convergence point for registers here
+    derived()->assembler.label_place(ret_converge_label);
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ctlzi8_zero_poison(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function ctlzi8_zero_poison: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $edi
+    //   renamable $eax = MOVZX32rr8 killed renamable $dil, implicit killed $edi
+    //   renamable $eax = BSR32rr killed renamable $eax, implicit-def dead $eflags
+    //   renamable $eax = XOR32ri killed renamable $eax(tied-def 0), 31, implicit-def dead $eflags
+    //   renamable $eax = nsw ADD32ri killed renamable $eax(tied-def 0), -24, implicit-def dead $eflags
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function ctlzi8_zero_poison.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $eax = MOVZX32rr8 killed renamable $dil, implicit killed $edi
+    // MOVZXr32r8 has a preferred encoding as MOVZXr32m8 if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32m8, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is di
+        // di is mapped to param_0
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32r8, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument di is killed and marked as dead
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = BSR32rr killed renamable $eax, implicit-def dead $eflags
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst1_op1 = scratch_ax.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(BSR32rr, scratch_ax.cur_reg, inst1_op1);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = XOR32ri killed renamable $eax(tied-def 0), 31, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(XOR32ri, scratch_ax.cur_reg, 31);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = nsw ADD32ri killed renamable $eax(tied-def 0), -24, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(ADD32ri, scratch_ax.cur_reg, -24);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ctlzi16_zero_poison(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function ctlzi16_zero_poison: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $edi
+    //   renamable $eax = MOVZX32rr16 killed renamable $di, implicit killed $edi
+    //   renamable $eax = BSR32rr killed renamable $eax, implicit-def dead $eflags
+    //   renamable $eax = XOR32ri killed renamable $eax(tied-def 0), 31, implicit-def dead $eflags
+    //   renamable $eax = nsw ADD32ri killed renamable $eax(tied-def 0), -16, implicit-def dead $eflags
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function ctlzi16_zero_poison.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $eax = MOVZX32rr16 killed renamable $di, implicit killed $edi
+    // MOVZXr32r16 has a preferred encoding as MOVZXr32m16 if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32m16, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is di
+        // di is mapped to param_0
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32r16, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument di is killed and marked as dead
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = BSR32rr killed renamable $eax, implicit-def dead $eflags
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst1_op1 = scratch_ax.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(BSR32rr, scratch_ax.cur_reg, inst1_op1);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = XOR32ri killed renamable $eax(tied-def 0), 31, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(XOR32ri, scratch_ax.cur_reg, 31);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = nsw ADD32ri killed renamable $eax(tied-def 0), -16, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(ADD32ri, scratch_ax.cur_reg, -16);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ctlzi32_zero_poison(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function ctlzi32_zero_poison: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $edi
+    //   renamable $eax = BSR32rr killed renamable $edi, implicit-def dead $eflags
+    //   renamable $eax = XOR32ri killed renamable $eax(tied-def 0), 31, implicit-def dead $eflags
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function ctlzi32_zero_poison.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $eax = BSR32rr killed renamable $edi, implicit-def dead $eflags
+    // BSR32rr has a preferred encoding as BSR32rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(BSR32rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is di
+        // di is mapped to param_0
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(BSR32rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = XOR32ri killed renamable $eax(tied-def 0), 31, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(XOR32ri, scratch_ax.cur_reg, 31);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ctlzi64_zero_poison(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function ctlzi64_zero_poison: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   renamable $rax = BSR64rr killed renamable $rdi, implicit-def dead $eflags
+    //   renamable $rax = XOR64ri32 killed renamable $rax(tied-def 0), 63, implicit-def dead $eflags
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function ctlzi64_zero_poison.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $rax = BSR64rr killed renamable $rdi, implicit-def dead $eflags
+    // BSR64rr has a preferred encoding as BSR64rm if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(BSR64rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is di
+        // di is mapped to param_0
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(BSR64rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rax = XOR64ri32 killed renamable $rax(tied-def 0), 63, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(XOR64ri, scratch_ax.cur_reg, 63);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ctlzi8(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function ctlzi8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $edi
+    //   renamable $eax = MOVZX32rr8 killed renamable $dil, implicit killed $edi
+    //   renamable $ecx = BSR32rr renamable $eax, implicit-def dead $eflags
+    //   renamable $ecx = XOR32ri killed renamable $ecx(tied-def 0), 31, implicit-def dead $eflags
+    //   renamable $ecx = nsw ADD32ri killed renamable $ecx(tied-def 0), -24, implicit-def dead $eflags
+    //   TEST8rr killed renamable $al, killed renamable $al, implicit-def $eflags, implicit killed $eax
+    //   renamable $eax = MOV32ri 8
+    //   renamable $eax = CMOV32rr killed renamable $eax(tied-def 0), killed renamable $ecx, 5, implicit killed $eflags
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function ctlzi8.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $eax = MOVZX32rr8 killed renamable $dil, implicit killed $edi
+    // MOVZXr32r8 has a preferred encoding as MOVZXr32m8 if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32m8, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is di
+        // di is mapped to param_0
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32r8, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument di is killed and marked as dead
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $ecx = BSR32rr renamable $eax, implicit-def dead $eflags
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst1_op1 = scratch_ax.cur_reg;
+
+    // def cx has not been allocated yet
+    scratch_cx.alloc_from_bank(0);
+    ASMD(BSR32rr, scratch_cx.cur_reg, inst1_op1);
+    // result cx is marked as alive
+
+
+    // renamable $ecx = XOR32ri killed renamable $ecx(tied-def 0), 31, implicit-def dead $eflags
+    // operand 0 is cx
+    // operand 0(cx) is the same as its tied destination
+    scratch_cx.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(XOR32ri, scratch_cx.cur_reg, 31);
+    // argument cx is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // renamable $ecx = nsw ADD32ri killed renamable $ecx(tied-def 0), -24, implicit-def dead $eflags
+    // operand 0 is cx
+    // operand 0(cx) is the same as its tied destination
+    scratch_cx.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(ADD32ri, scratch_cx.cur_reg, -24);
+    // argument cx is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // TEST8rr killed renamable $al, killed renamable $al, implicit-def $eflags, implicit killed $eax
+    // Skipping check for TEST8mr since associated register is used as an operand twice
+    // Skipping check for TEST8ri since associated register is used as an operand twice
+    // operand 0 is ax
+    // operand 0(ax) is a simple register
+    AsmReg inst4_op0 = scratch_ax.cur_reg;
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst4_op1 = scratch_ax.cur_reg;
+    // Handling implicit operand ax
+    // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+    ASMD(TEST8rr, inst4_op0, inst4_op1);
+    // argument ax is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // argument ax is killed and marked as dead
+
+
+    // renamable $eax = MOV32ri 8
+    // operand 1 is an immediate operand
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOV32ri, scratch_ax.cur_reg, 8);
+    // result ax is marked as alive
+
+
+    // renamable $eax = CMOV32rr killed renamable $eax(tied-def 0), killed renamable $ecx, 5, implicit killed $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is cx
+    // operand 1(cx) is a simple register
+    AsmReg inst6_op1 = scratch_cx.cur_reg;
+
+    ASMD(CMOVNZ32rr, scratch_ax.cur_reg, inst6_op1);
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ctlzi16(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function ctlzi16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $edi
+    //   renamable $eax = MOVZX32rr16 killed renamable $di, implicit killed $edi
+    //   renamable $ecx = BSR32rr renamable $eax, implicit-def dead $eflags
+    //   renamable $ecx = XOR32ri killed renamable $ecx(tied-def 0), 31, implicit-def dead $eflags
+    //   renamable $ecx = nsw ADD32ri killed renamable $ecx(tied-def 0), -16, implicit-def dead $eflags
+    //   TEST16rr killed renamable $ax, killed renamable $ax, implicit-def $eflags, implicit killed $eax
+    //   renamable $eax = MOV32ri 16
+    //   renamable $eax = CMOV32rr killed renamable $eax(tied-def 0), killed renamable $ecx, 5, implicit killed $eflags
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function ctlzi16.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $eax = MOVZX32rr16 killed renamable $di, implicit killed $edi
+    // MOVZXr32r16 has a preferred encoding as MOVZXr32m16 if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32m16, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 1 is di
+        // di is mapped to param_0
+        AsmReg inst0_op1;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            inst0_op1 = scratch_ax.cur_reg;
+        } else {
+            inst0_op1 = param_0.as_reg(this);
+        }
+        // Handling implicit operand di
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32r16, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument di is killed and marked as dead
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $ecx = BSR32rr renamable $eax, implicit-def dead $eflags
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst1_op1 = scratch_ax.cur_reg;
+
+    // def cx has not been allocated yet
+    scratch_cx.alloc_from_bank(0);
+    ASMD(BSR32rr, scratch_cx.cur_reg, inst1_op1);
+    // result cx is marked as alive
+
+
+    // renamable $ecx = XOR32ri killed renamable $ecx(tied-def 0), 31, implicit-def dead $eflags
+    // operand 0 is cx
+    // operand 0(cx) is the same as its tied destination
+    scratch_cx.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(XOR32ri, scratch_cx.cur_reg, 31);
+    // argument cx is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // renamable $ecx = nsw ADD32ri killed renamable $ecx(tied-def 0), -16, implicit-def dead $eflags
+    // operand 0 is cx
+    // operand 0(cx) is the same as its tied destination
+    scratch_cx.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(ADD32ri, scratch_cx.cur_reg, -16);
+    // argument cx is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // TEST16rr killed renamable $ax, killed renamable $ax, implicit-def $eflags, implicit killed $eax
+    // Skipping check for TEST16mr since associated register is used as an operand twice
+    // Skipping check for TEST16ri since associated register is used as an operand twice
+    // operand 0 is ax
+    // operand 0(ax) is a simple register
+    AsmReg inst4_op0 = scratch_ax.cur_reg;
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst4_op1 = scratch_ax.cur_reg;
+    // Handling implicit operand ax
+    // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+    ASMD(TEST16rr, inst4_op0, inst4_op1);
+    // argument ax is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // argument ax is killed and marked as dead
+
+
+    // renamable $eax = MOV32ri 16
+    // operand 1 is an immediate operand
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOV32ri, scratch_ax.cur_reg, 16);
+    // result ax is marked as alive
+
+
+    // renamable $eax = CMOV32rr killed renamable $eax(tied-def 0), killed renamable $ecx, 5, implicit killed $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is cx
+    // operand 1(cx) is a simple register
+    AsmReg inst6_op1 = scratch_cx.cur_reg;
+
+    ASMD(CMOVNZ32rr, scratch_ax.cur_reg, inst6_op1);
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ctlzi32(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function ctlzi32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi
+    // 
+    // bb.0 (%ir-block.1):
+    //   successors: %bb.2(0x30000000), %bb.1(0x50000000); %bb.2(37.50%), %bb.1(62.50%)
+    //   liveins: $edi
+    //   TEST32rr renamable $edi, renamable $edi, implicit-def $eflags
+    //   JCC_1 %bb.2, 4, implicit killed $eflags
+    // 
+    // bb.1.cond.false:
+    // ; predecessors: %bb.0
+    //   liveins: $edi
+    //   renamable $eax = BSR32rr killed renamable $edi, implicit-def dead $eflags
+    //   renamable $eax = XOR32ri killed renamable $eax(tied-def 0), 31, implicit-def dead $eflags
+    //   RET64 killed $eax
+    // 
+    // bb.2.cond.end:
+    // ; predecessors: %bb.0
+    // 
+    //   $eax = MOV32ri 32
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function ctlzi32.
+    // 
+
+    // Mapping di to param_0
+
+    // Creating label for convergence point at the end of the function
+    Label ret_converge_label = derived()->assembler.label_create();
+    // Creating labels for blocks that are jump targets
+    Label block1_label = derived()->assembler.label_create();
+    Label block2_label = derived()->assembler.label_create();
+
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // TEST32rr renamable $edi, renamable $edi, implicit-def $eflags
+    // Skipping check for TEST32mr since associated register is used as an operand twice
+    // Skipping check for TEST32ri since associated register is used as an operand twice
+    // operand 0 is di
+    // di is mapped to param_0
+    AsmReg inst0_op0 = param_0.as_reg(this);
+    // operand 1 is di
+    // di is mapped to param_0
+    AsmReg inst0_op1 = param_0.as_reg(this);
+
+    ASMD(TEST32rr, inst0_op0, inst0_op1);
+
+
+    // JCC_1 %bb.2, 4, implicit killed $eflags
+    // Preparing jump to other block
+    // di is live-out
+    // ax is used in the function later on
+    // Handling register ax
+    // ax is not live-out and needs to be allocated
+    scratch_ax.alloc_from_bank(0);
+    // Handling register di
+    // di is mapped to operand param_0, materializing it
+    param_0.try_salvage_or_materialize(this, scratch_di, 0, 4);
+    derived()->generate_raw_jump(CompilerX64::Jump::je, block2_label);
+
+
+    // Starting encoding of block 1
+    derived()->assembler.label_place(block1_label);
+    // Marking di as live
+
+
+    // renamable $eax = BSR32rr killed renamable $edi, implicit-def dead $eflags
+    // operand 1 is di
+    // operand 1(di) is a simple register
+    AsmReg inst2_op1 = scratch_di.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(BSR32rr, scratch_ax.cur_reg, inst2_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = XOR32ri killed renamable $eax(tied-def 0), 31, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(XOR32ri, scratch_ax.cur_reg, 31);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // handling return for ax
+    // value already in register, nothing to do
+    // Jumping to convergence point at the end of the encoding function
+    derived()->generate_raw_jump(CompilerX64::Jump::jmp, ret_converge_label);
+
+    // Starting encoding of block 2
+    derived()->assembler.label_place(block2_label);
+
+
+    // $eax = MOV32ri 32
+    // operand 1 is an immediate operand
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOV32ri, scratch_ax.cur_reg, 32);
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // handling return for ax
+    // value already in register, nothing to do
+    // Omitting jump to convergence as this is the last block
+
+    // Placing the convergence point for registers here
+    derived()->assembler.label_place(ret_converge_label);
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_ctlzi64(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function ctlzi64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   successors: %bb.2(0x30000000), %bb.1(0x50000000); %bb.2(37.50%), %bb.1(62.50%)
+    //   liveins: $rdi
+    //   TEST64rr renamable $rdi, renamable $rdi, implicit-def $eflags
+    //   JCC_1 %bb.2, 4, implicit killed $eflags
+    // 
+    // bb.1.cond.false:
+    // ; predecessors: %bb.0
+    //   liveins: $rdi
+    //   renamable $rax = BSR64rr killed renamable $rdi, implicit-def dead $eflags
+    //   renamable $rax = XOR64ri32 killed renamable $rax(tied-def 0), 63, implicit-def dead $eflags
+    //   RET64 killed $rax
+    // 
+    // bb.2.cond.end:
+    // ; predecessors: %bb.0
+    // 
+    //   $eax = MOV32ri 64, implicit-def $rax
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function ctlzi64.
+    // 
+
+    // Mapping di to param_0
+
+    // Creating label for convergence point at the end of the function
+    Label ret_converge_label = derived()->assembler.label_create();
+    // Creating labels for blocks that are jump targets
+    Label block1_label = derived()->assembler.label_create();
+    Label block2_label = derived()->assembler.label_create();
+
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // TEST64rr renamable $rdi, renamable $rdi, implicit-def $eflags
+    // Skipping check for TEST64mr since associated register is used as an operand twice
+    // Skipping check for TEST64ri since associated register is used as an operand twice
+    // operand 0 is di
+    // di is mapped to param_0
+    AsmReg inst0_op0 = param_0.as_reg(this);
+    // operand 1 is di
+    // di is mapped to param_0
+    AsmReg inst0_op1 = param_0.as_reg(this);
+
+    ASMD(TEST64rr, inst0_op0, inst0_op1);
+
+
+    // JCC_1 %bb.2, 4, implicit killed $eflags
+    // Preparing jump to other block
+    // di is live-out
+    // ax is used in the function later on
+    // Handling register ax
+    // ax is not live-out and needs to be allocated
+    scratch_ax.alloc_from_bank(0);
+    // Handling register di
+    // di is mapped to operand param_0, materializing it
+    param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
+    derived()->generate_raw_jump(CompilerX64::Jump::je, block2_label);
+
+
+    // Starting encoding of block 1
+    derived()->assembler.label_place(block1_label);
+    // Marking di as live
+
+
+    // renamable $rax = BSR64rr killed renamable $rdi, implicit-def dead $eflags
+    // operand 1 is di
+    // operand 1(di) is a simple register
+    AsmReg inst2_op1 = scratch_di.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(BSR64rr, scratch_ax.cur_reg, inst2_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rax = XOR64ri32 killed renamable $rax(tied-def 0), 63, implicit-def dead $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is an immediate operand
+
+    ASMD(XOR64ri, scratch_ax.cur_reg, 63);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // handling return for ax
+    // value already in register, nothing to do
+    // Jumping to convergence point at the end of the encoding function
+    derived()->generate_raw_jump(CompilerX64::Jump::jmp, ret_converge_label);
+
+    // Starting encoding of block 2
+    derived()->assembler.label_place(block2_label);
+
+
+    // $eax = MOV32ri 64, implicit-def $rax
+    // operand 1 is an immediate operand
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    // Ignoring implicit def RAX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(MOV32ri, scratch_ax.cur_reg, 64);
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // handling return for ax
+    // value already in register, nothing to do
+    // Omitting jump to convergence as this is the last block
+
+    // Placing the convergence point for registers here
+    derived()->assembler.label_place(ret_converge_label);
+    result_0 = std::move(scratch_ax);
     return true;
 
 }

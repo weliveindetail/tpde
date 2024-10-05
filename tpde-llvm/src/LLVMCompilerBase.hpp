@@ -3165,6 +3165,101 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         this->set_value(res_ref, res);
         return true;
     }
+    case llvm::Intrinsic::ctlz:
+    case llvm::Intrinsic::cttz: {
+        auto *val = inst->getOperand(0);
+        assert(val->getType()->isIntegerTy());
+        const auto width = val->getType()->getIntegerBitWidth();
+        if (width != 8 && width != 16 && width != 32 && width != 64) {
+            assert(0);
+            return false;
+        }
+
+        const auto zero_is_poison =
+            !llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->isZero();
+
+        auto       val_ref = this->val_ref(llvm_val_idx(val), 0);
+        auto       res_ref = this->result_ref_lazy(inst_idx, 0);
+        ScratchReg res{derived()};
+
+        if (intrin_id == llvm::Intrinsic::ctlz) {
+            switch (width) {
+            case 8:
+                if (zero_is_poison) {
+                    derived()->encode_ctlzi8_zero_poison(std::move(val_ref),
+                                                         res);
+                } else {
+                    derived()->encode_ctlzi8(std::move(val_ref), res);
+                }
+                break;
+            case 16:
+                if (zero_is_poison) {
+                    derived()->encode_ctlzi16_zero_poison(std::move(val_ref),
+                                                          res);
+                } else {
+                    derived()->encode_ctlzi16(std::move(val_ref), res);
+                }
+                break;
+            case 32:
+                if (zero_is_poison) {
+                    derived()->encode_ctlzi32_zero_poison(std::move(val_ref),
+                                                          res);
+                } else {
+                    derived()->encode_ctlzi32(std::move(val_ref), res);
+                }
+                break;
+            case 64:
+                if (zero_is_poison) {
+                    derived()->encode_ctlzi64_zero_poison(std::move(val_ref),
+                                                          res);
+                } else {
+                    derived()->encode_ctlzi64(std::move(val_ref), res);
+                }
+                break;
+            default: __builtin_unreachable();
+            }
+        } else {
+            assert(intrin_id == llvm::Intrinsic::cttz);
+            switch (width) {
+            case 8:
+                if (zero_is_poison) {
+                    derived()->encode_cttzi32_zero_poison(std::move(val_ref),
+                                                          res);
+                } else {
+                    derived()->encode_cttzi8(std::move(val_ref), res);
+                }
+                break;
+            case 16:
+                if (zero_is_poison) {
+                    derived()->encode_cttzi32_zero_poison(std::move(val_ref),
+                                                          res);
+                } else {
+                    derived()->encode_cttzi16(std::move(val_ref), res);
+                }
+                break;
+            case 32:
+                if (zero_is_poison) {
+                    derived()->encode_cttzi32_zero_poison(std::move(val_ref),
+                                                          res);
+                } else {
+                    derived()->encode_cttzi32(std::move(val_ref), res);
+                }
+                break;
+            case 64:
+                if (zero_is_poison) {
+                    derived()->encode_cttzi64_zero_poison(std::move(val_ref),
+                                                          res);
+                } else {
+                    derived()->encode_cttzi64(std::move(val_ref), res);
+                }
+                break;
+            default: __builtin_unreachable();
+            }
+        }
+
+        this->set_value(res_ref, res);
+        return true;
+    }
     default: {
         if (derived()->handle_intrin(inst_idx, inst, intrin)) {
             return true;

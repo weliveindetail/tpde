@@ -191,6 +191,25 @@ u128 TARGET_V1 ashri128_ge64(i128 a, u64 shift_minus_64) {
     return res;
 }
 
+u32 TARGET_V1 cttzi32_zero_poison(u32 a) { return __builtin_ctz(a); }
+u64 TARGET_V1 cttzi64_zero_poison(u64 a) { return __builtin_ctzll(a); }
+
+u32 TARGET_V1 cttzi8(i8 a) { if ((u8)a == 0) { return 8; } else { return __builtin_ctz(a); }}
+u32 TARGET_V1 cttzi16(i16 a) { if ((u16)a == 0) { return 16; } else { return __builtin_ctz(a); }}
+u32 TARGET_V1 cttzi32(u32 a) { if (a == 0) { return 32; } else { return __builtin_ctz(a); }}
+u64 TARGET_V1 cttzi64(u64 a) { if (a == 0) { return 64; } else { return __builtin_ctzll(a); }}
+
+
+u32 TARGET_V1 ctlzi8_zero_poison(i8 a) { return __builtin_clz((u32)(u8)a) - 24; }
+u32 TARGET_V1 ctlzi16_zero_poison(i16 a) { return __builtin_clz((u32)(u16)a) - 16; }
+u32 TARGET_V1 ctlzi32_zero_poison(u32 a) { return __builtin_clz(a); }
+u64 TARGET_V1 ctlzi64_zero_poison(u64 a) { return __builtin_clzll(a); }
+
+u32 TARGET_V1 ctlzi8(i8 a) { if ((u8)a == 0) { return 8; } else { return __builtin_clz((u32)(u8)a) - 24; }}
+u32 TARGET_V1 ctlzi16(i16 a) { if ((u16)a == 0) { return 16; } else { return __builtin_clz((u32)(u16)a) - 16; }}
+u32 TARGET_V1 ctlzi32(u32 a) { if (a == 0) { return 32; } else { return __builtin_clz(a); }}
+u64 TARGET_V1 ctlzi64(u64 a) { if (a == 0) { return 64; } else { return __builtin_clzll(a); }}
+
 // --------------------------
 // float arithmetic
 // --------------------------
