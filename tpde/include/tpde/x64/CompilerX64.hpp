@@ -1862,7 +1862,10 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     }
     spill_before_call(calling_conv, except_mask);
 
+    ScratchReg vararg_scratch{derived()};
     if (variable_args) {
+        // make sure the call argument is not in AX
+        vararg_scratch.alloc_specific(AsmReg::AX);
         ASM(MOV32ri, FE_AX, vec_arg_count);
     }
 
@@ -1917,6 +1920,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
             }
         }
     }
+
+    vararg_scratch.reset();
 
     if (stack_space_used) {
         ASM(ADD64ri, FE_SP, stack_space_used);
