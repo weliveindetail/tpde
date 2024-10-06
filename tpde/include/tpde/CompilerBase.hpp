@@ -308,6 +308,8 @@ struct CompilerBase {
     // reg? ValuePartRef result_ref_salvage_with_original(ValLocalIdx local_idx,
     // u32 part) noexcept;
 
+    // TODO(ts): this takes ownership of the register if the ValuePartRef is not
+    // fixed which is a bit weird...
     void set_value(ValuePartRef &val_ref, AsmReg reg) noexcept;
     void set_value(ValuePartRef &val_ref, ScratchReg &scratch) noexcept;
 

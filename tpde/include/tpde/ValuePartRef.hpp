@@ -256,12 +256,12 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     }
 
     reg_file.mark_used(reg, state.v.local_idx, state.v.part);
+    reg_file.mark_clobbered(reg);
     auto ap = assignment();
     ap.set_full_reg_id(reg.id());
     ap.set_register_valid(true);
 
     if (reload) {
-        reg_file.mark_clobbered(reg);
         if (ap.variable_ref()) {
             state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
         } else {
