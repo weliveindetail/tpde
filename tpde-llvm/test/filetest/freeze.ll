@@ -149,8 +149,9 @@ define void @freeze_i128_i1_no_salvage(ptr %0) {
 ; X64-LABEL: freeze_i128_i1_no_salvage>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x90
+; X64:    push rbx
+; X64:    nop dword ptr [rax + rax]
+; X64:    sub rsp, 0x88
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx edx, byte ptr [rdi + 0x10]
@@ -160,7 +161,8 @@ define void @freeze_i128_i1_no_salvage(ptr %0) {
 ; X64:    mov qword ptr [rdi + 0x8], rsi
 ; X64:    mov qword ptr [rdi], rbx
 ; X64:    mov byte ptr [rdi + 0x10], r8b
-; X64:    add rsp, 0x90
+; X64:    add rsp, 0x88
+; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
