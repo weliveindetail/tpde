@@ -1267,6 +1267,10 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
             return false;
         }
 
+        if (ap.variable_ref()) {
+            return false;
+        }
+
         const auto &liveness =
             analyzer.liveness_info(static_cast<u32>(local_idx));
         if (assignment->references_left <= phi_ref_count[reg]
