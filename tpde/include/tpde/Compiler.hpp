@@ -23,6 +23,9 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
     // mostly platform things
     { T::NUM_FIXED_ASSIGNMENTS } -> SameBaseAs<u32[Config::NUM_BANKS]>;
 
+    // (func_idx)
+    { a.start_func(ARG(u32)) };
+
     { a.gen_func_prolog_and_args() };
 
     // This has to call assembler->finish_func

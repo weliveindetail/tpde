@@ -14,9 +14,11 @@ namespace tpde {
 namespace dwarf {
 // DWARF constants
 constexpr u8 DW_CFA_nop        = 0;
+constexpr u8 DW_EH_PE_uleb128  = 0x01;
 constexpr u8 DW_EH_PE_pcrel    = 0x10;
 constexpr u8 DW_EH_PE_indirect = 0x80;
 constexpr u8 DW_EH_PE_sdata4   = 0x0b;
+constexpr u8 DW_EH_PE_omit     = 0xff;
 
 constexpr u8 DW_CFA_def_cfa = 0x0c;
 constexpr u8 DW_CFA_offset  = 0x80;
@@ -71,6 +73,30 @@ struct AssemblerElf {
 
     /// Unwind Info
     DataSection sec_eh_frame;
+    DataSection sec_except_table;
+
+    struct ExceptCallSiteInfo {
+        u64 start;
+        u64 len;
+        u32 pad_label_or_off;
+        u32 action_entry;
+    };
+
+    /// Exception Handling temporary storage
+    /// Call Sites for current function
+    std::vector<ExceptCallSiteInfo> except_call_site_table;
+    /// Temporary storage for encoding call sites
+    std::vector<u8>                 except_encoded_call_sites;
+    /// Action Table for current function
+    std::vector<u8>                 except_action_table;
+    /// The type_info table (contains the symbols which contain the pointers to
+    /// the type_info)
+    std::vector<SymRef>             except_type_info_table;
+    /// Table for exception specs
+    std::vector<u8>                 except_spec_table;
+    /// The current personality function (if any)
+    SymRef                          cur_personality_func_addr = INVALID_SYM_REF;
+    u32                             eh_cur_cie_off            = 0u;
 
     /// The current write pointer for the text section
     u8 *text_write_ptr   = nullptr;
@@ -79,7 +105,8 @@ struct AssemblerElf {
     /// Is the objective(heh) to generate an object file or to map into memory?
     bool   generating_object;
     /// The current function
-    SymRef cur_func = INVALID_SYM_REF;
+    SymRef cur_func     = INVALID_SYM_REF;
+    u32    cur_func_off = 0;
 
 #ifdef TPDE_ASSERTS
     bool currently_in_func = false;
@@ -92,6 +119,8 @@ struct AssemblerElf {
     static constexpr size_t EXCEPT_TABLE_SYM_IDX = 2;
 
     static constexpr SymRef TEXT_SYM_REF = static_cast<SymRef>(TEXT_SYM_IDX);
+    static constexpr SymRef EXCEPT_TABLE_SYM_REF =
+        static_cast<SymRef>(EXCEPT_TABLE_SYM_IDX);
 
     explicit AssemblerElf(const bool generating_object)
         : generating_object(generating_object) {
@@ -104,7 +133,7 @@ struct AssemblerElf {
 
     Derived *derived() noexcept { return static_cast<Derived *>(this); }
 
-    void start_func(SymRef func) noexcept;
+    void start_func(SymRef func, SymRef personality_func_addr) noexcept;
 
   protected:
     void end_func() noexcept;
@@ -112,6 +141,7 @@ struct AssemblerElf {
   public:
     [[nodiscard]] SymRef sym_add_undef(std::string_view name,
                                        bool             local = false);
+    void sym_copy(SymRef dst, SymRef src, bool local, bool weak) noexcept;
 
     [[nodiscard]] SymRef
         sym_predef_func(std::string_view name, bool local, bool weak);
@@ -132,7 +162,8 @@ struct AssemblerElf {
                                       bool                read_only,
                                       bool                relocatable,
                                       bool                local,
-                                      bool                weak);
+                                      bool                weak,
+                                      u32                *off = nullptr);
 
     /// Align the text write pointer to 16 bytes
     void text_align_16() noexcept;
@@ -164,10 +195,33 @@ struct AssemblerElf {
     void eh_write_inst(u8 opcode, u64 arg) noexcept;
     void eh_write_inst(u8 opcode, u64 first_arg, u64 second_arg) noexcept;
     void eh_write_uleb(u64 value) noexcept;
+    void eh_write_uleb(std::vector<u8> &dst, u64 value) noexcept;
+    void eh_write_sleb(std::vector<u8> &dst, i64 value) noexcept;
+    u32  eh_uleb_len(u64 value) noexcept;
 
-    void eh_init_cie() noexcept;
+    void eh_init_cie(SymRef personality_func_addr = INVALID_SYM_REF) noexcept;
     u32  eh_write_fde_start() noexcept;
     void eh_write_fde_len(u32 fde_off) noexcept;
+    void except_encode_func() noexcept;
+
+    /// add an entry to the call-site table
+    /// must be called in strictly increasing order wrt text_off
+    void except_add_call_site(u32  text_off,
+                              u32  len,
+                              u32  landing_pad_id,
+                              bool is_cleanup) noexcept;
+
+    /// Add a cleanup action to the action table
+    /// *MUST* be the last one
+    void except_add_cleanup_action() noexcept;
+
+    /// add an action to the action table
+    /// INVALID_SYM_REF signals a catch(...)
+    void except_add_action(bool first_action, SymRef type_sym) noexcept;
+
+    void except_add_empty_spec_action(bool first_action) noexcept;
+
+    u32 except_type_idx_for_sym(SymRef sym) noexcept;
 
 #ifdef TPDE_ASSERTS
     [[nodiscard]] bool func_was_ended() const noexcept {
@@ -193,12 +247,37 @@ struct AssemblerElf {
 };
 
 template <typename Derived>
-void AssemblerElf<Derived>::start_func(const SymRef func) noexcept {
+void AssemblerElf<Derived>::start_func(
+    const SymRef func, const SymRef personality_func_addr) noexcept {
     cur_func = func;
 
     text_align_16();
     auto *elf_sym     = sym_ptr(func);
     elf_sym->st_value = text_cur_off();
+    cur_func_off      = text_cur_off();
+
+    if (personality_func_addr != cur_personality_func_addr) {
+        assert(
+            generating_object); // the jit model does not yet output relocations
+        // need to start a new CIE
+        eh_init_cie(personality_func_addr);
+
+        cur_personality_func_addr = personality_func_addr;
+    }
+
+    except_call_site_table.clear();
+    except_action_table.clear();
+    except_type_info_table.clear();
+    except_spec_table.clear();
+    except_action_table.resize(2); // cleanup entry
+
+    if (cur_personality_func_addr != INVALID_SYM_REF) {
+        // llvm's default behavior is to let exceptions propagate
+        // through generated code without any handling if there is no invoke so
+        // we mimick that
+        except_call_site_table.push_back(ExceptCallSiteInfo{
+            .start = 0, .len = 0, .pad_label_or_off = ~0u, .action_entry = 0});
+    }
 
 #ifdef TPDE_ASSERTS
     currently_in_func = true;
@@ -249,6 +328,30 @@ typename AssemblerElf<Derived>::SymRef
         assert(global_symbols.size() < 0x8000'0000);
         return static_cast<SymRef>((global_symbols.size() - 1) | 0x8000'0000);
     }
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::sym_copy(const SymRef dst,
+                                     const SymRef src,
+                                     const bool   local,
+                                     const bool   weak) noexcept {
+    Elf64_Sym *src_ptr = sym_ptr(src), *dst_ptr = sym_ptr(dst);
+
+    dst_ptr->st_shndx = src_ptr->st_shndx;
+    dst_ptr->st_size  = src_ptr->st_size;
+    dst_ptr->st_value = src_ptr->st_value;
+
+    const auto type = ELF64_ST_TYPE(src_ptr->st_info);
+    u8         info;
+    if (local) {
+        assert(!weak);
+        info = ELF64_ST_INFO(STB_LOCAL, type);
+    } else if (weak) {
+        info = ELF64_ST_INFO(STB_WEAK, type);
+    } else {
+        info = ELF64_ST_INFO(STB_GLOBAL, type);
+    }
+    dst_ptr->st_info = info;
 }
 
 template <typename Derived>
@@ -349,8 +452,8 @@ constexpr static std::span<const char> SECTION_NAMES = {
     ".data.rel.ro\0"
     ".rela.data.rel.ro\0"
     ".rela.data\0"
-    //".gcc_except_table\0"
-    //".rela.gcc_except_table\0"
+    ".gcc_except_table\0"
+    ".rela.gcc_except_table\0"
     ".init_array\0"
     ".rela.init_array\0"
     ".fini_array\0"
@@ -464,7 +567,8 @@ typename AssemblerElf<Derived>::SymRef
                                         const bool                read_only,
                                         const bool                relocatable,
                                         const bool                local,
-                                        const bool                weak) {
+                                        const bool                weak,
+                                        u32                      *off) {
     size_t str_off = 0;
     if (!name.empty()) {
         str_off = strtab.size();
@@ -518,6 +622,10 @@ typename AssemblerElf<Derived>::SymRef
     sym.st_shndx = static_cast<Elf64_Section>(sec_idx);
     sym.st_value = pos;
     sym.st_size  = data.size();
+
+    if (off) {
+        *off = pos;
+    }
 
     if (local) {
         local_symbols.push_back(sym);
@@ -604,20 +712,20 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
         sym.st_value = 0;
         sym.st_size  = 0;
     }
-    /*{
+    {
         std::string_view name    = ".gcc_except_table";
         const auto       str_off = strtab.size();
         strtab.insert(strtab.end(), name.begin(), name.end());
         strtab.emplace_back('\0');
 
-        auto &sym    = local_symbols[2];
+        auto &sym    = local_symbols[EXCEPT_TABLE_SYM_IDX];
         sym.st_name  = static_cast<Elf64_Word>(str_off);
         sym.st_info  = ELF64_ST_INFO(STB_LOCAL, STT_SECTION);
         sym.st_other = STV_DEFAULT;
         sym.st_shndx = sec_idx(".gcc_except_table");
         sym.st_value = 0;
         sym.st_size  = 0;
-    }*/
+    }
 
     u32 obj_size = sizeof(Elf64_Shdr) + sizeof(Elf64_Shdr) * sec_count();
     obj_size +=
@@ -637,6 +745,8 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     obj_size += sec_fini_array.data.size() + sec_fini_array.relocs.size()
                 + sizeof(Elf64_Rela);
     obj_size += sec_eh_frame.data.size() + sec_eh_frame.relocs.size()
+                + sizeof(Elf64_Rela);
+    obj_size += sec_except_table.data.size() + sec_except_table.relocs.size()
                 + sizeof(Elf64_Rela);
     out.reserve(obj_size);
 
@@ -883,6 +993,31 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
                     sec_off(".rela.data"),
                     sec_idx(".data"));
 
+    // .gcc_except_table
+    {
+        const auto size   = util::align_up(sec_except_table.data.size(), 16);
+        const auto pad    = size - sec_except_table.data.size();
+        const auto sh_off = out.size();
+        out.insert(out.end(),
+                   sec_except_table.data.begin(),
+                   sec_except_table.data.end());
+        out.resize(out.size() + pad);
+
+        auto *hdr         = sec_hdr(sec_idx(".gcc_except_table"));
+        hdr->sh_name      = sec_off(".gcc_except_table");
+        hdr->sh_type      = SHT_PROGBITS;
+        hdr->sh_flags     = SHF_ALLOC;
+        hdr->sh_offset    = sh_off;
+        hdr->sh_size      = size;
+        hdr->sh_addralign = 8;
+    }
+
+    // .rela.gcc_except_table
+    write_reloc_sec(sec_except_table,
+                    sec_idx(".rela.gcc_except_table"),
+                    sec_off(".rela.gcc_except_table"),
+                    sec_idx(".gcc_except_table"));
+
     // .init_array
     {
         const auto size   = util::align_up(sec_init_array.data.size(), 8);
@@ -988,19 +1123,55 @@ void AssemblerElf<Derived>::eh_write_inst(const u8  opcode,
 
 template <typename Derived>
 void AssemblerElf<Derived>::eh_write_uleb(u64 value) noexcept {
+    eh_write_uleb(sec_eh_frame.data, value);
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::eh_write_uleb(std::vector<u8> &dst,
+                                          u64              value) noexcept {
     while (true) {
         u8 write   = value & 0b0111'1111;
         value    >>= 7;
         if (value == 0) {
-            sec_eh_frame.data.push_back(write);
+            dst.push_back(write);
             break;
         }
-        sec_eh_frame.data.push_back(write | 0b1000'0000);
+        dst.push_back(write | 0b1000'0000);
     }
 }
 
 template <typename Derived>
-void AssemblerElf<Derived>::eh_init_cie() noexcept {
+void AssemblerElf<Derived>::eh_write_sleb(std::vector<u8> &dst,
+                                          i64              value) noexcept {
+    while (true) {
+        u8 tmp   = value & 0x7F;
+        value  >>= 7;
+        if ((value == 0 && (value & 0x40) == 0)
+            || (value == -1 && value & 0x40)) {
+            dst.push_back(tmp);
+            break;
+        } else {
+            dst.push_back(tmp | 0x80);
+        }
+    }
+}
+
+template <typename Derived>
+u32 AssemblerElf<Derived>::eh_uleb_len(u64 value) noexcept {
+    u32 len = 0;
+    while (true) {
+        value >>= 7;
+        if (value == 0) {
+            ++len;
+            break;
+        }
+        ++len;
+    }
+    return len;
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::eh_init_cie(SymRef personality_func_addr) noexcept {
     // write out the initial CIE
     auto &data = sec_eh_frame.data;
 
@@ -1024,34 +1195,64 @@ void AssemblerElf<Derived>::eh_init_cie() noexcept {
     //
     // total: 17 bytes or 25 bytes
 
-    // initial CIE has no personality
-    auto off = data.size();
-    data.resize(data.size() + 17);
+    auto off       = data.size();
+    eh_cur_cie_off = off;
+
+    data.resize(data.size()
+                + (personality_func_addr == INVALID_SYM_REF ? 17 : 25));
 
     // id is 0 for CIEs
 
     // version is 1
     data[off + 8] = 1;
 
-    // augmentation is "zR" for a CIE with no personality meaning there is the
-    // augmentation_data_len and ptr_size field
-    data[off + 9]  = 'z';
-    data[off + 10] = 'R';
+    if (personality_func_addr == INVALID_SYM_REF) {
+        // augmentation is "zR" for a CIE with no personality meaning there is
+        // the augmentation_data_len and ptr_size field
+        data[off + 9]  = 'z';
+        data[off + 10] = 'R';
+    } else {
+        // with a personality function the augmentation is "zPLR" meaning there
+        // is augmentation_data_len, personality_encoding, personality_addr,
+        // lsa_encoding and ptr_size
+        data[off + 9]  = 'z';
+        data[off + 10] = 'P';
+        data[off + 11] = 'L';
+        data[off + 12] = 'R';
+    }
+
+    u32 bias = (personality_func_addr == INVALID_SYM_REF) ? 0 : 2;
 
     // code_alignment_factor is 1
-    data[off + 12] = 1;
+    data[off + 12 + bias] = 1;
 
     // data_alignment_factor is 127 representing -1
-    data[off + 13] = 127;
+    data[off + 13 + bias] = 127;
 
     // return_addr_register is defined by the derived impl
-    data[off + 14] = Derived::DWARF_EH_RETURN_ADDR_REGISTER;
+    data[off + 14 + bias] = Derived::DWARF_EH_RETURN_ADDR_REGISTER;
 
-    // augmentation_data_len is 1 when no personality is present
-    data[off + 15] = 1;
+    // augmentation_data_len is 1 when no personality is present or 7 otherwise
+    data[off + 15 + bias] = (personality_func_addr == INVALID_SYM_REF) ? 1 : 7;
+
+    if (personality_func_addr != INVALID_SYM_REF) {
+        // the personality encoding is a 4-byte pc-relative address where the
+        // address of the personality func is stored
+        data[off + 16 + bias] = dwarf::DW_EH_PE_pcrel | dwarf::DW_EH_PE_sdata4
+                                | dwarf::DW_EH_PE_indirect;
+
+        derived()->reloc_eh_frame_pc32(
+            personality_func_addr, off + 17 + bias, 0);
+
+        // the lsa_encoding as a 4-byte pc-relative address since the whole
+        // object should fit in 2gb
+        data[off + 21 + bias] = dwarf::DW_EH_PE_pcrel | dwarf::DW_EH_PE_sdata4;
+
+        bias += 6;
+    }
 
     // fde_ptr_encoding is a 4-byte signed pc-relative address
-    data[off + 16] = dwarf::DW_EH_PE_sdata4 | dwarf::DW_EH_PE_pcrel;
+    data[off + bias + 16] = dwarf::DW_EH_PE_sdata4 | dwarf::DW_EH_PE_pcrel;
 
     derived()->eh_write_initial_cie_instrs();
 
@@ -1081,14 +1282,14 @@ u32 AssemblerElf<Derived>::eh_write_fde_start() noexcept {
     //
     // Total Size: 17 bytes or 21 bytes
 
-    // for now no personality
-    data.resize(data.size() + 18);
+    data.resize(data.size()
+                + (cur_personality_func_addr == INVALID_SYM_REF ? 17 : 21));
 
     // we encode length later
 
-    // id is the offset from the CIE to the id field
+    // id is the offset from the current CIE to the id field
     *reinterpret_cast<u32 *>(data.data() + fde_off + 4) =
-        fde_off + 4; // currently we only have one CIE
+        fde_off - eh_cur_cie_off + sizeof(u32);
 
     // func_start will be relocated by the arch impl
 
@@ -1096,7 +1297,10 @@ u32 AssemblerElf<Derived>::eh_write_fde_start() noexcept {
     auto *func_sym                                       = sym_ptr(cur_func);
     *reinterpret_cast<i32 *>(data.data() + fde_off + 12) = func_sym->st_size;
 
-    // augmentation_data_len is 0 with no personality
+    // augmentation_data_len is 0 with no personality or 4 otherwise
+    if (cur_personality_func_addr != INVALID_SYM_REF) {
+        data[fde_off + 16] = 4;
+    }
 
     return fde_off;
 }
@@ -1107,5 +1311,202 @@ void AssemblerElf<Derived>::eh_write_fde_len(const u32 fde_off) noexcept {
 
     const u32 len = sec_eh_frame.data.size() - fde_off - sizeof(u32);
     *reinterpret_cast<u32 *>(sec_eh_frame.data.data() + fde_off) = len;
+    if (cur_personality_func_addr != INVALID_SYM_REF) {
+        derived()->reloc_eh_frame_pc32(
+            EXCEPT_TABLE_SYM_REF, fde_off + 17, sec_except_table.data.size());
+    }
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::except_encode_func() noexcept {
+    if (cur_personality_func_addr == INVALID_SYM_REF) {
+        return;
+    }
+
+    // encode the call sites first, otherwise we can't write the header
+    except_encoded_call_sites.clear();
+
+    if (except_call_site_table.back().len == 0) {
+        // make the last call site span the remainder of the function so that
+        // exceptions can unwind through it
+        auto &entry = except_call_site_table.back();
+        assert(!entry.pad_label_or_off); // this should have been replaced by
+                                         // the backend at this point
+        assert(!entry.action_entry);
+        entry.len = (text_cur_off() - cur_func_off) - entry.start;
+        if (entry.len == 0) {
+            except_call_site_table.pop_back();
+        }
+    }
+    for (auto &info : except_call_site_table) {
+        eh_write_uleb(except_encoded_call_sites, info.start);
+        eh_write_uleb(except_encoded_call_sites, info.len);
+        eh_write_uleb(except_encoded_call_sites, info.pad_label_or_off);
+        const auto cur_off = text_cur_off();
+        assert(info.pad_label_or_off < (cur_off - cur_func_off));
+        eh_write_uleb(
+            except_encoded_call_sites,
+            info.action_entry); // the offset is correctly set at insertion
+    }
+
+    // zero-terminate
+    except_encoded_call_sites.push_back(0);
+    except_encoded_call_sites.push_back(0);
+
+    auto& except_table = sec_except_table.data;
+    // write the lsda (see
+    // https://github.com/llvm/llvm-project/blob/main/libcxxabi/src/cxa_personality.cpp#L60)
+    except_table.push_back(dwarf::DW_EH_PE_omit); // lpStartEncoding
+    if (except_action_table.empty()) {
+        assert(except_type_info_table.empty());
+        // we don't need the type_info table if there is no action entry
+        except_table.push_back(dwarf::DW_EH_PE_omit); // ttypeEncoding
+    } else {
+        except_table.push_back(dwarf::DW_EH_PE_sdata4 | dwarf::DW_EH_PE_pcrel
+                               | dwarf::DW_EH_PE_indirect); // ttypeEncoding
+        uint64_t classInfoOff =
+            (except_type_info_table.size() + 1) * sizeof(uint32_t);
+        classInfoOff += except_action_table.size();
+        classInfoOff += except_encoded_call_sites.size()
+                        + eh_uleb_len(except_encoded_call_sites.size()) + 1;
+        eh_write_uleb(except_table, classInfoOff);
+    }
+
+    except_table.push_back(dwarf::DW_EH_PE_uleb128); // callSiteEncoding
+    eh_write_uleb(except_table,
+                  except_encoded_call_sites.size()); // callSiteTableLength
+    except_table.insert(except_table.end(),
+                        except_encoded_call_sites.begin(),
+                        except_encoded_call_sites.end());
+    except_table.insert(except_table.end(),
+                        except_action_table.begin(),
+                        except_action_table.end());
+
+    if (!except_action_table.empty()) {
+        except_table.resize(
+            except_table.size()
+            + ((except_type_info_table.size() + 1)
+               * sizeof(u32))); // allocate space for type_info table
+
+        // in reverse order since indices are negative
+        size_t off = except_table.size() - sizeof(u32) * 2;
+        for (auto sym : except_type_info_table) {
+            derived()->reloc_except_table_pc32(sym, off, 0);
+            off -= sizeof(u32);
+        }
+
+        except_table.insert(except_table.end(),
+                            except_spec_table.begin(),
+                            except_spec_table.end());
+    }
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::except_add_call_site(
+    const u32  text_off,
+    const u32  len,
+    const u32  landing_pad_id,
+    const bool is_cleanup) noexcept {
+    auto info = ExceptCallSiteInfo{
+        .start            = text_off - cur_func_off,
+        .len              = len,
+        .pad_label_or_off = landing_pad_id,
+        .action_entry =
+            (is_cleanup ? 0
+                        : static_cast<u32>(except_action_table.size()) + 1)};
+
+    if (except_call_site_table.back().start == info.start) {
+        // replace the current end of the call-site table if we have
+        // back-to-back call sites
+        auto &entry = except_call_site_table.back();
+        assert(!entry.len);
+        assert(entry.pad_label_or_off == ~0u);
+        assert(!entry.action_entry);
+
+        entry = info;
+    } else {
+        if (except_call_site_table.back().len == 0) {
+            // set the length of the padding call-site
+            auto &entry = except_call_site_table.back();
+            assert(entry.pad_label_or_off == ~0u);
+            assert(!entry.action_entry);
+            entry.len = info.start - entry.start;
+        }
+        except_call_site_table.push_back(info);
+    }
+
+    // add padding call-site
+    except_call_site_table.push_back(
+        ExceptCallSiteInfo{.start            = info.start + info.len,
+                           .len              = 0,
+                           .pad_label_or_off = ~0u,
+                           .action_entry     = 0});
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::except_add_cleanup_action() noexcept {
+    // pop back the action offset
+    except_action_table.pop_back();
+    eh_write_sleb(except_action_table,
+                  -static_cast<i64>(except_action_table.size()));
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::except_add_action(const bool   first_action,
+                                              const SymRef type_sym) noexcept {
+    if (!first_action) {
+        except_action_table.back() = 1;
+    }
+
+    auto idx = 0u;
+    if (type_sym != INVALID_SYM_REF) {
+        auto found = false;
+        for (const auto &sym : except_type_info_table) {
+            ++idx;
+            if (sym == type_sym) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            ++idx;
+            except_type_info_table.push_back(type_sym);
+        }
+    }
+
+    eh_write_sleb(except_action_table, idx + 1);
+    except_action_table.push_back(0);
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::except_add_empty_spec_action(
+    const bool first_action) noexcept {
+    if (!first_action) {
+        except_action_table.back() = 1;
+    }
+
+    if (except_spec_table.empty()) {
+        except_spec_table.resize(4);
+    }
+
+    eh_write_sleb(except_action_table, -1);
+    except_action_table.push_back(0);
+}
+
+template <typename Derived>
+u32 AssemblerElf<Derived>::except_type_idx_for_sym(const SymRef sym) noexcept {
+    // to explain the indexing
+    // a ttypeIndex of 0 is reserved for a cleanup action so the type table
+    // starts at 1 but the first entry in the type table is reserved for the 0
+    // pointer used for catch(...) meaning we start at 2
+    auto idx = 2u;
+    for (const auto type_sym : except_type_info_table) {
+        if (type_sym == sym) {
+            return idx;
+        }
+        ++idx;
+    }
+    assert(0);
+    return idx;
 }
 } // namespace tpde

@@ -52,6 +52,9 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
 
     std::unique_ptr<LLVMAdaptor> adaptor;
 
+    static constexpr std::array<AsmReg, 2> LANDING_PAD_RES_REGS = {AsmReg::AX,
+                                                                   AsmReg::DX};
+
     explicit LLVMCompilerX64(std::unique_ptr<LLVMAdaptor> &&adaptor)
         : Base{adaptor.get()}, adaptor(std::move(adaptor)) {
         static_assert(
@@ -95,7 +98,7 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                                      IRBlockRef true_target,
                                      IRBlockRef false_target) noexcept;
     bool compile_call_inner(IRValueRef,
-                            llvm::CallInst *,
+                            llvm::CallBase *,
                             std::variant<SymRef, ValuePartRef> &,
                             bool) noexcept;
     bool compile_icmp(IRValueRef, llvm::Instruction *, InstRange) noexcept;
@@ -668,7 +671,7 @@ void LLVMCompilerX64::generate_conditional_branch(
 
 bool LLVMCompilerX64::compile_call_inner(
     IRValueRef                          inst_idx,
-    llvm::CallInst                     *call,
+    llvm::CallBase                     *call,
     std::variant<SymRef, ValuePartRef> &target,
     bool                                var_arg) noexcept {
     tpde::util::SmallVector<CallArg, 16> args;

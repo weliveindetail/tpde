@@ -429,6 +429,9 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
     u32 var_arg_stack_off                   = 0;
     util::SmallVector<u32, 8> func_ret_offs = {};
 
+    util::SmallVector<std::pair<IRFuncRef, typename Assembler::SymRef>, 4>
+        personality_syms = {};
+
     // for now, always generate an object
     explicit CompilerX64(Adaptor           *adaptor,
                          const CPU_FEATURES cpu_features = CPU_BASELINE)
@@ -436,6 +439,8 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
         static_assert(std::is_base_of_v<CompilerX64, Derived>);
         static_assert(concepts::Compiler<Derived, PlatformConfig>);
     }
+
+    void start_func(u32 func_idx) noexcept;
 
     void gen_func_prolog_and_args() noexcept;
 
@@ -1007,6 +1012,46 @@ void CallingConv::fill_call_results(
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename>
+          class BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::start_func(
+    const u32 func_idx) noexcept {
+    using SymRef           = typename Assembler::SymRef;
+    SymRef personality_sym = Assembler::INVALID_SYM_REF;
+    if (this->adaptor->cur_needs_unwind_info()) {
+        const IRFuncRef personality_func =
+            this->adaptor->cur_personality_func();
+        if (personality_func != Adaptor::INVALID_FUNC_REF) {
+            for (const auto &[func_ref, sym] : personality_syms) {
+                if (func_ref == personality_func) {
+                    personality_sym = sym;
+                    break;
+                }
+            }
+
+            if (personality_sym == Assembler::INVALID_SYM_REF) {
+                // create symbol that contains the address of the personality
+                // function
+                auto fn_sym = this->assembler.sym_add_undef(
+                    this->adaptor->func_link_name(personality_func));
+
+                u32 off;
+                u8  tmp[8]      = {};
+                personality_sym = this->assembler.sym_def_data(
+                    {}, {tmp, sizeof(tmp)}, 8, true, true, true, false, &off);
+                this->assembler.reloc_data_abs(fn_sym, true, off, 0);
+
+                personality_syms.emplace_back(personality_func,
+                                              personality_sym);
+            }
+        }
+    }
+    this->assembler.start_func(this->func_syms[func_idx], personality_sym);
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
           typename BaseTy,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::
@@ -1149,6 +1194,25 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
         fe64_NOP(write_ptr, nop_len);
     }
 
+    if (this->adaptor->cur_needs_unwind_info()) {
+        // we need to patch the landing pad labels into their actual offsets
+        for (auto &info : this->assembler.except_call_site_table) {
+            if (info.pad_label_or_off == ~0u) {
+                info.pad_label_or_off =
+                    0; // special marker for resume/normal calls where we dont
+                       // have a landing pad
+                continue;
+            }
+            info.pad_label_or_off =
+                this->assembler.label_offset(
+                    static_cast<Assembler::Label>(info.pad_label_or_off))
+                - func_start_off;
+        }
+    } else {
+        assert(this->assembler.except_call_site_table.empty());
+    }
+
+    // TODO(ts): honor cur_needs_unwind_info
     this->assembler.end_func(saved_regs);
 
     if (func_ret_offs.empty()) {
@@ -1238,6 +1302,7 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::reset() noexcept {
     func_ret_offs.clear();
+    personality_syms.clear();
     Base::reset();
 }
 

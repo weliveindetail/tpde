@@ -14,13 +14,14 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     // TODO
     using Base = tpde::CompilerBase<LLVMAdaptor, Derived, Config>;
 
-    using IRValueRef   = typename Base::IRValueRef;
-    using IRBlockRef   = typename Base::IRBlockRef;
-    using IRFuncRef    = typename Base::IRFuncRef;
-    using ScratchReg   = typename Base::ScratchReg;
-    using ValuePartRef = typename Base::ValuePartRef;
-    using ValLocalIdx  = typename Base::ValLocalIdx;
-    using InstRange    = typename Base::InstRange;
+    using IRValueRef        = typename Base::IRValueRef;
+    using IRBlockRef        = typename Base::IRBlockRef;
+    using IRFuncRef         = typename Base::IRFuncRef;
+    using ScratchReg        = typename Base::ScratchReg;
+    using ValuePartRef      = typename Base::ValuePartRef;
+    using AssignmentPartRef = typename Base::AssignmentPartRef;
+    using ValLocalIdx       = typename Base::ValLocalIdx;
+    using InstRange         = typename Base::InstRange;
 
     using Assembler = typename Base::Assembler;
     using SymRef    = typename Assembler::SymRef;
@@ -83,7 +84,8 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     // TODO(ts): SmallVector?
     std::vector<SymRef> global_syms;
 
-    tpde::util::SmallVector<VarRefInfo, 16> variable_refs{};
+    tpde::util::SmallVector<VarRefInfo, 16>                    variable_refs{};
+    tpde::util::SmallVector<std::pair<IRValueRef, SymRef>, 16> type_info_syms;
 
     SymRef sym_fmod    = Assembler::INVALID_SYM_REF;
     SymRef sym_fmodf   = Assembler::INVALID_SYM_REF;
@@ -96,6 +98,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     SymRef sym_memcpy  = Assembler::INVALID_SYM_REF;
     SymRef sym_memset  = Assembler::INVALID_SYM_REF;
     SymRef sym_memmove = Assembler::INVALID_SYM_REF;
+    SymRef sym_resume  = Assembler::INVALID_SYM_REF;
 
     LLVMCompilerBase(LLVMAdaptor *adaptor, const bool generate_obj)
         : Base{adaptor, generate_obj} {
@@ -149,44 +152,48 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
 
     bool compile_inst(IRValueRef, InstRange) noexcept;
 
-    bool compile_ret(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_load(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_store(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_int_binary_op(IRValueRef,
-                               llvm::Instruction *,
-                               IntBinaryOp op) noexcept;
-    bool compile_float_binary_op(IRValueRef,
+    bool   compile_ret(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_load(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_store(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_int_binary_op(IRValueRef,
                                  llvm::Instruction *,
-                                 FloatBinaryOp op) noexcept;
-    bool compile_fneg(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_float_ext_trunc(IRValueRef,
-                                 llvm::Instruction *,
-                                 bool trunc) noexcept;
-    bool compile_float_to_int(IRValueRef,
-                              llvm::Instruction *,
-                              bool sign) noexcept;
-    bool compile_int_to_float(IRValueRef,
-                              llvm::Instruction *,
-                              bool sign) noexcept;
-    bool compile_int_trunc(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_int_ext(IRValueRef, llvm::Instruction *, bool sign) noexcept;
-    bool compile_ptr_to_int(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_int_to_ptr(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_bitcast(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_extract_value(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_insert_value(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_phi(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_freeze(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_call(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_select(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_gep(IRValueRef, llvm::Instruction *, InstRange) noexcept;
-    bool compile_fcmp(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_switch(IRValueRef, llvm::Instruction *) noexcept;
-    bool compile_intrin(IRValueRef,
-                        llvm::Instruction *,
-                        llvm::Function *) noexcept;
-    bool compile_is_fpclass(IRValueRef, llvm::Instruction *) noexcept;
+                                 IntBinaryOp op) noexcept;
+    bool   compile_float_binary_op(IRValueRef,
+                                   llvm::Instruction *,
+                                   FloatBinaryOp op) noexcept;
+    bool   compile_fneg(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_float_ext_trunc(IRValueRef,
+                                   llvm::Instruction *,
+                                   bool trunc) noexcept;
+    bool   compile_float_to_int(IRValueRef,
+                                llvm::Instruction *,
+                                bool sign) noexcept;
+    bool   compile_int_to_float(IRValueRef,
+                                llvm::Instruction *,
+                                bool sign) noexcept;
+    bool   compile_int_trunc(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_int_ext(IRValueRef, llvm::Instruction *, bool sign) noexcept;
+    bool   compile_ptr_to_int(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_int_to_ptr(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_bitcast(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_extract_value(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_insert_value(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_phi(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_freeze(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_call(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_select(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_gep(IRValueRef, llvm::Instruction *, InstRange) noexcept;
+    bool   compile_fcmp(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_switch(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_invoke(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_landing_pad(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_resume(IRValueRef, llvm::Instruction *) noexcept;
+    SymRef lookup_type_info_sym(IRValueRef value) noexcept;
+    bool   compile_intrin(IRValueRef,
+                          llvm::Instruction *,
+                          llvm::Function *) noexcept;
+    bool   compile_is_fpclass(IRValueRef, llvm::Instruction *) noexcept;
 
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept {
         return false;
@@ -1043,6 +1050,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
         return derived()->compile_icmp(val_idx, i, remaining);
     case llvm::Instruction::FCmp: return compile_fcmp(val_idx, i);
     case llvm::Instruction::Switch: return compile_switch(val_idx, i);
+    case llvm::Instruction::Invoke: return compile_invoke(val_idx, i);
+    case llvm::Instruction::LandingPad: return compile_landing_pad(val_idx, i);
+    case llvm::Instruction::Resume: return compile_resume(val_idx, i);
 
     default: {
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
@@ -2548,7 +2558,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_freeze(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
-    auto *call = llvm::cast<llvm::CallInst>(inst);
+    auto *call = llvm::cast<llvm::CallBase>(inst);
 
     std::variant<SymRef, ValuePartRef> call_target;
     auto                               var_arg = false;
@@ -3040,6 +3050,233 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
 }
 
 template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+    auto *invoke = llvm::cast<llvm::InvokeInst>(inst);
+
+    // we need to spill here since the call might branch off
+    // TODO: this will also spill the call arguments even if the call kills them
+    // however, spillBeforeCall already does this anyways so probably something
+    // for later
+    auto spilled = this->spill_before_branch();
+
+    const auto off_before_call = this->assembler.text_cur_off();
+    // compile the call
+    // TODO: in the case of an exception we need to invalidate the result
+    // registers
+    this->compile_call(inst_idx, inst);
+    const auto off_after_call = this->assembler.text_cur_off();
+
+    // build the eh table
+    auto                 *unwind_block         = invoke->getUnwindDest();
+    llvm::LandingPadInst *landing_pad          = nullptr;
+    auto                  unwind_block_has_phi = false;
+
+    for (auto it = unwind_block->begin(), end = unwind_block->end(); it != end;
+         ++it) {
+        llvm::Instruction *inst = &*it;
+        if (llvm::isa<llvm::PHINode>(inst)) {
+            unwind_block_has_phi = true;
+            continue;
+        }
+
+        landing_pad = llvm::dyn_cast<llvm::LandingPadInst>(inst);
+        assert(landing_pad != nullptr);
+        break;
+    }
+
+    const auto unwind_block_ref = this->adaptor->block_lookup[unwind_block];
+    const auto normal_block_ref =
+        this->adaptor->block_lookup[invoke->getNormalDest()];
+    auto unwind_label =
+        this->block_labels[(u32)this->analyzer.block_idx(unwind_block_ref)];
+
+    // we need to check whether the call result needs to be spilled, too.
+    // This needs to be done since the invoke is conceptually a branch
+    auto check_res_spill = [&]() {
+        auto  call_res_idx = llvm_val_idx(invoke);
+        auto *a            = this->val_assignment(this->val_idx(call_res_idx));
+        if (a == nullptr) {
+            // call has void result
+            return;
+        }
+
+        auto cur_block = this->analyzer.block_ref(this->cur_block_idx);
+
+        if (this->analyzer.block_ref(this->next_block()) == normal_block_ref) {
+            // this block will handle the spilling for us, the value is not
+            // usable in unwind block
+            return;
+        }
+
+        uint32_t num_phi_reads = 0;
+        for (auto i : this->adaptor->block_phis(normal_block_ref)) {
+            assert(this->adaptor->val_is_phi(i));
+            auto phi = this->adaptor->val_as_phi(i);
+
+            auto incoming_val = phi.incoming_val_for_block(cur_block);
+            if (incoming_val == call_res_idx) {
+                ++num_phi_reads;
+            }
+        }
+
+        auto ap = AssignmentPartRef{a, 0};
+        // no need to spill if only the phi-nodes in the (normal) successor read
+        // the value
+        if (a->references_left <= num_phi_reads
+            && (u32)this->analyzer.liveness_info(call_res_idx).last
+                   <= (u32)this->cur_block_idx) {
+            return;
+        }
+
+        // spill
+        // no need to spill fixed assignments
+        while (true) {
+            if (!ap.fixed_assignment() && ap.register_valid()) {
+                // this is the call result...
+                assert(ap.modified());
+                ap.spill_if_needed(this);
+                ap.set_modified(false);
+
+                spilled |= 1ull << ap.full_reg_id();
+            }
+            if (!ap.has_next_part()) {
+                break;
+            }
+            ++ap.part;
+        }
+    };
+    check_res_spill();
+
+    // if the unwind block has phi-nodes, we need more code to propagate values
+    // to it so do the propagation logic
+    if (unwind_block_has_phi) {
+        // generate the jump to the normal successor but don't allow
+        // fall-through
+        derived()->generate_branch_to_block(Derived::Jump::jmp,
+                                            normal_block_ref,
+                                            /* split */ false,
+                                            /* last_inst */ false);
+
+        unwind_label = this->assembler.label_create();
+        this->assembler.label_place(unwind_label);
+
+        // allocate the special registers that are set by the unwinding logic
+        // so the phi-propagation does not use them as temporaries
+        ScratchReg scratch1{derived()}, scratch2{derived()};
+        assert(!this->register_file.is_used(Derived::LANDING_PAD_RES_REGS[0]));
+        assert(!this->register_file.is_used(Derived::LANDING_PAD_RES_REGS[1]));
+        scratch1.alloc_specific(Derived::LANDING_PAD_RES_REGS[0]);
+        scratch2.alloc_specific(Derived::LANDING_PAD_RES_REGS[1]);
+
+        derived()->generate_branch_to_block(Derived::Jump::jmp,
+                                            unwind_block_ref,
+                                            /* split */ false,
+                                            /* last_inst */ false);
+    } else {
+        // allow fall-through
+        derived()->generate_branch_to_block(Derived::Jump::jmp,
+                                            normal_block_ref,
+                                            /* split */ false,
+                                            /* last_inst */ true);
+    }
+
+    this->release_spilled_regs(spilled);
+
+    const auto is_cleanup   = landing_pad->isCleanup();
+    const auto num_clauses  = landing_pad->getNumClauses();
+    const auto only_cleanup = is_cleanup && num_clauses == 0;
+
+    this->assembler.except_add_call_site(off_before_call,
+                                         off_after_call - off_before_call,
+                                         static_cast<u32>(unwind_label),
+                                         only_cleanup);
+
+    if (only_cleanup) {
+        // no clause so we are done
+        return true;
+    }
+
+    for (auto i = 0u; i < num_clauses; ++i) {
+        if (landing_pad->isCatch(i)) {
+            auto  *C   = landing_pad->getClause(i);
+            SymRef sym = Assembler::INVALID_SYM_REF;
+            if (!C->isNullValue()) {
+                assert(llvm::dyn_cast<llvm::GlobalValue>(C));
+                sym = lookup_type_info_sym(llvm_val_idx(C));
+            }
+            this->assembler.except_add_action(i == 0, sym);
+        } else {
+            assert(landing_pad->isFilter(i));
+            auto *C = landing_pad->getClause(i);
+            assert(C->getType()->isArrayTy());
+            if (C->getType()->getArrayNumElements() == 0) {
+                this->assembler.except_add_empty_spec_action(i == 0);
+            } else {
+                llvm::errs() << "Exception filters with non-zero length arrays "
+                                "not supported\n";
+                assert(0); // not supported rn
+                return false;
+            }
+        }
+    }
+
+    if (is_cleanup) {
+        assert(num_clauses != 0);
+        this->assembler.except_add_cleanup_action();
+    }
+
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_landing_pad(
+    IRValueRef inst_idx, llvm::Instruction *) noexcept {
+    auto res_ref_first  = this->result_ref_lazy(inst_idx, 0);
+    auto res_ref_second = this->result_ref_lazy(inst_idx, 1);
+
+    this->set_value(res_ref_first, Derived::LANDING_PAD_RES_REGS[0]);
+    this->set_value(res_ref_second, Derived::LANDING_PAD_RES_REGS[1]);
+
+    res_ref_second.reset_without_refcount();
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_resume(
+    IRValueRef, llvm::Instruction *inst) noexcept {
+    IRValueRef arg = llvm_val_idx(inst->getOperand(0));
+
+    const auto sym = get_or_create_sym_ref(sym_resume, "_Unwind_Resume");
+
+    derived()->create_helper_call({&arg, 1}, {}, sym);
+    return derived()->compile_unreachable(Adaptor::INVALID_VALUE_REF, nullptr);
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
+    LLVMCompilerBase<Adaptor, Derived, Config>::lookup_type_info_sym(
+        IRValueRef value) noexcept {
+    for (const auto &[val, sym] : type_info_syms) {
+        if (val == value) {
+            return sym;
+        }
+    }
+
+    const auto sym = global_sym(
+        llvm::dyn_cast<llvm::GlobalValue>(this->adaptor->values[value].val));
+
+    u32        off;
+    u8         tmp[8]   = {};
+    const auto addr_sym = this->assembler.sym_def_data(
+        {}, {tmp, sizeof(tmp)}, 8, true, true, true, false, &off);
+    this->assembler.reloc_data_abs(sym, true, off, 0);
+
+    type_info_syms.emplace_back(value, addr_sym);
+    return addr_sym;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     IRValueRef         inst_idx,
     llvm::Instruction *inst,
@@ -3335,6 +3572,33 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
             case 3: derived()->encode_prefetch_wl3(std::move(ptr_ref)); break;
             }
         }
+        return true;
+    }
+    case llvm::Intrinsic::eh_typeid_for: {
+        auto *type = inst->getOperand(0);
+        assert(llvm::isa<llvm::GlobalValue>(type));
+
+        // not the most efficient but it's OK
+        const auto type_info_sym = lookup_type_info_sym(llvm_val_idx(type));
+        const auto idx = this->assembler.except_type_idx_for_sym(type_info_sym);
+
+        auto res_ref   = this->result_ref_eager(inst_idx, 0);
+        auto const_ref = ValuePartRef{idx, Config::GP_BANK, 4};
+        derived()->materialize_constant(const_ref, res_ref.cur_reg());
+        this->set_value(res_ref, res_ref.cur_reg());
+        return true;
+    }
+    case llvm::Intrinsic::is_constant: {
+        // > On the other hand, if constant folding is not run, it will never
+        // evaluate to true, even in simple cases. example in
+        // 641.leela_s:UCTNode.cpp
+
+        // ref-count the argument
+        this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        auto res_ref   = this->result_ref_eager(inst_idx, 0);
+        auto const_ref = ValuePartRef{0, Config::GP_BANK, 4};
+        derived()->materialize_constant(const_ref, res_ref.cur_reg());
+        this->set_value(res_ref, res_ref.cur_reg());
         return true;
     }
     default: {

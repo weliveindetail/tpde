@@ -1716,7 +1716,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
 
     derived()->reset_register_file();
 
-    assembler.start_func(func_syms[func_idx]);
+    derived()->start_func(func_idx);
 
     block_labels.clear();
     block_labels.reserve(analyzer.block_layout.size());
