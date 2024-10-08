@@ -181,6 +181,75 @@ entry:
   ret void
 }
 
+define void @insert_ptr_i32_poison(ptr %0, ptr %1, i32 %2) {
+; X64-LABEL: insert_ptr_i32_poison>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x60
+; X64:    mov eax, 0x0
+; X64:    mov qword ptr [rdi], rsi
+; X64:    mov dword ptr [rdi + 0x8], edx
+; X64:    add rsp, 0x60
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %3 = insertvalue %struct.ptr_i32 poison, ptr %1, 0
+  %4 = insertvalue %struct.ptr_i32 %3, i32 %2, 1
+  store %struct.ptr_i32 %4, ptr %0
+  ret void
+}
+
+define ptr @insert_ptr_i32_poison_nosalvage(ptr %0, ptr %1, i32 %2) {
+; X64-LABEL: insert_ptr_i32_poison_nosalvage>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x60
+; X64:    mov rax, rsi
+; X64:    mov ecx, 0x0
+; X64:    mov qword ptr [rdi], rax
+; X64:    mov dword ptr [rdi + 0x8], edx
+; X64:    mov rax, rsi
+; X64:    add rsp, 0x60
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %3 = insertvalue %struct.ptr_i32 poison, ptr %1, 0
+  %4 = insertvalue %struct.ptr_i32 %3, i32 %2, 1
+  store %struct.ptr_i32 %4, ptr %0
+  ret ptr %1
+}
+
+define i32 @insert_ptr_i32_poison_nosalvage1(ptr %0, ptr %1, i32 %2) {
+; X64-LABEL: insert_ptr_i32_poison_nosalvage1>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x60
+; X64:    mov eax, 0x0
+; X64:    mov eax, edx
+; X64:    mov qword ptr [rdi], rsi
+; X64:    mov dword ptr [rdi + 0x8], eax
+; X64:    mov eax, edx
+; X64:    add rsp, 0x60
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %3 = insertvalue %struct.ptr_i32 poison, ptr %1, 0
+  %4 = insertvalue %struct.ptr_i32 %3, i32 %2, 1
+  store %struct.ptr_i32 %4, ptr %0
+  ret i32 %2
+}
+
 define void @insert_ptr_i32_1_nosalvage(ptr %0, i32 %1) {
 ; X64-LABEL: insert_ptr_i32_1_nosalvage>:
 ; X64:    push rbp
@@ -395,8 +464,9 @@ define void @insert_i128_i1_1_nosalvage(ptr %0, i1 %1) {
 ; X64-LABEL: insert_i128_i1_1_nosalvage>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    nop word ptr [rax + rax]
-; X64:    sub rsp, 0x80
+; X64:    push rbx
+; X64:    nop dword ptr [rax + rax]
+; X64:    sub rsp, 0x78
 ; X64:    mov rax, qword ptr [rdi]
 ; X64:    mov rcx, qword ptr [rdi + 0x8]
 ; X64:    movzx edx, byte ptr [rdi + 0x10]
@@ -408,7 +478,8 @@ define void @insert_i128_i1_1_nosalvage(ptr %0, i1 %1) {
 ; X64:    mov qword ptr [rdi + 0x8], r8
 ; X64:    mov qword ptr [rdi], rbx
 ; X64:    mov byte ptr [rdi + 0x10], sil
-; X64:    add rsp, 0x80
+; X64:    add rsp, 0x78
+; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...

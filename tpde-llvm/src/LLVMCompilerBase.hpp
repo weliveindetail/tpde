@@ -315,7 +315,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
             case v64:
                 return ValuePartRef(0, Config::FP_BANK, 8);
                 // TODO(ts): support larger constants
-            default: assert(0); exit(1);
+            default: return {};
             }
         }
 
@@ -331,34 +331,48 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
         && (llvm::isa<llvm::PoisonValue>(const_val)
             || llvm::isa<llvm::UndefValue>(const_val)
             || llvm::isa<llvm::ConstantAggregateZero>(const_val))) {
-        u32        size = 0, bank = 0;
-        const auto part_ty =
-            this->adaptor
-                ->complex_part_types[this->adaptor
-                                         ->values[static_cast<u32>(local_idx)]
-                                         .complex_part_tys_idx
-                                     + part];
-        switch (part_ty) {
-            using enum LLVMBasicValType;
-        case i1:
-        case i8: size = 1; break;
-        case i16: size = 2; break;
-        case i32: size = 4; break;
-        case i64:
-        case ptr:
-        case i128: size = 8; break;
-        case f32:
-        case v32:
-            size = 4;
-            bank = Config::FP_BANK;
-            break;
-        case f64:
-        case v64:
-            size = 8;
-            bank = Config::FP_BANK;
-            break;
-        // TODO(ts): support larger constants
-        default: assert(0); exit(1);
+        u32   size = 0, bank = 0;
+        auto *val_ty = val->getType();
+        assert(val_ty->isAggregateType());
+
+        const auto llvm_part_count = val_ty->getNumContainedTypes();
+        const auto ty_idx = this->adaptor->values[static_cast<u32>(local_idx)]
+                                .complex_part_tys_idx;
+        u32 real_part_count = 0;
+        for (u32 i = 0; i < llvm_part_count; ++i) {
+            const auto part_ty =
+                this->adaptor->complex_part_types[ty_idx + real_part_count];
+            const auto part_count = derived()->basic_ty_part_count(
+                this->adaptor->complex_part_types[ty_idx + real_part_count]);
+
+            if (i <= part && i + part_count > part) {
+                switch (part_ty) {
+                    using enum LLVMBasicValType;
+                case i1:
+                case i8: size = 1; break;
+                case i16: size = 2; break;
+                case i32: size = 4; break;
+                case i64:
+                case ptr:
+                case i128: size = 8; break;
+                case f32:
+                case v32:
+                    size = 4;
+                    bank = Config::FP_BANK;
+                    break;
+                case f64:
+                case v64:
+                    size = 8;
+                    bank = Config::FP_BANK;
+                    break;
+                // TODO(ts): support larger constants
+                default: assert(0); exit(1);
+                }
+            }
+
+            // skip over duplicate entries when LLVM part has multiple TPDE
+            // parts
+            real_part_count += part_count;
         }
 
         return ValuePartRef(0, bank, size);
