@@ -145,6 +145,8 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
 
     void setup_var_ref_assignments() noexcept;
 
+    bool compile();
+
     bool compile_inst(IRValueRef, InstRange) noexcept;
 
     bool compile_ret(IRValueRef, llvm::Instruction *) noexcept;
@@ -919,6 +921,36 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
                  ->hasExternalLinkage();
         init_assignment(v);
     }
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile() {
+    if (!Base::compile()) {
+        return false;
+    }
+
+    // copy alias symbol definitions
+    for (auto it = this->adaptor->mod.alias_begin();
+         it != this->adaptor->mod.alias_end();
+         ++it) {
+        llvm::GlobalAlias *ga = &*it;
+        auto              *alias_target =
+            llvm::dyn_cast<llvm::GlobalValue>(ga->getAliasee());
+        if (alias_target == nullptr) {
+            assert(0);
+            continue;
+        }
+        auto dst_sym  = global_sym(ga);
+        auto from_sym = global_sym(alias_target);
+
+        this->assembler.sym_copy(dst_sym,
+                                 from_sym,
+                                 ga->hasLocalLinkage()
+                                     || ga->hasPrivateLinkage(),
+                                 ga->hasLinkOnceODRLinkage());
+    }
+
+    return true;
 }
 
 template <typename Adaptor, typename Derived, typename Config>
