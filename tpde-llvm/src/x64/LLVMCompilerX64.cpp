@@ -790,7 +790,6 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef         inst_idx,
                         } else {
                             std::get<ScratchReg>(lhs).reset();
                         }
-                        rhs.reset();
 
                         // generate the branch
                         const auto true_block =
@@ -855,6 +854,7 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef         inst_idx,
         }
         lhs_high.reset_without_refcount();
         rhs_high.reset_without_refcount();
+        rhs.reset();
         try_fuse_compare(std::move(lhs));
         return true;
     }
@@ -965,6 +965,7 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef         inst_idx,
         }
     }
 
+    rhs_op.reset();
     if (std::holds_alternative<ValuePartRef>(lhs_op.state)) {
         try_fuse_compare(std::move(std::get<ValuePartRef>(lhs_op.state)));
     } else {
