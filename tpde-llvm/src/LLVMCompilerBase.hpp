@@ -99,6 +99,8 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     SymRef sym_memset  = Assembler::INVALID_SYM_REF;
     SymRef sym_memmove = Assembler::INVALID_SYM_REF;
     SymRef sym_resume  = Assembler::INVALID_SYM_REF;
+    SymRef sym_trunc   = Assembler::INVALID_SYM_REF;
+    SymRef sym_truncf  = Assembler::INVALID_SYM_REF;
 
     LLVMCompilerBase(LLVMAdaptor *adaptor, const bool generate_obj)
         : Base{adaptor, generate_obj} {
@@ -3329,7 +3331,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     }
     case llvm::Intrinsic::floor:
     case llvm::Intrinsic::ceil:
-    case llvm::Intrinsic::round: {
+    case llvm::Intrinsic::round:
+    case llvm::Intrinsic::trunc: {
         auto val = llvm_val_idx(inst->getOperand(0));
 
         const auto is_double = inst->getOperand(0)->getType()->isDoubleTy();
@@ -3347,12 +3350,18 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
             } else {
                 sym = get_or_create_sym_ref(sym_ceilf, "ceilf");
             }
-        } else {
-            assert(intrin_id == llvm::Intrinsic::round);
+        } else if (intrin_id == llvm::Intrinsic::round) {
             if (is_double) {
                 sym = get_or_create_sym_ref(sym_round, "round");
             } else {
                 sym = get_or_create_sym_ref(sym_roundf, "roundf");
+            }
+        } else {
+            assert(intrin_id == llvm::Intrinsic::trunc);
+            if (is_double) {
+                sym = get_or_create_sym_ref(sym_trunc, "trunc");
+            } else {
+                sym = get_or_create_sym_ref(sym_truncf, "truncf");
             }
         }
 
