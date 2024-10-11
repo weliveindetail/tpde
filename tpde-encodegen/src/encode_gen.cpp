@@ -2179,19 +2179,33 @@ bool generate_inst_inner(std::string           &buf,
                     } else {
                         if (!state.value_map[def_resolved_reg_id]
                                  .aliased_regs.empty()) {
-                            state.fmt_line(
-                                buf,
-                                indent,
-                                "// {} has aliases left so need to materialize "
-                                "the copy before overwriting",
-                                state.enc_target->reg_name_lower(
-                                    def_resolved_reg_id));
-                            materialize_aliased_regs(
-                                state,
-                                buf,
-                                indent,
-                                def_resolved_reg_id,
-                                reg_size_bytes(state.func, llvm_op.getReg()));
+                            if (state.value_map[def_resolved_reg_id].ty
+                                != ValueInfo::SCRATCHREG) {
+                                state.fmt_line(buf,
+                                               indent,
+                                               "// {} has aliases left so need "
+                                               "to redirect them",
+                                               state.enc_target->reg_name_lower(
+                                                   def_resolved_reg_id));
+
+                                state.redirect_aliased_regs_to_parent(
+                                    def_resolved_reg_id);
+                            } else {
+                                state.fmt_line(buf,
+                                               indent,
+                                               "// {} has aliases left so need "
+                                               "to materialize "
+                                               "the copy before overwriting",
+                                               state.enc_target->reg_name_lower(
+                                                   def_resolved_reg_id));
+                                materialize_aliased_regs(
+                                    state,
+                                    buf,
+                                    indent,
+                                    def_resolved_reg_id,
+                                    reg_size_bytes(state.func,
+                                                   llvm_op.getReg()));
+                            }
                         }
                         assert(state.value_map[def_resolved_reg_id]
                                    .aliased_regs.empty());
@@ -3000,6 +3014,8 @@ bool generate_inst_inner(std::string           &buf,
                        "copy the value",
                        state.enc_target->reg_name_lower(reg_id),
                        info.operand_name);
+        // TODO(ts): add helper that directly gets the value into the register
+        // if it is in memory for example
         state.fmt_line(buf,
                        indent,
                        "AsmReg inst{}_op{}_tmp = {}.as_reg(this);",
