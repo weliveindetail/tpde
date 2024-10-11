@@ -1779,9 +1779,13 @@ bool generate_inst_inner(std::string           &buf,
         defs_allocated.emplace_back(def.isImplicit(), &def);
     }
 
-    const auto def_idx = [inst](const llvm::MachineOperand *op) {
+    const auto def_idx = [inst, &state](const llvm::MachineOperand *op) {
         unsigned idx = 0;
         for (const auto &def : inst->all_defs()) {
+            assert(def.isReg() && def.getReg().isPhysical());
+            if (state.enc_target->reg_should_be_ignored(def.getReg())) {
+                continue;
+            }
             if (&def == op) {
                 return idx;
             }
