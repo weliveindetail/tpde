@@ -2709,15 +2709,30 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
     auto rhs  = this->val_ref(llvm_val_idx(inst->getOperand(2)), 0);
 
     ScratchReg res_scratch{derived()};
-    auto       res_ref = this->result_ref_lazy(inst_idx, 0);
+    auto       res_ref     = this->result_ref_lazy(inst_idx, 0);
+    auto       pretend_128 = false;
+    if (ty->isStructTy() && ty->getStructNumElements() == 2) {
+        auto *ty0 = ty->getContainedType(0);
+        auto *ty1 = ty->getContainedType(1);
+        if (((ty0->isIntegerTy() && ty0->getIntegerBitWidth() <= 64)
+             || ty0->isPointerTy())
+            && ((ty1->isIntegerTy() && ty1->getIntegerBitWidth() <= 64)
+                || ty1->isPointerTy())) {
+            // for this special case we simply preten it is an 128 bit value to
+            // get better codegen and I can skip supporting the full complex
+            // case for now
+            // TODO(ts): support full complex types using branches
+            pretend_128 = true;
+        }
+    }
 
-    if (ty->isIntegerTy() || ty->isPointerTy()) {
+    if (ty->isIntegerTy() || ty->isPointerTy() || pretend_128) {
         auto width = 64u;
         if (ty->isIntegerTy()) {
             width = ty->getIntegerBitWidth();
         }
 
-        if (width == 128) {
+        if (width == 128 || pretend_128) {
             lhs.inc_ref_count();
             rhs.inc_ref_count();
             auto lhs_high = this->val_ref(llvm_val_idx(inst->getOperand(1)), 1);
