@@ -814,6 +814,64 @@ bool GenerationState::can_salvage_operand(const llvm::MachineOperand &op) {
     }
 }
 
+static unsigned reg_size_bytes(llvm::MachineFunction *func,
+                               llvm::Register         reg) {
+    const auto &target_reg_info = func->getSubtarget().getRegisterInfo();
+    const auto &mach_reg_info   = func->getRegInfo();
+    return target_reg_info->getRegSizeInBits(reg, mach_reg_info) / 8;
+}
+
+static void materialize_aliased_regs(GenerationState &state,
+                                     std::string     &buf,
+                                     unsigned         indent,
+                                     unsigned         break_reg,
+                                     unsigned         reg_size) {
+    // TODO(ts): if we would know the value is not fixed we could
+    // instead std::move the scratchregs
+    auto &info       = state.value_map[break_reg];
+    int   copied_dst = -1;
+    auto  dst_name   = state.enc_target->reg_name_lower(break_reg);
+    for (auto reg : info.aliased_regs) {
+        assert(reg != break_reg);
+        const auto reg_name = state.enc_target->reg_name_lower(reg);
+        assert(state.value_map[reg].ty == ValueInfo::REG_ALIAS);
+        assert(!state.value_map[reg].is_dead);
+        if (copied_dst != -1) {
+            // just alias to the reg we already copied to
+            state.fmt_line(buf,
+                           indent,
+                           "// aliasing {} to {}",
+                           reg_name,
+                           state.enc_target->reg_name_lower(copied_dst));
+            state.value_map[reg].alias_reg_id = copied_dst;
+            state.value_map[copied_dst].aliased_regs.insert(reg);
+            continue;
+        }
+
+        state.fmt_line(buf,
+                       indent,
+                       "// {} is still aliased to the value of {} so "
+                       "we emit an explicit copy",
+                       reg_name,
+                       dst_name);
+        state.fmt_line(buf,
+                       indent,
+                       "scratch_{}.alloc_from_bank({});",
+                       reg_name,
+                       state.enc_target->reg_bank(reg));
+        state.enc_target->generate_copy(
+            buf,
+            indent,
+            state.enc_target->reg_bank(reg),
+            std::format("scratch_{}.cur_reg", reg_name),
+            std::format("scratch_{}.cur_reg", dst_name),
+            reg_size);
+        copied_dst              = reg;
+        state.value_map[reg].ty = ValueInfo::SCRATCHREG;
+    }
+    info.aliased_regs.clear();
+}
+
 bool handle_move(std::string        &buf,
                  GenerationState    &state,
                  llvm::MachineInstr *inst) {
@@ -869,6 +927,11 @@ bool handle_move(std::string        &buf,
                 assert(state.operand_ref_counts[info.operand_name] > 0);
                 state.operand_ref_counts[info.operand_name] -= 1;
             }
+        } else if (info.ty == ValueInfo::SCRATCHREG
+                   && !info.aliased_regs.empty()) {
+            // need to emit a copy to preserve the original value
+            materialize_aliased_regs(
+                state, buf, 4, dst_id, reg_size_bytes(state.func, dst_reg));
         }
     }
 
@@ -915,13 +978,6 @@ bool handle_move(std::string        &buf,
     }
 
     return true;
-}
-
-static unsigned reg_size_bytes(llvm::MachineFunction *func,
-                               llvm::Register         reg) {
-    const auto &target_reg_info = func->getSubtarget().getRegisterInfo();
-    const auto &mach_reg_info   = func->getRegInfo();
-    return target_reg_info->getRegSizeInBits(reg, mach_reg_info) / 8;
 }
 
 bool handle_end_of_block(GenerationState         &state,
@@ -1813,6 +1869,8 @@ bool generate_inst_inner(std::string           &buf,
                     assert(state.enc_target->reg_bank(orig_reg_id)
                            == state.enc_target->reg_bank(def_reg_id));
 
+                    assert(state.value_map[orig_reg_id].aliased_regs.empty());
+
                     if (def_reg.isImplicit()) {
                         // TODO(ts): does this make sense?
                         std::cerr << "ERROR: Found instruction which has an "
@@ -2115,6 +2173,24 @@ bool generate_inst_inner(std::string           &buf,
                             reg_size_bytes(state.func, llvm_op.getReg()));
                         defs_allocated[def_idx(&def_reg)].first = true;
                     } else {
+                        if (!state.value_map[def_resolved_reg_id]
+                                 .aliased_regs.empty()) {
+                            state.fmt_line(
+                                buf,
+                                indent,
+                                "// {} has aliases left so need to materialize "
+                                "the copy before overwriting",
+                                state.enc_target->reg_name_lower(
+                                    def_resolved_reg_id));
+                            materialize_aliased_regs(
+                                state,
+                                buf,
+                                indent,
+                                def_resolved_reg_id,
+                                reg_size_bytes(state.func, llvm_op.getReg()));
+                        }
+                        assert(state.value_map[def_resolved_reg_id]
+                                   .aliased_regs.empty());
                         std::format_to(
                             std::back_inserter(buf),
                             "{:>{}}AsmReg inst{}_op{} = "
