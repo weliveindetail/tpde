@@ -99,6 +99,8 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     SymRef sym_memset  = Assembler::INVALID_SYM_REF;
     SymRef sym_memmove = Assembler::INVALID_SYM_REF;
     SymRef sym_resume  = Assembler::INVALID_SYM_REF;
+    SymRef sym_powisf2 = Assembler::INVALID_SYM_REF;
+    SymRef sym_powidf2 = Assembler::INVALID_SYM_REF;
     SymRef sym_trunc   = Assembler::INVALID_SYM_REF;
     SymRef sym_truncf  = Assembler::INVALID_SYM_REF;
 
@@ -3411,6 +3413,29 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
                                      res_scratch);
         }
         this->set_value(res_ref, res_scratch);
+        return true;
+    }
+    case llvm::Intrinsic::powi: {
+        std::array<IRValueRef, 2> args = {
+            {llvm_val_idx(inst->getOperand(0)),
+             llvm_val_idx(inst->getOperand(1))}
+        };
+
+        auto *ty = inst->getOperand(0)->getType();
+        if (!ty->isDoubleTy() && !ty->isFloatTy()) {
+            assert(0);
+            return false;
+        }
+        const auto is_double = inst->getOperand(0)->getType()->isDoubleTy();
+        SymRef     sym;
+        if (is_double) {
+            sym = get_or_create_sym_ref(sym_powidf2, "__powidf2");
+        } else {
+            sym = get_or_create_sym_ref(sym_powisf2, "__powisf2");
+        }
+        auto res_ref = this->result_ref_lazy(inst_idx, 0);
+
+        derived()->create_helper_call(args, {&res_ref, 1}, sym);
         return true;
     }
     case llvm::Intrinsic::abs: {
