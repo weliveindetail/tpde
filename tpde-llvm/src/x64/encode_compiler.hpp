@@ -430,6 +430,18 @@ struct EncodeCompiler {
     bool encode_cmpxchg_u64_seqcst_monotonic(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
     bool encode_cmpxchg_u64_seqcst_acquire(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
     bool encode_cmpxchg_u64_seqcst_seqcst(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_atomic_load_u8_mono(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_atomic_load_u16_mono(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_atomic_load_u32_mono(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_atomic_load_u64_mono(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_atomic_load_u8_acq(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_atomic_load_u16_acq(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_atomic_load_u32_acq(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_atomic_load_u64_acq(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_atomic_load_u8_seqcst(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_atomic_load_u16_seqcst(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_atomic_load_u32_seqcst(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_atomic_load_u64_seqcst(AsmOperand param_0, ScratchReg &result_0);
     bool encode_select_i32(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0);
     bool encode_select_i64(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, ScratchReg &result_0);
     bool encode_select_i128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, AsmOperand param_4, ScratchReg &result_0, ScratchReg &result_1);
@@ -14015,6 +14027,744 @@ template <typename Adaptor,
     result_0 = std::move(scratch_ax);
     // returning reg dx as result_1
     result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u8_mono(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u8_mono: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   $eax = MOVZX32rm8 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load monotonic (s8) from %ir.0)
+    //   renamable $eax = MOVZX32rr8 killed renamable $al
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function atomic_load_u8_mono.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // $eax = MOVZX32rm8 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load monotonic (s8) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32m8, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = MOVZX32rr8 killed renamable $al
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst1_op1 = scratch_ax.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32r8, scratch_ax.cur_reg, inst1_op1);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u16_mono(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u16_mono: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   $eax = MOVZX32rm16 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load monotonic (s16) from %ir.0)
+    //   renamable $eax = MOVZX32rr16 killed renamable $ax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function atomic_load_u16_mono.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // $eax = MOVZX32rm16 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load monotonic (s16) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32m16, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = MOVZX32rr16 killed renamable $ax
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst1_op1 = scratch_ax.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32r16, scratch_ax.cur_reg, inst1_op1);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u32_mono(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u32_mono: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   renamable $eax = MOV32rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load monotonic (s32) from %ir.0)
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function atomic_load_u32_mono.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $eax = MOV32rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load monotonic (s32) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOV32rm, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u64_mono(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u64_mono: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   renamable $rax = MOV64rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load monotonic (s64) from %ir.0)
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function atomic_load_u64_mono.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $rax = MOV64rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load monotonic (s64) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOV64rm, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u8_acq(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u8_acq: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   $eax = MOVZX32rm8 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load acquire (s8) from %ir.0)
+    //   renamable $eax = MOVZX32rr8 killed renamable $al
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function atomic_load_u8_acq.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // $eax = MOVZX32rm8 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load acquire (s8) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32m8, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = MOVZX32rr8 killed renamable $al
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst1_op1 = scratch_ax.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32r8, scratch_ax.cur_reg, inst1_op1);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u16_acq(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u16_acq: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   $eax = MOVZX32rm16 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load acquire (s16) from %ir.0)
+    //   renamable $eax = MOVZX32rr16 killed renamable $ax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function atomic_load_u16_acq.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // $eax = MOVZX32rm16 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load acquire (s16) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32m16, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = MOVZX32rr16 killed renamable $ax
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst1_op1 = scratch_ax.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32r16, scratch_ax.cur_reg, inst1_op1);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u32_acq(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u32_acq: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   renamable $eax = MOV32rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load acquire (s32) from %ir.0)
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function atomic_load_u32_acq.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $eax = MOV32rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load acquire (s32) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOV32rm, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u64_acq(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u64_acq: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   renamable $rax = MOV64rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load acquire (s64) from %ir.0)
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function atomic_load_u64_acq.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $rax = MOV64rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load acquire (s64) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOV64rm, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u8_seqcst(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u8_seqcst: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   $eax = MOVZX32rm8 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load seq_cst (s8) from %ir.0)
+    //   renamable $eax = MOVZX32rr8 killed renamable $al
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function atomic_load_u8_seqcst.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // $eax = MOVZX32rm8 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load seq_cst (s8) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32m8, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = MOVZX32rr8 killed renamable $al
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst1_op1 = scratch_ax.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32r8, scratch_ax.cur_reg, inst1_op1);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u16_seqcst(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u16_seqcst: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   $eax = MOVZX32rm16 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load seq_cst (s16) from %ir.0)
+    //   renamable $eax = MOVZX32rr16 killed renamable $ax
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function atomic_load_u16_seqcst.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // $eax = MOVZX32rm16 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load seq_cst (s16) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32m16, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = MOVZX32rr16 killed renamable $ax
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst1_op1 = scratch_ax.cur_reg;
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOVZXr32r16, scratch_ax.cur_reg, inst1_op1);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u32_seqcst(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u32_seqcst: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   renamable $eax = MOV32rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load seq_cst (s32) from %ir.0)
+    //   RET64 killed $eax
+    // 
+    // # End machine code for function atomic_load_u32_seqcst.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $eax = MOV32rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load seq_cst (s32) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOV32rm, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $eax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_atomic_load_u64_seqcst(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function atomic_load_u64_seqcst: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rdi
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $rdi
+    //   renamable $rax = MOV64rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load seq_cst (s64) from %ir.0)
+    //   RET64 killed $rax
+    // 
+    // # End machine code for function atomic_load_u64_seqcst.
+    // 
+
+    // Mapping di to param_0
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+
+
+    // renamable $rax = MOV64rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load seq_cst (s64) from %ir.0)
+    // operand 1 is a memory operand
+    FeMem inst0_op1;
+    // looking at base di
+    // di maps to param_0, so could be an address
+    if (param_0.is_addr()) {
+        const auto& addr = param_0.legalize_address(this);
+        // no index/disp in LLVM, can simply use the operand address
+        inst0_op1 = FE_MEM(addr.base_reg(), addr.scale, addr.scale ? addr.index_reg() : FE_NOREG, addr.disp);
+    } else {
+        // di maps to operand param_0
+        AsmReg base;
+        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
+            base = scratch_ax.cur_reg;
+        } else {
+            base = param_0.as_reg(this);
+        }
+        inst0_op1 = FE_MEM(base, 0, FE_NOREG, 0);
+    }
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(MOV64rm, scratch_ax.cur_reg, inst0_op1);
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $rax
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
     return true;
 
 }

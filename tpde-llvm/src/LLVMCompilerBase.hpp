@@ -1088,11 +1088,80 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     const IRValueRef load_idx, llvm::Instruction *inst) noexcept {
     assert(llvm::isa<llvm::LoadInst>(inst));
     auto *load = llvm::cast<llvm::LoadInst>(inst);
-    assert(!load->isAtomic());
 
     auto ptr_ref = this->val_ref(llvm_val_idx(load->getPointerOperand()), 0);
 
     auto res = this->result_ref_lazy(load_idx, 0);
+    // TODO(ts): if the ref-count is <= 1, then skip emitting the load as LLVM
+    // does that, too. at least on ARM
+
+    if (load->isAtomic()) {
+        using AsmOperand = typename Derived::AsmOperand;
+        u32 width        = 64;
+        if (load->getType()->isIntegerTy()) {
+            width = load->getType()->getIntegerBitWidth();
+            if (width != 8 && width != 16 && width != 32 && width != 64) {
+                TPDE_LOG_ERR(
+                    "atomic loads not of i8/i16/i32/i64/ptr not supported");
+                return false;
+            }
+        } else if (!load->getType()->isPointerTy()) {
+            TPDE_LOG_ERR(
+                "atomic loads not of i8/i16/i32/i64/ptr not supported");
+            return false;
+        }
+        u32 needed_align = 1;
+        switch (width) {
+        case 16: needed_align = 2; break;
+        case 32: needed_align = 4; break;
+        case 64: needed_align = 8; break;
+        }
+        if (load->getAlign().value() < needed_align) {
+            TPDE_LOG_ERR(
+                "atomic load of width {} has alignment {} which is too small",
+                width,
+                load->getAlign().value());
+            return false;
+        }
+
+        const auto order     = load->getOrdering();
+        using EncodeFnTy     = bool (Derived::*)(AsmOperand, ScratchReg &);
+        EncodeFnTy encode_fn = nullptr;
+        if (order == llvm::AtomicOrdering::Monotonic) {
+            switch (width) {
+            case 8: encode_fn = &Derived::encode_atomic_load_u8_mono; break;
+            case 16: encode_fn = &Derived::encode_atomic_load_u16_mono; break;
+            case 32: encode_fn = &Derived::encode_atomic_load_u32_mono; break;
+            case 64: encode_fn = &Derived::encode_atomic_load_u64_mono; break;
+            default: __builtin_unreachable();
+            }
+        } else if (order == llvm::AtomicOrdering::Acquire) {
+            switch (width) {
+            case 8: encode_fn = &Derived::encode_atomic_load_u8_acq; break;
+            case 16: encode_fn = &Derived::encode_atomic_load_u16_acq; break;
+            case 32: encode_fn = &Derived::encode_atomic_load_u32_acq; break;
+            case 64: encode_fn = &Derived::encode_atomic_load_u64_acq; break;
+            default: __builtin_unreachable();
+            }
+        } else {
+            assert(order == llvm::AtomicOrdering::SequentiallyConsistent);
+            switch (width) {
+            case 8: encode_fn = &Derived::encode_atomic_load_u8_seqcst; break;
+            case 16: encode_fn = &Derived::encode_atomic_load_u16_seqcst; break;
+            case 32: encode_fn = &Derived::encode_atomic_load_u32_seqcst; break;
+            case 64: encode_fn = &Derived::encode_atomic_load_u64_seqcst; break;
+            default: __builtin_unreachable();
+            }
+        }
+
+        ScratchReg res_scratch{derived()};
+        if (!(derived()->*encode_fn)(std::move(ptr_ref), res_scratch)) {
+            return false;
+        }
+
+        this->set_value(res, res_scratch);
+        return true;
+    }
 
     ScratchReg res_scratch{this};
     switch (this->adaptor->values[load_idx].type) {

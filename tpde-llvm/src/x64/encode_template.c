@@ -338,6 +338,19 @@ CmpXchgRes TARGET_V1 cmpxchg_u64_seqcst_seqcst(u64* ptr, u64 cmp, u64 new_val) {
     return (CmpXchgRes){cmp, res};
 }
 
+u32 TARGET_V1 atomic_load_u8_mono(u8* ptr) { return __atomic_load_n(ptr, __ATOMIC_RELAXED); }
+u32 TARGET_V1 atomic_load_u16_mono(u16* ptr) { return __atomic_load_n(ptr, __ATOMIC_RELAXED); }
+u32 TARGET_V1 atomic_load_u32_mono(u32* ptr) { return __atomic_load_n(ptr, __ATOMIC_RELAXED); }
+u64 TARGET_V1 atomic_load_u64_mono(u64* ptr) { return __atomic_load_n(ptr, __ATOMIC_RELAXED); }
+u32 TARGET_V1 atomic_load_u8_acq(u8* ptr) { return __atomic_load_n(ptr, __ATOMIC_ACQUIRE); }
+u32 TARGET_V1 atomic_load_u16_acq(u16* ptr) { return __atomic_load_n(ptr, __ATOMIC_ACQUIRE); }
+u32 TARGET_V1 atomic_load_u32_acq(u32* ptr) { return __atomic_load_n(ptr, __ATOMIC_ACQUIRE); }
+u64 TARGET_V1 atomic_load_u64_acq(u64* ptr) { return __atomic_load_n(ptr, __ATOMIC_ACQUIRE); }
+u32 TARGET_V1 atomic_load_u8_seqcst(u8* ptr) { return __atomic_load_n(ptr, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_load_u16_seqcst(u16* ptr) { return __atomic_load_n(ptr, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_load_u32_seqcst(u32* ptr) { return __atomic_load_n(ptr, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_load_u64_seqcst(u64* ptr) { return __atomic_load_n(ptr, __ATOMIC_SEQ_CST); }
+
 // --------------------------
 // select
 // --------------------------

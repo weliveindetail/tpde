@@ -896,5 +896,220 @@ define void @load_struct_i32_i32_i32_i32_i32_i32(ptr %0) {
     %1 = load %struct.i32_i32_i32_i32_i32_i32, ptr %0
     ret void
 }
+
+
+define void @load_atomic_i8_monotonic(ptr %0) {
+; X64-LABEL: load_atomic_i8_monotonic>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    movzx edi, byte ptr [rdi]
+; X64:    movzx edi, dil
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+  entry:
+    %1 = load atomic i8, ptr %0 monotonic, align 1
+    ret void
+}
+
+define void @load_atomic_i16_monotonic(ptr %0) {
+; X64-LABEL: load_atomic_i16_monotonic>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    movzx edi, word ptr [rdi]
+; X64:    movzx edi, di
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+  entry:
+    %1 = load atomic i16, ptr %0 monotonic, align 2
+    ret void
+}
+
+define void @load_atomic_i32_monotonic(ptr %0) {
+; X64-LABEL: load_atomic_i32_monotonic>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    mov edi, dword ptr [rdi]
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+  entry:
+    %1 = load atomic i32, ptr %0 monotonic, align 4
+    ret void
+}
+
+define void @load_atomic_i64_monotonic(ptr %0) {
+; X64-LABEL: load_atomic_i64_monotonic>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    mov rdi, qword ptr [rdi]
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+  entry:
+    %1 = load atomic i64, ptr %0 monotonic, align 8
+    ret void
+}
+
+
+define void @load_atomic_i8_acquire(ptr %0) {
+; X64-LABEL: load_atomic_i8_acquire>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    movzx edi, byte ptr [rdi]
+; X64:    movzx edi, dil
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+  entry:
+    %1 = load atomic i8, ptr %0 acquire, align 1
+    ret void
+}
+
+define void @load_atomic_i16_acquire(ptr %0) {
+; X64-LABEL: load_atomic_i16_acquire>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    movzx edi, word ptr [rdi]
+; X64:    movzx edi, di
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+  entry:
+    %1 = load atomic i16, ptr %0 acquire, align 2
+    ret void
+}
+
+define void @load_atomic_i32_acquire(ptr %0) {
+; X64-LABEL: load_atomic_i32_acquire>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    mov edi, dword ptr [rdi]
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+  entry:
+    %1 = load atomic i32, ptr %0 acquire, align 4
+    ret void
+}
+
+define void @load_atomic_i64_acquire(ptr %0) {
+; X64-LABEL: load_atomic_i64_acquire>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    mov rdi, qword ptr [rdi]
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+  entry:
+    %1 = load atomic i64, ptr %0 acquire, align 8
+    ret void
+}
+
+
+define void @load_atomic_i8_seq_cst(ptr %0) {
+; X64-LABEL: load_atomic_i8_seq_cst>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    movzx edi, byte ptr [rdi]
+; X64:    movzx edi, dil
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+  entry:
+    %1 = load atomic i8, ptr %0 seq_cst, align 1
+    ret void
+}
+
+define void @load_atomic_i16_seq_cst(ptr %0) {
+; X64-LABEL: load_atomic_i16_seq_cst>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    movzx edi, word ptr [rdi]
+; X64:    movzx edi, di
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+  entry:
+    %1 = load atomic i16, ptr %0 seq_cst, align 2
+    ret void
+}
+
+define void @load_atomic_i32_seq_cst(ptr %0) {
+; X64-LABEL: load_atomic_i32_seq_cst>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    mov edi, dword ptr [rdi]
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+  entry:
+    %1 = load atomic i32, ptr %0 seq_cst, align 4
+    ret void
+}
+
+define void @load_atomic_i64_seq_cst(ptr %0) {
+; X64-LABEL: load_atomic_i64_seq_cst>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    mov rdi, qword ptr [rdi]
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rax], al
+; X64:    <unknown>
+  entry:
+    %1 = load atomic i64, ptr %0 seq_cst, align 8
+    ret void
+}
 ;; NOTE: These prefixes are unused and the list is autogenerated. Do not add tests below this line:
 ; CHECK: {{.*}}
