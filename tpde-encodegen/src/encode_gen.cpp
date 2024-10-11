@@ -549,8 +549,10 @@ bool generate_inst(std::string        &buf,
                            ifs_written ? 1 : 4,
                            if_cond);
             ifs_written = true;
-            generate_inst_inner(
-                buf, state, inst, *pref_enc.replacement, if_cond, 8);
+            if (!generate_inst_inner(
+                    buf, state, inst, *pref_enc.replacement, if_cond, 8)) {
+                return false;
+            }
             std::format_to(std::back_inserter(buf), "    }}");
 
             if (!if_conds_inverted.empty()) {
@@ -597,8 +599,10 @@ bool generate_inst(std::string        &buf,
                            ifs_written ? 1 : 4,
                            if_cond);
             ifs_written = true;
-            generate_inst_inner(
-                buf, state, inst, *pref_enc.replacement, if_cond, 8);
+            if (!generate_inst_inner(
+                    buf, state, inst, *pref_enc.replacement, if_cond, 8)) {
+                return false;
+            }
             std::format_to(std::back_inserter(buf), "    }}");
             continue;
         }
@@ -614,8 +618,10 @@ bool generate_inst(std::string        &buf,
     }
 
     // TODO(ts): generate operation
-    generate_inst_inner(
-        buf, state, inst, desc, if_conds_inverted, ifs_written ? 8 : 4);
+    if (!generate_inst_inner(
+            buf, state, inst, desc, if_conds_inverted, ifs_written ? 8 : 4)) {
+        return false;
+    }
 
     if (ifs_written) {
         buf += "    }\n";
