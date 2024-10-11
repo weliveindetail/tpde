@@ -41,6 +41,25 @@ entry:
   ret float %1
 }
 
+define float @i21tof32(i21 %0) {
+; X64-LABEL: i21tof32>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    and edi, 0x1fffff
+; X64:    mov edi, edi
+; X64:    cvtsi2ss xmm0, rdi
+; X64:    add rsp, 0x30
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %1 = uitofp i21 %0 to float
+  ret float %1
+}
+
 define float @i32tof32(i32 %0) {
 ; X64-LABEL: i32tof32>:
 ; X64:    push rbp
@@ -56,6 +75,37 @@ define float @i32tof32(i32 %0) {
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %1 = uitofp i32 %0 to float
+  ret float %1
+}
+
+define float @i37tof32(i37 %0) {
+; X64-LABEL: i37tof32>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    movabs rax, 0x1fffffffff
+; X64:    and rdi, rax
+; X64:    test rdi, rdi
+; X64:    js <L0>
+; X64:    cvtsi2ss xmm0, rdi
+; X64:    jmp <L1>
+; X64:  <L0>:
+; X64:    mov rax, rdi
+; X64:    shr rax
+; X64:    and edi, 0x1
+; X64:    or rdi, rax
+; X64:    cvtsi2ss xmm0, rdi
+; X64:    addss xmm0, xmm0
+; X64:  <L1>:
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %1 = uitofp i37 %0 to float
   ret float %1
 }
 
@@ -122,6 +172,25 @@ entry:
   ret double %1
 }
 
+define double @i21tof64(i21 %0) {
+; X64-LABEL: i21tof64>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    and edi, 0x1fffff
+; X64:    mov edi, edi
+; X64:    cvtsi2sd xmm0, rdi
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %1 = uitofp i21 %0 to double
+  ret double %1
+}
+
 define double @i32tof64(i32 %0) {
 ; X64-LABEL: i32tof64>:
 ; X64:    push rbp
@@ -137,6 +206,32 @@ define double @i32tof64(i32 %0) {
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %1 = uitofp i32 %0 to double
+  ret double %1
+}
+
+define double @i37tof64(i37 %0) {
+; X64-LABEL: i37tof64>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    movabs rax, 0x1fffffffff
+; X64:    and rdi, rax
+; X64:    movq xmm0, rdi
+; X64:    punpckldq {{.*#+}} xmm0 = xmm0[0],mem[0],xmm0[1],mem[1]
+; X64:     R_X86_64_PC32 -0x4
+; X64:    subpd xmm0, xmmword ptr <i37tof64+0x2e>
+; X64:     R_X86_64_PC32 -0x4
+; X64:    movupd xmm1, xmm0
+; X64:    unpckhpd {{.*#+}} xmm1 = xmm1[1],xmm0[1]
+; X64:    addsd xmm1, xmm0
+; X64:    movupd xmm0, xmm1
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+entry:
+  %1 = uitofp i37 %0 to double
   ret double %1
 }
 

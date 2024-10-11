@@ -41,6 +41,23 @@ entry:
   ret float %1
 }
 
+define float @i21tof32(i21 %0) {
+; X64-LABEL: i21tof32>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    shl edi, 0xb
+; X64:    sar edi, 0xb
+; X64:    cvtsi2ss xmm0, edi
+; X64:    add rsp, 0x30
+; X64:    pop rbp
+; X64:    ret
+entry:
+  %1 = sitofp i21 %0 to float
+  ret float %1
+}
+
 define float @i32tof32(i32 %0) {
 ; X64-LABEL: i32tof32>:
 ; X64:    push rbp
@@ -56,6 +73,25 @@ define float @i32tof32(i32 %0) {
 ; X64:    add byte ptr [rax], al
 entry:
   %1 = sitofp i32 %0 to float
+  ret float %1
+}
+
+define float @i37tof32(i37 %0) {
+; X64-LABEL: i37tof32>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    shl rdi, 0x1b
+; X64:    sar rdi, 0x1b
+; X64:    cvtsi2ss xmm0, rdi
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %1 = sitofp i37 %0 to float
   ret float %1
 }
 
@@ -113,6 +149,23 @@ entry:
   ret double %1
 }
 
+define double @i21tof64(i21 %0) {
+; X64-LABEL: i21tof64>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    shl edi, 0xb
+; X64:    sar edi, 0xb
+; X64:    cvtsi2sd xmm0, edi
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+entry:
+  %1 = sitofp i21 %0 to double
+  ret double %1
+}
+
 define double @i32tof64(i32 %0) {
 ; X64-LABEL: i32tof64>:
 ; X64:    push rbp
@@ -128,6 +181,25 @@ define double @i32tof64(i32 %0) {
 ; X64:    add byte ptr [rax], al
 entry:
   %1 = sitofp i32 %0 to double
+  ret double %1
+}
+
+define double @i37tof64(i37 %0) {
+; X64-LABEL: i37tof64>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    shl rdi, 0x1b
+; X64:    sar rdi, 0x1b
+; X64:    cvtsi2sd xmm0, rdi
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %1 = sitofp i37 %0 to double
   ret double %1
 }
 
