@@ -2411,6 +2411,13 @@ bool generate_inst_inner(std::string           &buf,
             assert(base_reg.getReg().isValid()
                    && base_reg.getReg().isPhysical());
 
+            if (state.enc_target->reg_name_lower(
+                    state.enc_target->reg_id_from_mc_reg(base_reg.getReg()))
+                == "sp") {
+                llvm::errs() << "ERROR: stack accesses not supported yet\n";
+                return false;
+            }
+
             if (explicit_use_count + 4 > llvm_inst_desc.NumOperands) {
                 // should not happen
                 assert(0);
@@ -3285,7 +3292,10 @@ bool create_encode_function(llvm::MachineFunction *func,
             for (auto inst_it = bb_it->begin(); inst_it != bb_it->end();
                  ++inst_it) {
                 llvm::MachineInstr *inst = &(*inst_it);
-                if (inst->isDebugInstr()) {
+                if (inst->isDebugInstr()
+                    || inst->getFlag(llvm::MachineInstr::FrameSetup)
+                    || inst->getFlag(llvm::MachineInstr::FrameDestroy)
+                    || inst->isCFIInstruction()) {
                     continue;
                 }
 
