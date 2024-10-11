@@ -1215,6 +1215,10 @@ bool LLVMCompilerX64::handle_intrin(IRValueRef         inst_idx,
         ASM(MOV64rr, FE_SP, val_reg);
         return true;
     }
+    case llvm::Intrinsic::trap: {
+        ASM(UD2);
+        return true;
+    }
     default: return false;
     }
 }
