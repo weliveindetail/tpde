@@ -244,6 +244,9 @@ struct GenerationState {
     std::unordered_set<unsigned>              const_pool_indices_used   = {};
 
     llvm::DenseMap<unsigned, std::vector<std::string>> fixed_reg_conds{};
+    // TODO(ts): we could precompute the conditions to get even better
+    // knowledge about this
+    std::unordered_set<unsigned>                       maybe_fixed_regs{};
 
     template <typename... T>
     void fmt_line(std::string             &buf,
@@ -775,7 +778,7 @@ bool GenerationState::can_salvage_operand(const llvm::MachineOperand &op) {
     assert(value_map.contains(reg_id));
     const auto &info = value_map[reg_id];
 
-    if (!info.aliased_regs.empty()) {
+    if (!info.aliased_regs.empty() || maybe_fixed_regs.contains(reg_id)) {
         return false;
     }
 
@@ -795,7 +798,7 @@ bool GenerationState::can_salvage_operand(const llvm::MachineOperand &op) {
     while (true) {
         assert(value_map.contains(cur_reg));
         const auto &alias_info = value_map[cur_reg];
-        if (!alias_info.is_dead) {
+        if (!alias_info.is_dead || maybe_fixed_regs.contains(cur_reg)) {
             return false;
         }
 
@@ -1980,10 +1983,7 @@ bool generate_inst_inner(std::string           &buf,
                             state.enc_target->reg_name_lower(resolved_reg_id),
                             state.enc_target->reg_bank(resolved_reg_id));
                         defs_allocated[def_idx(&def_reg)].first = true;
-                    } else if (state.is_first_block && llvm_op.isKill()
-                               && (reg_info.aliased_regs.empty()
-                                   || (reg_info.is_dead
-                                       && reg_info.aliased_regs.size() == 1))) {
+                    } else if (state.can_salvage_operand(llvm_op)) {
                         std::format_to(
                             std::back_inserter(buf),
                             "{:>{}}// operand {}({}) can be salvaged\n",
@@ -3130,6 +3130,144 @@ bool generate_inst_inner(std::string           &buf,
     return true;
 }
 
+bool encode_prepass(llvm::MachineFunction *func, GenerationState &state) {
+    const auto handle_inst = [&state](llvm::MachineInstr    &inst,
+                                      tpde_encgen::InstDesc &desc) {
+        // we need the llvm desc to check for memory operand mismatches
+        // as we need different code generated if we deal with a replacement
+        // from INSTrr -> INSTrm
+        const llvm::MCInstrDesc &llvm_inst_desc =
+            state.func->getTarget().getMCInstrInfo()->get(inst.getOpcode());
+
+        // sometimes implicit operands will show up in the argument list,
+        // e.g. `SHL32rCL` but not always, e.g. `CDQ`
+        std::vector<unsigned> implicit_ops_handled{};
+        unsigned              implicit_use_count = 0, explicit_use_count = 0;
+
+
+        for (unsigned op_idx = 0; op_idx < desc.operands.size(); ++op_idx) {
+            switch (desc.operands[op_idx].type) {
+                using enum tpde_encgen::InstDesc::OP_TYPE;
+            case OP_REG: {
+                auto &llvm_op = inst.getOperand(desc.operands[op_idx].llvm_idx);
+                if (llvm_op.isDef()) {
+                    continue;
+                }
+
+                if (llvm_op.isImplicit()) {
+                    implicit_ops_handled.push_back(
+                        desc.operands[op_idx].llvm_idx);
+
+                    if (implicit_use_count >= llvm_inst_desc.NumImplicitUses) {
+                        // should not happen
+                        assert(0);
+                        exit(1);
+                    }
+                    ++implicit_use_count;
+                } else {
+                    if (explicit_use_count >= llvm_inst_desc.NumOperands) {
+                        // should not happen
+                        assert(0);
+                        exit(1);
+                    }
+                    ++explicit_use_count;
+                }
+
+                if (llvm_op.isUndef()) {
+                    break;
+                }
+
+
+                assert(llvm_op.isReg() && llvm_op.getReg().isPhysical());
+                auto orig_reg_id =
+                    state.enc_target->reg_id_from_mc_reg(llvm_op.getReg());
+
+                if (llvm_op.isImplicit()) {
+                    state.maybe_fixed_regs.insert(orig_reg_id);
+                }
+            }
+            default: break;
+            }
+        }
+
+        unsigned implicit_def_count = 0;
+        for (const auto &def : inst.all_defs()) {
+            assert(def.isReg() && def.getReg().isPhysical());
+            const auto reg = def.getReg();
+            if (def.isImplicit()) {
+                if (implicit_def_count >= llvm_inst_desc.NumImplicitDefs) {
+                    // ignore as this is not an actual implicit operand
+                    continue;
+                }
+                ++implicit_def_count;
+            }
+
+            if (state.enc_target->reg_should_be_ignored(reg)) {
+                continue;
+            }
+
+            const auto reg_id = state.enc_target->reg_id_from_mc_reg(reg);
+            if (def.isImplicit()) {
+                // notify the outer code that the register is needed as a
+                // fixed register
+                state.maybe_fixed_regs.insert(reg_id);
+            }
+        }
+    };
+
+    for (auto bb_it = func->begin(); bb_it != func->end(); ++bb_it) {
+        for (auto inst_it = bb_it->begin(); inst_it != bb_it->end();
+             ++inst_it) {
+            llvm::MachineInstr *inst = &(*inst_it);
+            if (inst->isDebugInstr()
+                || inst->getFlag(llvm::MachineInstr::FrameSetup)
+                || inst->getFlag(llvm::MachineInstr::FrameDestroy)
+                || inst->isCFIInstruction()) {
+                continue;
+            }
+
+            if (inst->isMoveReg() || inst->isTerminator() || inst->isPseudo()
+                || state.enc_target->inst_should_be_skipped(*inst)) {
+                continue;
+            }
+
+            tpde_encgen::InstDesc desc;
+            if (!tpde_encgen::get_inst_def(*inst, desc)) {
+                std::string              buf{};
+                llvm::raw_string_ostream os(buf);
+                inst->print(os);
+                std::cerr << std::format(
+                    "ERROR: Failed to get instruction desc for {}\n", buf);
+                assert(0);
+                return false;
+            }
+
+            for (auto &pref_enc : desc.preferred_encodings) {
+                if (pref_enc.target
+                    == tpde_encgen::InstDesc::PreferredEncoding::TARGET_NONE) {
+                    // unsupported for now, later used for CPU target checks
+                    // maybe
+                    continue;
+                }
+
+                assert(pref_enc.target
+                       == tpde_encgen::InstDesc::PreferredEncoding::TARGET_USE);
+                const auto &use = inst->getOperand(pref_enc.target_def_use_idx);
+
+                if (use.isUndef()) {
+                    // cannot be replaced
+                    continue;
+                }
+                handle_inst(*inst, *pref_enc.replacement);
+            }
+
+            handle_inst(*inst, desc);
+        }
+    }
+
+    return true;
+}
+
 } // namespace
 
 namespace tpde_encgen {
@@ -3176,6 +3314,11 @@ bool create_encode_function(llvm::MachineFunction *func,
     auto            enc_target = std::make_unique<EncodingTargetX64>(func);
     GenerationState state{
         .func = func, .enc_target = enc_target.get(), .is_first_block = true};
+
+    if (!encode_prepass(func, state)) {
+        std::cerr << "Prepass failed\n";
+        return false;
+    }
 
 // TODO(ts): this can't work if a IR value corresponds to multiple registers
 // so we should parse debug info but that does not always exist
