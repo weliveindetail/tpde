@@ -108,6 +108,29 @@ entry:
   ret i24 %b
 }
 
+define i24 @load_i24_alloca() {
+; X64-LABEL: load_i24_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    movzx eax, word ptr [rbp - 0x2c]
+; X64:    movzx ecx, byte ptr [rbp - 0x2a]
+; X64:    shl ecx, 0x10
+; X64:    or ecx, eax
+; X64:    mov eax, ecx
+; X64:    add rsp, 0x30
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+   %0 = alloca i24
+   %1 = load i24, ptr %0
+   ret i24 %1
+}
+
 define i24 @load_i24_alt(ptr %a) {
 ; X64-LABEL: load_i24_alt>:
 ; X64:    push rbp
@@ -150,6 +173,26 @@ define i32 @load_i32(ptr %a) {
 entry:
   %b = load i32, ptr %a, align 4
   ret i32 %b
+}
+
+define i32 @load_i32_alloca() {
+; X64-LABEL: load_i32_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    mov eax, dword ptr [rbp - 0x2c]
+; X64:    add rsp, 0x30
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+   %0 = alloca i32
+   %1 = load i32, ptr %0
+   ret i32 %1
 }
 
 define i32 @load_i32_alt(ptr %a) {
@@ -292,6 +335,30 @@ entry:
   ret i56 %b
 }
 
+define i56 @load_i56_alloca() {
+; X64-LABEL: load_i56_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    movzx eax, word ptr [rbp - 0x2c]
+; X64:    movzx ecx, byte ptr [rbp - 0x2a]
+; X64:    shl ecx, 0x10
+; X64:    or ecx, eax
+; X64:    shl rcx, 0x20
+; X64:    mov eax, dword ptr [rbp - 0x30]
+; X64:    or rax, rcx
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+   %0 = alloca i56
+   %1 = load i56, ptr %0
+   ret i56 %1
+}
+
 define i56 @load_i56_alt(ptr %a) {
 ; X64-LABEL: load_i56_alt>:
 ; X64:    push rbp
@@ -342,6 +409,25 @@ entry:
   ret i64 %b
 }
 
+define i64 @load_i64_alloca() {
+; X64-LABEL: load_i64_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    mov rax, qword ptr [rbp - 0x30]
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+entry:
+   %0 = alloca i64
+   %1 = load i64, ptr %0
+   ret i64 %1
+}
+
 define i64 @load_i64_alt(ptr %a) {
 ; X64-LABEL: load_i64_alt>:
 ; X64:    push rbp
@@ -377,6 +463,27 @@ define i128 @load_i128(ptr %a) {
 entry:
   %b = load i128, ptr %a, align 8
   ret i128 %b
+}
+
+define i128 @load_i128_alloca() {
+; X64-LABEL: load_i128_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x50
+; X64:    mov rax, qword ptr [rbp - 0x40]
+; X64:    mov rcx, qword ptr [rbp - 0x38]
+; X64:    mov rdx, rcx
+; X64:    add rsp, 0x50
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+   %0 = alloca i128
+   %1 = load i128, ptr %0
+   ret i128 %1
 }
 
 define i128 @load_i128_alt(ptr %a) {
@@ -418,6 +525,25 @@ define float @load_float(ptr %a) {
 entry:
   %b = load float, ptr %a, align 4
   ret float %b
+}
+
+define float @load_float_alloca() {
+; X64-LABEL: load_float_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    movss xmm0, dword ptr [rbp - 0x2c]
+; X64:    add rsp, 0x30
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+   %0 = alloca float
+   %1 = load float, ptr %0
+   ret float %1
 }
 
 define float @load_float_alt(ptr %a) {

@@ -107,6 +107,7 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
          resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
     void addr_to_reg(AsmOperand::ArbitraryAddress &&addr,
                      ScratchReg                    &result) noexcept;
+    AsmOperand::LegalAddress create_addr_for_alloca(u32 ref_idx) noexcept;
 
     void switch_emit_cmp(ScratchReg &scratch,
                          AsmReg      cmp_reg,
@@ -1056,6 +1057,17 @@ void LLVMCompilerX64::addr_to_reg(AsmOperand::ArbitraryAddress &&addr,
             ASM(MOV64rr, res_reg, base_reg);
         }
     }
+}
+
+tpde_encodegen::EncodeCompiler<LLVMAdaptor,
+                               LLVMCompilerX64,
+                               LLVMCompilerBase,
+                               CompilerConfig>::AsmOperand::LegalAddress
+    LLVMCompilerX64::create_addr_for_alloca(u32 ref_idx) noexcept {
+    const auto &info = this->variable_refs[ref_idx];
+    assert(info.alloca);
+    return AsmOperand::LegalAddress{
+        AsmReg::BP, AsmReg::make_invalid(), 0, -(i32)info.alloca_frame_off};
 }
 
 void LLVMCompilerX64::switch_emit_cmp(ScratchReg  &scratch,

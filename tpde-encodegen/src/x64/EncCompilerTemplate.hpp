@@ -202,6 +202,15 @@ struct EncodeCompiler {
             state = std::move(addr);
         }
 
+        AsmOperand(LegalAddress &&addr) noexcept {
+            assert(addr.scale == 0 || addr.scale == 1 || addr.scale == 2
+                   || addr.scale == 4 || addr.scale == 8);
+            if (addr.has_index()) {
+                assert(addr.index_reg().valid());
+            }
+            state = std::move(addr);
+        }
+
         AsmOperand(Immediate imm) noexcept { state = imm; }
 
         // NOLINTEND(*-explicit-constructor)

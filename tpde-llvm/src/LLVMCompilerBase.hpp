@@ -1098,14 +1098,28 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ret(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     const IRValueRef load_idx, llvm::Instruction *inst) noexcept {
+    using AsmOperand = typename Derived::AsmOperand;
+
     assert(llvm::isa<llvm::LoadInst>(inst));
     auto *load = llvm::cast<llvm::LoadInst>(inst);
 
-    auto ptr_ref = this->val_ref(llvm_val_idx(load->getPointerOperand()), 0);
 
     auto res = this->result_ref_lazy(load_idx, 0);
     // TODO(ts): if the ref-count is <= 1, then skip emitting the load as LLVM
     // does that, too. at least on ARM
+
+    const auto calc_ptr_op = [this, load]() -> AsmOperand {
+        auto ptr_ref =
+            this->val_ref(llvm_val_idx(load->getPointerOperand()), 0);
+        if (!ptr_ref.is_const && ptr_ref.assignment().variable_ref()) {
+            const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
+            if (this->variable_refs[ref_idx].alloca) {
+                return derived()->create_addr_for_alloca(ref_idx);
+            }
+        }
+
+        return std::move(ptr_ref);
+    };
 
     if (load->isAtomic()) {
         using AsmOperand = typename Derived::AsmOperand;
@@ -1167,7 +1181,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
         }
 
         ScratchReg res_scratch{derived()};
-        if (!(derived()->*encode_fn)(std::move(ptr_ref), res_scratch)) {
+        auto       ptr_op = calc_ptr_op();
+        if (!(derived()->*encode_fn)(std::move(ptr_op), res_scratch)) {
             return false;
         }
 
@@ -1184,66 +1199,84 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     case i32:
     case i64: {
         assert(load->getType()->isIntegerTy());
+        auto       ptr_op    = calc_ptr_op();
         const auto bit_width = load->getType()->getIntegerBitWidth();
         switch (bit_width) {
         case 1:
-        case 8:
-            derived()->encode_loadi8(std::move(ptr_ref), res_scratch);
-            break;
+        case 8: derived()->encode_loadi8(std::move(ptr_op), res_scratch); break;
         case 16:
-            derived()->encode_loadi16(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi16(std::move(ptr_op), res_scratch);
             break;
         case 24:
-            derived()->encode_loadi24(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi24(std::move(ptr_op), res_scratch);
             break;
         case 32:
-            derived()->encode_loadi32(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi32(std::move(ptr_op), res_scratch);
             break;
         case 40:
-            derived()->encode_loadi40(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi40(std::move(ptr_op), res_scratch);
             break;
         case 48:
-            derived()->encode_loadi48(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi48(std::move(ptr_op), res_scratch);
             break;
         case 56:
-            derived()->encode_loadi56(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi56(std::move(ptr_op), res_scratch);
             break;
         case 64:
-            derived()->encode_loadi64(std::move(ptr_ref), res_scratch);
+            derived()->encode_loadi64(std::move(ptr_op), res_scratch);
             break;
         default: assert(0); return false;
         }
         break;
     }
-    case ptr: derived()->encode_loadi64(std::move(ptr_ref), res_scratch); break;
+    case ptr: {
+        auto ptr_op = calc_ptr_op();
+        derived()->encode_loadi64(std::move(ptr_op), res_scratch);
+        break;
+    }
     case i128: {
+        auto       ptr_op = calc_ptr_op();
         ScratchReg res_scratch_high{derived()};
         res.inc_ref_count();
         auto res_high = this->result_ref_lazy(load_idx, 1);
 
         derived()->encode_loadi128(
-            std::move(ptr_ref), res_scratch, res_scratch_high);
+            std::move(ptr_op), res_scratch, res_scratch_high);
         this->set_value(res, res_scratch);
         this->set_value(res_high, res_scratch_high);
         return true;
     }
     case v32:
-    case f32: derived()->encode_loadf32(std::move(ptr_ref), res_scratch); break;
+    case f32: {
+        auto ptr_op = calc_ptr_op();
+        derived()->encode_loadf32(std::move(ptr_op), res_scratch);
+        break;
+    }
     case v64:
-    case f64: derived()->encode_loadf64(std::move(ptr_ref), res_scratch); break;
-    case v128:
-        derived()->encode_loadv128(std::move(ptr_ref), res_scratch);
+    case f64: {
+        auto ptr_op = calc_ptr_op();
+        derived()->encode_loadf64(std::move(ptr_op), res_scratch);
         break;
-    case v256:
-        if (!derived()->encode_loadv256(std::move(ptr_ref), res_scratch)) {
+    }
+    case v128: {
+        auto ptr_op = calc_ptr_op();
+        derived()->encode_loadv128(std::move(ptr_op), res_scratch);
+        break;
+    }
+    case v256: {
+        auto ptr_op = calc_ptr_op();
+        if (!derived()->encode_loadv256(std::move(ptr_op), res_scratch)) {
             return false;
         }
         break;
-    case v512:
-        if (!derived()->encode_loadv512(std::move(ptr_ref), res_scratch)) {
+    }
+    case v512: {
+        auto ptr_op = calc_ptr_op();
+        if (!derived()->encode_loadv512(std::move(ptr_op), res_scratch)) {
             return false;
         }
         break;
+    }
     case complex: {
         res.reset_without_refcount();
 
@@ -1259,6 +1292,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
             this->adaptor->values[load_idx].complex_part_tys_idx;
         u32 res_part_idx = 0;
 
+        auto ptr_ref =
+            this->val_ref(llvm_val_idx(load->getPointerOperand()), 0);
         ScratchReg ptr_scratch{derived()};
         auto       ptr_reg = this->val_as_reg(ptr_ref, ptr_scratch);
         for (u32 part_idx = 0; part_idx < part_count;
@@ -1377,11 +1412,23 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     const IRValueRef, llvm::Instruction *inst) noexcept {
+    using AsmOperand = typename Derived::AsmOperand;
     assert(llvm::isa<llvm::StoreInst>(inst));
     auto *store = llvm::cast<llvm::StoreInst>(inst);
     assert(!store->isAtomic());
 
-    auto ptr_ref = this->val_ref(llvm_val_idx(store->getPointerOperand()), 0);
+    const auto calc_ptr_op = [this, store]() -> AsmOperand {
+        auto ptr_ref =
+            this->val_ref(llvm_val_idx(store->getPointerOperand()), 0);
+        if (!ptr_ref.is_const && ptr_ref.assignment().variable_ref()) {
+            const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
+            if (this->variable_refs[ref_idx].alloca) {
+                return derived()->create_addr_for_alloca(ref_idx);
+            }
+        }
+
+        return std::move(ptr_ref);
+    };
 
     const auto *op_val = store->getValueOperand();
     const auto  op_idx = llvm_val_idx(op_val);
@@ -1397,70 +1444,84 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     case i64: {
         assert(op_val->getType()->isIntegerTy());
         const auto bit_width = op_val->getType()->getIntegerBitWidth();
+        auto       ptr_op    = calc_ptr_op();
         switch (bit_width) {
         case 1:
         case 8:
-            derived()->encode_storei8(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei8(std::move(ptr_op), std::move(op_ref));
             break;
         case 16:
-            derived()->encode_storei16(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei16(std::move(ptr_op), std::move(op_ref));
             break;
         case 24:
-            derived()->encode_storei24(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei24(std::move(ptr_op), std::move(op_ref));
             break;
         case 32:
-            derived()->encode_storei32(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei32(std::move(ptr_op), std::move(op_ref));
             break;
         case 40:
-            derived()->encode_storei40(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei40(std::move(ptr_op), std::move(op_ref));
             break;
         case 48:
-            derived()->encode_storei48(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei48(std::move(ptr_op), std::move(op_ref));
             break;
         case 56:
-            derived()->encode_storei56(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei56(std::move(ptr_op), std::move(op_ref));
             break;
         case 64:
-            derived()->encode_storei64(std::move(ptr_ref), std::move(op_ref));
+            derived()->encode_storei64(std::move(ptr_op), std::move(op_ref));
             break;
         default: assert(0); return false;
         }
         break;
     }
-    case ptr:
-        derived()->encode_storei64(std::move(ptr_ref), std::move(op_ref));
+    case ptr: {
+        auto ptr_op = calc_ptr_op();
+        derived()->encode_storei64(std::move(ptr_op), std::move(op_ref));
         break;
+    }
     case i128: {
+        auto ptr_op = calc_ptr_op();
         op_ref.inc_ref_count();
         auto op_ref_high = this->val_ref(op_idx, 1);
 
         derived()->encode_storei128(
-            std::move(ptr_ref), std::move(op_ref), std::move(op_ref_high));
+            std::move(ptr_op), std::move(op_ref), std::move(op_ref_high));
         break;
     }
     case v32:
-    case f32:
-        derived()->encode_storef32(std::move(ptr_ref), std::move(op_ref));
+    case f32: {
+        auto ptr_op = calc_ptr_op();
+        derived()->encode_storef32(std::move(ptr_op), std::move(op_ref));
         break;
+    }
     case v64:
-    case f64:
-        derived()->encode_storef64(std::move(ptr_ref), std::move(op_ref));
+    case f64: {
+        auto ptr_op = calc_ptr_op();
+        derived()->encode_storef64(std::move(ptr_op), std::move(op_ref));
         break;
-    case v128:
-        derived()->encode_storev128(std::move(ptr_ref), std::move(op_ref));
+    }
+    case v128: {
+        auto ptr_op = calc_ptr_op();
+        derived()->encode_storev128(std::move(ptr_op), std::move(op_ref));
         break;
-    case v256:
-        if (!derived()->encode_storev256(std::move(ptr_ref),
+    }
+    case v256: {
+        auto ptr_op = calc_ptr_op();
+        if (!derived()->encode_storev256(std::move(ptr_op),
                                          std::move(op_ref))) {
             return false;
         }
         break;
-    case v512:
-        if (!derived()->encode_storev512(std::move(ptr_ref),
+    }
+    case v512: {
+        auto ptr_op = calc_ptr_op();
+        if (!derived()->encode_storev512(std::move(ptr_op),
                                          std::move(op_ref))) {
             return false;
         }
         break;
+    }
     case complex: {
         op_ref.reset_without_refcount();
 
@@ -1475,6 +1536,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
         const auto ty_idx = this->adaptor->values[op_idx].complex_part_tys_idx;
         u32        res_part_idx = 0;
 
+        auto ptr_ref =
+            this->val_ref(llvm_val_idx(store->getPointerOperand()), 0);
         ScratchReg ptr_scratch{derived()};
         auto       ptr_reg = this->val_as_reg(ptr_ref, ptr_scratch);
         for (u32 part_idx = 0; part_idx < part_count;

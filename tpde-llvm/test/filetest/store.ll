@@ -102,6 +102,26 @@ entry:
   ret void
 }
 
+define void @store_i32_alloca(i32 %b) {
+; X64-LABEL: store_i32_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    mov dword ptr [rbp - 0x2c], edi
+; X64:    add rsp, 0x30
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %a = alloca i32
+  store i32 %b, ptr %a
+  ret void
+}
+
 define void @store_i32_const(ptr %a) {
 ; X64-LABEL: store_i32_const>:
 ; X64:    push rbp
@@ -135,6 +155,25 @@ define void @store_i64(ptr %a, i64 %b) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
+  store i64 %b, ptr %a
+  ret void
+}
+
+define void @store_i64_alloca(i64 %b) {
+; X64-LABEL: store_i64_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    mov qword ptr [rbp - 0x30], rdi
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+entry:
+  %a = alloca i64
   store i64 %b, ptr %a
   ret void
 }
@@ -206,6 +245,24 @@ define void @store_i128(ptr %a, i128 %b) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
+  store i128 %b, ptr %a
+  ret void
+}
+
+define void @store_i128_alloca(i128 %b) {
+; X64-LABEL: store_i128_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x50
+; X64:    mov qword ptr [rbp - 0x38], rsi
+; X64:    mov qword ptr [rbp - 0x40], rdi
+; X64:    add rsp, 0x50
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+entry:
+  %a = alloca i128
   store i128 %b, ptr %a
   ret void
 }
@@ -290,6 +347,25 @@ entry:
   ret void
 }
 
+define void @store_float_alloca(float %b) {
+; X64-LABEL: store_float_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    movss dword ptr [rbp - 0x2c], xmm0
+; X64:    add rsp, 0x30
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %a = alloca float
+  store float %b, ptr %a
+  ret void
+}
+
 define void @store_f32_const(ptr %a) {
 ; X64-LABEL: store_f32_const>:
 ; X64:    push rbp
@@ -367,6 +443,27 @@ entry:
   ret void
 }
 
+define void @store_i24_alloca(i24 %b) {
+; X64-LABEL: store_i24_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    mov word ptr [rbp - 0x2c], di
+; X64:    shr edi, 0x10
+; X64:    mov byte ptr [rbp - 0x2a], dil
+; X64:    add rsp, 0x30
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %a = alloca i24
+  store i24 %b, ptr %a
+  ret void
+}
+
 define void @store_i24_const(ptr %a) {
 ; X64-LABEL: store_i24_const>:
 ; X64:    push rbp
@@ -440,6 +537,27 @@ define void @store_i48(ptr %a, i48 %b) {
 ; X64:    pop rbp
 ; X64:    ret
 entry:
+  store i48 %b, ptr %a
+  ret void
+}
+
+define void @store_i48_alloca(i48 %b) {
+; X64-LABEL: store_i48_alloca>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    mov dword ptr [rbp - 0x30], edi
+; X64:    shr rdi, 0x20
+; X64:    mov word ptr [rbp - 0x2c], di
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+entry:
+  %a = alloca i48
   store i48 %b, ptr %a
   ret void
 }
