@@ -217,6 +217,7 @@ struct ValueInfo {
     TYPE                         ty;
     std::string                  operand_name;
     unsigned                     alias_reg_id;
+    unsigned                     alias_size;
     // llvm::MachineRegisterInfo::reg_instr_nodbg_iterator cur_def_use_it;
     // registers aliased to this value
     std::unordered_set<unsigned> aliased_regs = {};
@@ -283,6 +284,12 @@ bool generate_inst_inner(std::string           &buf,
                          tpde_encgen::InstDesc &desc,
                          std::string_view       if_cond,
                          unsigned               indent);
+
+void materialize_aliased_regs(GenerationState &state,
+                              std::string     &buf,
+                              unsigned         indent,
+                              unsigned         break_reg,
+                              unsigned         reg_size);
 
 bool generate_inst(std::string        &buf,
                    GenerationState    &state,
@@ -415,6 +422,92 @@ bool generate_inst(std::string        &buf,
             "ERROR: Failed to get instruction desc for {}\n", buf);
         assert(0);
         return false;
+    }
+
+    // we need to check all definitions for existing aliases so
+    // that those do not get overwritten since they refer to the old value
+    const auto is_input = [inst, &state](unsigned reg) {
+        for (const auto &input : inst->all_uses()) {
+            if (!input.isReg() || !input.getReg().isValid()) {
+                continue;
+            }
+
+            if (state.enc_target->reg_id_from_mc_reg(input.getReg()) == reg) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    for (const auto &def : inst->all_defs()) {
+        if (!def.isReg() || !def.getReg().isValid()) {
+            continue;
+        }
+
+        const auto id = state.enc_target->reg_id_from_mc_reg(def.getReg());
+        if (!state.value_map.contains(id)) {
+            continue;
+        }
+
+        if (state.value_map[id].aliased_regs.empty()) {
+            continue;
+        }
+        // should not be an AsmOperand or alias anymore
+        assert(state.value_map[id].ty == ValueInfo::SCRATCHREG);
+
+        // need to generate copies
+        state.fmt_line(buf,
+                       4,
+                       "// {} is a def but still has active aliases left which "
+                       "need to be preserved",
+                       state.enc_target->reg_name_lower(id));
+        if (!state.maybe_fixed_regs.contains(id) && !is_input(id)) {
+            // we can simply emit a scratchreg move
+            int new_target = -1;
+            for (auto alias_reg : state.value_map[id].aliased_regs) {
+                if (new_target != -1) {
+                    state.fmt_line(
+                        buf,
+                        4,
+                        "// {} will be redirected to {}",
+                        state.enc_target->reg_name_lower(alias_reg),
+                        state.enc_target->reg_name_lower(new_target));
+                    state.value_map[new_target].aliased_regs.insert(alias_reg);
+                    state.value_map[alias_reg].alias_reg_id = new_target;
+                    continue;
+                }
+
+                assert(state.value_map.contains(alias_reg));
+                assert(state.value_map[alias_reg].ty == ValueInfo::REG_ALIAS);
+                const auto id_name = state.enc_target->reg_name_lower(id);
+                const auto alias_name =
+                    state.enc_target->reg_name_lower(alias_reg);
+                state.fmt_line(buf,
+                               4,
+                               "// since {} is not an input or fixed we can "
+                               "move the scratchreg to {}",
+                               id_name,
+                               alias_name);
+                state.fmt_line(buf,
+                               4,
+                               "scratch_{} = std::move(scratch_{});",
+                               alias_name,
+                               id_name);
+                new_target = alias_reg;
+
+                state.value_map[alias_reg].ty = ValueInfo::SCRATCHREG;
+            }
+        } else {
+            unsigned max_alias_size = 0;
+            for (auto alias_reg : state.value_map[id].aliased_regs) {
+                assert(state.value_map.contains(alias_reg));
+                max_alias_size = std::max(
+                    max_alias_size, state.value_map[alias_reg].alias_size);
+            }
+            materialize_aliased_regs(state, buf, 4, id, max_alias_size);
+        }
+
+        state.value_map[id].aliased_regs.clear();
     }
 
 // TODO(ts): check preferred encodings
@@ -967,7 +1060,8 @@ bool handle_move(std::string        &buf,
         dst_info.ty           = ValueInfo::REG_ALIAS;
         dst_info.alias_reg_id = resolved_id;
     }
-    dst_info.is_dead = false;
+    dst_info.is_dead    = false;
+    dst_info.alias_size = reg_size_bytes(state.func, dst_reg);
 
     // TODO(ts): cannot do this when we are outside of the entry-block
     if (src_op->isKill()) {
