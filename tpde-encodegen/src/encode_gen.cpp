@@ -910,7 +910,6 @@ bool handle_move(std::string        &buf,
     // This is a register move without any intended side-effects,
     // e.g. zero-extension so we can alias it for now
     buf += std::format("    // aliasing {} to {}\n", dst_name, src_name);
-    state.value_map[src_id].aliased_regs.insert(dst_id);
 
     if (state.value_map.contains(dst_id)) {
         auto &info = state.value_map[dst_id];
@@ -938,11 +937,27 @@ bool handle_move(std::string        &buf,
         }
     }
 
+    auto resolved_id = state.resolve_reg_alias(buf, 4, src_id);
+    assert(state.value_map.contains(resolved_id));
+    const auto &resolved_info = state.value_map[resolved_id];
+
     // TODO(ts): check for dead moves?
-    auto &dst_info        = state.value_map[dst_id];
-    dst_info.ty           = ValueInfo::REG_ALIAS;
-    dst_info.alias_reg_id = src_id;
-    dst_info.is_dead      = false;
+    auto &dst_info = state.value_map[dst_id];
+    if (resolved_info.ty == ValueInfo::ASM_OPERAND) {
+        state.fmt_line(buf,
+                       4,
+                       "// {} is an alias for operand {}",
+                       dst_name,
+                       resolved_info.operand_name);
+        dst_info.ty           = ValueInfo::ASM_OPERAND;
+        dst_info.operand_name = resolved_info.operand_name;
+        state.operand_ref_counts[resolved_info.operand_name] += 1;
+    } else {
+        state.value_map[resolved_id].aliased_regs.insert(dst_id);
+        dst_info.ty           = ValueInfo::REG_ALIAS;
+        dst_info.alias_reg_id = resolved_id;
+    }
+    dst_info.is_dead = false;
 
     // TODO(ts): cannot do this when we are outside of the entry-block
     if (src_op->isKill()) {

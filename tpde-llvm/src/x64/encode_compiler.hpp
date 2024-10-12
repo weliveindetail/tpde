@@ -2954,12 +2954,12 @@ template <typename Adaptor,
 
     // $rax = MOV64rr $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
 
 
     // renamable $rax = SHR64ri killed renamable $rax(tied-def 0), 48, implicit-def dead $eflags
     // operand 0 is ax
-    // ax is an alias for si
-    // si is mapped to param_1
+    // ax is mapped to param_1
     AsmReg inst2_op0 = scratch_ax.alloc_from_bank(0);
     AsmReg inst2_op0_tmp = param_1.as_reg(this);
     ASMD(MOV64rr, inst2_op0, inst2_op0_tmp);
@@ -2967,7 +2967,6 @@ template <typename Adaptor,
 
     ASMD(SHR64ri, scratch_ax.cur_reg, 48);
     // argument ax is killed and marked as dead
-    // removing alias from ax to si
     // result ax is marked as alive
 
 
@@ -3555,6 +3554,7 @@ template <typename Adaptor,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -3630,6 +3630,7 @@ template <typename Adaptor,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -3701,6 +3702,7 @@ template <typename Adaptor,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -3797,6 +3799,7 @@ template <typename Adaptor,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -3885,6 +3888,7 @@ template <typename Adaptor,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -3988,6 +3992,7 @@ template <typename Adaptor,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -4075,6 +4080,7 @@ template <typename Adaptor,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -4150,6 +4156,7 @@ template <typename Adaptor,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -4225,6 +4232,7 @@ template <typename Adaptor,
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -4307,11 +4315,13 @@ template <typename Adaptor,
 
     // $ecx = MOV32rr killed $esi
     // aliasing cx to si
+    // cx is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -4389,11 +4399,13 @@ template <typename Adaptor,
 
     // $ecx = MOV32rr killed $esi
     // aliasing cx to si
+    // cx is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -4471,11 +4483,13 @@ template <typename Adaptor,
 
     // $ecx = MOV32rr killed $esi
     // aliasing cx to si
+    // cx is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -4545,19 +4559,18 @@ template <typename Adaptor,
 
     // $eax = MOV32rr $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
 
 
     // renamable $eax = NEG32r killed renamable $eax(tied-def 0), implicit-def $eflags
     // operand 0 is ax
-    // ax is an alias for di
-    // di is mapped to param_0
+    // ax is mapped to param_0
     AsmReg inst1_op0 = scratch_ax.alloc_from_bank(0);
     AsmReg inst1_op0_tmp = param_0.as_reg(this);
     ASMD(MOV32rr, inst1_op0, inst1_op0_tmp);
 
     ASMD(NEG32r, scratch_ax.cur_reg);
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // result ax is marked as alive
 
 
@@ -4692,6 +4705,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -4767,6 +4781,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -4838,6 +4853,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -4936,6 +4952,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -5024,6 +5041,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -5129,6 +5147,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -5216,6 +5235,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -5291,6 +5311,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -5366,6 +5387,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -5448,11 +5470,13 @@ template <typename Adaptor,
 
     // $rcx = MOV64rr killed $rsi
     // aliasing cx to si
+    // cx is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -5530,11 +5554,13 @@ template <typename Adaptor,
 
     // $rcx = MOV64rr killed $rsi
     // aliasing cx to si
+    // cx is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -5612,11 +5638,13 @@ template <typename Adaptor,
 
     // $rcx = MOV64rr killed $rsi
     // aliasing cx to si
+    // cx is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -5686,19 +5714,18 @@ template <typename Adaptor,
 
     // $rax = MOV64rr $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
 
 
     // renamable $rax = NEG64r killed renamable $rax(tied-def 0), implicit-def $eflags
     // operand 0 is ax
-    // ax is an alias for di
-    // di is mapped to param_0
+    // ax is mapped to param_0
     AsmReg inst1_op0 = scratch_ax.alloc_from_bank(0);
     AsmReg inst1_op0_tmp = param_0.as_reg(this);
     ASMD(MOV64rr, inst1_op0, inst1_op0_tmp);
 
     ASMD(NEG64r, scratch_ax.cur_reg);
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // result ax is marked as alive
 
 
@@ -5768,6 +5795,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -5896,6 +5924,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -6030,6 +6059,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr $rdx
     // aliasing ax to dx
+    // ax is an alias for operand param_2
 
 
     // renamable $rsi = IMUL64rr killed renamable $rsi(tied-def 0), killed $rdx, implicit-def dead $eflags
@@ -6069,9 +6099,9 @@ template <typename Adaptor,
         // di maps to operand param_0 which is known to be a ValuePartRef
         FeMem inst2_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
         // Handling implicit operand ax
-        // ax is an alias for dx
-        // Need to break alias from ax to dx and copy the value
-        ASMD(MOV64rr, scratch_ax.cur_reg, scratch_dx.cur_reg);
+        // Need to break alias from ax to operand param_2 and copy the value
+        AsmReg inst2_op4_tmp = param_2.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst2_op4_tmp);
 
         ASMD(MUL64m, inst2_op0);
     } else {
@@ -6079,10 +6109,9 @@ template <typename Adaptor,
         // di is mapped to param_0
         AsmReg inst2_op0 = param_0.as_reg(this);
         // Handling implicit operand ax
-        // ax is an alias for dx
-        // Need to break alias from ax to dx and copy the value
-        ASMD(MOV64rr, scratch_ax.cur_reg, scratch_dx.cur_reg);
-    // removing alias from ax to dx
+        // Need to break alias from ax to operand param_2 and copy the value
+        AsmReg inst2_op4_tmp = param_2.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst2_op4_tmp);
 
         ASMD(MUL64r, inst2_op0);
     }
@@ -6191,6 +6220,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -6319,6 +6349,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -6447,6 +6478,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -6587,11 +6619,13 @@ template <typename Adaptor,
 
     // $r8 = MOV64rr killed $rdx
     // aliasing r8 to dx
+    // r8 is an alias for operand param_2
     // source dx is killed, all aliases redirected and marked as dead
 
 
     // $ecx = MOV32rr undef $r8d, implicit $r8b
     // aliasing cx to r8
+    // cx is an alias for operand param_2
 
 
     // renamable $rsi = SHL64rCL killed renamable $rsi(tied-def 0), implicit-def dead $eflags, implicit $cl
@@ -6602,7 +6636,6 @@ template <typename Adaptor,
         // operand 0(param_1) is tied so try to salvage or materialize
         param_1.try_salvage_or_materialize(this, scratch_si, 0, 8);
         // operand 1 is an immediate operand
-        // cx is an alias for r8
         const auto& imm = param_2.imm();
 
         ASMD(SHL64ri, scratch_si.cur_reg, imm.const_u64);
@@ -6612,8 +6645,7 @@ template <typename Adaptor,
         // operand 0(param_1) is tied so try to salvage or materialize
         param_1.try_salvage_or_materialize(this, scratch_si, 0, 8);
         // operand 1 is cx
-        // cx is an alias for r8
-        // r8 is mapped to param_2
+        // cx is mapped to param_2
         // cx is an implicit operand, cannot salvage
         AsmReg inst2_op1_tmp = param_2.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst2_op1_tmp);
@@ -6626,12 +6658,12 @@ template <typename Adaptor,
 
     // $rdx = MOV64rr $rdi
     // aliasing dx to di
+    // dx is an alias for operand param_0
 
 
     // renamable $rdx = SHR64ri killed renamable $rdx(tied-def 0), 1, implicit-def dead $eflags
     // operand 0 is dx
-    // dx is an alias for di
-    // di is mapped to param_0
+    // dx is mapped to param_0
     AsmReg inst4_op0 = scratch_dx.alloc_from_bank(0);
     AsmReg inst4_op0_tmp = param_0.as_reg(this);
     ASMD(MOV64rr, inst4_op0, inst4_op0_tmp);
@@ -6639,21 +6671,18 @@ template <typename Adaptor,
 
     ASMD(SHR64ri, scratch_dx.cur_reg, 1);
     // argument dx is killed and marked as dead
-    // removing alias from dx to di
     // result dx is marked as alive
 
 
     // renamable $cl = NOT8r killed renamable $cl(tied-def 0)
     // operand 0 is cx
-    // cx is an alias for r8
-    // r8 is mapped to param_2
+    // cx is mapped to param_2
     AsmReg inst5_op0 = scratch_cx.alloc_from_bank(0);
     AsmReg inst5_op0_tmp = param_2.as_reg(this);
     ASMD(MOV32rr, inst5_op0, inst5_op0_tmp);
 
     ASMD(NOT8r, scratch_cx.cur_reg);
     // argument cx is killed and marked as dead
-    // removing alias from cx to r8
     // result cx is marked as alive
 
 
@@ -6687,6 +6716,7 @@ template <typename Adaptor,
 
     // $ecx = MOV32rr undef $r8d, implicit $r8b
     // aliasing cx to r8
+    // cx is an alias for operand param_2
 
 
     // renamable $rdi = SHL64rCL killed renamable $rdi(tied-def 0), implicit-def dead $eflags, implicit killed $cl
@@ -6697,7 +6727,6 @@ template <typename Adaptor,
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
         // operand 1 is an immediate operand
-        // cx is an alias for r8
         const auto& imm = param_2.imm();
 
         ASMD(SHL64ri, scratch_di.cur_reg, imm.const_u64);
@@ -6707,8 +6736,7 @@ template <typename Adaptor,
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
         // operand 1 is cx
-        // cx is an alias for r8
-        // r8 is mapped to param_2
+        // cx is mapped to param_2
         // cx is an implicit operand, cannot salvage
         AsmReg inst9_op1_tmp = param_2.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst9_op1_tmp);
@@ -6717,7 +6745,6 @@ template <typename Adaptor,
     }
     // argument di is killed and marked as dead
     // argument cx is killed and marked as dead
-    // removing alias from cx to r8
     // result di is marked as alive
 
 
@@ -6846,11 +6873,13 @@ template <typename Adaptor,
 
     // $r8 = MOV64rr killed $rdx
     // aliasing r8 to dx
+    // r8 is an alias for operand param_2
     // source dx is killed, all aliases redirected and marked as dead
 
 
     // $ecx = MOV32rr undef $r8d, implicit $r8b
     // aliasing cx to r8
+    // cx is an alias for operand param_2
 
 
     // renamable $rdi = SHR64rCL killed renamable $rdi(tied-def 0), implicit-def dead $eflags, implicit $cl
@@ -6861,7 +6890,6 @@ template <typename Adaptor,
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
         // operand 1 is an immediate operand
-        // cx is an alias for r8
         const auto& imm = param_2.imm();
 
         ASMD(SHR64ri, scratch_di.cur_reg, imm.const_u64);
@@ -6871,8 +6899,7 @@ template <typename Adaptor,
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
         // operand 1 is cx
-        // cx is an alias for r8
-        // r8 is mapped to param_2
+        // cx is mapped to param_2
         // cx is an implicit operand, cannot salvage
         AsmReg inst2_op1_tmp = param_2.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst2_op1_tmp);
@@ -6919,15 +6946,13 @@ template <typename Adaptor,
 
     // renamable $cl = NOT8r killed renamable $cl(tied-def 0)
     // operand 0 is cx
-    // cx is an alias for r8
-    // r8 is mapped to param_2
+    // cx is mapped to param_2
     AsmReg inst4_op0 = scratch_cx.alloc_from_bank(0);
     AsmReg inst4_op0_tmp = param_2.as_reg(this);
     ASMD(MOV32rr, inst4_op0, inst4_op0_tmp);
 
     ASMD(NOT8r, scratch_cx.cur_reg);
     // argument cx is killed and marked as dead
-    // removing alias from cx to r8
     // result cx is marked as alive
 
 
@@ -6961,6 +6986,7 @@ template <typename Adaptor,
 
     // $ecx = MOV32rr undef $r8d, implicit $r8b
     // aliasing cx to r8
+    // cx is an alias for operand param_2
 
 
     // renamable $rsi = SHR64rCL killed renamable $rsi(tied-def 0), implicit-def dead $eflags, implicit killed $cl
@@ -6971,7 +6997,6 @@ template <typename Adaptor,
         // operand 0(param_1) is tied so try to salvage or materialize
         param_1.try_salvage_or_materialize(this, scratch_si, 0, 8);
         // operand 1 is an immediate operand
-        // cx is an alias for r8
         const auto& imm = param_2.imm();
 
         ASMD(SHR64ri, scratch_si.cur_reg, imm.const_u64);
@@ -6981,8 +7006,7 @@ template <typename Adaptor,
         // operand 0(param_1) is tied so try to salvage or materialize
         param_1.try_salvage_or_materialize(this, scratch_si, 0, 8);
         // operand 1 is cx
-        // cx is an alias for r8
-        // r8 is mapped to param_2
+        // cx is mapped to param_2
         // cx is an implicit operand, cannot salvage
         AsmReg inst8_op1_tmp = param_2.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst8_op1_tmp);
@@ -6991,7 +7015,6 @@ template <typename Adaptor,
     }
     // argument si is killed and marked as dead
     // argument cx is killed and marked as dead
-    // removing alias from cx to r8
     // result si is marked as alive
 
 
@@ -7121,11 +7144,13 @@ template <typename Adaptor,
 
     // $r8 = MOV64rr killed $rdx
     // aliasing r8 to dx
+    // r8 is an alias for operand param_2
     // source dx is killed, all aliases redirected and marked as dead
 
 
     // $ecx = MOV32rr undef $r8d, implicit $r8b
     // aliasing cx to r8
+    // cx is an alias for operand param_2
 
 
     // renamable $rdi = SHR64rCL killed renamable $rdi(tied-def 0), implicit-def dead $eflags, implicit $cl
@@ -7136,7 +7161,6 @@ template <typename Adaptor,
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
         // operand 1 is an immediate operand
-        // cx is an alias for r8
         const auto& imm = param_2.imm();
 
         ASMD(SHR64ri, scratch_di.cur_reg, imm.const_u64);
@@ -7146,8 +7170,7 @@ template <typename Adaptor,
         // operand 0(param_0) is tied so try to salvage or materialize
         param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
         // operand 1 is cx
-        // cx is an alias for r8
-        // r8 is mapped to param_2
+        // cx is mapped to param_2
         // cx is an implicit operand, cannot salvage
         AsmReg inst2_op1_tmp = param_2.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst2_op1_tmp);
@@ -7194,15 +7217,13 @@ template <typename Adaptor,
 
     // renamable $cl = NOT8r killed renamable $cl(tied-def 0)
     // operand 0 is cx
-    // cx is an alias for r8
-    // r8 is mapped to param_2
+    // cx is mapped to param_2
     AsmReg inst4_op0 = scratch_cx.alloc_from_bank(0);
     AsmReg inst4_op0_tmp = param_2.as_reg(this);
     ASMD(MOV32rr, inst4_op0, inst4_op0_tmp);
 
     ASMD(NOT8r, scratch_cx.cur_reg);
     // argument cx is killed and marked as dead
-    // removing alias from cx to r8
     // result cx is marked as alive
 
 
@@ -7236,36 +7257,34 @@ template <typename Adaptor,
 
     // $rdx = MOV64rr $rsi
     // aliasing dx to si
+    // dx is an alias for operand param_1
 
 
     // $ecx = MOV32rr undef $r8d, implicit $r8b
     // aliasing cx to r8
+    // cx is an alias for operand param_2
 
 
     // renamable $rdx = SAR64rCL killed renamable $rdx(tied-def 0), implicit-def dead $eflags, implicit killed $cl
     // SAR64rr has a preferred encoding as SAR64ri if possible
     if (param_2.encodeable_as_imm8_sext()) {
         // operand 0 is dx
-        // dx is an alias for si
-        // si is mapped to param_1
+        // dx is mapped to param_1
         AsmReg inst9_op0 = scratch_dx.alloc_from_bank(0);
         AsmReg inst9_op0_tmp = param_1.as_reg(this);
         ASMD(MOV64rr, inst9_op0, inst9_op0_tmp);
         // operand 1 is an immediate operand
-        // cx is an alias for r8
         const auto& imm = param_2.imm();
 
         ASMD(SAR64ri, scratch_dx.cur_reg, imm.const_u64);
     } else {
         // operand 0 is dx
-        // dx is an alias for si
-        // si is mapped to param_1
+        // dx is mapped to param_1
         AsmReg inst9_op0 = scratch_dx.alloc_from_bank(0);
         AsmReg inst9_op0_tmp = param_1.as_reg(this);
         ASMD(MOV64rr, inst9_op0, inst9_op0_tmp);
         // operand 1 is cx
-        // cx is an alias for r8
-        // r8 is mapped to param_2
+        // cx is mapped to param_2
         // cx is an implicit operand, cannot salvage
         AsmReg inst9_op1_tmp = param_2.as_reg(this);
         ASMD(MOV32rr, scratch_cx.cur_reg, inst9_op1_tmp);
@@ -7273,9 +7292,7 @@ template <typename Adaptor,
         ASMD(SAR64rr, scratch_dx.cur_reg, scratch_cx.cur_reg);
     }
     // argument dx is killed and marked as dead
-    // removing alias from dx to si
     // argument cx is killed and marked as dead
-    // removing alias from cx to r8
     // result dx is marked as alive
 
 
@@ -7393,19 +7410,20 @@ template <typename Adaptor,
 
     // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
+    // cx is an alias for operand param_2
     // source dx is killed, all aliases redirected and marked as dead
 
 
     // $rax = MOV64rr $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
 
 
     // renamable $rax = SHL64rCL killed renamable $rax(tied-def 0), implicit-def dead $eflags, implicit $cl
     // SHL64rr has a preferred encoding as SHL64ri if possible
     if (param_2.encodeable_as_imm8_sext()) {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         AsmReg inst2_op0 = scratch_ax.alloc_from_bank(0);
         AsmReg inst2_op0_tmp = param_0.as_reg(this);
         ASMD(MOV64rr, inst2_op0, inst2_op0_tmp);
@@ -7415,8 +7433,7 @@ template <typename Adaptor,
         ASMD(SHL64ri, scratch_ax.cur_reg, imm.const_u64);
     } else {
         // operand 0 is ax
-        // ax is an alias for di
-        // di is mapped to param_0
+        // ax is mapped to param_0
         AsmReg inst2_op0 = scratch_ax.alloc_from_bank(0);
         AsmReg inst2_op0_tmp = param_0.as_reg(this);
         ASMD(MOV64rr, inst2_op0, inst2_op0_tmp);
@@ -7429,7 +7446,6 @@ template <typename Adaptor,
         ASMD(SHL64rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
     }
     // argument ax is killed and marked as dead
-    // removing alias from ax to di
     // result ax is marked as alive
 
 
@@ -7572,11 +7588,13 @@ template <typename Adaptor,
 
     // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
+    // cx is an alias for operand param_1
     // source dx is killed, all aliases redirected and marked as dead
 
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -7680,6 +7698,7 @@ template <typename Adaptor,
 
     // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
+    // cx is an alias for operand param_2
     // source dx is killed, all aliases redirected and marked as dead
 
 
@@ -7719,6 +7738,7 @@ template <typename Adaptor,
 
     // $rdx = MOV64rr killed $rsi
     // aliasing dx to si
+    // dx is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -7871,11 +7891,13 @@ template <typename Adaptor,
 
     // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
+    // cx is an alias for operand param_1
     // source dx is killed, all aliases redirected and marked as dead
 
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_0
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -7979,6 +8001,7 @@ template <typename Adaptor,
 
     // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
+    // cx is an alias for operand param_2
     // source dx is killed, all aliases redirected and marked as dead
 
 
@@ -8018,6 +8041,7 @@ template <typename Adaptor,
 
     // $rdx = MOV64rr killed $rsi
     // aliasing dx to si
+    // dx is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -8171,15 +8195,18 @@ template <typename Adaptor,
 
     // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
+    // cx is an alias for operand param_1
     // source dx is killed, all aliases redirected and marked as dead
 
 
     // $rax = MOV64rr $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_0
 
 
     // $rdx = MOV64rr killed $rsi
     // aliasing dx to si
+    // dx is an alias for operand param_0
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -12801,11 +12828,13 @@ template <typename Adaptor,
 
     // $ecx = MOV32rr killed $esi
     // aliasing cx to si
+    // cx is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
     // $eax = MOV32rr killed $edi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -12910,11 +12939,13 @@ template <typename Adaptor,
 
     // $ecx = MOV32rr killed $esi
     // aliasing cx to si
+    // cx is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -13009,6 +13040,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rdi
     // aliasing ax to di
+    // ax is an alias for operand param_0
     // source di is killed, all aliases redirected and marked as dead
 
 
@@ -13255,6 +13287,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -13336,6 +13369,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -13417,6 +13451,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -13498,6 +13533,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -13579,6 +13615,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -13660,6 +13697,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -13741,6 +13779,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -13822,6 +13861,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -13903,6 +13943,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -13984,6 +14025,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -14801,6 +14843,7 @@ template <typename Adaptor,
 
     // $eax = MOV32rr killed $esi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -14895,6 +14938,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
@@ -14994,6 +15038,7 @@ template <typename Adaptor,
 
     // $rax = MOV64rr killed $rsi
     // aliasing ax to si
+    // ax is an alias for operand param_1
     // source si is killed, all aliases redirected and marked as dead
 
 
