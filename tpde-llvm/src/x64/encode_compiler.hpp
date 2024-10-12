@@ -7492,9 +7492,8 @@ template <typename Adaptor,
     // renamable $cl = NOT8r killed renamable $cl(tied-def 0), implicit killed $rcx, implicit-def $rcx
     // operand 0 is cx
     // cx is mapped to param_2
-    AsmReg inst5_op0 = scratch_cx.alloc_from_bank(0);
-    AsmReg inst5_op0_tmp = param_2.as_reg(this);
-    ASMD(MOV32rr, inst5_op0, inst5_op0_tmp);
+    // operand 0(param_2) is tied so try to salvage or materialize
+    param_2.try_salvage_or_materialize(this, scratch_cx, 0, 1);
     // Handling implicit operand cx
     // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
 
@@ -7801,9 +7800,8 @@ template <typename Adaptor,
     // renamable $cl = NOT8r killed renamable $cl(tied-def 0), implicit killed $rcx, implicit-def $rcx
     // operand 0 is cx
     // cx is mapped to param_2
-    AsmReg inst5_op0 = scratch_cx.alloc_from_bank(0);
-    AsmReg inst5_op0_tmp = param_2.as_reg(this);
-    ASMD(MOV32rr, inst5_op0, inst5_op0_tmp);
+    // operand 0(param_2) is tied so try to salvage or materialize
+    param_2.try_salvage_or_materialize(this, scratch_cx, 0, 1);
     // Handling implicit operand cx
     // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
 
@@ -8104,9 +8102,8 @@ template <typename Adaptor,
     // renamable $cl = NOT8r killed renamable $cl(tied-def 0), implicit killed $rcx, implicit-def $rcx
     // operand 0 is cx
     // cx is mapped to param_2
-    AsmReg inst5_op0 = scratch_cx.alloc_from_bank(0);
-    AsmReg inst5_op0_tmp = param_2.as_reg(this);
-    ASMD(MOV32rr, inst5_op0, inst5_op0_tmp);
+    // operand 0(param_2) is tied so try to salvage or materialize
+    param_2.try_salvage_or_materialize(this, scratch_cx, 0, 1);
     // Handling implicit operand cx
     // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
 

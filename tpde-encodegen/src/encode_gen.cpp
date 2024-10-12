@@ -778,7 +778,7 @@ bool GenerationState::can_salvage_operand(const llvm::MachineOperand &op) {
     assert(value_map.contains(reg_id));
     const auto &info = value_map[reg_id];
 
-    if (!info.aliased_regs.empty() || maybe_fixed_regs.contains(reg_id)) {
+    if (!info.aliased_regs.empty()) {
         return false;
     }
 
@@ -787,6 +787,16 @@ bool GenerationState::can_salvage_operand(const llvm::MachineOperand &op) {
         if (operand_ref_counts[info.operand_name] > 1) {
             return false;
         }
+    }
+
+    if (info.ty != ValueInfo::ASM_OPERAND
+        && maybe_fixed_regs.contains(reg_id)) {
+        // we can salvage if the register maps to an operand
+        // since the salvaging will not overwrite the scratchreg in this case
+        // TODO(ts): optimize the try_salvaging logic to give notice about the
+        // fixed status of a register so that it can still salvage if it is not
+        // fixed to not have to move
+        return false;
     }
 
     if (info.ty != ValueInfo::REG_ALIAS) {
