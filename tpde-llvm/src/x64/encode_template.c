@@ -211,6 +211,46 @@ u32 TARGET_V1 ctlzi32(u32 a) { if (a == 0) { return 32; } else { return __builti
 u64 TARGET_V1 ctlzi64(u64 a) { if (a == 0) { return 64; } else { return __builtin_clzll(a); }}
 
 // --------------------------
+// integer overflow
+// --------------------------
+
+#define RES_STRUCT(ty) struct res_##ty { ty val; u32 of; };
+RES_STRUCT(i8)
+RES_STRUCT(u8)
+RES_STRUCT(i16)
+RES_STRUCT(u16)
+RES_STRUCT(i32)
+RES_STRUCT(u32)
+RES_STRUCT(i64)
+RES_STRUCT(u64)
+RES_STRUCT(i128)
+RES_STRUCT(u128)
+#undef RES_STRUCT
+
+#define OF_OP(ty, inv_ty, op) __regcall struct res_##ty TARGET_V1 of_##op##_##ty(inv_ty a, inv_ty b) { \
+    ty res; \
+    _Bool of = __builtin_##op##_overflow((ty)a, (ty)b, &res); \
+    return (struct res_##ty){ res, of }; \
+}
+
+#define OF_OPS(width) \
+    OF_OP(i##width, u##width, add) \
+    OF_OP(i##width, u##width, sub) \
+    OF_OP(i##width, u##width, mul) \
+    OF_OP(u##width, i##width, add) \
+    OF_OP(u##width, i##width, sub) \
+    OF_OP(u##width, i##width, mul) \
+
+OF_OPS(8)
+OF_OPS(16)
+OF_OPS(32)
+OF_OPS(64)
+OF_OPS(128)
+
+#undef OF_OPS
+#undef OF_OP
+
+// --------------------------
 // float arithmetic
 // --------------------------
 

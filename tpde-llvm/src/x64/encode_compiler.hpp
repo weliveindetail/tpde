@@ -369,6 +369,36 @@ struct EncodeCompiler {
     bool encode_ctlzi16(AsmOperand param_0, ScratchReg &result_0);
     bool encode_ctlzi32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_ctlzi64(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_of_add_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_i64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_i64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_i64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_u64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_u64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_u64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_i128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2);
+    bool encode_of_sub_i128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2);
+    bool encode_of_mul_i128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2);
+    bool encode_of_add_u128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2);
+    bool encode_of_sub_u128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2);
+    bool encode_of_mul_u128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2);
     bool encode_addf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_subf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_mulf32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
@@ -9589,6 +9619,4539 @@ template <typename Adaptor,
     // Placing the convergence point for registers here
     derived()->assembler.label_place(ret_converge_label);
     result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_add_i8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $al = ADD8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $al = KILL killed renamable $al, implicit killed $eax
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $al, killed $ecx
+    // 
+    // # End machine code for function of_add_i8.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $al = ADD8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    // ADD8rr has a preferred encoding as ADD8ri if possible
+    if (param_1.encodeable_as_imm8_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD8ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // ADD8rr has a preferred encoding as ADD8rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD8rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD8rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $al = KILL killed renamable $al, implicit killed $eax
+    // KILL is a no-op
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $al, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_sub_i8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $al = SUB8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $al = KILL killed renamable $al, implicit killed $eax
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $al, killed $ecx
+    // 
+    // # End machine code for function of_sub_i8.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $al = SUB8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    // SUB8rr has a preferred encoding as SUB8ri if possible
+    if (param_1.encodeable_as_imm8_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB8ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // SUB8rr has a preferred encoding as SUB8rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB8rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB8rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $al = KILL killed renamable $al, implicit killed $eax
+    // KILL is a no-op
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $al, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_mul_i8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   $al = KILL killed renamable $al, implicit killed $eax
+    //   IMUL8r killed renamable $cl, implicit-def $al, implicit-def $eflags, implicit-def $ax, implicit killed $al, implicit killed $ecx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $al, killed $ecx
+    // 
+    // # End machine code for function of_mul_i8.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // $al = KILL killed renamable $al, implicit killed $eax
+    // KILL is a no-op
+
+
+    // IMUL8r killed renamable $cl, implicit-def $al, implicit-def $eflags, implicit-def $ax, implicit killed $al, implicit killed $ecx
+    // IMUL8r has a preferred encoding as IMUL8m if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst2_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst2_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV32rr, scratch_ax.cur_reg, inst2_op4_tmp);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        ASMD(IMUL8m, inst2_op0);
+    } else {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        AsmReg inst2_op0 = param_1.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst2_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV32rr, scratch_ax.cur_reg, inst2_op4_tmp);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        ASMD(IMUL8r, inst2_op0);
+    }
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $al, killed $ecx
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_add_u8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $al = ADD8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $al = KILL killed renamable $al, implicit killed $eax
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $al, killed $ecx
+    // 
+    // # End machine code for function of_add_u8.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $al = ADD8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    // ADD8rr has a preferred encoding as ADD8ri if possible
+    if (param_1.encodeable_as_imm8_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD8ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // ADD8rr has a preferred encoding as ADD8rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD8rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD8rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $al = KILL killed renamable $al, implicit killed $eax
+    // KILL is a no-op
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $al, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_sub_u8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $al = SUB8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $al = KILL killed renamable $al, implicit killed $eax
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $al, killed $ecx
+    // 
+    // # End machine code for function of_sub_u8.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $al = SUB8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    // SUB8rr has a preferred encoding as SUB8ri if possible
+    if (param_1.encodeable_as_imm8_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB8ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // SUB8rr has a preferred encoding as SUB8rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB8rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 1);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB8rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $al = KILL killed renamable $al, implicit killed $eax
+    // KILL is a no-op
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $al, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_mul_u8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   $al = KILL killed renamable $al, implicit killed $eax
+    //   MUL8r killed renamable $cl, implicit-def $al, implicit-def $eflags, implicit-def $ax, implicit killed $al, implicit killed $ecx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $al, killed $ecx
+    // 
+    // # End machine code for function of_mul_u8.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // $al = KILL killed renamable $al, implicit killed $eax
+    // KILL is a no-op
+
+
+    // MUL8r killed renamable $cl, implicit-def $al, implicit-def $eflags, implicit-def $ax, implicit killed $al, implicit killed $ecx
+    // MUL8r has a preferred encoding as MUL8m if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst2_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst2_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV32rr, scratch_ax.cur_reg, inst2_op4_tmp);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        ASMD(MUL8m, inst2_op0);
+    } else {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        AsmReg inst2_op0 = param_1.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst2_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV32rr, scratch_ax.cur_reg, inst2_op4_tmp);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        ASMD(MUL8r, inst2_op0);
+    }
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $al, killed $ecx
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_add_i16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $ax = ADD16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ax = KILL killed renamable $ax, implicit killed $eax
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $ax, killed $ecx
+    // 
+    // # End machine code for function of_add_i16.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $ax = ADD16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    // ADD16rr has a preferred encoding as ADD16ri if possible
+    if (param_1.encodeable_as_imm16_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD16ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // ADD16rr has a preferred encoding as ADD16rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD16rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD16rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ax = KILL killed renamable $ax, implicit killed $eax
+    // KILL is a no-op
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $ax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_sub_i16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $ax = SUB16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ax = KILL killed renamable $ax, implicit killed $eax
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $ax, killed $ecx
+    // 
+    // # End machine code for function of_sub_i16.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $ax = SUB16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    // SUB16rr has a preferred encoding as SUB16ri if possible
+    if (param_1.encodeable_as_imm16_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB16ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // SUB16rr has a preferred encoding as SUB16rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB16rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB16rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ax = KILL killed renamable $ax, implicit killed $eax
+    // KILL is a no-op
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $ax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_mul_i16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $ax = IMUL16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ax = KILL killed renamable $ax, implicit killed $eax
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $ax, killed $ecx
+    // 
+    // # End machine code for function of_mul_i16.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $ax = IMUL16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    // IMUL16rr has a preferred encoding as IMUL16rm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(IMUL16rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(IMUL16rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ax = KILL killed renamable $ax, implicit killed $eax
+    // KILL is a no-op
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $ax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_add_u16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $ax = ADD16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ax = KILL killed renamable $ax, implicit killed $eax
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $ax, killed $ecx
+    // 
+    // # End machine code for function of_add_u16.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $ax = ADD16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    // ADD16rr has a preferred encoding as ADD16ri if possible
+    if (param_1.encodeable_as_imm16_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD16ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // ADD16rr has a preferred encoding as ADD16rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD16rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(ADD16rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ax = KILL killed renamable $ax, implicit killed $eax
+    // KILL is a no-op
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $ax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_sub_u16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $ax = SUB16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ax = KILL killed renamable $ax, implicit killed $eax
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $ax, killed $ecx
+    // 
+    // # End machine code for function of_sub_u16.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $ax = SUB16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
+    // SUB16rr has a preferred encoding as SUB16ri if possible
+    if (param_1.encodeable_as_imm16_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB16ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // SUB16rr has a preferred encoding as SUB16rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB16rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 2);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+        // Handling implicit operand ax
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        // Ignoring implicit def EAX as it exceeds the number of implicit defs in the MCInstrDesc
+        ASMD(SUB16rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ax = KILL killed renamable $ax, implicit killed $eax
+    // KILL is a no-op
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $ax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_mul_u16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    //   $ax = KILL killed renamable $ax, implicit killed $eax
+    //   MUL16r killed renamable $cx, implicit-def $ax, implicit-def dead $dx, implicit-def $eflags, implicit killed $ax, implicit killed $ecx
+    //   renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    //   $ecx = MOV32rr killed $esi
+    //   RET64 killed $ax, killed $ecx
+    // 
+    // # End machine code for function of_mul_u16.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
+
+
+    // renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is si
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is si
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_si.alloc_from_bank(0);
+
+
+    // def si has not been allocated yet
+    scratch_si.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_si.cur_reg, inst0_op1);
+    // result si is marked as alive
+
+
+    // $ax = KILL killed renamable $ax, implicit killed $eax
+    // KILL is a no-op
+
+
+    // MUL16r killed renamable $cx, implicit-def $ax, implicit-def dead $dx, implicit-def $eflags, implicit killed $ax, implicit killed $ecx
+    // MUL16r has a preferred encoding as MUL16m if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst2_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst2_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV32rr, scratch_ax.cur_reg, inst2_op4_tmp);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        ASMD(MUL16m, inst2_op0);
+    } else {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        AsmReg inst2_op0 = param_1.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst2_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV32rr, scratch_ax.cur_reg, inst2_op4_tmp);
+        // Handling implicit operand cx
+        // Ignoring since the number of implicit operands on the LLVM inst exceeds the number in the MCInstrDesc
+
+        ASMD(MUL16r, inst2_op0);
+    }
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as dead
+
+
+    // renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    // Handling implicit operand si
+    // Value is already in register, no need to copy
+
+    // def si has not been allocated yet
+    scratch_si.alloc_from_bank(0);
+    // Ignoring implicit def ESI as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_si.cur_reg);
+    // argument si is killed and marked as dead
+    // result si is marked as alive
+    // result si is marked as alive
+
+
+    // $ecx = MOV32rr killed $esi
+    // aliasing cx to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $ax, killed $ecx
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for si
+    result_1 = std::move(scratch_si);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_add_i32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $eax = ADD32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $eax, killed $ecx
+    // 
+    // # End machine code for function of_add_i32.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $eax = ADD32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
+    // ADD32rr has a preferred encoding as ADD32ri if possible
+    if (param_1.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+
+        ASMD(ADD32ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // ADD32rr has a preferred encoding as ADD32rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(ADD32rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(ADD32rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $eax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_sub_i32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $eax = SUB32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $eax, killed $ecx
+    // 
+    // # End machine code for function of_sub_i32.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $eax = SUB32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
+    // SUB32rr has a preferred encoding as SUB32ri if possible
+    if (param_1.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+
+        ASMD(SUB32ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // SUB32rr has a preferred encoding as SUB32rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SUB32rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SUB32rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $eax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_mul_i32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $eax = IMUL32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $eax, killed $ecx
+    // 
+    // # End machine code for function of_mul_i32.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $eax = IMUL32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
+    // IMUL32rr has a preferred encoding as IMUL32rm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(IMUL32rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(IMUL32rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $eax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_add_u32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $eax = ADD32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $eax, killed $ecx
+    // 
+    // # End machine code for function of_add_u32.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $eax = ADD32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
+    // ADD32rr has a preferred encoding as ADD32ri if possible
+    if (param_1.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+
+        ASMD(ADD32ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // ADD32rr has a preferred encoding as ADD32rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(ADD32rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(ADD32rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $eax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_sub_u32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $eax = SUB32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $eax, killed $ecx
+    // 
+    // # End machine code for function of_sub_u32.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $eax = SUB32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
+    // SUB32rr has a preferred encoding as SUB32ri if possible
+    if (param_1.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+
+        ASMD(SUB32ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // SUB32rr has a preferred encoding as SUB32rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SUB32rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 4);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SUB32rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $eax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_mul_u32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $eax, $ecx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $eax, $ecx
+    //   renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    //   MUL32r killed renamable $ecx, implicit-def $eax, implicit-def dead $edx, implicit-def $eflags, implicit killed $eax
+    //   renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    //   $ecx = MOV32rr killed $esi
+    //   RET64 killed $eax, killed $ecx
+    // 
+    // # End machine code for function of_mul_u32.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
+
+
+    // renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is si
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is si
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_si.alloc_from_bank(0);
+
+
+    // def si has not been allocated yet
+    scratch_si.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_si.cur_reg, inst0_op1);
+    // result si is marked as alive
+
+
+    // MUL32r killed renamable $ecx, implicit-def $eax, implicit-def dead $edx, implicit-def $eflags, implicit killed $eax
+    // MUL32r has a preferred encoding as MUL32m if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst1_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV32rr, scratch_ax.cur_reg, inst1_op4_tmp);
+
+        ASMD(MUL32m, inst1_op0);
+    } else {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst1_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV32rr, scratch_ax.cur_reg, inst1_op4_tmp);
+
+        ASMD(MUL32r, inst1_op0);
+    }
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as dead
+
+
+    // renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    // Handling implicit operand si
+    // Value is already in register, no need to copy
+
+    // def si has not been allocated yet
+    scratch_si.alloc_from_bank(0);
+    // Ignoring implicit def ESI as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_si.cur_reg);
+    // argument si is killed and marked as dead
+    // result si is marked as alive
+    // result si is marked as alive
+
+
+    // $ecx = MOV32rr killed $esi
+    // aliasing cx to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $eax, killed $ecx
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for si
+    result_1 = std::move(scratch_si);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_i64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_add_i64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rax, $rcx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $rax, $rcx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $rax, killed $ecx
+    // 
+    // # End machine code for function of_add_i64.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
+    // ADD64rr has a preferred encoding as ADD64ri if possible
+    if (param_1.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+
+        ASMD(ADD64ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // ADD64rr has a preferred encoding as ADD64rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(ADD64rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(ADD64rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $rax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_i64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_sub_i64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rax, $rcx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $rax, $rcx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $rax, killed $ecx
+    // 
+    // # End machine code for function of_sub_i64.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
+    // SUB64rr has a preferred encoding as SUB64ri if possible
+    if (param_1.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+
+        ASMD(SUB64ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // SUB64rr has a preferred encoding as SUB64rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SUB64rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SUB64rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $rax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_i64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_mul_i64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rax, $rcx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $rax, $rcx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $rax = IMUL64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $rax, killed $ecx
+    // 
+    // # End machine code for function of_mul_i64.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $rax = IMUL64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
+    // IMUL64rr has a preferred encoding as IMUL64rm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(IMUL64rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(IMUL64rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $rax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_u64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_add_u64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rax, $rcx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $rax, $rcx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $rax, killed $ecx
+    // 
+    // # End machine code for function of_add_u64.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
+    // ADD64rr has a preferred encoding as ADD64ri if possible
+    if (param_1.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+
+        ASMD(ADD64ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // ADD64rr has a preferred encoding as ADD64rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(ADD64rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(ADD64rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $rax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_u64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_sub_u64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rax, $rcx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $rax, $rcx
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   $ecx = MOV32rr killed $edx
+    //   RET64 killed $rax, killed $ecx
+    // 
+    // # End machine code for function of_sub_u64.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is dx
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is dx
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_dx.alloc_from_bank(0);
+
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_dx.cur_reg, inst0_op1);
+    // result dx is marked as alive
+
+
+    // renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
+    // SUB64rr has a preferred encoding as SUB64ri if possible
+    if (param_1.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_1.imm();
+
+        ASMD(SUB64ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // SUB64rr has a preferred encoding as SUB64rm if possible
+    else if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        ASMD(SUB64rm, scratch_ax.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op1 = param_1.as_reg(this);
+
+        ASMD(SUB64rr, scratch_ax.cur_reg, inst1_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // Handling implicit operand dx
+    // Value is already in register, no need to copy
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    // Ignoring implicit def EDX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETC8r, scratch_dx.cur_reg);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+    // result dx is marked as alive
+
+
+    // $ecx = MOV32rr killed $edx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $rax, killed $ecx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for dx
+    result_1 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_u64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
+    // # Machine code for function of_mul_u64: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rax, $rcx
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $rax, $rcx
+    //   renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    //   MUL64r killed renamable $rcx, implicit-def $rax, implicit-def dead $rdx, implicit-def $eflags, implicit killed $rax
+    //   renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    //   $ecx = MOV32rr killed $esi
+    //   RET64 killed $rax, killed $ecx
+    // 
+    // # End machine code for function of_mul_u64.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_si{derived()};
+    ScratchReg scratch_cx{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
+
+
+    // renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is si
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is si
+    // operand is undef, just allocating scratch for it
+    AsmReg inst0_op1 = scratch_si.alloc_from_bank(0);
+
+
+    // def si has not been allocated yet
+    scratch_si.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_si.cur_reg, inst0_op1);
+    // result si is marked as alive
+
+
+    // MUL64r killed renamable $rcx, implicit-def $rax, implicit-def dead $rdx, implicit-def $eflags, implicit killed $rax
+    // MUL64r has a preferred encoding as MUL64m if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // cx is base for memory operand to use
+        // cx maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst1_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst1_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op4_tmp);
+
+        ASMD(MUL64m, inst1_op0);
+    } else {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        AsmReg inst1_op0 = param_1.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst1_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst1_op4_tmp);
+
+        ASMD(MUL64r, inst1_op0);
+    }
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as dead
+
+
+    // renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    // Handling implicit operand si
+    // Value is already in register, no need to copy
+
+    // def si has not been allocated yet
+    scratch_si.alloc_from_bank(0);
+    // Ignoring implicit def ESI as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETO8r, scratch_si.cur_reg);
+    // argument si is killed and marked as dead
+    // result si is marked as alive
+    // result si is marked as alive
+
+
+    // $ecx = MOV32rr killed $esi
+    // aliasing cx to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $rax, killed $ecx
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    // cx is an alias for si
+    result_1 = std::move(scratch_si);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_i128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2) {
+    // # Machine code for function of_add_i128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rax, $rcx, $rdx, $rdi
+    // 
+    // bb.0 (%ir-block.4):
+    //   liveins: $rax, $rcx, $rdi, $rdx
+    //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    //   renamable $rcx = ADC64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
+    //   renamable $dl = SETCCr 0, implicit killed $eflags
+    //   renamable $edx = MOVZX32rr8 killed renamable $dl
+    //   RET64 killed $rax, killed $rcx, killed $edx
+    // 
+    // # End machine code for function of_add_i128.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    // Mapping dx to param_2
+    // Mapping di to param_3
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    // ADD64rr has a preferred encoding as ADD64ri if possible
+    if (param_2.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_2.imm();
+
+        ASMD(ADD64ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // ADD64rr has a preferred encoding as ADD64rm if possible
+    else if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is a memory operand
+        // dx is base for memory operand to use
+        // dx maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+
+        ASMD(ADD64rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is dx
+        // dx is mapped to param_2
+        AsmReg inst0_op1 = param_2.as_reg(this);
+
+        ASMD(ADD64rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rcx = ADC64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
+    // ADC64rr has a preferred encoding as ADC64ri if possible
+    if (param_3.encodeable_as_imm32_sext()) {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_3.imm();
+
+        ASMD(ADC64ri, scratch_cx.cur_reg, imm.const_u64);
+    }    // ADC64rr has a preferred encoding as ADC64rm if possible
+    else if (param_3.val_ref_prefers_mem_enc()) {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_3 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_3.val_ref_frame_off());
+
+        ASMD(ADC64rm, scratch_cx.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is di
+        // di is mapped to param_3
+        AsmReg inst1_op1 = param_3.as_reg(this);
+
+        ASMD(ADC64rr, scratch_cx.cur_reg, inst1_op1);
+    }
+    // argument cx is killed and marked as dead
+    // argument di is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // renamable $edx = MOVZX32rr8 killed renamable $dl
+    // operand 1 is dx
+    // operand 1(dx) is a simple register
+    AsmReg inst3_op1 = scratch_dx.cur_reg;
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(MOVZXr32r8, scratch_dx.cur_reg, inst3_op1);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $rcx, killed $edx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    result_1 = std::move(scratch_cx);
+    // returning reg dx as result_2
+    result_2 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_i128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2) {
+    // # Machine code for function of_sub_i128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rax, $rcx, $rdx, $rdi
+    // 
+    // bb.0 (%ir-block.4):
+    //   liveins: $rax, $rcx, $rdi, $rdx
+    //   renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    //   renamable $rcx = SBB64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
+    //   renamable $dl = SETCCr 0, implicit killed $eflags
+    //   renamable $edx = MOVZX32rr8 killed renamable $dl
+    //   RET64 killed $rax, killed $rcx, killed $edx
+    // 
+    // # End machine code for function of_sub_i128.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    // Mapping dx to param_2
+    // Mapping di to param_3
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    // SUB64rr has a preferred encoding as SUB64ri if possible
+    if (param_2.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_2.imm();
+
+        ASMD(SUB64ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // SUB64rr has a preferred encoding as SUB64rm if possible
+    else if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is a memory operand
+        // dx is base for memory operand to use
+        // dx maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+
+        ASMD(SUB64rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is dx
+        // dx is mapped to param_2
+        AsmReg inst0_op1 = param_2.as_reg(this);
+
+        ASMD(SUB64rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rcx = SBB64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
+    // SBB64rr has a preferred encoding as SBB64ri if possible
+    if (param_3.encodeable_as_imm32_sext()) {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_3.imm();
+
+        ASMD(SBB64ri, scratch_cx.cur_reg, imm.const_u64);
+    }    // SBB64rr has a preferred encoding as SBB64rm if possible
+    else if (param_3.val_ref_prefers_mem_enc()) {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_3 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_3.val_ref_frame_off());
+
+        ASMD(SBB64rm, scratch_cx.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is di
+        // di is mapped to param_3
+        AsmReg inst1_op1 = param_3.as_reg(this);
+
+        ASMD(SBB64rr, scratch_cx.cur_reg, inst1_op1);
+    }
+    // argument cx is killed and marked as dead
+    // argument di is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // renamable $dl = SETCCr 0, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETO8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // renamable $edx = MOVZX32rr8 killed renamable $dl
+    // operand 1 is dx
+    // operand 1(dx) is a simple register
+    AsmReg inst3_op1 = scratch_dx.cur_reg;
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(MOVZXr32r8, scratch_dx.cur_reg, inst3_op1);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $rcx, killed $edx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    result_1 = std::move(scratch_cx);
+    // returning reg dx as result_2
+    result_2 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_i128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2) {
+    // # Machine code for function of_mul_i128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Frame Objects:
+    //   fi#-2: size=8, align=8, fixed, at location [SP-16]
+    //   fi#-1: size=8, align=16, fixed, at location [SP-8]
+    // Function Live Ins: $rax, $rcx, $rdx, $rdi
+    // 
+    // bb.0 (%ir-block.4):
+    //   liveins: $rax, $rcx, $rdi, $rdx, $r14, $rbx
+    //   frame-setup PUSH64r killed $r14, implicit-def $rsp, implicit $rsp
+    //   frame-setup CFI_INSTRUCTION def_cfa_offset 16
+    //   frame-setup PUSH64r killed $rbx, implicit-def $rsp, implicit $rsp
+    //   frame-setup CFI_INSTRUCTION def_cfa_offset 24
+    //   CFI_INSTRUCTION offset $rbx, -24
+    //   CFI_INSTRUCTION offset $r14, -16
+    //   $rbx = MOV64rr $rdx
+    //   $r9 = MOV64rr $rcx
+    //   $r11 = MOV64rr killed $rax
+    //   renamable $rcx = SAR64ri killed renamable $rcx(tied-def 0), 63, implicit-def dead $eflags
+    //   $rsi = MOV64rr $rdi
+    //   renamable $rsi = IMUL64rr killed renamable $rsi(tied-def 0), renamable $rcx, implicit-def dead $eflags
+    //   $rax = MOV64rr killed $rdx
+    //   MUL64r killed renamable $rcx, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    //   $rcx = MOV64rr killed $rdx
+    //   $r8 = MOV64rr $rax
+    //   renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed $rax, implicit-def dead $eflags
+    //   renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rsi, implicit-def dead $eflags
+    //   $rax = MOV64rr $rdi
+    //   renamable $rax = SAR64ri killed renamable $rax(tied-def 0), 63, implicit-def dead $eflags
+    //   $r14 = MOV64rr $rax
+    //   renamable $r14 = IMUL64rr killed renamable $r14(tied-def 0), renamable $r9, implicit-def dead $eflags
+    //   MUL64r renamable $r11, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    //   $r10 = MOV64rr $rax
+    //   $rsi = MOV64rr killed $rdx
+    //   renamable $rsi = ADD64rr killed renamable $rsi(tied-def 0), killed renamable $r14, implicit-def dead $eflags
+    //   renamable $rsi = ADD64rr killed renamable $rsi(tied-def 0), killed $rax, implicit-def dead $eflags
+    //   renamable $r10 = ADD64rr killed renamable $r10(tied-def 0), killed renamable $r8, implicit-def $eflags
+    //   renamable $rsi = ADC64rr killed renamable $rsi(tied-def 0), killed renamable $rcx, implicit-def dead $eflags, implicit killed $eflags
+    //   $rax = MOV64rr $r11
+    //   MUL64r renamable $rbx, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    //   $rcx = MOV64rr killed $rdx
+    //   $r8 = MOV64rr killed $rax
+    //   $rax = MOV64rr $r9
+    //   MUL64r killed renamable $rbx, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    //   $rbx = MOV64rr killed $rdx
+    //   renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rax, implicit-def $eflags
+    //   renamable $rbx = ADC64ri32 killed renamable $rbx(tied-def 0), 0, implicit-def dead $eflags, implicit killed $eflags
+    //   $rax = MOV64rr killed $r11
+    //   MUL64r renamable $rdi, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    //   $r11 = MOV64rr killed $rdx
+    //   renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rax, implicit-def $eflags
+    //   renamable $r11 = ADC64rr killed renamable $r11(tied-def 0), killed renamable $rbx, implicit-def $eflags, implicit killed $eflags
+    //   renamable $al = SETCCr 2, implicit killed $eflags
+    //   renamable $ebx = MOVZX32rr8 killed renamable $al, implicit-def $rbx
+    //   $rax = MOV64rr killed $r9
+    //   MUL64r killed renamable $rdi, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $r11, implicit-def $eflags
+    //   renamable $rdx = ADC64rr killed renamable $rdx(tied-def 0), killed renamable $rbx, implicit-def dead $eflags, implicit killed $eflags
+    //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $r10, implicit-def $eflags
+    //   renamable $rdx = ADC64rr killed renamable $rdx(tied-def 0), killed renamable $rsi, implicit-def dead $eflags, implicit killed $eflags
+    //   $rdi = MOV64rr $rcx
+    //   renamable $rdi = SAR64ri killed renamable $rdi(tied-def 0), 63, implicit-def dead $eflags
+    //   renamable $rdx = XOR64rr killed renamable $rdx(tied-def 0), renamable $rdi, implicit-def dead $eflags
+    //   renamable $rdi = XOR64rr killed renamable $rdi(tied-def 0), killed renamable $rax, implicit-def dead $eflags
+    //   renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    //   dead renamable $rdi = OR64rr killed renamable $rdi(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    //   renamable $sil = SETCCr 5, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    //   $rax = MOV64rr killed $r8
+    //   $edx = MOV32rr killed $esi
+    //   $rbx = frame-destroy POP64r implicit-def $rsp, implicit $rsp
+    //   frame-destroy CFI_INSTRUCTION def_cfa_offset 16
+    //   $r14 = frame-destroy POP64r implicit-def $rsp, implicit $rsp
+    //   frame-destroy CFI_INSTRUCTION def_cfa_offset 8
+    //   RET64 killed $rax, killed $rcx, killed $edx
+    // 
+    // # End machine code for function of_mul_i128.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    // Mapping dx to param_2
+    // Mapping di to param_3
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_r14{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_r9{derived()};
+    ScratchReg scratch_r11{derived()};
+    ScratchReg scratch_si{derived()};
+    ScratchReg scratch_cx{derived()};
+    ScratchReg scratch_r8{derived()};
+    ScratchReg scratch_bx{derived()};
+    ScratchReg scratch_r10{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2, &param_3}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1, &param_2, &param_3}, reg_backup_dx);
+
+
+    // $rbx = MOV64rr $rdx
+    // aliasing bx to dx
+    // bx is an alias for operand param_2
+
+
+    // $r9 = MOV64rr $rcx
+    // aliasing r9 to cx
+    // r9 is an alias for operand param_1
+
+
+    // $r11 = MOV64rr killed $rax
+    // aliasing r11 to ax
+    // r11 is an alias for operand param_0
+    // source ax is killed, all aliases redirected and marked as dead
+
+
+    // renamable $rcx = SAR64ri killed renamable $rcx(tied-def 0), 63, implicit-def dead $eflags
+    // operand 0 is cx
+    // cx is mapped to param_1
+    AsmReg inst3_op0 = scratch_cx.alloc_from_bank(0);
+    AsmReg inst3_op0_tmp = param_1.as_reg(this);
+    ASMD(MOV64rr, inst3_op0, inst3_op0_tmp);
+    // operand 1 is an immediate operand
+
+    ASMD(SAR64ri, scratch_cx.cur_reg, 63);
+    // argument cx is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // $rsi = MOV64rr $rdi
+    // aliasing si to di
+    // si is an alias for operand param_3
+
+
+    // renamable $rsi = IMUL64rr killed renamable $rsi(tied-def 0), renamable $rcx, implicit-def dead $eflags
+    // operand 0 is si
+    // si is mapped to param_3
+    AsmReg inst5_op0 = scratch_si.alloc_from_bank(0);
+    AsmReg inst5_op0_tmp = param_3.as_reg(this);
+    ASMD(MOV64rr, inst5_op0, inst5_op0_tmp);
+    // operand 1 is cx
+    // operand 1(cx) is a simple register
+    AsmReg inst5_op1 = scratch_cx.cur_reg;
+
+    ASMD(IMUL64rr, scratch_si.cur_reg, inst5_op1);
+    // argument si is killed and marked as dead
+    // result si is marked as alive
+
+
+    // $rax = MOV64rr killed $rdx
+    // aliasing ax to dx
+    // ax is an alias for operand param_2
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // MUL64r killed renamable $rcx, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    // operand 0 is cx
+    // operand 0(cx) is a simple register
+    AsmReg inst7_op0 = scratch_cx.cur_reg;
+    // Handling implicit operand ax
+    // Need to break alias from ax to operand param_2 and copy the value
+    AsmReg inst7_op4_tmp = param_2.as_reg(this);
+    ASMD(MOV64rr, scratch_ax.cur_reg, inst7_op4_tmp);
+
+    ASMD(MUL64r, inst7_op0);
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as alive
+
+
+    // $rcx = MOV64rr killed $rdx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // $r8 = MOV64rr $rax
+    // aliasing r8 to ax
+
+
+    // renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed $rax, implicit-def dead $eflags
+    // operand 0 is cx
+    // cx is an alias for dx
+    // operand 0(dx) has some references so copy it
+    AsmReg inst10_op0 = scratch_cx.alloc_from_bank(0);
+    ASMD(MOV64rr, inst10_op0, scratch_dx.cur_reg);
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst10_op1 = scratch_ax.cur_reg;
+
+    // def cx has not been allocated yet
+    scratch_cx.alloc_from_bank(0);
+    ASMD(ADD64rr, scratch_cx.cur_reg, inst10_op1);
+    // argument cx is killed and marked as dead
+    // removing alias from cx to dx
+    // argument ax is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rsi, implicit-def dead $eflags
+    // operand 0 is cx
+    // operand 0(cx) is the same as its tied destination
+    scratch_cx.alloc_from_bank(0);
+    // operand 1 is si
+    // operand 1(si) is a simple register
+    AsmReg inst11_op1 = scratch_si.cur_reg;
+
+    ASMD(ADD64rr, scratch_cx.cur_reg, inst11_op1);
+    // argument cx is killed and marked as dead
+    // argument si is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // $rax = MOV64rr $rdi
+    // aliasing ax to di
+    // r8 is still aliased to the value of ax so we emit an explicit copy
+    scratch_r8.alloc_from_bank(0);
+    ASMD(MOV64rr, scratch_r8.cur_reg, scratch_ax.cur_reg);
+    // ax is an alias for operand param_3
+
+
+    // renamable $rax = SAR64ri killed renamable $rax(tied-def 0), 63, implicit-def dead $eflags
+    // operand 0 is ax
+    // ax is mapped to param_3
+    AsmReg inst13_op0 = scratch_ax.alloc_from_bank(0);
+    AsmReg inst13_op0_tmp = param_3.as_reg(this);
+    ASMD(MOV64rr, inst13_op0, inst13_op0_tmp);
+    // operand 1 is an immediate operand
+
+    ASMD(SAR64ri, scratch_ax.cur_reg, 63);
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // $r14 = MOV64rr $rax
+    // aliasing r14 to ax
+
+
+    // renamable $r14 = IMUL64rr killed renamable $r14(tied-def 0), renamable $r9, implicit-def dead $eflags
+    // IMUL64rr has a preferred encoding as IMUL64rm if possible
+    if (param_1.val_ref_prefers_mem_enc()) {
+        // operand 0 is r14
+        // r14 is an alias for ax
+        // operand 0(ax) has some references so copy it
+        AsmReg inst15_op0 = scratch_r14.alloc_from_bank(0);
+        ASMD(MOV64rr, inst15_op0, scratch_ax.cur_reg);
+        // operand 1 is a memory operand
+        // r9 is base for memory operand to use
+        // r9 maps to operand param_1 which is known to be a ValuePartRef
+        FeMem inst15_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_1.val_ref_frame_off());
+
+        // def r14 has not been allocated yet
+        scratch_r14.alloc_from_bank(0);
+        ASMD(IMUL64rm, scratch_r14.cur_reg, inst15_op1);
+    } else {
+        // operand 0 is r14
+        // r14 is an alias for ax
+        // operand 0(ax) has some references so copy it
+        AsmReg inst15_op0 = scratch_r14.alloc_from_bank(0);
+        ASMD(MOV64rr, inst15_op0, scratch_ax.cur_reg);
+        // operand 1 is r9
+        // r9 is mapped to param_1
+        AsmReg inst15_op1 = param_1.as_reg(this);
+
+        // def r14 has not been allocated yet
+        scratch_r14.alloc_from_bank(0);
+        ASMD(IMUL64rr, scratch_r14.cur_reg, inst15_op1);
+    }
+    // argument r14 is killed and marked as dead
+    // removing alias from r14 to ax
+    // result r14 is marked as alive
+
+
+    // MUL64r renamable $r11, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    // MUL64r has a preferred encoding as MUL64m if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // r11 is base for memory operand to use
+        // r11 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst16_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Value is already in register, no need to copy
+
+        ASMD(MUL64m, inst16_op0);
+    } else {
+        // operand 0 is r11
+        // r11 is mapped to param_0
+        AsmReg inst16_op0 = param_0.as_reg(this);
+        // Handling implicit operand ax
+        // Value is already in register, no need to copy
+
+        ASMD(MUL64r, inst16_op0);
+    }
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as alive
+
+
+    // $r10 = MOV64rr $rax
+    // aliasing r10 to ax
+
+
+    // $rsi = MOV64rr killed $rdx
+    // aliasing si to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // renamable $rsi = ADD64rr killed renamable $rsi(tied-def 0), killed renamable $r14, implicit-def dead $eflags
+    // operand 0 is si
+    // si is an alias for dx
+    // operand 0(dx) has some references so copy it
+    AsmReg inst19_op0 = scratch_si.alloc_from_bank(0);
+    ASMD(MOV64rr, inst19_op0, scratch_dx.cur_reg);
+    // operand 1 is r14
+    // operand 1(r14) is a simple register
+    AsmReg inst19_op1 = scratch_r14.cur_reg;
+
+    // def si has not been allocated yet
+    scratch_si.alloc_from_bank(0);
+    ASMD(ADD64rr, scratch_si.cur_reg, inst19_op1);
+    // argument si is killed and marked as dead
+    // removing alias from si to dx
+    // argument r14 is killed and marked as dead
+    // result si is marked as alive
+
+
+    // renamable $rsi = ADD64rr killed renamable $rsi(tied-def 0), killed $rax, implicit-def dead $eflags
+    // operand 0 is si
+    // operand 0(si) is the same as its tied destination
+    scratch_si.alloc_from_bank(0);
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst20_op1 = scratch_ax.cur_reg;
+
+    ASMD(ADD64rr, scratch_si.cur_reg, inst20_op1);
+    // argument si is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result si is marked as alive
+
+
+    // renamable $r10 = ADD64rr killed renamable $r10(tied-def 0), killed renamable $r8, implicit-def $eflags
+    // operand 0 is r10
+    // r10 is an alias for ax
+    // operand 0(ax) has some references so copy it
+    AsmReg inst21_op0 = scratch_r10.alloc_from_bank(0);
+    ASMD(MOV64rr, inst21_op0, scratch_ax.cur_reg);
+    // operand 1 is r8
+    // operand 1(r8) is a simple register
+    AsmReg inst21_op1 = scratch_r8.cur_reg;
+
+    // def r10 has not been allocated yet
+    scratch_r10.alloc_from_bank(0);
+    ASMD(ADD64rr, scratch_r10.cur_reg, inst21_op1);
+    // argument r10 is killed and marked as dead
+    // removing alias from r10 to ax
+    // argument r8 is killed and marked as dead
+    // result r10 is marked as alive
+
+
+    // renamable $rsi = ADC64rr killed renamable $rsi(tied-def 0), killed renamable $rcx, implicit-def dead $eflags, implicit killed $eflags
+    // operand 0 is si
+    // operand 0(si) is the same as its tied destination
+    scratch_si.alloc_from_bank(0);
+    // operand 1 is cx
+    // operand 1(cx) is a simple register
+    AsmReg inst22_op1 = scratch_cx.cur_reg;
+
+    ASMD(ADC64rr, scratch_si.cur_reg, inst22_op1);
+    // argument si is killed and marked as dead
+    // argument cx is killed and marked as dead
+    // result si is marked as alive
+
+
+    // $rax = MOV64rr $r11
+    // aliasing ax to r11
+    // ax is an alias for operand param_0
+
+
+    // MUL64r renamable $rbx, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    // MUL64r has a preferred encoding as MUL64m if possible
+    if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // bx is base for memory operand to use
+        // bx maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst24_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst24_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst24_op4_tmp);
+
+        ASMD(MUL64m, inst24_op0);
+    } else {
+        // operand 0 is bx
+        // bx is mapped to param_2
+        AsmReg inst24_op0 = param_2.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst24_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst24_op4_tmp);
+
+        ASMD(MUL64r, inst24_op0);
+    }
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as alive
+
+
+    // $rcx = MOV64rr killed $rdx
+    // aliasing cx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // $r8 = MOV64rr killed $rax
+    // aliasing r8 to ax
+    // source ax is killed, all aliases redirected and marked as dead
+
+
+    // $rax = MOV64rr $r9
+    // aliasing ax to r9
+    // r8 is still aliased to the value of ax so we emit an explicit copy
+    scratch_r8.alloc_from_bank(0);
+    ASMD(MOV64rr, scratch_r8.cur_reg, scratch_ax.cur_reg);
+    // ax is an alias for operand param_1
+
+
+    // MUL64r killed renamable $rbx, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    // dx is a def but still has active aliases left which need to be preserved
+    // cx is still aliased to the value of dx so we emit an explicit copy
+    scratch_cx.alloc_from_bank(0);
+    ASMD(MOV64rr, scratch_cx.cur_reg, scratch_dx.cur_reg);
+    // MUL64r has a preferred encoding as MUL64m if possible
+    if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // bx is base for memory operand to use
+        // bx maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst28_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_1 and copy the value
+        AsmReg inst28_op4_tmp = param_1.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst28_op4_tmp);
+
+        ASMD(MUL64m, inst28_op0);
+    } else {
+        // operand 0 is bx
+        // bx is mapped to param_2
+        AsmReg inst28_op0 = param_2.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_1 and copy the value
+        AsmReg inst28_op4_tmp = param_1.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst28_op4_tmp);
+
+        ASMD(MUL64r, inst28_op0);
+    }
+    // argument bx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as alive
+
+
+    // $rbx = MOV64rr killed $rdx
+    // aliasing bx to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rax, implicit-def $eflags
+    // operand 0 is cx
+    // operand 0(cx) is the same as its tied destination
+    scratch_cx.alloc_from_bank(0);
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst30_op1 = scratch_ax.cur_reg;
+
+    ASMD(ADD64rr, scratch_cx.cur_reg, inst30_op1);
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // renamable $rbx = ADC64ri32 killed renamable $rbx(tied-def 0), 0, implicit-def dead $eflags, implicit killed $eflags
+    // operand 0 is bx
+    // bx is an alias for dx
+    // operand 0(dx) has some references so copy it
+    AsmReg inst31_op0 = scratch_bx.alloc_from_bank(0);
+    ASMD(MOV64rr, inst31_op0, scratch_dx.cur_reg);
+    // operand 1 is an immediate operand
+
+    // def bx has not been allocated yet
+    scratch_bx.alloc_from_bank(0);
+    ASMD(ADC64ri, scratch_bx.cur_reg, 0);
+    // argument bx is killed and marked as dead
+    // removing alias from bx to dx
+    // result bx is marked as alive
+
+
+    // $rax = MOV64rr killed $r11
+    // aliasing ax to r11
+    // ax is an alias for operand param_0
+    // source r11 is killed, all aliases redirected and marked as dead
+
+
+    // MUL64r renamable $rdi, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    // MUL64r has a preferred encoding as MUL64m if possible
+    if (param_3.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_3 which is known to be a ValuePartRef
+        FeMem inst33_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_3.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst33_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst33_op4_tmp);
+
+        ASMD(MUL64m, inst33_op0);
+    } else {
+        // operand 0 is di
+        // di is mapped to param_3
+        AsmReg inst33_op0 = param_3.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst33_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst33_op4_tmp);
+
+        ASMD(MUL64r, inst33_op0);
+    }
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as alive
+
+
+    // $r11 = MOV64rr killed $rdx
+    // aliasing r11 to dx
+    // source dx is killed, all aliases redirected and marked as dead
+
+
+    // renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rax, implicit-def $eflags
+    // operand 0 is cx
+    // operand 0(cx) is the same as its tied destination
+    scratch_cx.alloc_from_bank(0);
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst35_op1 = scratch_ax.cur_reg;
+
+    ASMD(ADD64rr, scratch_cx.cur_reg, inst35_op1);
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // renamable $r11 = ADC64rr killed renamable $r11(tied-def 0), killed renamable $rbx, implicit-def $eflags, implicit killed $eflags
+    // operand 0 is r11
+    // r11 is an alias for dx
+    // operand 0(dx) has some references so copy it
+    AsmReg inst36_op0 = scratch_r11.alloc_from_bank(0);
+    ASMD(MOV64rr, inst36_op0, scratch_dx.cur_reg);
+    // operand 1 is bx
+    // operand 1(bx) is a simple register
+    AsmReg inst36_op1 = scratch_bx.cur_reg;
+
+    // def r11 has not been allocated yet
+    scratch_r11.alloc_from_bank(0);
+    ASMD(ADC64rr, scratch_r11.cur_reg, inst36_op1);
+    // argument r11 is killed and marked as dead
+    // removing alias from r11 to dx
+    // argument bx is killed and marked as dead
+    // result r11 is marked as alive
+
+
+    // renamable $al = SETCCr 2, implicit killed $eflags
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(SETC8r, scratch_ax.cur_reg);
+    // result ax is marked as alive
+
+
+    // renamable $ebx = MOVZX32rr8 killed renamable $al, implicit-def $rbx
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst38_op1 = scratch_ax.cur_reg;
+
+    // def bx has not been allocated yet
+    scratch_bx.alloc_from_bank(0);
+    // Ignoring implicit def RBX as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(MOVZXr32r8, scratch_bx.cur_reg, inst38_op1);
+    // argument ax is killed and marked as dead
+    // result bx is marked as alive
+    // result bx is marked as alive
+
+
+    // $rax = MOV64rr killed $r9
+    // aliasing ax to r9
+    // ax is an alias for operand param_1
+    // source r9 is killed, all aliases redirected and marked as dead
+
+
+    // MUL64r killed renamable $rdi, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    // MUL64r has a preferred encoding as MUL64m if possible
+    if (param_3.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_3 which is known to be a ValuePartRef
+        FeMem inst40_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_3.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_1 and copy the value
+        AsmReg inst40_op4_tmp = param_1.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst40_op4_tmp);
+
+        ASMD(MUL64m, inst40_op0);
+    } else {
+        // operand 0 is di
+        // di is mapped to param_3
+        AsmReg inst40_op0 = param_3.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_1 and copy the value
+        AsmReg inst40_op4_tmp = param_1.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst40_op4_tmp);
+
+        ASMD(MUL64r, inst40_op0);
+    }
+    // argument di is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as alive
+
+
+    // renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $r11, implicit-def $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is r11
+    // operand 1(r11) is a simple register
+    AsmReg inst41_op1 = scratch_r11.cur_reg;
+
+    ASMD(ADD64rr, scratch_ax.cur_reg, inst41_op1);
+    // argument ax is killed and marked as dead
+    // argument r11 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rdx = ADC64rr killed renamable $rdx(tied-def 0), killed renamable $rbx, implicit-def dead $eflags, implicit killed $eflags
+    // operand 0 is dx
+    // operand 0(dx) is the same as its tied destination
+    scratch_dx.alloc_from_bank(0);
+    // operand 1 is bx
+    // operand 1(bx) is a simple register
+    AsmReg inst42_op1 = scratch_bx.cur_reg;
+
+    ASMD(ADC64rr, scratch_dx.cur_reg, inst42_op1);
+    // argument dx is killed and marked as dead
+    // argument bx is killed and marked as dead
+    // result dx is marked as alive
+
+
+    // renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $r10, implicit-def $eflags
+    // operand 0 is ax
+    // operand 0(ax) is the same as its tied destination
+    scratch_ax.alloc_from_bank(0);
+    // operand 1 is r10
+    // operand 1(r10) is a simple register
+    AsmReg inst43_op1 = scratch_r10.cur_reg;
+
+    ASMD(ADD64rr, scratch_ax.cur_reg, inst43_op1);
+    // argument ax is killed and marked as dead
+    // argument r10 is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rdx = ADC64rr killed renamable $rdx(tied-def 0), killed renamable $rsi, implicit-def dead $eflags, implicit killed $eflags
+    // operand 0 is dx
+    // operand 0(dx) is the same as its tied destination
+    scratch_dx.alloc_from_bank(0);
+    // operand 1 is si
+    // operand 1(si) is a simple register
+    AsmReg inst44_op1 = scratch_si.cur_reg;
+
+    ASMD(ADC64rr, scratch_dx.cur_reg, inst44_op1);
+    // argument dx is killed and marked as dead
+    // argument si is killed and marked as dead
+    // result dx is marked as alive
+
+
+    // $rdi = MOV64rr $rcx
+    // aliasing di to cx
+
+
+    // renamable $rdi = SAR64ri killed renamable $rdi(tied-def 0), 63, implicit-def dead $eflags
+    // operand 0 is di
+    // di is an alias for cx
+    // operand 0(cx) has some references so copy it
+    AsmReg inst46_op0 = scratch_di.alloc_from_bank(0);
+    ASMD(MOV64rr, inst46_op0, scratch_cx.cur_reg);
+    // operand 1 is an immediate operand
+
+    // def di has not been allocated yet
+    scratch_di.alloc_from_bank(0);
+    ASMD(SAR64ri, scratch_di.cur_reg, 63);
+    // argument di is killed and marked as dead
+    // removing alias from di to cx
+    // result di is marked as alive
+
+
+    // renamable $rdx = XOR64rr killed renamable $rdx(tied-def 0), renamable $rdi, implicit-def dead $eflags
+    // operand 0 is dx
+    // operand 0(dx) is the same as its tied destination
+    scratch_dx.alloc_from_bank(0);
+    // operand 1 is di
+    // operand 1(di) is a simple register
+    AsmReg inst47_op1 = scratch_di.cur_reg;
+
+    ASMD(XOR64rr, scratch_dx.cur_reg, inst47_op1);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+
+
+    // renamable $rdi = XOR64rr killed renamable $rdi(tied-def 0), killed renamable $rax, implicit-def dead $eflags
+    // operand 0 is di
+    // operand 0(di) is the same as its tied destination
+    scratch_di.alloc_from_bank(0);
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst48_op1 = scratch_ax.cur_reg;
+
+    ASMD(XOR64rr, scratch_di.cur_reg, inst48_op1);
+    // argument di is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result di is marked as alive
+
+
+    // renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    // Skipping check for XOR32ri since associated use is undefined
+    // Skipping check for XOR32rm since associated use is undefined
+    // operand 0 is si
+    // operand is undef, just allocating scratch for it
+    // operand is tied so no work needs to be done
+    // operand 1 is si
+    // operand is undef, just allocating scratch for it
+    AsmReg inst49_op1 = scratch_si.alloc_from_bank(0);
+
+
+    // def si has not been allocated yet
+    scratch_si.alloc_from_bank(0);
+    ASMD(XOR32rr, scratch_si.cur_reg, inst49_op1);
+    // result si is marked as alive
+
+
+    // dead renamable $rdi = OR64rr killed renamable $rdi(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    // operand 0 is di
+    // operand 0(di) is the same as its tied destination
+    scratch_di.alloc_from_bank(0);
+    // operand 1 is dx
+    // operand 1(dx) is a simple register
+    AsmReg inst50_op1 = scratch_dx.cur_reg;
+
+    ASMD(OR64rr, scratch_di.cur_reg, inst50_op1);
+    // argument di is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // result di is marked as dead
+
+
+    // renamable $sil = SETCCr 5, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    // Handling implicit operand si
+    // Value is already in register, no need to copy
+
+    // def si has not been allocated yet
+    scratch_si.alloc_from_bank(0);
+    // Ignoring implicit def ESI as it exceeds the number of implicit defs in the MCInstrDesc
+    ASMD(SETNZ8r, scratch_si.cur_reg);
+    // argument si is killed and marked as dead
+    // result si is marked as alive
+    // result si is marked as alive
+
+
+    // $rax = MOV64rr killed $r8
+    // aliasing ax to r8
+    // source r8 is killed, all aliases redirected and marked as dead
+
+
+    // $edx = MOV32rr killed $esi
+    // aliasing dx to si
+    // source si is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $rax, killed $rcx, killed $edx
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, true);
+    // returning reg ax as result_0
+    // ax is an alias for r8
+    result_0 = std::move(scratch_r8);
+    // returning reg cx as result_1
+    result_1 = std::move(scratch_cx);
+    // returning reg dx as result_2
+    // dx is an alias for si
+    result_2 = std::move(scratch_si);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_u128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2) {
+    // # Machine code for function of_add_u128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rax, $rcx, $rdx, $rdi
+    // 
+    // bb.0 (%ir-block.4):
+    //   liveins: $rax, $rcx, $rdi, $rdx
+    //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    //   renamable $rcx = ADC64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
+    //   renamable $dl = SETCCr 2, implicit killed $eflags
+    //   renamable $edx = MOVZX32rr8 killed renamable $dl
+    //   RET64 killed $rax, killed $rcx, killed $edx
+    // 
+    // # End machine code for function of_add_u128.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    // Mapping dx to param_2
+    // Mapping di to param_3
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    // ADD64rr has a preferred encoding as ADD64ri if possible
+    if (param_2.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_2.imm();
+
+        ASMD(ADD64ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // ADD64rr has a preferred encoding as ADD64rm if possible
+    else if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is a memory operand
+        // dx is base for memory operand to use
+        // dx maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+
+        ASMD(ADD64rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is dx
+        // dx is mapped to param_2
+        AsmReg inst0_op1 = param_2.as_reg(this);
+
+        ASMD(ADD64rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rcx = ADC64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
+    // ADC64rr has a preferred encoding as ADC64ri if possible
+    if (param_3.encodeable_as_imm32_sext()) {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_3.imm();
+
+        ASMD(ADC64ri, scratch_cx.cur_reg, imm.const_u64);
+    }    // ADC64rr has a preferred encoding as ADC64rm if possible
+    else if (param_3.val_ref_prefers_mem_enc()) {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_3 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_3.val_ref_frame_off());
+
+        ASMD(ADC64rm, scratch_cx.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is di
+        // di is mapped to param_3
+        AsmReg inst1_op1 = param_3.as_reg(this);
+
+        ASMD(ADC64rr, scratch_cx.cur_reg, inst1_op1);
+    }
+    // argument cx is killed and marked as dead
+    // argument di is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // renamable $dl = SETCCr 2, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETC8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // renamable $edx = MOVZX32rr8 killed renamable $dl
+    // operand 1 is dx
+    // operand 1(dx) is a simple register
+    AsmReg inst3_op1 = scratch_dx.cur_reg;
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(MOVZXr32r8, scratch_dx.cur_reg, inst3_op1);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $rcx, killed $edx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    result_1 = std::move(scratch_cx);
+    // returning reg dx as result_2
+    result_2 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_u128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2) {
+    // # Machine code for function of_sub_u128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rax, $rcx, $rdx, $rdi
+    // 
+    // bb.0 (%ir-block.4):
+    //   liveins: $rax, $rcx, $rdi, $rdx
+    //   renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    //   renamable $rcx = SBB64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
+    //   renamable $dl = SETCCr 2, implicit killed $eflags
+    //   renamable $edx = MOVZX32rr8 killed renamable $dl
+    //   RET64 killed $rax, killed $rcx, killed $edx
+    // 
+    // # End machine code for function of_sub_u128.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    // Mapping dx to param_2
+    // Mapping di to param_3
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_cx{derived()};
+
+
+    // renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    // SUB64rr has a preferred encoding as SUB64ri if possible
+    if (param_2.encodeable_as_imm32_sext()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_2.imm();
+
+        ASMD(SUB64ri, scratch_ax.cur_reg, imm.const_u64);
+    }    // SUB64rr has a preferred encoding as SUB64rm if possible
+    else if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is a memory operand
+        // dx is base for memory operand to use
+        // dx maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst0_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+
+        ASMD(SUB64rm, scratch_ax.cur_reg, inst0_op1);
+    } else {
+        // operand 0 is ax
+        // ax is mapped to param_0
+        // operand 0(param_0) is tied so try to salvage or materialize
+        param_0.try_salvage_or_materialize(this, scratch_ax, 0, 8);
+        // operand 1 is dx
+        // dx is mapped to param_2
+        AsmReg inst0_op1 = param_2.as_reg(this);
+
+        ASMD(SUB64rr, scratch_ax.cur_reg, inst0_op1);
+    }
+    // argument ax is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $rcx = SBB64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
+    // SBB64rr has a preferred encoding as SBB64ri if possible
+    if (param_3.encodeable_as_imm32_sext()) {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is an immediate operand
+        const auto& imm = param_3.imm();
+
+        ASMD(SBB64ri, scratch_cx.cur_reg, imm.const_u64);
+    }    // SBB64rr has a preferred encoding as SBB64rm if possible
+    else if (param_3.val_ref_prefers_mem_enc()) {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is a memory operand
+        // di is base for memory operand to use
+        // di maps to operand param_3 which is known to be a ValuePartRef
+        FeMem inst1_op1 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_3.val_ref_frame_off());
+
+        ASMD(SBB64rm, scratch_cx.cur_reg, inst1_op1);
+    } else {
+        // operand 0 is cx
+        // cx is mapped to param_1
+        // operand 0(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_cx, 0, 8);
+        // operand 1 is di
+        // di is mapped to param_3
+        AsmReg inst1_op1 = param_3.as_reg(this);
+
+        ASMD(SBB64rr, scratch_cx.cur_reg, inst1_op1);
+    }
+    // argument cx is killed and marked as dead
+    // argument di is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // renamable $dl = SETCCr 2, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETC8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // renamable $edx = MOVZX32rr8 killed renamable $dl
+    // operand 1 is dx
+    // operand 1(dx) is a simple register
+    AsmReg inst3_op1 = scratch_dx.cur_reg;
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(MOVZXr32r8, scratch_dx.cur_reg, inst3_op1);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $rcx, killed $edx
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    result_1 = std::move(scratch_cx);
+    // returning reg dx as result_2
+    result_2 = std::move(scratch_dx);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_u128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2, AsmOperand param_3, ScratchReg &result_0, ScratchReg &result_1, ScratchReg &result_2) {
+    // # Machine code for function of_mul_u128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $rax, $rcx, $rdx, $rdi
+    // 
+    // bb.0 (%ir-block.4):
+    //   liveins: $rax, $rcx, $rdi, $rdx
+    //   $rsi = MOV64rr $rdx
+    //   $r8 = MOV64rr killed $rax
+    //   TEST64rr renamable $rdi, renamable $rdi, implicit-def $eflags
+    //   renamable $al = SETCCr 5, implicit killed $eflags
+    //   TEST64rr renamable $rcx, renamable $rcx, implicit-def $eflags
+    //   renamable $r9b = SETCCr 5, implicit killed $eflags
+    //   renamable $r9b = AND8rr killed renamable $r9b(tied-def 0), killed renamable $al, implicit-def dead $eflags
+    //   $rax = MOV64rr killed $rcx
+    //   MUL64r killed $rdx, implicit-def $rax, implicit-def dead $rdx, implicit-def $eflags, implicit killed $rax
+    //   $rcx = MOV64rr killed $rax
+    //   renamable $r10b = SETCCr 0, implicit killed $eflags
+    //   $rax = MOV64rr killed $rdi
+    //   MUL64r renamable $r8, implicit-def $rax, implicit-def dead $rdx, implicit-def $eflags, implicit killed $rax
+    //   renamable $dil = SETCCr 0, implicit killed $eflags
+    //   renamable $dil = OR8rr killed renamable $dil(tied-def 0), killed renamable $r10b, implicit-def dead $eflags
+    //   renamable $dil = OR8rr killed renamable $dil(tied-def 0), killed renamable $r9b, implicit-def dead $eflags
+    //   $rcx = ADD64rr killed $rcx(tied-def 0), killed $rax, implicit-def dead $eflags
+    //   $rax = MOV64rr killed $r8
+    //   MUL64r killed renamable $rsi, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    //   renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    //   renamable $dl = SETCCr 2, implicit killed $eflags
+    //   renamable $dl = OR8rr killed renamable $dl(tied-def 0), killed renamable $dil, implicit-def dead $eflags
+    //   renamable $edx = MOVZX32rr8 killed renamable $dl
+    //   RET64 killed $rax, killed $rcx, killed $edx
+    // 
+    // # End machine code for function of_mul_u128.
+    // 
+
+    // Mapping ax to param_0
+    // Mapping cx to param_1
+    // Mapping dx to param_2
+    // Mapping di to param_3
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_dx{derived()};
+    ScratchReg scratch_r9{derived()};
+    ScratchReg scratch_si{derived()};
+    ScratchReg scratch_cx{derived()};
+    ScratchReg scratch_r8{derived()};
+    ScratchReg scratch_r10{derived()};
+    FixedRegBackup reg_backup_ax = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1, &param_2, &param_3}, reg_backup_ax);
+    FixedRegBackup reg_backup_dx = {.scratch = ScratchReg{derived()}};
+    scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1, &param_2, &param_3}, reg_backup_dx);
+
+
+    // $rsi = MOV64rr $rdx
+    // aliasing si to dx
+    // si is an alias for operand param_2
+
+
+    // $r8 = MOV64rr killed $rax
+    // aliasing r8 to ax
+    // r8 is an alias for operand param_0
+    // source ax is killed, all aliases redirected and marked as dead
+
+
+    // TEST64rr renamable $rdi, renamable $rdi, implicit-def $eflags
+    // Skipping check for TEST64mr since associated register is used as an operand twice
+    // Skipping check for TEST64ri since associated register is used as an operand twice
+    // operand 0 is di
+    // di is mapped to param_3
+    AsmReg inst2_op0 = param_3.as_reg(this);
+    // operand 1 is di
+    // di is mapped to param_3
+    AsmReg inst2_op1 = param_3.as_reg(this);
+
+    ASMD(TEST64rr, inst2_op0, inst2_op1);
+
+
+    // renamable $al = SETCCr 5, implicit killed $eflags
+
+    // def ax has not been allocated yet
+    scratch_ax.alloc_from_bank(0);
+    ASMD(SETNZ8r, scratch_ax.cur_reg);
+    // result ax is marked as alive
+
+
+    // TEST64rr renamable $rcx, renamable $rcx, implicit-def $eflags
+    // Skipping check for TEST64mr since associated register is used as an operand twice
+    // Skipping check for TEST64ri since associated register is used as an operand twice
+    // operand 0 is cx
+    // cx is mapped to param_1
+    AsmReg inst4_op0 = param_1.as_reg(this);
+    // operand 1 is cx
+    // cx is mapped to param_1
+    AsmReg inst4_op1 = param_1.as_reg(this);
+
+    ASMD(TEST64rr, inst4_op0, inst4_op1);
+
+
+    // renamable $r9b = SETCCr 5, implicit killed $eflags
+
+    // def r9 has not been allocated yet
+    scratch_r9.alloc_from_bank(0);
+    ASMD(SETNZ8r, scratch_r9.cur_reg);
+    // result r9 is marked as alive
+
+
+    // renamable $r9b = AND8rr killed renamable $r9b(tied-def 0), killed renamable $al, implicit-def dead $eflags
+    // operand 0 is r9
+    // operand 0(r9) is the same as its tied destination
+    scratch_r9.alloc_from_bank(0);
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst6_op1 = scratch_ax.cur_reg;
+
+    ASMD(AND8rr, scratch_r9.cur_reg, inst6_op1);
+    // argument r9 is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result r9 is marked as alive
+
+
+    // $rax = MOV64rr killed $rcx
+    // aliasing ax to cx
+    // ax is an alias for operand param_1
+    // source cx is killed, all aliases redirected and marked as dead
+
+
+    // MUL64r killed $rdx, implicit-def $rax, implicit-def dead $rdx, implicit-def $eflags, implicit killed $rax
+    // MUL64r has a preferred encoding as MUL64m if possible
+    if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // dx is base for memory operand to use
+        // dx maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst8_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_1 and copy the value
+        AsmReg inst8_op4_tmp = param_1.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst8_op4_tmp);
+
+        ASMD(MUL64m, inst8_op0);
+    } else {
+        // operand 0 is dx
+        // dx is mapped to param_2
+        AsmReg inst8_op0 = param_2.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_1 and copy the value
+        AsmReg inst8_op4_tmp = param_1.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst8_op4_tmp);
+
+        ASMD(MUL64r, inst8_op0);
+    }
+    // argument dx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as dead
+
+
+    // $rcx = MOV64rr killed $rax
+    // aliasing cx to ax
+    // source ax is killed, all aliases redirected and marked as dead
+
+
+    // renamable $r10b = SETCCr 0, implicit killed $eflags
+
+    // def r10 has not been allocated yet
+    scratch_r10.alloc_from_bank(0);
+    ASMD(SETO8r, scratch_r10.cur_reg);
+    // result r10 is marked as alive
+
+
+    // $rax = MOV64rr killed $rdi
+    // aliasing ax to di
+    // cx is still aliased to the value of ax so we emit an explicit copy
+    scratch_cx.alloc_from_bank(0);
+    ASMD(MOV64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+    // ax is an alias for operand param_3
+    // source di is killed, all aliases redirected and marked as dead
+
+
+    // MUL64r renamable $r8, implicit-def $rax, implicit-def dead $rdx, implicit-def $eflags, implicit killed $rax
+    // MUL64r has a preferred encoding as MUL64m if possible
+    if (param_0.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // r8 is base for memory operand to use
+        // r8 maps to operand param_0 which is known to be a ValuePartRef
+        FeMem inst12_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_0.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_3 and copy the value
+        AsmReg inst12_op4_tmp = param_3.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst12_op4_tmp);
+
+        ASMD(MUL64m, inst12_op0);
+    } else {
+        // operand 0 is r8
+        // r8 is mapped to param_0
+        AsmReg inst12_op0 = param_0.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_3 and copy the value
+        AsmReg inst12_op4_tmp = param_3.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst12_op4_tmp);
+
+        ASMD(MUL64r, inst12_op0);
+    }
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as dead
+
+
+    // renamable $dil = SETCCr 0, implicit killed $eflags
+
+    // def di has not been allocated yet
+    scratch_di.alloc_from_bank(0);
+    ASMD(SETO8r, scratch_di.cur_reg);
+    // result di is marked as alive
+
+
+    // renamable $dil = OR8rr killed renamable $dil(tied-def 0), killed renamable $r10b, implicit-def dead $eflags
+    // operand 0 is di
+    // operand 0(di) is the same as its tied destination
+    scratch_di.alloc_from_bank(0);
+    // operand 1 is r10
+    // operand 1(r10) is a simple register
+    AsmReg inst14_op1 = scratch_r10.cur_reg;
+
+    ASMD(OR8rr, scratch_di.cur_reg, inst14_op1);
+    // argument di is killed and marked as dead
+    // argument r10 is killed and marked as dead
+    // result di is marked as alive
+
+
+    // renamable $dil = OR8rr killed renamable $dil(tied-def 0), killed renamable $r9b, implicit-def dead $eflags
+    // operand 0 is di
+    // operand 0(di) is the same as its tied destination
+    scratch_di.alloc_from_bank(0);
+    // operand 1 is r9
+    // operand 1(r9) is a simple register
+    AsmReg inst15_op1 = scratch_r9.cur_reg;
+
+    ASMD(OR8rr, scratch_di.cur_reg, inst15_op1);
+    // argument di is killed and marked as dead
+    // argument r9 is killed and marked as dead
+    // result di is marked as alive
+
+
+    // $rcx = ADD64rr killed $rcx(tied-def 0), killed $rax, implicit-def dead $eflags
+    // operand 0 is cx
+    // operand 0(cx) is the same as its tied destination
+    scratch_cx.alloc_from_bank(0);
+    // operand 1 is ax
+    // operand 1(ax) is a simple register
+    AsmReg inst16_op1 = scratch_ax.cur_reg;
+
+    ASMD(ADD64rr, scratch_cx.cur_reg, inst16_op1);
+    // argument cx is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // $rax = MOV64rr killed $r8
+    // aliasing ax to r8
+    // ax is an alias for operand param_0
+    // source r8 is killed, all aliases redirected and marked as dead
+
+
+    // MUL64r killed renamable $rsi, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
+    // MUL64r has a preferred encoding as MUL64m if possible
+    if (param_2.val_ref_prefers_mem_enc()) {
+        // operand 0 is a memory operand
+        // si is base for memory operand to use
+        // si maps to operand param_2 which is known to be a ValuePartRef
+        FeMem inst18_op0 = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)param_2.val_ref_frame_off());
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst18_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst18_op4_tmp);
+
+        ASMD(MUL64m, inst18_op0);
+    } else {
+        // operand 0 is si
+        // si is mapped to param_2
+        AsmReg inst18_op0 = param_2.as_reg(this);
+        // Handling implicit operand ax
+        // Need to break alias from ax to operand param_0 and copy the value
+        AsmReg inst18_op4_tmp = param_0.as_reg(this);
+        ASMD(MOV64rr, scratch_ax.cur_reg, inst18_op4_tmp);
+
+        ASMD(MUL64r, inst18_op0);
+    }
+    // argument si is killed and marked as dead
+    // argument ax is killed and marked as dead
+    // result ax is marked as alive
+    // result dx is marked as alive
+
+
+    // renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    // operand 0 is cx
+    // operand 0(cx) is the same as its tied destination
+    scratch_cx.alloc_from_bank(0);
+    // operand 1 is dx
+    // operand 1(dx) is a simple register
+    AsmReg inst19_op1 = scratch_dx.cur_reg;
+
+    ASMD(ADD64rr, scratch_cx.cur_reg, inst19_op1);
+    // argument cx is killed and marked as dead
+    // argument dx is killed and marked as dead
+    // result cx is marked as alive
+
+
+    // renamable $dl = SETCCr 2, implicit killed $eflags
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(SETC8r, scratch_dx.cur_reg);
+    // result dx is marked as alive
+
+
+    // renamable $dl = OR8rr killed renamable $dl(tied-def 0), killed renamable $dil, implicit-def dead $eflags
+    // operand 0 is dx
+    // operand 0(dx) is the same as its tied destination
+    scratch_dx.alloc_from_bank(0);
+    // operand 1 is di
+    // operand 1(di) is a simple register
+    AsmReg inst21_op1 = scratch_di.cur_reg;
+
+    ASMD(OR8rr, scratch_dx.cur_reg, inst21_op1);
+    // argument dx is killed and marked as dead
+    // argument di is killed and marked as dead
+    // result dx is marked as alive
+
+
+    // renamable $edx = MOVZX32rr8 killed renamable $dl
+    // operand 1 is dx
+    // operand 1(dx) is a simple register
+    AsmReg inst22_op1 = scratch_dx.cur_reg;
+
+    // def dx has not been allocated yet
+    scratch_dx.alloc_from_bank(0);
+    ASMD(MOVZXr32r8, scratch_dx.cur_reg, inst22_op1);
+    // argument dx is killed and marked as dead
+    // result dx is marked as alive
+
+
+    // RET64 killed $rax, killed $rcx, killed $edx
+    scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
+    scratch_check_fixed_backup(scratch_dx, reg_backup_dx, true);
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    // returning reg cx as result_1
+    result_1 = std::move(scratch_cx);
+    // returning reg dx as result_2
+    result_2 = std::move(scratch_dx);
     return true;
 
 }

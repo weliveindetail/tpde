@@ -78,6 +78,15 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
         rem
     };
 
+    enum class OverflowOp {
+        uadd,
+        sadd,
+        usub,
+        ssub,
+        umul,
+        smul
+    };
+
     // <is_func, idx>
     tsl::hopscotch_map<const llvm::GlobalValue *, std::pair<bool, u32>>
                         global_sym_lookup{};
@@ -198,6 +207,9 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
                           llvm::Instruction *,
                           llvm::Function *) noexcept;
     bool   compile_is_fpclass(IRValueRef, llvm::Instruction *) noexcept;
+    bool   compile_overflow_intrin(IRValueRef,
+                                   llvm::Instruction *,
+                                   OverflowOp) noexcept;
 
     bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept {
         return false;
@@ -3600,6 +3612,18 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         this->set_value(res_ref, res);
         return true;
     }
+    case llvm::Intrinsic::uadd_with_overflow:
+        return compile_overflow_intrin(inst_idx, inst, OverflowOp::uadd);
+    case llvm::Intrinsic::sadd_with_overflow:
+        return compile_overflow_intrin(inst_idx, inst, OverflowOp::sadd);
+    case llvm::Intrinsic::usub_with_overflow:
+        return compile_overflow_intrin(inst_idx, inst, OverflowOp::usub);
+    case llvm::Intrinsic::ssub_with_overflow:
+        return compile_overflow_intrin(inst_idx, inst, OverflowOp::ssub);
+    case llvm::Intrinsic::umul_with_overflow:
+        return compile_overflow_intrin(inst_idx, inst, OverflowOp::umul);
+    case llvm::Intrinsic::smul_with_overflow:
+        return compile_overflow_intrin(inst_idx, inst, OverflowOp::smul);
     case llvm::Intrinsic::ctlz:
     case llvm::Intrinsic::cttz: {
         auto *val = inst->getOperand(0);
@@ -3858,6 +3882,131 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
 #undef TEST
 
     this->set_value(res_ref, res_scratch);
+    return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
+    IRValueRef inst_idx, llvm::Instruction *inst, OverflowOp op) noexcept {
+    using AsmOperand = typename Derived::AsmOperand;
+
+    auto *llvm_lhs = inst->getOperand(0);
+    auto *llvm_rhs = inst->getOperand(1);
+
+    auto *ty = llvm_lhs->getType();
+    assert(ty->isIntegerTy());
+    const auto width = ty->getIntegerBitWidth();
+
+    if (width == 128) {
+        using EncodeFnTy     = bool (Derived::*)(AsmOperand,
+                                             AsmOperand,
+                                             AsmOperand,
+                                             AsmOperand,
+                                             ScratchReg &,
+                                             ScratchReg &,
+                                             ScratchReg &);
+        EncodeFnTy encode_fn = nullptr;
+        switch (op) {
+        case OverflowOp::uadd: encode_fn = &Derived::encode_of_add_u128; break;
+        case OverflowOp::sadd: encode_fn = &Derived::encode_of_add_i128; break;
+        case OverflowOp::usub: encode_fn = &Derived::encode_of_sub_u128; break;
+        case OverflowOp::ssub: encode_fn = &Derived::encode_of_sub_i128; break;
+        case OverflowOp::umul: encode_fn = &Derived::encode_of_mul_u128; break;
+        case OverflowOp::smul: encode_fn = &Derived::encode_of_mul_i128; break;
+        default: __builtin_unreachable();
+        }
+
+        auto lhs_ref = this->val_ref(llvm_val_idx(llvm_lhs), 0);
+        auto rhs_ref = this->val_ref(llvm_val_idx(llvm_rhs), 0);
+        lhs_ref.inc_ref_count();
+        rhs_ref.inc_ref_count();
+        AsmOperand lhs_op_high = this->val_ref(llvm_val_idx(llvm_lhs), 1);
+        AsmOperand rhs_op_high = this->val_ref(llvm_val_idx(llvm_rhs), 1);
+        ScratchReg res_val{derived()}, res_val_high{derived()},
+            res_of{derived()};
+
+        if (!(derived()->*encode_fn)(std::move(lhs_ref),
+                                     std::move(lhs_op_high),
+                                     std::move(rhs_ref),
+                                     std::move(rhs_op_high),
+                                     res_val,
+                                     res_val_high,
+                                     res_of)) {
+            return false;
+        }
+
+        auto res_ref_val  = this->result_ref_lazy(inst_idx, 0);
+        auto res_ref_high = this->result_ref_lazy(inst_idx, 1);
+        auto res_ref_of   = this->result_ref_lazy(inst_idx, 2);
+        this->set_value(res_ref_val, res_val);
+        this->set_value(res_ref_high, res_val_high);
+        this->set_value(res_ref_of, res_of);
+
+        res_ref_high.reset_without_refcount();
+        res_ref_of.reset_without_refcount();
+        return true;
+    }
+
+    u32 width_idx = 0;
+    switch (width) {
+    case 8: width_idx = 0; break;
+    case 16: width_idx = 1; break;
+    case 32: width_idx = 2; break;
+    case 64: width_idx = 3; break;
+    default:
+        assert(0);
+        TPDE_LOG_ERR("overflow op with width {} not supported", width);
+        return false;
+    }
+
+    using EncodeFnTy =
+        bool (Derived::*)(AsmOperand, AsmOperand, ScratchReg &, ScratchReg &);
+    std::array<std::array<EncodeFnTy, 4>, 6> encode_fns = {
+        {
+         {&Derived::encode_of_add_u8,
+             &Derived::encode_of_add_u16,
+             &Derived::encode_of_add_u32,
+             &Derived::encode_of_add_u64},
+         {&Derived::encode_of_add_i8,
+             &Derived::encode_of_add_i16,
+             &Derived::encode_of_add_i32,
+             &Derived::encode_of_add_i64},
+         {&Derived::encode_of_sub_u8,
+             &Derived::encode_of_sub_u16,
+             &Derived::encode_of_sub_u32,
+             &Derived::encode_of_sub_u64},
+         {&Derived::encode_of_sub_i8,
+             &Derived::encode_of_sub_i16,
+             &Derived::encode_of_sub_i32,
+             &Derived::encode_of_sub_i64},
+         {&Derived::encode_of_mul_u8,
+             &Derived::encode_of_mul_u16,
+             &Derived::encode_of_mul_u32,
+             &Derived::encode_of_mul_u64},
+         {&Derived::encode_of_mul_i8,
+             &Derived::encode_of_mul_i16,
+             &Derived::encode_of_mul_i32,
+             &Derived::encode_of_mul_i64},
+         }
+    };
+
+    EncodeFnTy encode_fn = encode_fns[static_cast<u32>(op)][width_idx];
+
+    AsmOperand lhs_op = this->val_ref(llvm_val_idx(llvm_lhs), 0);
+    AsmOperand rhs_op = this->val_ref(llvm_val_idx(llvm_rhs), 0);
+    ScratchReg res_val{derived()}, res_of{derived()};
+
+    if (!(derived()->*encode_fn)(
+            std::move(lhs_op), std::move(rhs_op), res_val, res_of)) {
+        return false;
+    }
+
+    auto res_ref_val = this->result_ref_lazy(inst_idx, 0);
+    auto res_ref_of  = this->result_ref_lazy(inst_idx, 1);
+
+    this->set_value(res_ref_val, res_val);
+    this->set_value(res_ref_of, res_of);
+    res_ref_of.reset_without_refcount();
     return true;
 }
 } // namespace tpde_llvm
