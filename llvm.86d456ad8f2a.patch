@@ -84,6 +84,89 @@ index 2a179deddcc3..f59aa1385f0f 100644
    clangSerialization
 +  clangTPDE2
    )
+diff --git a/clang/lib/CodeGen/tpde2/CMakeLists.txt b/clang/lib/CodeGen/tpde2/CMakeLists.txt
+new file mode 100644
+index 000000000000..c0ad953ff96d
+--- /dev/null
++++ b/clang/lib/CodeGen/tpde2/CMakeLists.txt
+@@ -0,0 +1,77 @@
++# a bit hacky but w/e
++
++include_directories(tpde/include)
++include_directories(tpde-llvm/include)
++
++set(FADEC_DIR "${CLANG_SOURCE_DIR}/lib/CodeGen/tpde2/deps/fadec")
++set(FADEC_BIN_DIR "${CLANG_BINARY_DIR}/lib/CodeGen/tpde2/deps/fadec")
++include_directories(${FADEC_DIR})
++include_directories(${FADEC_BIN_DIR}/include)
++include_directories("${CLANG_SOURCE_DIR}/lib/CodeGen/tpde2/deps")
++add_subdirectory("${CLANG_SOURCE_DIR}/lib/CodeGen/tpde2/deps/small_vector")
++include_directories("${CLANG_SOURCE_DIR}/lib/CodeGen/tpde2/deps/hopscotch-map/include")
++
++find_package(Python3 3.6 REQUIRED)
++
++set(FADEC_COMPONENTS "decode;encode;encode2")
++
++
++foreach (component ${FADEC_COMPONENTS})
++    set(PRIV_INC ${FADEC_BIN_DIR}/include/fadec-${component}-private.inc)
++    set(PUB_INC ${FADEC_BIN_DIR}/include/fadec-${component}-public.inc)
++
++    add_custom_command(
++            OUTPUT ${PRIV_INC} ${PUB_INC}
++            COMMAND ${Python3_EXECUTABLE} ${FADEC_DIR}/parseinstrs.py --64 ${component} ${FADEC_DIR}/instrs.txt
++            ${PUB_INC} ${PRIV_INC} ${GEN_ARGS}
++            DEPENDS ${FADEC_DIR}/instrs.txt
++            COMMENT "Building table for ${component}"
++    )
++
++    set_source_files_properties("${PRIV_INC}"
++            PROPERTIES GENERATED TRUE
++            HEADER_FILE_ONLY TRUE)
++
++    set_source_files_properties("${PUB_INC}"
++            PROPERTIES GENERATED TRUE
++            HEADER_FILE_ONLY TRUE)
++
++    #add_custom_target(
++    #        tpdeFadec${component}Table ALL
++    #        DEPENDS ${PRIV_INC} ${PUB_INC}
++    #)
++endforeach ()
++
++add_clang_library(clangTPDEFADEC
++        ${FADEC_DIR}/decode.c
++        ${FADEC_DIR}/format.c
++        ${FADEC_DIR}/encode.c
++        ${FADEC_DIR}/encode2.c
++        ${FADEC_BIN_DIR}/include/fadec-encode-private.inc
++        ${FADEC_BIN_DIR}/include/fadec-encode-public.inc
++        ${FADEC_BIN_DIR}/include/fadec-decode-private.inc
++        ${FADEC_BIN_DIR}/include/fadec-decode-public.inc
++        ${FADEC_BIN_DIR}/include/fadec-encode2-private.inc
++        ${FADEC_BIN_DIR}/include/fadec-encode2-public.inc
++
++        DEPENDS
++
++        LINK_LIBS
++)
++
++set(TPDE_LLVM_DIR "${CLANG_SOURCE_DIR}/lib/CodeGen/tpde2/tpde-llvm/")
++include_directories(${TPDE_LLVM_DIR}/include)
++include_directories(${TPDE_LLVM_DIR}/src)
++
++add_clang_library(clangTPDE2
++        ${TPDE_LLVM_DIR}/src/x64/LLVMCompilerX64.cpp
++
++        DEPENDS
++        clangTPDEFADEC
++        gch::small_vector
++
++        LINK_LIBS
++        clangTPDEFADEC
++        gch::small_vector
++)
++
 diff --git a/llvm/CMakeLists.txt b/llvm/CMakeLists.txt
 index 12618966c4ad..673d1a1aab53 100644
 --- a/llvm/CMakeLists.txt
