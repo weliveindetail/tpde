@@ -961,30 +961,21 @@ struct LLVMAdaptor {
                               llvm::BasicBlock::iterator &it,
                               bool                        is_entry_block,
                               bool                       &found_phi_end) {
+
+        bool fused = false;
         // check if the function contains dynamic allocas
         if (auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(inst); alloca) {
             if (!alloca->isStaticAlloca()) {
                 func_has_dynamic_alloca = true;
+            } else if (is_entry_block) {
+                initial_stack_slot_indices.push_back(values.size());
+                // fuse static alloca's in the initial block so we dont try
+                // to dynamically allocate them
+                fused = true;
             }
         }
 
-        // I don't want to handle constant expressions in a store value operand
-        // so we split it up here
-        if (auto *store = llvm::dyn_cast<llvm::StoreInst>(inst); store) {
-            auto *val = store->getValueOperand();
-            if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(val); cexpr)
-                [[unlikely]] {
-                auto *exprInst = cexpr->getAsInstruction();
-                exprInst->insertBefore(inst);
-                store->setOperand(0, exprInst);
-                // TODO: is it faster to use getIterator or decrement the
-                // iterator?
-                it = exprInst->getIterator();
-                return false;
-            }
-        }
-
-        // I also don't want to handle non-constant values in GEPs in the GEP
+        // I don't want to handle non-constant values in GEPs in the GEP
         // handler below it's easier to just split them here
         if (auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(inst); gep) {
             // TODO: we probably want to optimize the case where we have a
@@ -1223,19 +1214,6 @@ struct LLVMAdaptor {
 
         if (cont) {
             return false;
-        }
-
-        auto fused = false;
-        if (is_entry_block) {
-            if (inst->getOpcode() == llvm::Instruction::Alloca) {
-                const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(inst);
-                if (alloca->isStaticAlloca()) {
-                    initial_stack_slot_indices.push_back(values.size());
-                    // fuse static alloca's in the initial block so we dont try
-                    // to dynamically allocate them
-                    fused = true;
-                }
-            }
         }
 
         if (!found_phi_end && !llvm::isa<llvm::PHINode>(inst)) {
