@@ -91,13 +91,13 @@ struct LLVMAdaptor {
         BlockAux          aux;
     };
 
-    tpde::util::SmallVector<ValInfo, 128>              values;
-    tsl::hopscotch_map<const llvm::Value *, u32>       value_lookup;
-    tsl::hopscotch_map<const llvm::GlobalValue *, u32> global_value_lookup;
-    tsl::hopscotch_map<llvm::BasicBlock *, u32>        block_lookup;
-    tpde::util::SmallVector<LLVMBasicValType, 32>      complex_part_types;
+    tpde::util::SmallVector<ValInfo, 128>         values;
+    tsl::hopscotch_map<const llvm::Value *, u32>  value_lookup;
+    tsl::hopscotch_map<llvm::BasicBlock *, u32>   block_lookup;
+    tpde::util::SmallVector<LLVMBasicValType, 32> complex_part_types;
 
     // helpers for faster lookup
+    tpde::util::SmallVector<u32, 16> funcs_as_operands;
     tpde::util::SmallVector<u32, 8>  func_arg_indices;
     tpde::util::SmallVector<u32, 16> initial_stack_slot_indices;
 
@@ -105,7 +105,6 @@ struct LLVMAdaptor {
     bool            globals_init                      = false;
     bool            func_has_dynamic_alloca           = false;
     u32             global_idx_end                    = 0;
-    u32             global_and_func_idx_end           = 0;
     u32             global_complex_part_types_end_idx = 0;
 
     tpde::util::SmallVector<llvm::Constant *, 32>     block_constants;
@@ -529,6 +528,7 @@ struct LLVMAdaptor {
         blocks.clear();
         block_succ_indices.clear();
         block_succ_ranges.clear();
+        funcs_as_operands.clear();
         func_arg_indices.clear();
         initial_stack_slot_indices.clear();
         func_has_dynamic_alloca = false;
@@ -539,11 +539,11 @@ struct LLVMAdaptor {
         if (!globals_init) {
             globals_init = true;
             // reserve a constant size and optimize for smaller functions
-            global_value_lookup.reserve(512);
+            value_lookup.reserve(512);
             for (auto it = mod.global_begin(); it != mod.global_end(); ++it) {
                 llvm::GlobalVariable *gv = &*it;
                 assert(value_lookup.find(gv) == value_lookup.end());
-                global_value_lookup.insert_or_assign(gv, values.size());
+                value_lookup.insert_or_assign(gv, values.size());
                 const auto [ty, complex_part_idx] =
                     val_basic_type_uncached(gv, true);
                 values.push_back(
@@ -557,7 +557,7 @@ struct LLVMAdaptor {
             for (auto it = mod.alias_begin(); it != mod.alias_end(); ++it) {
                 llvm::GlobalAlias *ga = &*it;
                 assert(value_lookup.find(ga) == value_lookup.end());
-                global_value_lookup.insert_or_assign(ga, values.size());
+                value_lookup.insert_or_assign(ga, values.size());
                 const auto [ty, complex_part_idx] =
                     val_basic_type_uncached(ga, true);
                 values.push_back(
@@ -567,22 +567,16 @@ struct LLVMAdaptor {
                             .argument = false,
                             .complex_part_tys_idx = complex_part_idx});
             }
-            global_idx_end = values.size();
-
-            for (auto &func : mod.functions()) {
-                global_value_lookup.insert_or_assign(&func, values.size());
-                values.push_back(ValInfo{.val      = &func,
-                                         .type     = LLVMBasicValType::ptr,
-                                         .fused    = false,
-                                         .argument = false,
-                                         .complex_part_tys_idx = 0});
-            }
-
-            global_and_func_idx_end           = values.size();
+            global_idx_end                    = values.size();
             global_complex_part_types_end_idx = complex_part_types.size();
         } else {
-            values.resize(global_and_func_idx_end);
+            values.resize(global_idx_end);
             complex_part_types.resize(global_complex_part_types_end_idx);
+            // reserve a constant size and optimize for smaller functions
+            value_lookup.reserve(512 + global_idx_end);
+            for (u32 v = 0; v < global_idx_end; ++v) {
+                value_lookup[values[v].val] = v;
+            }
         }
 
         // add 20% overhead for constants and values that get duplicated
@@ -655,7 +649,6 @@ struct LLVMAdaptor {
                                      .argument = false});
 
             for (auto *C : block_constants) {
-                assert(!llvm::isa<llvm::GlobalValue>(C));
                 if (value_lookup.find(C) == value_lookup.end()) {
                     value_lookup.insert_or_assign(C, values.size());
                     const auto [ty, complex_part_idx] =
@@ -670,7 +663,9 @@ struct LLVMAdaptor {
                     if (auto *F = llvm::dyn_cast<llvm::Function>(C);
                         F && !F->isIntrinsic()) {
                         // globalIndices.push_back(values.size() - 1);
-                        assert(0);
+#if 1
+                        funcs_as_operands.push_back(values.size() - 1);
+#endif
                     }
                 }
             }
@@ -693,15 +688,14 @@ struct LLVMAdaptor {
     void reset() noexcept {
         values.clear();
         value_lookup.clear();
-        global_value_lookup.clear();
         block_lookup.clear();
         complex_part_types.clear();
+        funcs_as_operands.clear();
         func_arg_indices.clear();
         initial_stack_slot_indices.clear();
         cur_func                          = nullptr;
         globals_init                      = false;
         global_idx_end                    = 0;
-        global_and_func_idx_end           = 0;
         global_complex_part_types_end_idx = 0;
         block_constants.clear();
         blocks.clear();
@@ -740,12 +734,6 @@ struct LLVMAdaptor {
         if (auto *inst = llvm::dyn_cast<llvm::Instruction>(val); inst) {
             const auto idx = inst_lookup_idx(inst);
             return idx;
-        }
-        if (auto *gv = llvm::dyn_cast<llvm::GlobalValue>(val); gv) {
-            assert(!llvm::isa<llvm::GlobalIFunc>(gv));
-            const auto it = global_value_lookup.find(gv);
-            assert(it != global_value_lookup.end());
-            return it->second;
         }
         const auto it = value_lookup.find(val);
         assert(it != value_lookup.end());
@@ -1158,12 +1146,6 @@ struct LLVMAdaptor {
         size_t idx = 0;
         for (llvm::Value *val : inst->operands()) {
             if (auto *C = llvm::dyn_cast<llvm::Constant>(val); C) {
-                if (llvm::isa<llvm::GlobalValue>(C)) {
-                    // already handled
-                    ++idx;
-                    continue;
-                }
-
                 if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(val);
                     cexpr) {
                     if (inst->getOpcode() == llvm::Instruction::PHI) {
