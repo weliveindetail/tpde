@@ -894,8 +894,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
     variable_refs.clear();
 
     variable_refs.resize(this->adaptor->initial_stack_slot_indices.size()
-                         + this->adaptor->global_idx_end
-                         + this->adaptor->funcs_as_operands.size());
+                         + this->adaptor->global_and_func_idx_end);
 
 
     u32        cur_idx         = 0;
@@ -939,21 +938,13 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
     }
 
     // Allocate regs for globals
-    for (u32 v = 0; v < this->adaptor->global_idx_end; ++v) {
+    for (u32 v = 0; v < this->adaptor->global_and_func_idx_end; ++v) {
         variable_refs[cur_idx].val    = v;
         variable_refs[cur_idx].alloca = false;
         variable_refs[cur_idx].local =
             !llvm::dyn_cast<llvm::GlobalValue>(this->adaptor->values[v].val)
                  ->hasExternalLinkage();
 
-        init_assignment(v);
-    }
-    for (auto v : this->adaptor->funcs_as_operands) {
-        variable_refs[cur_idx].val    = v;
-        variable_refs[cur_idx].alloca = false;
-        variable_refs[cur_idx].local =
-            !llvm::dyn_cast<llvm::GlobalValue>(this->adaptor->values[v].val)
-                 ->hasExternalLinkage();
         init_assignment(v);
     }
 }
