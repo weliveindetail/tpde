@@ -743,8 +743,8 @@ struct LLVMAdaptor {
     [[nodiscard]] u32
         inst_lookup_idx(const llvm::Instruction *inst) const noexcept {
         const auto idx = val_idx_for_inst(inst);
-        assert(value_lookup.find(inst) != value_lookup.end()
-               && value_lookup.find(inst)->second == idx);
+        // assert(value_lookup.find(inst) != value_lookup.end()
+        //        && value_lookup.find(inst)->second == idx);
         return idx;
     }
 
@@ -1243,7 +1243,7 @@ struct LLVMAdaptor {
         auto val_idx           = values.size();
         val_idx_for_inst(inst) = val_idx;
 
-        value_lookup.insert_or_assign(inst, val_idx);
+        // value_lookup.insert_or_assign(inst, val_idx);
         auto [ty, complex_part_idx] = val_basic_type_uncached(inst, false);
         values.push_back(ValInfo{.val      = static_cast<llvm::Value *>(inst),
                                  .type     = ty,
