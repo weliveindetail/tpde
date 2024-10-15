@@ -70,6 +70,7 @@ struct AssemblerElf {
     std::vector<char> strtab;
     DataSection sec_text, sec_data, sec_rodata, sec_relrodata, sec_init_array,
         sec_fini_array;
+    u32 sec_bss_size = 0;
 
     /// Unwind Info
     DataSection sec_eh_frame;
@@ -164,6 +165,18 @@ struct AssemblerElf {
                                       bool                local,
                                       bool                weak,
                                       u32                *off = nullptr);
+
+    [[nodiscard]] SymRef sym_def_bss(std::string_view name,
+                                     u32              size,
+                                     u32              align,
+                                     bool             local,
+                                     bool             weak,
+                                     u32             *off = nullptr) noexcept;
+
+    void sym_def_predef_bss(SymRef sym_ref,
+                            u32    size,
+                            u32    align,
+                            u32   *off = nullptr) noexcept;
 
     /// Align the text write pointer to 16 bytes
     void text_align_16() noexcept;
@@ -447,6 +460,7 @@ constexpr static std::span<const char> SECTION_NAMES = {
     ".strtab\0"
     ".shstrtab\0"
     ".data\0"
+    ".bss\0"
     ".rodata\0"
     ".rela.text\0"
     ".data.rel.ro\0"
@@ -639,6 +653,77 @@ typename AssemblerElf<Derived>::SymRef
 }
 
 template <typename Derived>
+typename AssemblerElf<Derived>::SymRef
+    AssemblerElf<Derived>::sym_def_bss(const std::string_view name,
+                                       const u32              size,
+                                       const u32              align,
+                                       const bool             local,
+                                       const bool             weak,
+                                       u32                   *off) noexcept {
+    size_t str_off = 0;
+    if (!name.empty()) {
+        str_off = strtab.size();
+        strtab.insert(strtab.end(), name.begin(), name.end());
+        strtab.emplace_back('\0');
+    }
+
+    uint8_t info;
+    if (local) {
+        assert(!weak);
+        info = ELF64_ST_INFO(STB_LOCAL, STT_OBJECT);
+    } else if (weak) {
+        info = ELF64_ST_INFO(STB_WEAK, STT_OBJECT);
+    } else {
+        info = ELF64_ST_INFO(STB_GLOBAL, STT_OBJECT);
+    }
+
+    assert((align & (align - 1)) == 0);
+    const u32 pos  = util::align_up(sec_bss_size, align);
+    sec_bss_size  += size;
+    auto sym =
+        Elf64_Sym{.st_name  = static_cast<Elf64_Word>(str_off),
+                  .st_info  = info,
+                  .st_other = STV_DEFAULT,
+                  .st_shndx = static_cast<Elf64_Section>(elf::sec_idx(".bss")),
+                  .st_value = pos,
+                  .st_size  = size};
+
+    if (off) {
+        *off = pos;
+    }
+
+    if (local) {
+        local_symbols.push_back(sym);
+        assert(local_symbols.size() < 0x8000'0000);
+        return static_cast<SymRef>(local_symbols.size() - 1);
+    } else {
+        global_symbols.push_back(sym);
+        assert(global_symbols.size() < 0x8000'0000);
+        return static_cast<SymRef>((global_symbols.size() - 1) | 0x8000'0000);
+    }
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::sym_def_predef_bss(const SymRef sym_ref,
+                                               const u32    size,
+                                               const u32    align,
+                                               u32         *off) noexcept {
+    Elf64_Sym *sym = sym_ptr(sym_ref);
+
+    assert((align & (align - 1)) == 0);
+    const u32 pos = util::align_up(sec_bss_size, align);
+    sec_bss_size  = pos + size;
+
+    if (off) {
+        *off = pos;
+    }
+
+    sym->st_shndx = static_cast<Elf64_Section>(elf::sec_idx(".bss"));
+    sym->st_value = pos;
+    sym->st_size  = size;
+}
+
+template <typename Derived>
 void AssemblerElf<Derived>::text_align_16() noexcept {
     text_ensure_space(16);
     text_write_ptr = reinterpret_cast<u8 *>(
@@ -687,6 +772,7 @@ void AssemblerElf<Derived>::reset() noexcept {
     sec_eh_frame   = {};
     text_write_ptr = text_reserve_end = nullptr;
     cur_func                          = INVALID_SYM_REF;
+    sec_bss_size                      = 0;
 
     eh_init_cie();
 }
@@ -934,6 +1020,20 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
         auto *hdr         = sec_hdr(sec_idx(".data"));
         hdr->sh_name      = sec_off(".data");
         hdr->sh_type      = SHT_PROGBITS;
+        hdr->sh_flags     = SHF_ALLOC | SHF_WRITE;
+        hdr->sh_offset    = sh_off;
+        hdr->sh_size      = size;
+        hdr->sh_addralign = 16;
+    }
+
+    // .bss
+    {
+        const auto size   = util::align_up(sec_bss_size, 16);
+        const auto sh_off = out.size();
+
+        auto *hdr         = sec_hdr(sec_idx(".bss"));
+        hdr->sh_name      = sec_off(".bss");
+        hdr->sh_type      = SHT_NOBITS;
         hdr->sh_flags     = SHF_ALLOC | SHF_WRITE;
         hdr->sh_offset    = sh_off;
         hdr->sh_size      = size;
@@ -1343,6 +1443,7 @@ void AssemblerElf<Derived>::except_encode_func() noexcept {
         eh_write_uleb(except_encoded_call_sites, info.len);
         eh_write_uleb(except_encoded_call_sites, info.pad_label_or_off);
         const auto cur_off = text_cur_off();
+        (void)cur_off;
         assert(info.pad_label_or_off < (cur_off - cur_func_off));
         eh_write_uleb(
             except_encoded_call_sites,
@@ -1353,7 +1454,7 @@ void AssemblerElf<Derived>::except_encode_func() noexcept {
     except_encoded_call_sites.push_back(0);
     except_encoded_call_sites.push_back(0);
 
-    auto& except_table = sec_except_table.data;
+    auto &except_table = sec_except_table.data;
     // write the lsda (see
     // https://github.com/llvm/llvm-project/blob/main/libcxxabi/src/cxa_personality.cpp#L60)
     except_table.push_back(dwarf::DW_EH_PE_omit); // lpStartEncoding

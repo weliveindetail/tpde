@@ -519,6 +519,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
     // all function symbols are already added
 
     // now we can initialize the global data
+    tpde::util::SmallVector<u8, 64>       data;
+    tpde::util::SmallVector<RelocInfo, 8> relocs;
     for (auto it = llvm_mod.global_begin(); it != llvm_mod.global_end(); ++it) {
         auto *gv = &*it;
         if (!gv->hasInitializer()) {
@@ -585,14 +587,24 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
             continue;
         }
 
+        // check if the data value is a zero aggregate and put into bss if that
+        // is the case
+        if (llvm::isa<llvm::ConstantAggregateZero>(init)) {
+            auto sym = global_sym(gv);
+            this->assembler.sym_def_predef_bss(
+                sym,
+                data_layout.getTypeAllocSize(init->getType()),
+                gv->getAlign().valueOrOne().value());
+            continue;
+        }
 
-        tpde::util::SmallVector<u8, 64>       data;
-        tpde::util::SmallVector<RelocInfo, 8> relocs;
+        data.clear();
+        relocs.clear();
+
         data.resize(data_layout.getTypeAllocSize(init->getType()));
         if (!global_init_to_data(gv, data, relocs, data_layout, init, 0)) {
             return false;
         }
-
 
         u32  off;
         auto read_only = gv->isConstant();
