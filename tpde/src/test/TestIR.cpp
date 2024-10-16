@@ -39,6 +39,7 @@
 #include <cctype>
 #include <charconv>
 #include <format>
+#include <iostream>
 
 #include "TestIR.hpp"
 
@@ -344,12 +345,14 @@ bool tpde::test::TestIR::parse_body_line(std::string_view line,
         const auto block_idx             = parse_state.cur_block;
         blocks[block_idx].succ_begin_idx = block_succs.size();
         const auto block_name = std::string_view{blocks[block_idx].name};
+        (void)block_name; // only used for debug output
 
         if (line.starts_with("jump")) {
             TPDE_LOG_TRACE("Got jump in block {}", block_idx);
 
             line.remove_prefix(4);
             const auto block_name = std::string_view{blocks[block_idx].name};
+            (void)block_name; // only used for debug output
 
             auto had_arg    = false;
             u32  succ_count = 0;
@@ -1057,7 +1060,8 @@ bool tpde::test::TestIR::parse_value_line(
 bool tpde::test::TestIR::parse_block(std::string_view line,
                                      BodyParseState  &parse_state,
                                      const bool       is_entry) noexcept {
-    const auto func_idx   = parse_state.func_idx;
+    const auto func_idx = parse_state.func_idx;
+    (void)func_idx; // only used for debug output
     const auto block_name = parse_name(line);
     if (block_name.empty()) {
         TPDE_LOG_ERR("Failed to parse block for function '{}'. "
@@ -1242,6 +1246,7 @@ void tpde::test::TestIR::dump_debug() const noexcept {
             for (auto succ = block.succ_begin_idx; succ < block.succ_end_idx;
                  ++succ) {
                 const auto succ_idx = block_succs[succ];
+                (void)succ_idx; // only used for debug output
                 TPDE_LOG_DBG(
                     "    Succ {}: {}", succ_idx, blocks[succ_idx].name);
             }
@@ -1267,6 +1272,7 @@ void tpde::test::TestIR::dump_debug() const noexcept {
                     for (auto op = val.op_begin_idx; op < val.op_end_idx;
                          ++op) {
                         const auto op_idx = value_operands[op];
+                        (void)op_idx; // only used for debug output
                         TPDE_LOG_DBG(
                             "      Op {}: {}", op_idx, values[op_idx].name);
                     }
@@ -1290,8 +1296,10 @@ void tpde::test::TestIR::dump_debug() const noexcept {
                     for (u32 op = 0; op < val.op_count; ++op) {
                         const auto block_idx =
                             value_operands[val.op_begin_idx + op * 2];
+                        (void)block_idx; // only used for debug output
                         const auto inc_idx =
                             value_operands[val.op_begin_idx + op * 2 + 1];
+                        (void)inc_idx; // only used for debug output
                         TPDE_LOG_DBG("      {} from {}: {} from {}",
                                      inc_idx,
                                      block_idx,
@@ -1305,6 +1313,7 @@ void tpde::test::TestIR::dump_debug() const noexcept {
                     for (auto op = val.op_begin_idx; op < val.op_end_idx;
                          ++op) {
                         const auto op_idx = value_operands[op];
+                        (void)op_idx; // only used for debug output
                         TPDE_LOG_DBG(
                             "      Op {}: {}", op_idx, values[op_idx].name);
                     }
@@ -1321,6 +1330,7 @@ void tpde::test::TestIR::dump_debug() const noexcept {
                     TPDE_LOG_DBG("    Condbr {}", val_idx);
 
                     auto *ops = &value_operands[val.op_begin_idx];
+                    (void)ops; // only used for debug output
                     TPDE_LOG_DBG(
                         "      Value: {} ({})", ops[0], values[ops[0]].name);
                     TPDE_LOG_DBG(
@@ -1340,6 +1350,7 @@ void tpde::test::TestIR::dump_debug() const noexcept {
                     for (auto op = val.op_begin_idx; op < val.op_end_idx;
                          ++op) {
                         const auto op_idx = value_operands[op];
+                        (void)op_idx; // only used for debug output
                         TPDE_LOG_DBG(
                             "      Op {}: {}", op_idx, values[op_idx].name);
                     }
@@ -1352,22 +1363,22 @@ void tpde::test::TestIR::dump_debug() const noexcept {
 }
 
 void tpde::test::TestIR::print() const noexcept {
-    fmt::println("Printing IR");
+    std::cout << std::format("Printing IR\n");
 
     for (u32 i = 0; i < functions.size(); ++i) {
         const auto &func = functions[i];
         if (func.declaration) {
-            fmt::println("Extern function {}", func.name);
+            std::cout << std::format("Extern function {}\n", func.name);
         } else if (func.local_only) {
-            fmt::println("Local function {}", func.name);
+            std::cout << std::format("Local function {}\n", func.name);
         } else {
-            fmt::println("Function {}", func.name);
+            std::cout << std::format("Function {}\n", func.name);
         }
 
         for (auto arg_idx = func.arg_begin_idx; arg_idx < func.arg_end_idx;
              ++arg_idx) {
             assert(values[arg_idx].type == Value::Type::arg);
-            fmt::println("  Argument {}", values[arg_idx].name);
+            std::cout << std::format("  Argument {}\n", values[arg_idx].name);
         }
 
         if (func.declaration) {
@@ -1378,11 +1389,12 @@ void tpde::test::TestIR::print() const noexcept {
              block_idx < func.block_end_idx;
              ++block_idx) {
             const auto &block = blocks[block_idx];
-            fmt::println("  Block {}", block.name);
+            std::cout << std::format("  Block {}\n", block.name);
             for (auto succ = block.succ_begin_idx; succ < block.succ_end_idx;
                  ++succ) {
                 const auto succ_idx = block_succs[succ];
-                fmt::println("    Succ {}", blocks[succ_idx].name);
+                std::cout << std::format("    Succ {}\n",
+                                         blocks[succ_idx].name);
             }
 
             for (auto val_idx = block.inst_begin_idx;
@@ -1394,16 +1406,18 @@ void tpde::test::TestIR::print() const noexcept {
                     using enum Value::Type;
                 case normal: {
                     if (val.op == Value::Op::none) {
-                        fmt::println("    Value {}", val.name);
+                        std::cout << std::format("    Value {}\n", val.name);
                     } else {
-                        fmt::println("    Value {} ({})",
-                                     val.name,
-                                     Value::OP_NAMES[static_cast<u32>(val.op)]);
+                        std::cout << std::format(
+                            "    Value {} ({})\n",
+                            val.name,
+                            Value::OP_NAMES[static_cast<u32>(val.op)]);
                     }
                     for (auto op = val.op_begin_idx; op < val.op_end_idx;
                          ++op) {
                         const auto op_idx = value_operands[op];
-                        fmt::println("      Op {}", values[op_idx].name);
+                        std::cout << std::format("      Op {}\n",
+                                                 values[op_idx].name);
                     }
                     break;
                 }
@@ -1412,56 +1426,64 @@ void tpde::test::TestIR::print() const noexcept {
                     exit(1);
                 }
                 case alloca: {
-                    fmt::println("    Alloca with size 0x{:X} and align {}: {}",
-                                 values[val_idx].alloca_size,
-                                 values[val_idx].alloca_align,
-                                 values[val_idx].name);
+                    std::cout << std::format(
+                        "    Alloca with size 0x{:X} and align {}: {}\n",
+                        values[val_idx].alloca_size,
+                        values[val_idx].alloca_align,
+                        values[val_idx].name);
                     break;
                 }
                 case phi: {
-                    fmt::println("    PHI {}", values[val_idx].name);
+                    std::cout
+                        << std::format("    PHI {}\n", values[val_idx].name);
                     for (u32 op = 0; op < val.op_count; ++op) {
                         const auto block_idx =
                             value_operands[val.op_begin_idx + op * 2];
                         const auto inc_idx =
                             value_operands[val.op_begin_idx + op * 2 + 1];
-                        fmt::println("      {} from {}",
-                                     values[inc_idx].name,
-                                     blocks[block_idx].name);
+                        std::cout << std::format("      {} from {}\n",
+                                                 values[inc_idx].name,
+                                                 blocks[block_idx].name);
                     }
                     break;
                 }
                 case ret: {
-                    fmt::println("    Ret");
+                    std::cout << std::format("    Ret\n");
                     for (auto op = val.op_begin_idx; op < val.op_end_idx;
                          ++op) {
                         const auto op_idx = value_operands[op];
-                        fmt::println("      Op {}", values[op_idx].name);
+                        std::cout << std::format("      Op {}\n",
+                                                 values[op_idx].name);
                     }
                     break;
                 }
                 case br: {
-                    fmt::println("    Br to {}",
-                                 blocks[value_operands[val.op_begin_idx]].name);
+                    std::cout << std::format(
+                        "    Br to {}\n",
+                        blocks[value_operands[val.op_begin_idx]].name);
                     break;
                 }
                 case condbr: {
-                    fmt::println("    Condbr");
+                    std::cout << std::format("    Condbr\n");
                     auto *ops = &value_operands[val.op_begin_idx];
-                    fmt::println("      Value: {}", values[ops[0]].name);
-                    fmt::println("      TrueSucc: {}", blocks[ops[1]].name);
-                    fmt::println("      FalseSucc: {}", blocks[ops[2]].name);
+                    std::cout << std::format("      Value: {}\n",
+                                             values[ops[0]].name);
+                    std::cout << std::format("      TrueSucc: {}\n",
+                                             blocks[ops[1]].name);
+                    std::cout << std::format("      FalseSucc: {}\n",
+                                             blocks[ops[2]].name);
                     break;
                 }
                 case call: {
-                    fmt::println("    Call {} to {}",
-                                 val.name,
-                                 functions[val.call_func_idx].name);
+                    std::cout << std::format("    Call {} to {}\n",
+                                             val.name,
+                                             functions[val.call_func_idx].name);
 
                     for (auto op = val.op_begin_idx; op < val.op_end_idx;
                          ++op) {
                         const auto op_idx = value_operands[op];
-                        fmt::println("      Op {}", values[op_idx].name);
+                        std::cout << std::format("      Op {}\n",
+                                                 values[op_idx].name);
                     }
                     break;
                 }

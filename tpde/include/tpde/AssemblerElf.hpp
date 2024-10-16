@@ -4,6 +4,7 @@
 #pragma once
 
 #include <elf.h>
+#include <span>
 #include <type_traits>
 
 #include "base.hpp"

@@ -4,12 +4,12 @@
 #pragma once
 
 #include <algorithm>
+#include <format>
+#include <iostream>
 
 #include "IRAdaptor.hpp"
 #include "util/SmallBitSet.hpp"
 #include "util/SmallVector.hpp"
-
-#include <ranges>
 
 namespace tpde {
 
@@ -168,19 +168,21 @@ void Analyzer<Adaptor>::switch_func(IRFuncRef func) {
 
 #ifdef TPDE_TESTING
     if (test_print_liveness) {
-        fmt::println("Liveness for {}", adaptor->func_link_name(func));
+        std::cout << std::format("Liveness for {}\n",
+                                 adaptor->func_link_name(func));
         for (u32 i = 0; i < liveness.size(); ++i) {
             const auto &info = liveness[i];
-            fmt::println("  {}: {} refs, {}->{} ({}->{}), lf: {}",
-                         i,
-                         info.ref_count,
-                         static_cast<u32>(info.first),
-                         static_cast<u32>(info.last),
-                         adaptor->block_fmt_ref(block_ref(info.first)),
-                         adaptor->block_fmt_ref(block_ref(info.last)),
-                         info.last_full);
+            std::cout << std::format(
+                "  {}: {} refs, {}->{} ({}->{}), lf: {}\n",
+                i,
+                info.ref_count,
+                static_cast<u32>(info.first),
+                static_cast<u32>(info.last),
+                adaptor->block_fmt_ref(block_ref(info.first)),
+                adaptor->block_fmt_ref(block_ref(info.last)),
+                info.last_full);
         }
-        fmt::println("End Liveness");
+        std::cout << std::format("End Liveness\n");
     }
 #endif
 }
@@ -220,11 +222,13 @@ void Analyzer<Adaptor>::build_block_layout(IRFuncRef func) {
 
 #ifdef TPDE_TESTING
     if (test_print_rpo) {
-        fmt::println("RPO for func {}", adaptor->func_link_name(func));
+        std::cout << std::format("RPO for func {}\n",
+                                 adaptor->func_link_name(func));
         for (u32 i = 0; i < block_rpo.size(); ++i) {
-            fmt::println("  {}: {}", i, adaptor->block_fmt_ref(block_rpo[i]));
+            std::cout << std::format(
+                "  {}: {}\n", i, adaptor->block_fmt_ref(block_rpo[i]));
         }
-        fmt::println("End RPO");
+        std::cout << "End RPO\n";
     }
 
     if (static_cast<u32>(test_run_until)
@@ -246,26 +250,28 @@ void Analyzer<Adaptor>::build_block_layout(IRFuncRef func) {
 
 #ifdef TPDE_TESTING
     if (test_print_block_layout) {
-        fmt::println("Block Layout for {}", adaptor->func_link_name(func));
+        std::cout << std::format("Block Layout for {}\n",
+                                 adaptor->func_link_name(func));
         for (u32 i = 0; i < block_layout.size(); ++i) {
-            fmt::println(
-                "  {}: {}", i, adaptor->block_fmt_ref(block_layout[i]));
+            std::cout << std::format(
+                "  {}: {}\n", i, adaptor->block_fmt_ref(block_layout[i]));
         }
-        fmt::println("End Block Layout");
+        std::cout << "End Block Layout";
     }
 
     if (test_print_loops) {
-        fmt::println("Loops for {}", adaptor->func_link_name(func));
+        std::cout << std::format("Loops for {}\n",
+                                 adaptor->func_link_name(func));
         for (u32 i = 0; i < loops.size(); ++i) {
             const auto &loop = loops[i];
-            fmt::println("  {}: level {}, parent {}, {}->{}",
-                         i,
-                         loop.level,
-                         loop.parent,
-                         static_cast<u32>(loop.begin),
-                         static_cast<u32>(loop.end));
+            std::cout << std::format("  {}: level {}, parent {}, {}->{}\n",
+                                     i,
+                                     loop.level,
+                                     loop.parent,
+                                     static_cast<u32>(loop.begin),
+                                     static_cast<u32>(loop.end));
         }
-        fmt::println("End Loops");
+        std::cout << "End Loops\n";
     }
 #endif
 }

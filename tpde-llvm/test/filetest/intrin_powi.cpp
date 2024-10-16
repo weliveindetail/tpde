@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
 // RUN: %clang -emit-llvm -S %s -o - -std=c++20 | FileCheck %s -check-prefixes=IR --dump-input always
-// RUN: clang -std=c++20 -S -emit-llvm -o %t.ll %s | tpde_llvm -o %t.o %t.ll | clang -o %t %t.o && %t | FileCheck %s -check-prefixes=OUT --dump-input always
+// RUN: true && clang -std=c++20 -S -emit-llvm -o %t.ll %s && tpde_llvm -o %t.o %t.ll && clang -o %t %t.o && %t | FileCheck %s -check-prefixes=OUT --dump-input always
 
 #include <bit>
 #include <limits>

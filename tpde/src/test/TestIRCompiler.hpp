@@ -62,6 +62,8 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
 
     void define_func_idx(IRFuncRef func, const u32 idx) noexcept {
         assert(static_cast<u32>(func) == idx);
+        (void)func;
+        (void)idx;
     }
 
     [[nodiscard]] bool compile_inst(IRValueRef, InstRange) noexcept;

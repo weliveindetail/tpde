@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "tpde/base.hpp"
 

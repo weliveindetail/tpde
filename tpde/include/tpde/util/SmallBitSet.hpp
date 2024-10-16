@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <optional>
+
 #include "SmallVector.hpp"
 #include "misc.hpp"
 #include "tpde/base.hpp"

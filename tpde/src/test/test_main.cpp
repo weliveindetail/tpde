@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
     std::string buf;
 
     if (ir_path) {
-        fmt::println("GOT IR FILE");
+        std::cout << "GOT IR FILE\n";
         const auto file_path = args::get(ir_path);
         auto       file      = std::ifstream{file_path, std::ios::ate};
         if (!file.is_open()) {
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
         compiler.analyzer.test_print_liveness     = print_liveness;
 
         if (!compiler.compile()) {
-            spdlog::error("Failed to compile IR");
+            TPDE_LOG_ERR("Failed to compile IR");
             return 1;
         }
 
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
             const std::vector<u8> data = compiler.assembler.build_object_file();
             std::ofstream out_file{obj_out_path.Get(), std::ios::binary};
             if (!out_file.is_open()) {
-                spdlog::error("Failed to open output file");
+                TPDE_LOG_ERR("Failed to open output file");
                 return 1;
             }
             out_file.write(reinterpret_cast<const char *>(data.data()),
