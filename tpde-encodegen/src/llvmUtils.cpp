@@ -127,6 +127,7 @@ std::string getRegEnumName(unsigned regID) {
         return xmmRegEnumNames[regID - 0x20];
     } else {
         assert(false && "Invalid regID");
+        return "???";
     }
 }
 

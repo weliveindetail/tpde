@@ -896,7 +896,7 @@ bool GenerationState::can_salvage_operand(const llvm::MachineOperand &op) {
         return true;
     }
 
-    auto old_reg = reg_id;
+    [[maybe_unused]] auto old_reg = reg_id;
     auto cur_reg = info.alias_reg_id;
     while (true) {
         assert(value_map.contains(cur_reg));
@@ -1990,7 +1990,7 @@ bool generate_inst_inner(std::string           &buf,
                     const auto &def_reg = inst->getOperand(
                         inst->findTiedOperandIdx(llvm_op.getOperandNo()));
                     assert(def_reg.isReg() && def_reg.getReg().isPhysical());
-                    const auto def_reg_id =
+                    [[maybe_unused]] const auto def_reg_id =
                         state.enc_target->reg_id_from_mc_reg(def_reg.getReg());
                     assert(state.enc_target->reg_bank(orig_reg_id)
                            == state.enc_target->reg_bank(def_reg_id));

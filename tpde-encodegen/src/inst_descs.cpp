@@ -129,8 +129,7 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
         }
     };
 
-    const auto create_imm_replacement = [&desc, &inst, &info, &imm_cond](
-                                            const std::string &old_fadec_name,
+    const auto create_imm_replacement = [&](const std::string &old_fadec_name,
                                             const unsigned     idx,
                                             OpSupports        &op) {
         if (!inst.getOperand(op.opIndex).isDef()) {
@@ -149,11 +148,7 @@ bool tpde_encgen::get_inst_def(llvm::MachineInstr &inst, InstDesc &desc) {
         }
     };
 
-    const auto create_mem_replacement = [&desc,
-                                         &inst,
-                                         &info,
-                                         is_mov_with_extension](
-                                            const std::string &old_fadec_name,
+    const auto create_mem_replacement = [&](const std::string &old_fadec_name,
                                             const unsigned     idx,
                                             OpSupports        &op) {
         if (!inst.getOperand(op.opIndex).isDef()) {
