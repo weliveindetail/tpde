@@ -11,7 +11,7 @@
 // or
 // -- IMPL_HERE --
 
-namespace tpde_encgen::x64 {
+namespace tpde_encgen::arm64 {
 static constexpr inline char ENCODER_TEMPLATE_BEGIN[] =
     R"(// SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
 // SPDX-FileCopyrightText: 2024 Tobias Kamm <tobias.kamm@tum.de>
@@ -27,11 +27,10 @@ static constexpr inline char ENCODER_TEMPLATE_BEGIN[] =
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
-#include <optional>
 #include <variant>
 
-#include "tpde/base.hpp"
-#include "tpde/x64/CompilerX64.hpp"
+#include "base.hpp"
+#include "tpde/arm64/CompilerA64.hpp"
 
 // Helper macros for assembling in the compiler
 #if defined(ASMD)
@@ -50,13 +49,13 @@ template <typename Adaptor,
           typename BaseTy,
           typename Config>
 struct EncodeCompiler {
-    using CompilerX64  = tpde::x64::CompilerX64<Adaptor, Derived, BaseTy, Config>;
-    using ScratchReg   = typename CompilerX64::ScratchReg;
-    using AsmReg       = typename CompilerX64::AsmReg;
-    using ValuePartRef = typename CompilerX64::ValuePartRef;
-    using Assembler    = typename CompilerX64::Assembler;
+    using CompilerA64  = tpde::a64::CompilerA64<Adaptor, Derived, BaseTy, Config>;
+    using ScratchReg   = typename CompilerA64::ScratchReg;
+    using AsmReg       = typename CompilerA64::AsmReg;
+    using ValuePartRef = typename CompilerA64::ValuePartRef;
+    using Assembler    = typename CompilerA64::Assembler;
     using Label        = typename Assembler::Label;
-    using ValLocalIdx  = typename CompilerX64::ValLocalIdx;
+    using ValLocalIdx  = typename CompilerA64::ValLocalIdx;
     using SymRef       = typename Assembler::SymRef;
 
     struct AsmOperand {
@@ -185,12 +184,7 @@ struct EncodeCompiler {
         }
 
         AsmOperand(Expr &&expr) noexcept {
-            ScratchReg *base_scratch = std::get_if<ScratchReg>(&expr.base);
-            if (base_scratch && !expr.has_index() && expr.disp == 0) {
-                state = std::move(*base_scratch);
-            } else {
-                state = std::move(expr);
-            }
+            state = std::move(expr);
         }
 
         AsmOperand(Immediate imm) noexcept { state = imm; }
@@ -214,9 +208,6 @@ struct EncodeCompiler {
             return std::get<ValuePartRef>(state);
         }
 
-        [[nodiscard]] std::optional<i32> encodeable_as_imm32_sext() const noexcept;
-        [[nodiscard]] std::optional<FeMem> encodeable_as_mem() const noexcept;
-        [[nodiscard]] std::optional<FeMem> encodeable_with(FeMem other) const noexcept;
         AsmReg             as_reg(EncodeCompiler *compiler) noexcept;
         bool               try_salvage(ScratchReg &, u8 bank) noexcept;
         bool          try_salvage_if_nonalloc(ScratchReg &, u8 bank) noexcept;
@@ -234,30 +225,13 @@ struct EncodeCompiler {
         void          reset() noexcept;
     };
 
-    CompilerX64 *derived() noexcept {
-        return static_cast<CompilerX64 *>(static_cast<Derived *>(this));
+    CompilerA64 *derived() noexcept {
+        return static_cast<CompilerA64 *>(static_cast<Derived *>(this));
     }
 
-    const CompilerX64 *derived() const noexcept {
-        return static_cast<const CompilerX64 *>(
+    const CompilerA64 *derived() const noexcept {
+        return static_cast<const CompilerA64 *>(
             static_cast<const Derived *>(this));
-    }
-
-    static bool reg_needs_avx512(AsmReg reg) noexcept {
-        if (reg.id() > AsmReg::XMM15) {
-            return true;
-        }
-        return false;
-    }
-
-    [[nodiscard]] bool has_avx() const noexcept {
-        return derived()->has_cpu_feats(CompilerX64::CPU_AVX);
-    }
-
-    [[nodiscard]] static bool disp_add_encodeable(int32_t disp,
-                                                  int32_t add) noexcept {
-        const auto tmp = static_cast<int64_t>(disp) + add;
-        return (static_cast<int64_t>(static_cast<int32_t>(tmp)) == tmp);
     }
 
     struct FixedRegBackup {
@@ -292,113 +266,6 @@ static constexpr inline char ENCODER_IMPL_TEMPLATE_BEGIN[] = R"(
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // clang-format on
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>
-std::optional<i32> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
-    encodeable_as_imm32_sext() const noexcept {
-    if (!is_imm()) {
-        return std::nullopt;
-    }
-
-    const auto &data = std::get<Immediate>(state);
-    assert(data.size <= 8);
-    const u64 imm = data.const_u64;
-    if (data.size <= 4 || static_cast<i64>(static_cast<i32>(imm)) == static_cast<i64>(imm)) {
-        // always encodeable
-        return static_cast<i32>(data.const_u64);
-    }
-
-    return std::nullopt;
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>
-std::optional<FeMem> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
-    encodeable_as_mem() const noexcept {
-    const ValuePartRef *ptr;
-    if (std::holds_alternative<ValuePartRef>(state)) {
-        ptr = &std::get<ValuePartRef>(state);
-    } else if (std::holds_alternative<ValuePartRef *>(state)) {
-        ptr = std::get<ValuePartRef *>(state);
-    } else {
-        return std::nullopt;
-    }
-
-    if (ptr->is_const) {
-        return std::nullopt;
-    }
-
-    const auto ap = ptr->assignment();
-    if (ap.register_valid() || ap.variable_ref())
-        return std::nullopt;
-    return FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(ap.frame_off()));
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>
-std::optional<FeMem> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
-    encodeable_with(FeMem other) const noexcept {
-    const auto disp_encodeable = [](u64 a, u64 b) -> std::optional<i32> {
-        auto sum = static_cast<i32>(a + b);
-        if (static_cast<i64>(sum) == static_cast<i64>(a + b))
-            return sum;
-        return std::nullopt;
-    };
-    const auto is_noreg = [](FeRegGP gp) {
-        return gp.idx == FE_NOREG.idx;
-    };
-
-    if (const auto *imm = std::get_if<Immediate>(&state)) {
-        if (imm->size > 8)
-            return std::nullopt;
-        if (auto disp = disp_encodeable(imm->const_u64, other.off))
-            return FE_MEM(other.base, other.scale, other.idx, *disp);
-        return std::nullopt;
-    }
-    if (const auto *reg = std::get_if<ScratchReg>(&state)) {
-        if (is_noreg(other.base))
-            return FE_MEM(reg->cur_reg, other.scale, other.idx, other.off);
-        if (is_noreg(other.idx))
-            return FE_MEM(other.base, 1, reg->cur_reg, other.off);
-        return std::nullopt;
-    }
-    if (const auto *expr = std::get_if<Expr>(&state)) {
-        // TODO: check completeness
-        auto disp = disp_encodeable(expr->disp, other.off);
-        if (!disp)
-            return std::nullopt;
-        if (!expr->has_index()) {
-            if (!expr->has_base())
-                return FE_MEM(other.base, other.scale, other.idx, *disp);
-            if (is_noreg(other.base))
-                return FE_MEM(expr->base_reg(), other.scale, other.idx, *disp);
-            if (is_noreg(other.idx))
-                return FE_MEM(other.base, 1, expr->base_reg(), *disp);
-            return std::nullopt;
-        }
-        if (expr->scale != 1 && expr->scale != 2 && expr->scale != 4 && expr->scale != 8)
-            return std::nullopt;
-        auto scale = static_cast<u8>(expr->scale);
-        if (!is_noreg(other.idx))
-            return std::nullopt;
-        if (!expr->has_base())
-            return FE_MEM(other.base, scale, expr->index_reg(), *disp);
-        if (is_noreg(other.base) && expr->has_base())
-            return FE_MEM(expr->base_reg(), scale, expr->index_reg(), *disp);
-        return std::nullopt;
-    }
-    // TODO: ValuePartRef?
-    return std::nullopt;
-}
 
 template <typename Adaptor,
           typename Derived,
@@ -423,6 +290,9 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
         val_ref.lock();
         return reg;
     }
+    if (std::holds_alternative<AsmReg>(state)) {
+        return std::get<AsmReg>(state);
+    }
     if (is_imm()) {
         const auto &data = std::get<Immediate>(state);
         ScratchReg  dst{compiler->derived()};
@@ -431,83 +301,6 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
             data.const_bytes, data.bank, data.size, dst_reg);
         state = std::move(dst);
         return dst_reg;
-    }
-    if (Expr *expr = std::get_if<Expr>(&state)) {
-        if (expr->has_base() && !expr->has_index() && expr->disp == 0) {
-            return expr->base_reg();
-        }
-
-        ScratchReg scratch{compiler->derived()};
-        if (auto mem_op = encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0))) {
-            if (std::holds_alternative<ScratchReg>(expr->base)) {
-                scratch = std::move(std::get<ScratchReg>(expr->base));
-            } else if (std::holds_alternative<ScratchReg>(expr->index)) {
-                scratch = std::move(std::get<ScratchReg>(expr->index));
-            } else {
-                (void)scratch.alloc_gp();
-            }
-            ASMC(compiler->derived(), LEA64rm, scratch.cur_reg, *mem_op);
-        } else {
-            AsmReg index_reg;
-            if (expr->has_index())
-                index_reg = expr->index_reg();
-            if (std::holds_alternative<ScratchReg>(expr->index)) {
-                scratch = std::move(std::get<ScratchReg>(expr->index));
-            } else {
-                (void)scratch.alloc_gp();
-            }
-            auto dst = scratch.cur_reg;
-            if (index_reg.valid()) {
-                if ((expr->scale & (expr->scale - 1)) == 0) {
-                    const auto shift = __builtin_ctzl(expr->scale);
-                    if (dst != index_reg) {
-                        ASMC(compiler->derived(), MOV64rr, dst, index_reg);
-                    }
-                    ASMC(compiler->derived(), SHL64ri, dst, shift);
-                } else {
-                    if (expr->scale >= std::numeric_limits<i32>::min()
-                        && expr->scale <= std::numeric_limits<i32>::max()) {
-                        ASMC(compiler->derived(),
-                             IMUL64rri,
-                             dst,
-                             index_reg,
-                             expr->scale);
-                    } else {
-                        ScratchReg scratch2{compiler->derived()};
-                        auto       tmp2 = scratch2.alloc_gp();
-                        ASMC(compiler->derived(), MOV64ri, tmp2, expr->scale);
-                        if (dst != index_reg) {
-                            ASMC(compiler->derived(), MOV64rr, dst, index_reg);
-                        }
-                        ASMC(compiler->derived(), IMUL64rr, dst, tmp2);
-                    }
-                }
-                if (expr->has_base()) {
-                    if (static_cast<i64>(expr->disp) >= std::numeric_limits<i32>::min()
-                        && expr->disp <= std::numeric_limits<i32>::max()) {
-                        ASMC(compiler->derived(), LEA64rm, dst, FE_MEM(expr->base_reg(), 1, dst, static_cast<i32>(expr->disp)));
-                        expr->disp = 0;
-                    } else {
-                        ASMC(compiler->derived(), ADD64rr, dst, expr->base_reg());
-                    }
-                }
-            } else if (expr->has_base()) {
-                if (static_cast<i64>(expr->disp) >= std::numeric_limits<i32>::min()
-                    && expr->disp <= std::numeric_limits<i32>::max()) {
-                    ASMC(compiler->derived(), LEA64rm, dst, FE_MEM(expr->base_reg(), 0, FE_NOREG, static_cast<i32>(expr->disp)));
-                    expr->disp = 0;
-                }
-            }
-            if (expr->disp) {
-                ScratchReg scratch2{compiler->derived()};
-                auto       tmp2 = scratch2.alloc_gp();
-                ASMC(compiler->derived(), MOV64ri, tmp2, expr->disp);
-                ASMC(compiler->derived(), ADD64rr, dst, tmp2);
-            }
-        }
-        auto dst = scratch.cur_reg;
-        state = std::move(scratch);
-        return dst;
     }
     // TODO(ts): allow mem operands with scratchreg param?
     assert(0);
@@ -621,40 +414,13 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
 
             AsmReg val = this->as_reg(compiler);
             if (size <= 4) {
-                ASMC(compiler->derived(), MOV32rr, dst_scratch.cur_reg, val);
+                ASMD(MOVw, dst_scratch.cur_reg, val);
             } else {
-                ASMC(compiler->derived(), MOV64rr, dst_scratch.cur_reg, val);
+                ASMD(MOVx, dst_scratch.cur_reg, val);
             }
         } else {
             AsmReg val = this->as_reg(compiler);
-            if (size <= 16) {
-                if (compiler->derived()->has_cpu_feats(CompilerX64::CPU_AVX)) {
-                    ASMC(compiler->derived(),
-                         VMOVAPD128rr,
-                         dst_scratch.cur_reg,
-                         val);
-                } else {
-                    ASMC(compiler->derived(),
-                         SSE_MOVAPDrr,
-                         dst_scratch.cur_reg,
-                         val);
-                }
-            } else if (size <= 32) {
-                assert(
-                    compiler->derived()->has_cpu_feats(CompilerX64::CPU_AVX));
-                ASMC(compiler->derived(),
-                     VMOVAPD256rr,
-                     dst_scratch.cur_reg,
-                     val);
-            } else {
-                assert(size <= 64);
-                assert(compiler->derived()->has_cpu_feats(
-                    CompilerX64::CPU_AVX512F));
-                ASMC(compiler->derived(),
-                     VMOVAPD512rr,
-                     dst_scratch.cur_reg,
-                     val);
-            }
+            ASMD(MOV8b, dst_scratch.cur_reg, val);
         }
     }
 }
@@ -699,7 +465,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
         backup_reg.part       = assignment.part;
         backup_reg.lock_count = assignment.lock_count;
 
-        assignment.local_idx  = CompilerX64::INVALID_VAL_LOCAL_IDX;
+        assignment.local_idx  = CompilerA64::INVALID_VAL_LOCAL_IDX;
         assignment.part       = 0;
         assignment.lock_count = 0;
 
@@ -717,7 +483,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
             if (op_scratch.cur_reg == reg) {
                 scratch = std::move(op_scratch);
                 op_scratch.alloc_from_bank(bank);
-                ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                ASMD(MOVx, op_scratch.cur_reg, reg);
                 return;
             }
             continue;
@@ -754,7 +520,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                     auto &op_scratch = std::get<ScratchReg>(expr.base);
                     scratch          = std::move(op_scratch);
                     op_scratch.alloc_from_bank(bank);
-                    ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                    ASMD(MOVx, op_scratch.cur_reg, reg);
                 } else {
                     alloc_backup();
                     expr.base = backup_reg.scratch.cur_reg;
@@ -766,7 +532,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                     auto &op_scratch = std::get<ScratchReg>(expr.index);
                     scratch          = std::move(op_scratch);
                     op_scratch.alloc_from_bank(bank);
-                    ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                    ASMD(MOVx, op_scratch.cur_reg, reg);
                 } else {
                     alloc_backup();
                     expr.index = backup_reg.scratch.cur_reg;
@@ -809,11 +575,12 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
 
         // need to switch around backup and reg so it can be returned as a
         // ScratchReg
-        ASMD(XCHG64rr, scratch.cur_reg, backup_reg.scratch.cur_reg);
-        scratch.cur_reg            = backup_reg.scratch.cur_reg;
-        backup_reg.scratch.cur_reg = AsmReg::make_invalid();
+        assert(false);
+        // ASMD(XCHG64rr, scratch.cur_reg, backup_reg.scratch.cur_reg);
+        // scratch.cur_reg            = backup_reg.scratch.cur_reg;
+        // backup_reg.scratch.cur_reg = AsmReg::make_invalid();
     } else {
-        ASMD(MOV64rr, scratch.cur_reg, backup_reg.scratch.cur_reg);
+        ASMD(MOVx, scratch.cur_reg, backup_reg.scratch.cur_reg);
 
         scratch.cur_reg = AsmReg::make_invalid();
         backup_reg.scratch.reset();
@@ -833,4 +600,4 @@ static constexpr inline char ENCODER_IMPL_TEMPLATE_END[] = R"(
 #undef ASMD
 // SPDX-SnippetEnd
 )";
-} // namespace tpde_encgen::x64
+} // namespace tpde_encgen::arm64

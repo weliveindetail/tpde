@@ -23,6 +23,7 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 
+#include "arm64/EncCompilerTemplate.hpp"
 #include "encode_gen.hpp"
 #include "x64/EncCompilerTemplate.hpp"
 
@@ -74,52 +75,6 @@ int main(const int argc, char *argv[]) {
         llvm::cl::ParseCommandLineOptions(opts.size(), opts.data());
     }
 
-    // Define our target machine
-    std::string            triple{"x86_64-unknown-linux-gnu"};
-    // TODO verify these options
-    llvm::CodeModel::Model cm{llvm::CodeModel::Small};
-    llvm::Reloc::Model     rm{llvm::Reloc::Static};
-    const int              opt_level{3};
-
-    // Required so that our target triple is actually found
-    llvm::InitializeNativeTarget();
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargets();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmParsers();
-    llvm::InitializeAllAsmPrinters();
-
-
-    std::string         error;
-    const llvm::Target *target =
-        llvm::TargetRegistry::lookupTarget(triple, error);
-    if (!target) {
-        std::cerr << std::format("could not get target: {}\n", error);
-        return 1;
-    }
-
-    llvm::TargetOptions                  target_options{};
-    std::unique_ptr<llvm::TargetMachine> tm{target->createTargetMachine(
-        /*TT=*/triple,
-        /*CPU=*/"",
-        /*Features=*/"",
-        /*Options=*/target_options,
-        /*RelocModel=*/rm,
-        /*CodeModel=*/cm,
-#if LLVM_VERSION_MAJOR < 18
-        /*OptLevel=*/static_cast<llvm::CodeGenOpt::Level>(unsigned(optLevel)),
-#else
-        /*OptLevel=*/
-        llvm::CodeGenOpt::getLevel(opt_level).value_or(
-            llvm::CodeGenOptLevel::Default),
-#endif
-        /*JIT=*/true)};
-
-
-    auto *target_machine = static_cast<llvm::LLVMTargetMachine *>(tm.get());
-    // If we use a unique_ptr, we get a Segfault when destructing it. So, we
-    // leave it at that. (Memory leaks anyone? :eyes:)
-    auto *MMIWP   = new llvm::MachineModuleInfoWrapperPass{target_machine};
     auto  context = std::make_unique<llvm::LLVMContext>();
     auto  modules = std::vector<std::unique_ptr<llvm::Module>>{};
 
@@ -190,6 +145,53 @@ int main(const int argc, char *argv[]) {
         parse_mod(std::move(bitcode_buf));
     }
 
+    // TODO verify these options
+    llvm::CodeModel::Model cm{llvm::CodeModel::Small};
+    llvm::Reloc::Model     rm{llvm::Reloc::Static};
+    const int              opt_level{3};
+
+    assert(!modules.empty());
+    llvm::StringRef triple = modules[0]->getTargetTriple();
+    llvm::Triple    the_triple(triple);
+
+    // Required so that our target triple is actually found
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
+    llvm::InitializeAllAsmPrinters();
+
+
+    std::string         error;
+    const llvm::Target *target =
+        llvm::TargetRegistry::lookupTarget(triple, error);
+    if (!target) {
+        std::cerr << std::format("could not get target: {}\n", error);
+        return 1;
+    }
+
+    llvm::TargetOptions                  target_options{};
+    std::unique_ptr<llvm::TargetMachine> tm{target->createTargetMachine(
+        /*TT=*/triple,
+        /*CPU=*/"",
+        /*Features=*/"",
+        /*Options=*/target_options,
+        /*RelocModel=*/rm,
+        /*CodeModel=*/cm,
+#if LLVM_VERSION_MAJOR < 18
+        /*OptLevel=*/static_cast<llvm::CodeGenOpt::Level>(unsigned(optLevel)),
+#else
+        /*OptLevel=*/
+        llvm::CodeGenOpt::getLevel(opt_level).value_or(
+            llvm::CodeGenOptLevel::Default),
+#endif
+        /*JIT=*/true)};
+
+
+    auto *target_machine = static_cast<llvm::LLVMTargetMachine *>(tm.get());
+    // If we use a unique_ptr, we get a Segfault when destructing it. So, we
+    // leave it at that. (Memory leaks anyone? :eyes:)
+    auto *MMIWP = new llvm::MachineModuleInfoWrapperPass{target_machine};
 
     // Now, we basically do what is done in addPassesToGenerateCode
     // (https://llvm.org/doxygen/LLVMTargetMachine_8cpp_source.html#l00112)
@@ -230,16 +232,17 @@ int main(const int argc, char *argv[]) {
             if (func_name.starts_with(regcall_prefix)) {
                 f.setName(func_name.substr(regcall_prefix.size()));
             } else {
-                // TODO(ts): sometimes you seem to need it (e.g. when passing
-                // struct {char a,b,c;} since that seems to get treated
-                // differently) so add something to suppress that warning
-                std::cerr << std::format(
-                    "WARN: function {} does not seem to use the regcall "
-                    "calling "
-                    "convention "
-                    "(name not prefixed with \"__regcall3__\"), though "
-                    "its use is highly recommended.\n",
-                    func_name);
+                // AE: we can surely live without this warning.
+                // // TODO(ts): sometimes you seem to need it (e.g. when passing
+                // // struct {char a,b,c;} since that seems to get treated
+                // // differently) so add something to suppress that warning
+                // std::cerr << std::format(
+                //     "WARN: function {} does not seem to use the regcall "
+                //     "calling "
+                //     "convention "
+                //     "(name not prefixed with \"__regcall3__\"), though "
+                //     "its use is highly recommended.\n",
+                //     func_name);
             }
         }
 
@@ -301,13 +304,28 @@ int main(const int argc, char *argv[]) {
         }
     }
 
-    output_file << x64::ENCODER_TEMPLATE_BEGIN << '\n';
-    output_file << decl_lines << '\n';
-    output_file << '\n' << sym_lines << '\n';
-    output_file << x64::ENCODER_TEMPLATE_END << '\n';
-    output_file << x64::ENCODER_IMPL_TEMPLATE_BEGIN << '\n';
-    output_file << impl_lines << '\n';
-    output_file << x64::ENCODER_IMPL_TEMPLATE_END;
+    // TODO(ae): make code nicer
+    switch (the_triple.getArch()) {
+    case llvm::Triple::x86_64:
+        output_file << x64::ENCODER_TEMPLATE_BEGIN << '\n';
+        output_file << decl_lines << '\n';
+        output_file << '\n' << sym_lines << '\n';
+        output_file << x64::ENCODER_TEMPLATE_END << '\n';
+        output_file << x64::ENCODER_IMPL_TEMPLATE_BEGIN << '\n';
+        output_file << impl_lines << '\n';
+        output_file << x64::ENCODER_IMPL_TEMPLATE_END;
+        break;
+    case llvm::Triple::aarch64:
+        output_file << arm64::ENCODER_TEMPLATE_BEGIN << '\n';
+        output_file << decl_lines << '\n';
+        output_file << '\n' << sym_lines << '\n';
+        output_file << arm64::ENCODER_TEMPLATE_END << '\n';
+        output_file << arm64::ENCODER_IMPL_TEMPLATE_BEGIN << '\n';
+        output_file << impl_lines << '\n';
+        output_file << arm64::ENCODER_IMPL_TEMPLATE_END;
+        break;
+    default: assert(false && "unsupported target"); abort();
+    }
 
     // delete tm;
 

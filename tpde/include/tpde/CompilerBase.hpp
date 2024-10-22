@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <unordered_map>
+
 #include "Analyzer.hpp"
 #include "Compiler.hpp"
 #include "CompilerConfig.hpp"

@@ -61,23 +61,13 @@ target_link_libraries(tpdeEncLLVM INTERFACE ${llvm_libs})
 #------------------------------------------------------------------------------
 
 set(TPDE_ENCGEN_HEADERS
-    src/encode_gen.hpp
-    src/inst_descs.hpp
-    src/x64/EncCompilerTemplate.hpp
-    src/fadecBridge.hpp
-    src/fadecInfo.hpp
-    src/instInfo.hpp
-    src/llvmUtils.hpp
 )
 
 set(TPDE_ENCGEN_SOURCES
     src/main.cpp
     src/encode_gen.cpp
-    src/fadecBridge.cpp
-    src/fadecInfo.cpp
-    src/instInfo.cpp
-    src/llvmUtils.cpp
-    src/inst_descs.cpp
+    src/arm64/Target.cpp
+    src/x64/Target.cpp
 )
 
 # set(TPDE_ENCGEN_X64_HEADERS

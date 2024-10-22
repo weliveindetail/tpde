@@ -103,11 +103,9 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                             bool) noexcept;
     bool compile_icmp(IRValueRef, llvm::Instruction *, InstRange) noexcept;
 
-    AsmOperand::ArbitraryAddress
-         resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
-    void addr_to_reg(AsmOperand::ArbitraryAddress &&addr,
-                     ScratchReg                    &result) noexcept;
-    AsmOperand::LegalAddress create_addr_for_alloca(u32 ref_idx) noexcept;
+    AsmOperand::Expr resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
+    void addr_to_reg(AsmOperand::Expr &&addr, ScratchReg &result) noexcept;
+    AsmOperand::Expr create_addr_for_alloca(u32 ref_idx) noexcept;
 
     void switch_emit_cmp(ScratchReg &scratch,
                          AsmReg      cmp_reg,
@@ -983,12 +981,12 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef         inst_idx,
 tpde_encodegen::EncodeCompiler<LLVMAdaptor,
                                LLVMCompilerX64,
                                LLVMCompilerBase,
-                               CompilerConfig>::AsmOperand::ArbitraryAddress
+                               CompilerConfig>::AsmOperand::Expr
     LLVMCompilerX64::resolved_gep_to_addr(ResolvedGEP &resolved) noexcept {
     ScratchReg   base_scratch{this}, index_scratch{this};
     const AsmReg base = this->val_as_reg(resolved.base, base_scratch);
 
-    AsmOperand::ArbitraryAddress addr{};
+    AsmOperand::Expr addr{};
     if (base_scratch.cur_reg.valid()) {
         addr.base = std::move(base_scratch);
     } else {
@@ -1028,47 +1026,28 @@ tpde_encodegen::EncodeCompiler<LLVMAdaptor,
     return addr;
 }
 
-void LLVMCompilerX64::addr_to_reg(AsmOperand::ArbitraryAddress &&addr,
-                                  ScratchReg &result) noexcept {
+void LLVMCompilerX64::addr_to_reg(AsmOperand::Expr &&addr,
+                                  ScratchReg        &result) noexcept {
     // not the most efficient but it's okay for now
-    AsmOperand::LegalAddress legal_addr =
-        AsmOperand::arbitrary_to_legal_address(this, std::move(addr));
-    AsmReg       res_reg;
-    const AsmReg base_reg = legal_addr.base_reg();
-    if (std::holds_alternative<ScratchReg>(legal_addr.base)) {
-        result  = std::move(std::get<ScratchReg>(legal_addr.base));
-        res_reg = result.cur_reg;
-    } else {
-        res_reg = result.alloc_gp();
-    }
+    AsmOperand operand{std::move(addr)};
+    AsmReg     res_reg = operand.as_reg(this);
 
-    if (legal_addr.has_index()) {
-        ASM(LEA64rm,
-            res_reg,
-            FE_MEM(base_reg,
-                   legal_addr.scale,
-                   legal_addr.index_reg(),
-                   legal_addr.disp));
+    if (auto *op_reg = std::get_if<ScratchReg>(&operand.state)) {
+        result = std::move(*op_reg);
     } else {
-        if (legal_addr.disp != 0) {
-            ASM(LEA64rm,
-                res_reg,
-                FE_MEM(base_reg, 0, FE_NOREG, legal_addr.disp));
-        } else if (res_reg != base_reg) {
-            ASM(MOV64rr, res_reg, base_reg);
-        }
+        AsmReg copy_reg = result.alloc_gp();
+        ASM(MOV64rr, copy_reg, res_reg);
     }
 }
 
 tpde_encodegen::EncodeCompiler<LLVMAdaptor,
                                LLVMCompilerX64,
                                LLVMCompilerBase,
-                               CompilerConfig>::AsmOperand::LegalAddress
+                               CompilerConfig>::AsmOperand::Expr
     LLVMCompilerX64::create_addr_for_alloca(u32 ref_idx) noexcept {
     const auto &info = this->variable_refs[ref_idx];
     assert(info.alloca);
-    return AsmOperand::LegalAddress{
-        AsmReg::BP, AsmReg::make_invalid(), 0, -(i32)info.alloca_frame_off};
+    return AsmOperand::Expr{AsmReg::BP, -(i32)info.alloca_frame_off};
 }
 
 void LLVMCompilerX64::switch_emit_cmp(ScratchReg  &scratch,

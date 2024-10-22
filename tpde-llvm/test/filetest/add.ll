@@ -193,14 +193,12 @@ define void @add_i32_invert(i32 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x30
-; X64:    lea edi, [rdi - 0x1]
+; X64:    mov eax, 0xffffffff
+; X64:    lea edi, [rdi + rax]
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %1 = add nsw i32 %0, -1
     ret void
@@ -246,14 +244,12 @@ define void @add_i32_FFFFFFFF(i32 %0) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x30
-; X64:    lea edi, [rdi - 0x1]
+; X64:    mov eax, 0xffffffff
+; X64:    lea edi, [rdi + rax]
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %1 = add nsw i32 %0, u0xFFFFFFFF
     ret void

@@ -560,7 +560,7 @@ define ptr @gep_i8_varoff_i32_no_salvage(ptr %0, i32 %1) {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x40
 ; X64:    movsxd rax, esi
-; X64:    lea rcx, [rdi + rax]
+; X64:    lea rax, [rdi + rax]
 ; X64:    movsxd rsi, esi
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
@@ -599,7 +599,7 @@ define ptr @gep_i16_varoff_i32_no_salvage(ptr %0, i32 %1) {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x40
 ; X64:    movsxd rax, esi
-; X64:    lea rcx, [rdi + 2*rax]
+; X64:    lea rax, [rdi + 2*rax]
 ; X64:    movsxd rsi, esi
 ; X64:    lea rdi, [rdi + 2*rsi]
 ; X64:    mov rax, rdi
@@ -673,8 +673,8 @@ define ptr @gep_i128_varoff_i32(ptr %0, i32 %1) {
 ; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    shl rsi, 0x4
-; X64:    lea rdi, [rdi + rsi]
-; X64:    mov rax, rdi
+; X64:    lea rsi, [rdi + rsi]
+; X64:    mov rax, rsi
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
@@ -790,12 +790,13 @@ define ptr @gep_i2048_varoff_i64(ptr %0, i64 %1) {
 ; X64:    sub rsp, 0x40
 ; X64:    mov rax, rsi
 ; X64:    shl rax, 0x8
-; X64:    lea rdi, [rdi + rax]
-; X64:    mov rax, rdi
+; X64:    lea rax, [rdi + rax]
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = getelementptr inbounds i2048, ptr %0, i64 %1
     ret ptr %2
@@ -829,7 +830,7 @@ define ptr @gep_i8_varoff_i8_no_salvage(ptr %0, i8 %1) {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x40
 ; X64:    movsx rax, sil
-; X64:    lea rcx, [rdi + rax]
+; X64:    lea rax, [rdi + rax]
 ; X64:    movsx rsi, sil
 ; X64:    lea rdi, [rdi + rsi]
 ; X64:    mov rax, rdi
@@ -874,8 +875,8 @@ define ptr @gep_stf_varoff_i8_zero(ptr %0, i8 %1) {
 ; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, sil
 ; X64:    imul rsi, rsi, 0xc
-; X64:    lea rdi, [rdi + rsi]
-; X64:    mov rax, rdi
+; X64:    lea rsi, [rdi + rsi]
+; X64:    mov rax, rsi
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
@@ -935,8 +936,8 @@ define ptr @gep_stf_varoff_i16_zero(ptr %0, i16 %1) {
 ; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, si
 ; X64:    imul rsi, rsi, 0xc
-; X64:    lea rdi, [rdi + rsi]
-; X64:    mov rax, rdi
+; X64:    lea rsi, [rdi + rsi]
+; X64:    mov rax, rsi
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
@@ -956,8 +957,8 @@ define ptr @gep_i512_varoff_i32(ptr %0, i32 %1) {
 ; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    shl rsi, 0x6
-; X64:    lea rdi, [rdi + rsi]
-; X64:    mov rax, rdi
+; X64:    lea rsi, [rdi + rsi]
+; X64:    mov rax, rsi
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
@@ -975,8 +976,8 @@ define ptr @gep_stf_varoff_i32_zero(ptr %0, i32 %1) {
 ; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    imul rsi, rsi, 0xc
-; X64:    lea rdi, [rdi + rsi]
-; X64:    mov rax, rdi
+; X64:    lea rsi, [rdi + rsi]
+; X64:    mov rax, rsi
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
@@ -993,14 +994,11 @@ define ptr @gep_stf_varoff_i64_zero(ptr %0, i64 %1) {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x40
 ; X64:    imul rax, rsi, 0xc
-; X64:    lea rdi, [rdi + rax]
-; X64:    mov rax, rdi
+; X64:    lea rax, [rdi + rax]
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = getelementptr inbounds %struct.three_floats, ptr %0, i64 %1
     ret ptr %2
@@ -1015,8 +1013,8 @@ define ptr @gep_stf_varoff_i8_one(ptr %0, i8 %1) {
 ; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, sil
 ; X64:    imul rsi, rsi, 0xc
-; X64:    lea rdi, [rdi + rsi + 0x4]
-; X64:    mov rax, rdi
+; X64:    lea rsi, [rdi + rsi + 0x4]
+; X64:    mov rax, rsi
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
@@ -1035,8 +1033,8 @@ define ptr @gep_stf_varoff_i16_one(ptr %0, i16 %1) {
 ; X64:    sub rsp, 0x40
 ; X64:    movsx rsi, si
 ; X64:    imul rsi, rsi, 0xc
-; X64:    lea rdi, [rdi + rsi + 0x4]
-; X64:    mov rax, rdi
+; X64:    lea rsi, [rdi + rsi + 0x4]
+; X64:    mov rax, rsi
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
@@ -1055,8 +1053,8 @@ define ptr @gep_stf_varoff_i32_one(ptr %0, i32 %1) {
 ; X64:    sub rsp, 0x40
 ; X64:    movsxd rsi, esi
 ; X64:    imul rsi, rsi, 0xc
-; X64:    lea rdi, [rdi + rsi + 0x4]
-; X64:    mov rax, rdi
+; X64:    lea rsi, [rdi + rsi + 0x4]
+; X64:    mov rax, rsi
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
@@ -1075,13 +1073,11 @@ define ptr @gep_stf_varoff_i64_one(ptr %0, i64 %1) {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x40
 ; X64:    imul rax, rsi, 0xc
-; X64:    lea rdi, [rdi + rax + 0x4]
-; X64:    mov rax, rdi
+; X64:    lea rax, [rdi + rax + 0x4]
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = getelementptr inbounds %struct.three_floats, ptr %0, i64 %1, i32 1
     ret ptr %2
@@ -1429,14 +1425,11 @@ define ptr @gep_stf_varoff_fuse_zero(ptr %0, i64 %1) {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x40
 ; X64:    imul rax, rsi, 0xc
-; X64:    lea rdi, [rdi + rax]
-; X64:    mov rax, rdi
+; X64:    lea rax, [rdi + rax]
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = getelementptr inbounds %struct.three_floats, ptr %0, i64 %1
     %3 = getelementptr inbounds %struct.three_floats, ptr %2, i64 0
@@ -1450,14 +1443,11 @@ define ptr @gep_stf_varoff_zero_fuse_zero(ptr %0, i64 %1) {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x40
 ; X64:    imul rax, rsi, 0xc
-; X64:    lea rdi, [rdi + rax]
-; X64:    mov rax, rdi
+; X64:    lea rax, [rdi + rax]
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = getelementptr inbounds %struct.three_floats, ptr %0, i64 %1, i32 0
     %3 = getelementptr inbounds float, ptr %2, i64 0
@@ -1472,15 +1462,13 @@ define ptr @gep_stf_varoff_zero_fuse_one(ptr %0, i64 %1) {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x40
 ; X64:    imul rax, rsi, 0xc
-; X64:    lea rdi, [rdi + rax]
-; X64:    lea rdi, [rdi + 0x4]
-; X64:    mov rax, rdi
+; X64:    lea rax, [rdi + rax]
+; X64:    lea rax, [rax + 0x4]
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = getelementptr inbounds %struct.three_floats, ptr %0, i64 %1, i32 0
     %3 = getelementptr inbounds float, ptr %2, i64 1
@@ -1494,18 +1482,15 @@ define ptr @gep_stf_varoff_zero_fuse_one_no_salvage(ptr %0, i64 %1) {
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x50
 ; X64:    imul rax, rsi, 0xc
-; X64:    lea rcx, [rdi + rax]
-; X64:    lea rcx, [rcx + 0x4]
+; X64:    lea rax, [rdi + rax]
+; X64:    lea rax, [rax + 0x4]
 ; X64:    imul rax, rsi, 0xc
-; X64:    lea rdi, [rdi + rax]
-; X64:    lea rdi, [rdi + 0x4]
-; X64:    mov rax, rdi
+; X64:    lea rax, [rdi + rax]
+; X64:    lea rax, [rax + 0x4]
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
 ; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = getelementptr inbounds %struct.three_floats, ptr %0, i64 %1, i32 0
     %3 = getelementptr inbounds float, ptr %2, i64 1

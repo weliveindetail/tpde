@@ -470,8 +470,8 @@ define void @store_i24_const(ptr %a) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x30
+; X64:    mov word ptr [rdi], 0x1337
 ; X64:    mov eax, 0x371337
-; X64:    mov word ptr [rdi], ax
 ; X64:    shr eax, 0x10
 ; X64:    mov byte ptr [rdi + 0x2], al
 ; X64:    add rsp, 0x30

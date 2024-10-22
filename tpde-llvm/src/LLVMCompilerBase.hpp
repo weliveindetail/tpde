@@ -1313,7 +1313,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
             const auto part_ty =
                 this->adaptor->complex_part_types[ty_idx + res_part_idx];
 
-            auto part_addr = typename Derived::AsmOperand::ArbitraryAddress{
+            auto part_addr = typename Derived::AsmOperand::Expr{
                 ptr_reg,
                 static_cast<tpde::i32>(
                     ty_sl->getElementOffset(part_idx).getFixedValue())};
@@ -1557,7 +1557,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
             const auto part_ty =
                 this->adaptor->complex_part_types[ty_idx + res_part_idx];
 
-            auto part_addr = typename Derived::AsmOperand::ArbitraryAddress{
+            auto part_addr = typename Derived::AsmOperand::Expr{
                 ptr_reg,
                 static_cast<tpde::i32>(
                     ty_sl->getElementOffset(part_idx).getFixedValue())};

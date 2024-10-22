@@ -2,13 +2,16 @@
 //
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
-#ifdef __x86_64__
-#include <immintrin.h>
+#if defined(__x86_64__)
+    #include <immintrin.h>
 
-#define TARGET_V1 __attribute__((target("arch=opteron")))
-#define TARGET_V2 __attribute__((target("arch=x86-64-v2")))
-#define TARGET_V3 __attribute__((target("arch=x86-64-v3")))
-#define TARGET_V4 __attribute__((target("arch=x86-64-v4")))
+    #define TARGET_V1 __attribute__((target("arch=opteron")))
+    #define TARGET_V2 __attribute__((target("arch=x86-64-v2")))
+    #define TARGET_V3 __attribute__((target("arch=x86-64-v3")))
+    #define TARGET_V4 __attribute__((target("arch=x86-64-v4")))
+#elif defined(__aarch64__)
+    // ARMv8.0 lacks atomic instructions (would generate libcalls)
+    #define TARGET_V1 __attribute__((target("arch=armv8.1-a")))
 #else
 #error "Unsupported architecture"
 #endif
@@ -227,11 +230,18 @@ RES_STRUCT(i128)
 RES_STRUCT(u128)
 #undef RES_STRUCT
 
-#define OF_OP(ty, inv_ty, op) __regcall struct res_##ty TARGET_V1 of_##op##_##ty(inv_ty a, inv_ty b) { \
-    ty res; \
-    _Bool of = __builtin_##op##_overflow((ty)a, (ty)b, &res); \
-    return (struct res_##ty){ res, of }; \
-}
+// Use regcall on x86-64 to return 128 bit integers + overflow flag in registers
+#if defined(__x86_64__)
+    #define OF_OP_CC __regcall
+#else
+    #define OF_OP_CC
+#endif
+#define OF_OP(ty, inv_ty, op)                                                  \
+    OF_OP_CC struct res_##ty TARGET_V1 of_##op##_##ty(inv_ty a, inv_ty b) {    \
+        ty    res;                                                             \
+        _Bool of = __builtin_##op##_overflow((ty)a, (ty)b, &res);              \
+        return (struct res_##ty){res, of};                                     \
+    }
 
 #define OF_OPS(width) \
     OF_OP(i##width, u##width, add) \
@@ -245,10 +255,20 @@ OF_OPS(8)
 OF_OPS(16)
 OF_OPS(32)
 OF_OPS(64)
-OF_OPS(128)
+
+OF_OP(i128, u128, add)
+OF_OP(i128, u128, sub)
+OF_OP(u128, i128, add)
+OF_OP(u128, i128, sub)
+// 128-bit mul-overflow is inlined on x86-64
+#if defined(__x86_64__)
+OF_OP(i128, u128, mul)
+OF_OP(u128, i128, mul)
+#endif
 
 #undef OF_OPS
 #undef OF_OP
+#undef OF_OP_CC
 
 // --------------------------
 // float arithmetic

@@ -3,9 +3,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <cassert>
+#include <cstdlib>
 #include <elf.h>
 #include <span>
+#include <string_view>
 #include <type_traits>
+#include <vector>
 
 #include "base.hpp"
 #include "util/SmallVector.hpp"
