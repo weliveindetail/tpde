@@ -48,6 +48,78 @@ constexpr u8 DW_reg_r15 = 15;
 constexpr u8 DW_reg_ra  = 16;
 } // namespace x64
 
+namespace a64 {
+constexpr u8 DW_reg_x0  = 0;
+constexpr u8 DW_reg_x1  = 1;
+constexpr u8 DW_reg_x2  = 2;
+constexpr u8 DW_reg_x3  = 3;
+constexpr u8 DW_reg_x4  = 4;
+constexpr u8 DW_reg_x5  = 5;
+constexpr u8 DW_reg_x6  = 6;
+constexpr u8 DW_reg_x7  = 7;
+constexpr u8 DW_reg_x8  = 8;
+constexpr u8 DW_reg_x9  = 9;
+constexpr u8 DW_reg_x10 = 10;
+constexpr u8 DW_reg_x11 = 11;
+constexpr u8 DW_reg_x12 = 12;
+constexpr u8 DW_reg_x13 = 13;
+constexpr u8 DW_reg_x14 = 14;
+constexpr u8 DW_reg_x15 = 15;
+constexpr u8 DW_reg_x16 = 16;
+constexpr u8 DW_reg_x17 = 17;
+constexpr u8 DW_reg_x18 = 18;
+constexpr u8 DW_reg_x19 = 19;
+constexpr u8 DW_reg_x20 = 20;
+constexpr u8 DW_reg_x21 = 21;
+constexpr u8 DW_reg_x22 = 22;
+constexpr u8 DW_reg_x23 = 23;
+constexpr u8 DW_reg_x24 = 24;
+constexpr u8 DW_reg_x25 = 25;
+constexpr u8 DW_reg_x26 = 26;
+constexpr u8 DW_reg_x27 = 27;
+constexpr u8 DW_reg_x28 = 28;
+constexpr u8 DW_reg_x29 = 29;
+constexpr u8 DW_reg_x30 = 30;
+
+constexpr u8 DW_reg_fp = 29;
+constexpr u8 DW_reg_lr = 30;
+
+constexpr u8 DW_reg_v0  = 64;
+constexpr u8 DW_reg_v1  = 65;
+constexpr u8 DW_reg_v2  = 66;
+constexpr u8 DW_reg_v3  = 67;
+constexpr u8 DW_reg_v4  = 68;
+constexpr u8 DW_reg_v5  = 69;
+constexpr u8 DW_reg_v6  = 70;
+constexpr u8 DW_reg_v7  = 71;
+constexpr u8 DW_reg_v8  = 72;
+constexpr u8 DW_reg_v9  = 73;
+constexpr u8 DW_reg_v10 = 74;
+constexpr u8 DW_reg_v11 = 75;
+constexpr u8 DW_reg_v12 = 76;
+constexpr u8 DW_reg_v13 = 77;
+constexpr u8 DW_reg_v14 = 78;
+constexpr u8 DW_reg_v15 = 79;
+constexpr u8 DW_reg_v16 = 80;
+constexpr u8 DW_reg_v17 = 81;
+constexpr u8 DW_reg_v18 = 82;
+constexpr u8 DW_reg_v19 = 83;
+constexpr u8 DW_reg_v20 = 84;
+constexpr u8 DW_reg_v21 = 85;
+constexpr u8 DW_reg_v22 = 86;
+constexpr u8 DW_reg_v23 = 87;
+constexpr u8 DW_reg_v24 = 88;
+constexpr u8 DW_reg_v25 = 89;
+constexpr u8 DW_reg_v26 = 90;
+constexpr u8 DW_reg_v27 = 91;
+constexpr u8 DW_reg_v28 = 92;
+constexpr u8 DW_reg_v29 = 93;
+constexpr u8 DW_reg_v30 = 94;
+
+constexpr u8 DW_reg_sp = 31;
+constexpr u8 DW_reg_pc = 32;
+} // namespace a64
+
 } // namespace dwarf
 
 /// AssemblerElf contains the architecture-independent logic to emit
@@ -748,8 +820,6 @@ void AssemblerElf<Derived>::text_ensure_space(u32 size) noexcept {
     if (text_reserve_end - text_write_ptr >= size) [[likely]] {
         return;
     }
-
-    // TODO(ts): include veneer handling on architectures that require it
 
     size             = util::align_up(size, 16 * 1024);
     const size_t off = text_write_ptr - sec_text.data.data();

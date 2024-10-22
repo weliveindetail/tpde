@@ -10,8 +10,14 @@
 
 #include "TestIR.hpp"
 #include "TestIRCompiler.hpp"
+#include "TestIRCompilerA64.hpp"
 #include "tpde/Analyzer.hpp"
 #include "tpde/CompilerBase.hpp"
+
+enum class Arch {
+    x64,
+    a64,
+};
 
 int main(int argc, char *argv[]) {
     using namespace tpde;
@@ -65,6 +71,18 @@ int main(int argc, char *argv[]) {
         {"run-until"},
         run_map,
         RunTestUntil::full);
+
+    std::unordered_map<std::string_view, Arch> arch_map{
+        {"x64", Arch::x64},
+        {"a64", Arch::a64}
+    };
+    args::MapFlag<std::string_view, Arch> arch(
+        parser,
+        "arch",
+        "Which architecture to compile to",
+        {"arch"},
+        arch_map,
+        Arch::x64);
 
     args::ValueFlag<std::string> obj_out_path(
         parser,
@@ -177,7 +195,7 @@ int main(int argc, char *argv[]) {
     }
 
     // TODO(ts): multiple arch select
-    {
+    if (arch.Get() == Arch::x64) {
         test::TestIRAdaptor     adaptor{&ir};
         test::TestIRCompilerX64 compiler{&adaptor, no_fixed_assignments};
 
@@ -201,6 +219,19 @@ int main(int argc, char *argv[]) {
             }
             out_file.write(reinterpret_cast<const char *>(data.data()),
                            data.size());
+        }
+    } else {
+        assert(arch.Get() == Arch::a64);
+        if (!test::compile_ir_arm64(&ir,
+                                    run_until.Get(),
+                                    print_rpo,
+                                    print_layout,
+                                    print_loops,
+                                    print_liveness,
+                                    no_fixed_assignments.Get(),
+                                    obj_out_path.Get())) {
+            TPDE_LOG_ERR("Failed to compiler IR");
+            return 1;
         }
     }
 

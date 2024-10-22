@@ -24,6 +24,7 @@ set(TPDE_LOGGING "DebugOnly" CACHE STRING "Enable logging with spdlog (DebugOnly
 set_property(CACHE TPDE_LOGGING PROPERTY STRINGS DebugOnly ON OFF)
 
 option(TPDE_X64 "enable x86-64 support" ON)
+option(TPDE_A64 "enable AArch64 support" ON)
 
 #------------------------------------------------------------------------------
 # dependencies
@@ -52,6 +53,11 @@ if (TPDE_X64)
     set(FADEC_ENCODE OFF CACHE BOOL "no fadec encode")
     set(FADEC_ENCODE2 ON CACHE BOOL "fadec encode2 support")
     add_subdirectory(../deps/fadec ${CMAKE_CURRENT_BINARY_DIR}/deps/fadec)
+endif ()
+
+# disarm
+if (TPDE_A64)
+    add_subdirectory(../deps/disarm ${CMAKE_CURRENT_BINARY_DIR}/deps/disarm)
 endif ()
 
 #------------------------------------------------------------------------------
@@ -85,6 +91,11 @@ set(TPDE_X64_HEADERS
     include/tpde/x64/CompilerX64.hpp
 )
 
+set(TPDE_A64_HEADERS
+    include/tpde/arm64/AssemblerElfA64.hpp
+    include/tpde/arm64/CompilerA64.hpp
+)
+
 #------------------------------------------------------------------------------
 # target tpde
 #------------------------------------------------------------------------------
@@ -96,6 +107,11 @@ target_sources(tpde PRIVATE ${TPDE_SOURCES} ${TPDE_HEADERS})
 if (TPDE_X64)
     target_sources(tpde PRIVATE ${TPDE_X64_HEADERS})
     target_link_libraries(tpde PUBLIC fadec::fadec)
+endif ()
+
+if (TPDE_A64)
+    target_sources(tpde PRIVATE ${TPDE_A64_HEADERS})
+    target_link_libraries(tpde PUBLIC disarm64::disarm64)
 endif ()
 
 set_target_properties(tpde PROPERTIES
@@ -116,6 +132,8 @@ else ()
 
     # this is annoying
     target_compile_options(tpde PRIVATE -Wno-missing-field-initializers)
+    # practically supported by every compiler
+    target_compile_options(tpde PRIVATE -Wno-nested-anon-types)
 endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -156,6 +174,8 @@ set(TPDE_TEST_SOURCES
     src/test/TestIR.hpp
     src/test/TestIRCompiler.cpp
     src/test/TestIRCompiler.hpp
+    src/test/TestIRCompilerA64.hpp
+    src/test/TestIRCompilerA64.cpp
     src/test/test_main.cpp
 )
 
@@ -174,6 +194,8 @@ else ()
 
     # this is annoying
     target_compile_options(tpde_test PRIVATE -Wno-missing-field-initializers)
+    # practically supported by every compiler
+    target_compile_options(tpde_test PRIVATE -Wno-nested-anon-types)
 endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
