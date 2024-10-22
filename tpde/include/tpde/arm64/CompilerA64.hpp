@@ -166,7 +166,7 @@ struct AsmReg : AsmRegBase {
     }
 
     operator DA_GRegSP() const noexcept {
-        assert(reg_id < 0);
+        assert(reg_id <= SP);
         return DA_GRegSP{reg_id};
     }
 
@@ -1387,7 +1387,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
         *write_ptr++ = de64_ADDxi(DA_SP, DA_SP, final_frame_size);
         *write_ptr++ = de64_RET(DA_GP(30));
 
-        ret_size = write_ptr - ret_start;
+        ret_size = (write_ptr - ret_start) * 4;
     }
 
     for (u32 i = 1; i < func_ret_offs.size(); ++i) {
