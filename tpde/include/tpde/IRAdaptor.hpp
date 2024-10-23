@@ -144,8 +144,11 @@ concept IRAdaptor = requires(T a) {
     /// Provides the number of functions to compile
     { a.func_count() } -> std::convertible_to<u32>;
 
-    /// Provides an iterator over all functions to be compiled
+    /// Provides an iterator over all functions in the current module
     { a.funcs() } -> IRRange<typename T::IRFuncRef>;
+
+    /// Provides an iterator over all functions that should actually be compiled
+    { a.funcs_to_compile() } -> IRRange<typename T::IRFuncRef>;
 
 
     // information about functions that needs to be always available because of
@@ -333,6 +336,12 @@ concept IRAdaptor = requires(T a) {
     {
         a.val_alloca_align(ARG(typename T::IRValueRef))
     } -> std::convertible_to<u32>;
+
+#ifdef TPDE_LOGGING
+    /// If logging is enabled, we want to be able to print values and want to
+    /// give the adaptor the opportunity to dictate how that is done
+    { a.value_fmt_ref(ARG(typename T::IRValueRef)) } -> CanBeFormatted;
+#endif
 
 
     // compilation lifecycle

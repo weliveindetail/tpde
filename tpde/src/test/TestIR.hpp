@@ -197,6 +197,8 @@ struct TestIRAdaptor {
         return Range{.func_count = static_cast<u32>(ir->functions.size())};
     }
 
+    [[nodiscard]] auto funcs_to_compile() const noexcept { return funcs(); }
+
     [[nodiscard]] std::string_view
         func_link_name(const IRFuncRef func) const noexcept {
         return ir->functions[static_cast<u32>(func)].name;

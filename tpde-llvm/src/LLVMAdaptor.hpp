@@ -163,6 +163,8 @@ struct LLVMAdaptor {
         return FuncIter{&mod};
     }
 
+    [[nodiscard]] auto funcs_to_compile() const noexcept { return funcs(); }
+
     [[nodiscard]] auto globals() const noexcept {
         struct GlobalIter {
             IRValueRef end_idx;
