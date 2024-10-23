@@ -630,7 +630,11 @@ void Analyzer<Adaptor>::identify_loops(
     // ugly
     util::SmallVector<TravState, SMALL_BLOCK_NUM> trav_state;
 
-    trav_state.push_back(TravState{.block_idx = 0, .dfsp_pos = 1});
+    trav_state.push_back(
+        TravState{.block_idx = 0,
+                  .dfsp_pos  = 1,
+                  .succ_it   = adaptor->block_succs(block_rpo[0]).begin(),
+                  .end_it    = adaptor->block_succs(block_rpo[0]).end()});
 
     const auto tag_lhead = [&block_infos](u32 b, u32 h) {
         if (b == h || h == 0) {
@@ -667,10 +671,10 @@ void Analyzer<Adaptor>::identify_loops(
 
             // TODO(ts): somehow make sure that the iterators can live when
             // succs is destroyed?
-            auto succs    = adaptor->block_succs(block_rpo[block_idx]);
-            state.succ_it = succs.begin();
-            state.end_it  = succs.end();
-            state.state   = 1;
+            // auto succs    = adaptor->block_succs(block_rpo[block_idx]);
+            // state.succ_it = succs.begin();
+            // state.end_it  = succs.end();
+            state.state = 1;
         }
             [[fallthrough]];
         case 1: {
@@ -706,8 +710,13 @@ void Analyzer<Adaptor>::identify_loops(
                 // recurse
                 cont        = true;
                 state.state = 2;
+                // TODO(ts): somehow make sure that the iterators can live when
+                // succs is destroyed?
+                auto succs  = adaptor->block_succs(block_rpo[succ_idx]);
                 trav_state.push_back(TravState{.block_idx = succ_idx,
-                                               .dfsp_pos = state.dfsp_pos + 1});
+                                               .dfsp_pos  = state.dfsp_pos + 1,
+                                               .succ_it   = succs.begin(),
+                                               .end_it    = succs.end()});
                 break;
             }
 
