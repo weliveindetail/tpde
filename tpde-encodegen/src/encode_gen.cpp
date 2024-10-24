@@ -1566,6 +1566,8 @@ bool handle_terminator(std::string        &buf,
                                "// Resetting alias status for {}",
                                state.enc_target->reg_name_lower(reg));
                 info.ty = ValueInfo::SCRATCHREG;
+                assert(state.value_map.contains(info.alias_reg_id));
+                state.value_map[info.alias_reg_id].aliased_regs.erase(reg);
             }
 
             return true;
