@@ -29,7 +29,7 @@ static constexpr inline char ENCODER_TEMPLATE_BEGIN[] =
 
 #include <variant>
 
-#include "base.hpp"
+#include "tpde/base.hpp"
 #include "tpde/x64/CompilerX64.hpp"
 
 // Helper macros for assembling in the compiler
