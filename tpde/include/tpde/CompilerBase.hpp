@@ -925,10 +925,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
 
     if (arg.is_const) {
         const auto reg = res_ref.alloc_reg(false);
-        (void)reg;
-        // TODO(ts): materialize constant
-        assert(0);
-        exit(1);
+        derived()->materialize_constant(arg, reg);
     } else {
         auto ap_arg = arg.assignment();
 
