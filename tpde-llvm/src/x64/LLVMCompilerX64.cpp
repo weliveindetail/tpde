@@ -848,13 +848,14 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef         inst_idx,
             ASM(XOR64rr, scratch2.cur_reg, rhs_reg_high);
             ASM(OR64rr, scratch1.cur_reg, scratch2.cur_reg);
         } else {
-            const auto lhs_reg      = this->val_as_reg(lhs, scratch1);
-            const auto lhs_reg_high = this->val_as_reg(lhs_high, scratch2);
+            const auto lhs_reg = this->val_as_reg(lhs, scratch1);
+            auto       lhs_high_tmp =
+                lhs_high.reload_into_specific_fixed(this, scratch2.alloc_gp());
             const auto rhs_reg      = this->val_as_reg(rhs, scratch3);
             const auto rhs_reg_high = this->val_as_reg(rhs_high, scratch4);
 
             ASM(CMP64rr, lhs_reg, rhs_reg);
-            ASM(SBB64rr, lhs_reg_high, rhs_reg_high);
+            ASM(SBB64rr, lhs_high_tmp, rhs_reg_high);
         }
         lhs_high.reset_without_refcount();
         rhs_high.reset_without_refcount();
