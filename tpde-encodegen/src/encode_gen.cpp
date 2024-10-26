@@ -897,7 +897,7 @@ bool GenerationState::can_salvage_operand(const llvm::MachineOperand &op) {
     }
 
     [[maybe_unused]] auto old_reg = reg_id;
-    auto cur_reg = info.alias_reg_id;
+    auto                  cur_reg = info.alias_reg_id;
     while (true) {
         assert(value_map.contains(cur_reg));
         const auto &alias_info = value_map[cur_reg];
@@ -3595,7 +3595,7 @@ bool create_encode_function(llvm::MachineFunction *func,
                 }
                 ++state.cur_inst_id;
             }
-            if (!bb_it->back().isTerminator()) {
+            if (bb_it->empty() || !bb_it->back().isTerminator()) {
                 if (!handle_end_of_block(state, write_buf_inner, &*bb_it)) {
                     return false;
                 }
