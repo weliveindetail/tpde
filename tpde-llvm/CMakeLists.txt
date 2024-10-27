@@ -21,6 +21,7 @@ add_executable(tpde::tpde_llvm ALIAS tpde_llvm)
 #------------------------------------------------------------------------------
 
 option(TPDE_LLVM_X64 "enable x86-64 support" ON)
+option(TPDE_LLVM_ARM64 "enable AArch64 support" ON)
 
 
 #------------------------------------------------------------------------------
@@ -36,6 +37,11 @@ if (TPDE_LLVM_X64)
     set(TPDE_X64 ON)
 else ()
     set(TPDE_X64 OFF)
+endif ()
+if (TPDE_LLVM_ARM64)
+    set(TPDE_A64 ON)
+else ()
+    set(TPDE_A64 OFF)
 endif ()
 
 # tpde
@@ -96,6 +102,15 @@ set(TPDE_LLVM_X64_SOURCES
     src/x64/LLVMCompilerX64.cpp
 )
 
+set(TPDE_LLVM_ARM64_HEADERS
+    src/arm64/LLVMCompilerArm64.hpp
+    src/arm64/encode_compiler.hpp
+)
+
+set(TPDE_LLVM_ARM64_SOURCES
+    src/arm64/LLVMCompilerArm64.cpp
+)
+
 
 #------------------------------------------------------------------------------
 # target tpde_llvm
@@ -107,7 +122,12 @@ target_include_directories(tpde_llvm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_sources(tpde_llvm PRIVATE ${TPDE_LLVM_SOURCES} ${TPDE_LLVM_HEADERS})
 
 if (TPDE_LLVM_X64)
+    target_compile_definitions(tpde_llvm PRIVATE TPDE_LLVM_X64)
     target_sources(tpde_llvm PRIVATE ${TPDE_LLVM_X64_SOURCES} ${TPDE_LLVM_X64_HEADERS})
+endif ()
+if (TPDE_LLVM_ARM64)
+    target_compile_definitions(tpde_llvm PRIVATE TPDE_LLVM_ARM64)
+    target_sources(tpde_llvm PRIVATE ${TPDE_LLVM_ARM64_SOURCES} ${TPDE_LLVM_ARM64_HEADERS})
 endif ()
 
 set_target_properties(tpde_llvm PROPERTIES
@@ -128,6 +148,8 @@ else ()
 
     # this is annoying
     target_compile_options(tpde_llvm PRIVATE -Wno-missing-field-initializers)
+    # practically supported by every compiler
+    target_compile_options(tpde_llvm PRIVATE -Wno-nested-anon-types)
 endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

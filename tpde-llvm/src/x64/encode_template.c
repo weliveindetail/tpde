@@ -266,14 +266,12 @@ OF_OPS(16)
 OF_OPS(32)
 OF_OPS(64)
 
-OF_OP(i128, u128, add)
-OF_OP(i128, u128, sub)
-OF_OP(u128, i128, add)
-OF_OP(u128, i128, sub)
-// 128-bit mul-overflow is inlined on x86-64
+// 128-bit mul-overflow is inlined on x86-64, but not on AArch64. Furthermore,
+// on AArch64, there is no calling convention to return more than two registers
+// (LLVM supports this, but Clang doesn't, because it follows the AAPCS ABI).
+// Therefore, code these manually for AArch64.
 #if defined(__x86_64__)
-OF_OP(i128, u128, mul)
-OF_OP(u128, i128, mul)
+OF_OPS(128)
 #endif
 
 #undef OF_OPS

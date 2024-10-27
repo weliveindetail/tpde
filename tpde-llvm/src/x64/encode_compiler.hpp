@@ -204,7 +204,7 @@ struct EncodeCompiler {
         [[nodiscard]] std::optional<FeMem> encodeable_with(FeMem other) const noexcept;
         AsmReg             as_reg(EncodeCompiler *compiler) noexcept;
         bool               try_salvage(ScratchReg &, u8 bank) noexcept;
-        bool          try_salvage_if_nonalloc(ScratchReg &, u8 bank) noexcept;
+        AsmReg as_reg_try_salvage(EncodeCompiler *, ScratchReg &, u8 bank) noexcept;
         void          try_salvage_or_materialize(EncodeCompiler *compiler,
                                                  ScratchReg     &dst_scratch,
                                                  u8              bank,
@@ -535,8 +535,16 @@ struct EncodeCompiler {
     SymRef sym_u64tof64_cp0 = Assembler::INVALID_SYM_REF;
     SymRef sym_is_fpclass_ninf_float_cp0 = Assembler::INVALID_SYM_REF;
     SymRef sym_is_fpclass_pinf_float_cp0 = Assembler::INVALID_SYM_REF;
+    SymRef sym_is_fpclass_inf_float_cp1 = Assembler::INVALID_SYM_REF;
+    SymRef sym_is_fpclass_inf_float_cp0 = Assembler::INVALID_SYM_REF;
+    SymRef sym_is_fpclass_finite_float_cp1 = Assembler::INVALID_SYM_REF;
+    SymRef sym_is_fpclass_finite_float_cp0 = Assembler::INVALID_SYM_REF;
     SymRef sym_is_fpclass_ninf_double_cp0 = Assembler::INVALID_SYM_REF;
     SymRef sym_is_fpclass_pinf_double_cp0 = Assembler::INVALID_SYM_REF;
+    SymRef sym_is_fpclass_inf_double_cp1 = Assembler::INVALID_SYM_REF;
+    SymRef sym_is_fpclass_inf_double_cp0 = Assembler::INVALID_SYM_REF;
+    SymRef sym_is_fpclass_finite_double_cp1 = Assembler::INVALID_SYM_REF;
+    SymRef sym_is_fpclass_finite_double_cp0 = Assembler::INVALID_SYM_REF;
 
 
 };
@@ -818,12 +826,15 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy,
           typename Config>
-bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
-    try_salvage_if_nonalloc(ScratchReg &dst_scratch, const u8 bank) noexcept {
-    if (!dst_scratch.cur_reg.invalid()) {
-        return false;
+typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
+    EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
+    as_reg_try_salvage(EncodeCompiler *compiler,
+                       ScratchReg &dst_scratch,
+                       u8 bank) noexcept {
+    if (try_salvage(dst_scratch, bank)) {
+        return dst_scratch.cur_reg;
     }
-    return try_salvage(dst_scratch, bank);
+    return as_reg(compiler);
 }
 
 template <typename Adaptor,
@@ -1090,7 +1101,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.1):
     //   liveins: $rdi
-    //   renamable $eax = MOVZX32rm8 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0, !tbaa !5)
+    //   renamable $eax = MOVZX32rm8 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0, !tbaa !3)
     //   RET64 killed $eax
     // 
     // # End machine code for function loadi8.
@@ -1101,7 +1112,7 @@ template <typename Adaptor,
     ScratchReg scratch_di{derived()};
 
 
-    // renamable $eax = MOVZX32rm8 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0, !tbaa !5)
+    // renamable $eax = MOVZX32rm8 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s8) from %ir.0, !tbaa !3)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -1114,12 +1125,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVZXr32m8, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -1128,6 +1134,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -1148,7 +1155,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.1):
     //   liveins: $rdi
-    //   renamable $eax = MOVZX32rm16 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s16) from %ir.0, !tbaa !8)
+    //   renamable $eax = MOVZX32rm16 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s16) from %ir.0, !tbaa !6)
     //   RET64 killed $eax
     // 
     // # End machine code for function loadi16.
@@ -1159,7 +1166,7 @@ template <typename Adaptor,
     ScratchReg scratch_di{derived()};
 
 
-    // renamable $eax = MOVZX32rm16 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s16) from %ir.0, !tbaa !8)
+    // renamable $eax = MOVZX32rm16 killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s16) from %ir.0, !tbaa !6)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -1172,12 +1179,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVZXr32m16, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -1186,6 +1188,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -1206,7 +1209,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.1):
     //   liveins: $rdi
-    //   renamable $eax = MOV32rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s32) from %ir.0, !tbaa !10)
+    //   renamable $eax = MOV32rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s32) from %ir.0, !tbaa !8)
     //   RET64 killed $eax
     // 
     // # End machine code for function loadi32.
@@ -1217,7 +1220,7 @@ template <typename Adaptor,
     ScratchReg scratch_di{derived()};
 
 
-    // renamable $eax = MOV32rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s32) from %ir.0, !tbaa !10)
+    // renamable $eax = MOV32rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s32) from %ir.0, !tbaa !8)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -1230,12 +1233,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV32rm, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -1244,6 +1242,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -1264,7 +1263,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.1):
     //   liveins: $rdi
-    //   renamable $rax = MOV64rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, !tbaa !12)
+    //   renamable $rax = MOV64rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, !tbaa !10)
     //   RET64 killed $rax
     // 
     // # End machine code for function loadi64.
@@ -1275,7 +1274,7 @@ template <typename Adaptor,
     ScratchReg scratch_di{derived()};
 
 
-    // renamable $rax = MOV64rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, !tbaa !12)
+    // renamable $rax = MOV64rm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, !tbaa !10)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -1288,12 +1287,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV64rm, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -1302,6 +1296,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -1374,12 +1369,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVZXr32m8, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 2));
@@ -1388,6 +1378,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -1409,7 +1400,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(OR32rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(OR32rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -1489,12 +1481,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVZXr32m8, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 4));
@@ -1503,6 +1490,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result ax is marked as alive
 
@@ -1525,7 +1513,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(OR64rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(OR64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -1605,12 +1594,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVZXr32m16, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 4));
@@ -1619,6 +1603,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result ax is marked as alive
 
@@ -1641,7 +1626,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(OR64rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(OR64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -1756,8 +1742,9 @@ template <typename Adaptor,
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
+        AsmReg op2 = scratch_ax.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(OR32rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        ASMD(OR32rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -1794,12 +1781,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV32rm, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -1808,6 +1790,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result ax is marked as alive
 
@@ -1818,7 +1801,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(OR64rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(OR64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -1845,8 +1829,8 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.1):
     //   liveins: $rdi
-    //   renamable $rax = MOV64rm renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, align 16, !tbaa !18)
-    //   renamable $rdx = MOV64rm killed renamable $rdi, 1, $noreg, 8, $noreg :: (load (s64) from %ir.0 + 8, basealign 16, !tbaa !18)
+    //   renamable $rax = MOV64rm renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, align 16, !tbaa !16)
+    //   renamable $rdx = MOV64rm killed renamable $rdi, 1, $noreg, 8, $noreg :: (load (s64) from %ir.0 + 8, basealign 16, !tbaa !16)
     //   RET64 killed $rax, killed $rdx
     // 
     // # End machine code for function loadi128.
@@ -1858,7 +1842,7 @@ template <typename Adaptor,
     ScratchReg scratch_dx{derived()};
 
 
-    // renamable $rax = MOV64rm renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, align 16, !tbaa !18)
+    // renamable $rax = MOV64rm renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, align 16, !tbaa !16)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -1882,7 +1866,7 @@ template <typename Adaptor,
     // result ax is marked as alive
 
 
-    // renamable $rdx = MOV64rm killed renamable $rdi, 1, $noreg, 8, $noreg :: (load (s64) from %ir.0 + 8, basealign 16, !tbaa !18)
+    // renamable $rdx = MOV64rm killed renamable $rdi, 1, $noreg, 8, $noreg :: (load (s64) from %ir.0 + 8, basealign 16, !tbaa !16)
     do {
     {
     auto cond1 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 8));
@@ -1895,12 +1879,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_dx, 0)) {
-            op1 = scratch_dx.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_dx, 0);
         // def dx has not been allocated yet
         scratch_dx.alloc_from_bank(0);
         ASMD(MOV64rm, scratch_dx.cur_reg, FE_MEM(op1, 0, FE_NOREG, 8));
@@ -1909,6 +1888,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result dx is marked as alive
 
 
@@ -1931,7 +1911,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.1):
     //   liveins: $rdi
-    //   renamable $xmm0 = MOVSSrm_alt killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s32) from %ir.0, !tbaa !20)
+    //   renamable $xmm0 = MOVSSrm_alt killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s32) from %ir.0, !tbaa !18)
     //   RET64 killed $xmm0
     // 
     // # End machine code for function loadf32.
@@ -1942,7 +1922,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // renamable $xmm0 = MOVSSrm_alt killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s32) from %ir.0, !tbaa !20)
+    // renamable $xmm0 = MOVSSrm_alt killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s32) from %ir.0, !tbaa !18)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -1964,6 +1944,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -1984,7 +1965,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.1):
     //   liveins: $rdi
-    //   renamable $xmm0 = MOVSDrm_alt killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, !tbaa !22)
+    //   renamable $xmm0 = MOVSDrm_alt killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, !tbaa !20)
     //   RET64 killed $xmm0
     // 
     // # End machine code for function loadf64.
@@ -1995,7 +1976,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // renamable $xmm0 = MOVSDrm_alt killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, !tbaa !22)
+    // renamable $xmm0 = MOVSDrm_alt killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s64) from %ir.0, !tbaa !20)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -2017,6 +1998,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -2037,7 +2019,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.1):
     //   liveins: $rdi
-    //   renamable $xmm0 = MOVAPSrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s128) from %ir.0, !tbaa !5)
+    //   renamable $xmm0 = MOVAPSrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s128) from %ir.0, !tbaa !3)
     //   RET64 killed $xmm0
     // 
     // # End machine code for function loadv128.
@@ -2048,7 +2030,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // renamable $xmm0 = MOVAPSrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s128) from %ir.0, !tbaa !5)
+    // renamable $xmm0 = MOVAPSrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s128) from %ir.0, !tbaa !3)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -2070,6 +2052,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -2090,7 +2073,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.1):
     //   liveins: $rdi
-    //   renamable $ymm0 = VMOVAPSYrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s256) from %ir.0, !tbaa !5)
+    //   renamable $ymm0 = VMOVAPSYrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s256) from %ir.0, !tbaa !3)
     //   RET64 killed $ymm0
     // 
     // # End machine code for function loadv256.
@@ -2101,7 +2084,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // renamable $ymm0 = VMOVAPSYrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s256) from %ir.0, !tbaa !5)
+    // renamable $ymm0 = VMOVAPSYrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s256) from %ir.0, !tbaa !3)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -2123,6 +2106,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -2143,7 +2127,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.1):
     //   liveins: $rdi
-    //   renamable $zmm0 = VMOVAPSZrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s512) from %ir.0, !tbaa !5)
+    //   renamable $zmm0 = VMOVAPSZrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s512) from %ir.0, !tbaa !3)
     //   RET64 killed $zmm0
     // 
     // # End machine code for function loadv512.
@@ -2154,7 +2138,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // renamable $zmm0 = VMOVAPSZrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s512) from %ir.0, !tbaa !5)
+    // renamable $zmm0 = VMOVAPSZrm killed renamable $rdi, 1, $noreg, 0, $noreg :: (load (s512) from %ir.0, !tbaa !3)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -2176,6 +2160,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -2196,7 +2181,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $esi, $rdi
-    //   MOV8mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $sil, implicit killed $esi :: (store (s8) into %ir.0, !tbaa !5)
+    //   MOV8mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $sil, implicit killed $esi :: (store (s8) into %ir.0, !tbaa !3)
     //   RET64
     // 
     // # End machine code for function storei8.
@@ -2208,7 +2193,7 @@ template <typename Adaptor,
     ScratchReg scratch_si{derived()};
 
 
-    // MOV8mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $sil, implicit killed $esi :: (store (s8) into %ir.0, !tbaa !5)
+    // MOV8mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $sil, implicit killed $esi :: (store (s8) into %ir.0, !tbaa !3)
     do {
     {
     auto cond0 = param_1.encodeable_as_imm32_sext();
@@ -2248,7 +2233,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument si is killed and marked as dead
 
 
@@ -2267,7 +2254,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $esi, $rdi
-    //   MOV16mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $si, implicit killed $esi :: (store (s16) into %ir.0, !tbaa !8)
+    //   MOV16mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $si, implicit killed $esi :: (store (s16) into %ir.0, !tbaa !6)
     //   RET64
     // 
     // # End machine code for function storei16.
@@ -2279,7 +2266,7 @@ template <typename Adaptor,
     ScratchReg scratch_si{derived()};
 
 
-    // MOV16mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $si, implicit killed $esi :: (store (s16) into %ir.0, !tbaa !8)
+    // MOV16mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $si, implicit killed $esi :: (store (s16) into %ir.0, !tbaa !6)
     do {
     {
     auto cond0 = param_1.encodeable_as_imm32_sext();
@@ -2319,7 +2306,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument si is killed and marked as dead
 
 
@@ -2338,7 +2327,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $esi, $rdi
-    //   MOV32mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $esi :: (store (s32) into %ir.0, !tbaa !10)
+    //   MOV32mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $esi :: (store (s32) into %ir.0, !tbaa !8)
     //   RET64
     // 
     // # End machine code for function storei32.
@@ -2350,7 +2339,7 @@ template <typename Adaptor,
     ScratchReg scratch_si{derived()};
 
 
-    // MOV32mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $esi :: (store (s32) into %ir.0, !tbaa !10)
+    // MOV32mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $esi :: (store (s32) into %ir.0, !tbaa !8)
     do {
     {
     auto cond0 = param_1.encodeable_as_imm32_sext();
@@ -2386,7 +2375,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
 
 
     // RET64
@@ -2404,7 +2395,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rdi, $rsi
-    //   MOV64mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rsi :: (store (s64) into %ir.0, !tbaa !12)
+    //   MOV64mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rsi :: (store (s64) into %ir.0, !tbaa !10)
     //   RET64
     // 
     // # End machine code for function storei64.
@@ -2416,7 +2407,7 @@ template <typename Adaptor,
     ScratchReg scratch_si{derived()};
 
 
-    // MOV64mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rsi :: (store (s64) into %ir.0, !tbaa !12)
+    // MOV64mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rsi :: (store (s64) into %ir.0, !tbaa !10)
     do {
     {
     auto cond0 = param_1.encodeable_as_imm32_sext();
@@ -2452,7 +2443,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
 
 
     // RET64
@@ -2530,6 +2523,7 @@ template <typename Adaptor,
     }
     }
     // argument si is killed and marked as dead
+    param_1.reset();
     // result si is marked as alive
 
 
@@ -2538,21 +2532,24 @@ template <typename Adaptor,
     {
     auto cond4 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 2));
     if (cond4) {
+        AsmReg op5 = scratch_si.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(MOV8mr, (*cond4), scratch_si.cur_reg);
+        ASMD(MOV8mr, (*cond4), op5);
         break;
     }
     }
     {
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
+        AsmReg op5 = scratch_si.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(MOV8mr, FE_MEM(op0, 0, FE_NOREG, 2), scratch_si.cur_reg);
+        ASMD(MOV8mr, FE_MEM(op0, 0, FE_NOREG, 2), op5);
         break;
     }
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
     // argument si is killed and marked as dead
 
@@ -2632,6 +2629,7 @@ template <typename Adaptor,
     }
     }
     // argument si is killed and marked as dead
+    param_1.reset();
     // result si is marked as alive
 
 
@@ -2640,21 +2638,24 @@ template <typename Adaptor,
     {
     auto cond4 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 4));
     if (cond4) {
+        AsmReg op5 = scratch_si.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(MOV8mr, (*cond4), scratch_si.cur_reg);
+        ASMD(MOV8mr, (*cond4), op5);
         break;
     }
     }
     {
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
+        AsmReg op5 = scratch_si.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(MOV8mr, FE_MEM(op0, 0, FE_NOREG, 4), scratch_si.cur_reg);
+        ASMD(MOV8mr, FE_MEM(op0, 0, FE_NOREG, 4), op5);
         break;
     }
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
     // argument si is killed and marked as dead
 
@@ -2734,6 +2735,7 @@ template <typename Adaptor,
     }
     }
     // argument si is killed and marked as dead
+    param_1.reset();
     // result si is marked as alive
 
 
@@ -2742,21 +2744,24 @@ template <typename Adaptor,
     {
     auto cond4 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 4));
     if (cond4) {
+        AsmReg op5 = scratch_si.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(MOV16mr, (*cond4), scratch_si.cur_reg);
+        ASMD(MOV16mr, (*cond4), op5);
         break;
     }
     }
     {
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
+        AsmReg op5 = scratch_si.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(MOV16mr, FE_MEM(op0, 0, FE_NOREG, 4), scratch_si.cur_reg);
+        ASMD(MOV16mr, FE_MEM(op0, 0, FE_NOREG, 4), op5);
         break;
     }
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
     // argument si is killed and marked as dead
 
@@ -2854,16 +2859,18 @@ template <typename Adaptor,
     {
     auto cond4 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 6));
     if (cond4) {
+        AsmReg op5 = scratch_ax.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(MOV8mr, (*cond4), scratch_ax.cur_reg);
+        ASMD(MOV8mr, (*cond4), op5);
         break;
     }
     }
     {
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
+        AsmReg op5 = scratch_ax.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(MOV8mr, FE_MEM(op0, 0, FE_NOREG, 6), scratch_ax.cur_reg);
+        ASMD(MOV8mr, FE_MEM(op0, 0, FE_NOREG, 6), op5);
         break;
     }
     }
@@ -2881,6 +2888,7 @@ template <typename Adaptor,
     }
     }
     // argument si is killed and marked as dead
+    param_1.reset();
     // result si is marked as alive
 
 
@@ -2889,21 +2897,24 @@ template <typename Adaptor,
     {
     auto cond5 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 4));
     if (cond5) {
+        AsmReg op5 = scratch_si.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(MOV16mr, (*cond5), scratch_si.cur_reg);
+        ASMD(MOV16mr, (*cond5), op5);
         break;
     }
     }
     {
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
+        AsmReg op5 = scratch_si.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(MOV16mr, FE_MEM(op0, 0, FE_NOREG, 4), scratch_si.cur_reg);
+        ASMD(MOV16mr, FE_MEM(op0, 0, FE_NOREG, 4), op5);
         break;
     }
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
     // argument si is killed and marked as dead
 
@@ -2923,8 +2934,8 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.3):
     //   liveins: $rdi, $rdx, $rsi
-    //   MOV64mr renamable $rdi, 1, $noreg, 8, $noreg, killed renamable $rdx :: (store (s64) into %ir.0 + 8, basealign 16, !tbaa !18)
-    //   MOV64mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rsi :: (store (s64) into %ir.0, align 16, !tbaa !18)
+    //   MOV64mr renamable $rdi, 1, $noreg, 8, $noreg, killed renamable $rdx :: (store (s64) into %ir.0 + 8, basealign 16, !tbaa !16)
+    //   MOV64mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rsi :: (store (s64) into %ir.0, align 16, !tbaa !16)
     //   RET64
     // 
     // # End machine code for function storei128.
@@ -2938,7 +2949,7 @@ template <typename Adaptor,
     ScratchReg scratch_si{derived()};
 
 
-    // MOV64mr renamable $rdi, 1, $noreg, 8, $noreg, killed renamable $rdx :: (store (s64) into %ir.0 + 8, basealign 16, !tbaa !18)
+    // MOV64mr renamable $rdi, 1, $noreg, 8, $noreg, killed renamable $rdx :: (store (s64) into %ir.0 + 8, basealign 16, !tbaa !16)
     do {
     {
     auto cond0 = param_2.encodeable_as_imm32_sext();
@@ -2974,9 +2985,10 @@ template <typename Adaptor,
     }
     } while (false);
     // argument dx is killed and marked as dead
+    param_2.reset();
 
 
-    // MOV64mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rsi :: (store (s64) into %ir.0, align 16, !tbaa !18)
+    // MOV64mr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $rsi :: (store (s64) into %ir.0, align 16, !tbaa !16)
     do {
     {
     auto cond4 = param_1.encodeable_as_imm32_sext();
@@ -3012,7 +3024,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
 
 
     // RET64
@@ -3030,7 +3044,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rdi, $xmm0
-    //   MOVSSmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s32) into %ir.0, !tbaa !20)
+    //   MOVSSmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s32) into %ir.0, !tbaa !18)
     //   RET64
     // 
     // # End machine code for function storef32.
@@ -3042,7 +3056,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // MOVSSmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s32) into %ir.0, !tbaa !20)
+    // MOVSSmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s32) into %ir.0, !tbaa !18)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -3062,7 +3076,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
 
 
     // RET64
@@ -3080,7 +3096,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rdi, $xmm0
-    //   MOVSDmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s64) into %ir.0, !tbaa !22)
+    //   MOVSDmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s64) into %ir.0, !tbaa !20)
     //   RET64
     // 
     // # End machine code for function storef64.
@@ -3092,7 +3108,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // MOVSDmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s64) into %ir.0, !tbaa !22)
+    // MOVSDmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s64) into %ir.0, !tbaa !20)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -3112,7 +3128,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
 
 
     // RET64
@@ -3130,7 +3148,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rdi, $xmm0
-    //   MOVAPSmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s128) into %ir.0, !tbaa !5)
+    //   MOVAPSmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s128) into %ir.0, !tbaa !3)
     //   RET64
     // 
     // # End machine code for function storev128.
@@ -3142,7 +3160,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // MOVAPSmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s128) into %ir.0, !tbaa !5)
+    // MOVAPSmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $xmm0 :: (store (s128) into %ir.0, !tbaa !3)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -3162,7 +3180,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
 
 
     // RET64
@@ -3180,7 +3200,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rdi, $ymm0
-    //   VMOVAPSYmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $ymm0 :: (store (s256) into %ir.0, !tbaa !5)
+    //   VMOVAPSYmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $ymm0 :: (store (s256) into %ir.0, !tbaa !3)
     //   VZEROUPPER implicit-def dead $ymm0, implicit-def dead $ymm1, implicit-def dead $ymm2, implicit-def dead $ymm3, implicit-def dead $ymm4, implicit-def dead $ymm5, implicit-def dead $ymm6, implicit-def dead $ymm7, implicit-def dead $ymm8, implicit-def dead $ymm9, implicit-def dead $ymm10, implicit-def dead $ymm11, implicit-def dead $ymm12, implicit-def dead $ymm13, implicit-def dead $ymm14, implicit-def dead $ymm15
     //   RET64
     // 
@@ -3193,7 +3213,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // VMOVAPSYmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $ymm0 :: (store (s256) into %ir.0, !tbaa !5)
+    // VMOVAPSYmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $ymm0 :: (store (s256) into %ir.0, !tbaa !3)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -3213,7 +3233,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
 
 
     // VZEROUPPER implicit-def dead $ymm0, implicit-def dead $ymm1, implicit-def dead $ymm2, implicit-def dead $ymm3, implicit-def dead $ymm4, implicit-def dead $ymm5, implicit-def dead $ymm6, implicit-def dead $ymm7, implicit-def dead $ymm8, implicit-def dead $ymm9, implicit-def dead $ymm10, implicit-def dead $ymm11, implicit-def dead $ymm12, implicit-def dead $ymm13, implicit-def dead $ymm14, implicit-def dead $ymm15
@@ -3235,7 +3257,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rdi, $zmm0
-    //   VMOVAPSZmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $zmm0 :: (store (s512) into %ir.0, !tbaa !5)
+    //   VMOVAPSZmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $zmm0 :: (store (s512) into %ir.0, !tbaa !3)
     //   VZEROUPPER implicit-def dead $ymm0, implicit-def dead $ymm1, implicit-def dead $ymm2, implicit-def dead $ymm3, implicit-def dead $ymm4, implicit-def dead $ymm5, implicit-def dead $ymm6, implicit-def dead $ymm7, implicit-def dead $ymm8, implicit-def dead $ymm9, implicit-def dead $ymm10, implicit-def dead $ymm11, implicit-def dead $ymm12, implicit-def dead $ymm13, implicit-def dead $ymm14, implicit-def dead $ymm15
     //   RET64
     // 
@@ -3248,7 +3270,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // VMOVAPSZmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $zmm0 :: (store (s512) into %ir.0, !tbaa !5)
+    // VMOVAPSZmr killed renamable $rdi, 1, $noreg, 0, $noreg, killed renamable $zmm0 :: (store (s512) into %ir.0, !tbaa !3)
     do {
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 0, FE_NOREG, 0));
@@ -3268,7 +3290,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
 
 
     // VZEROUPPER implicit-def dead $ymm0, implicit-def dead $ymm1, implicit-def dead $ymm2, implicit-def dead $ymm3, implicit-def dead $ymm4, implicit-def dead $ymm5, implicit-def dead $ymm6, implicit-def dead $ymm7, implicit-def dead $ymm8, implicit-def dead $ymm9, implicit-def dead $ymm10, implicit-def dead $ymm11, implicit-def dead $ymm12, implicit-def dead $ymm13, implicit-def dead $ymm14, implicit-def dead $ymm15
@@ -3318,12 +3342,7 @@ template <typename Adaptor,
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 1, FE_AX, 0));
     if (cond0) {
-        AsmReg op3;
-        if (param_1.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op3 = scratch_ax.cur_reg;
-        } else {
-            op3 = param_1.as_reg(this);
-        }
+        AsmReg op3 = param_1.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(LEA32rm, scratch_ax.cur_reg, FE_MEM((*cond0).base, (*cond0).scale, op3, (*cond0).off));
@@ -3333,12 +3352,7 @@ template <typename Adaptor,
     {
     auto cond1 = param_1.encodeable_with(FE_MEM(FE_AX, 0, FE_NOREG, 0));
     if (cond1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(LEA32rm, scratch_ax.cur_reg, FE_MEM(op1, (*cond1).scale, (*cond1).idx, (*cond1).off));
@@ -3347,18 +3361,8 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
-        AsmReg op3;
-        if (param_1.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op3 = scratch_ax.cur_reg;
-        } else {
-            op3 = param_1.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
+        AsmReg op3 = param_1.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(LEA32rm, scratch_ax.cur_reg, FE_MEM(op1, 1, op3, 0));
@@ -3367,7 +3371,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -3439,7 +3445,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -3502,7 +3510,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -3593,7 +3603,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
     // result ax is marked as alive
     // result dx is marked as dead
@@ -3654,6 +3666,7 @@ template <typename Adaptor,
     }
     }
     // argument ax is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result dx is marked as alive
 
@@ -3680,6 +3693,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
     // argument dx is killed and marked as dead
     // result ax is marked as alive
@@ -3776,7 +3790,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
     // result ax is marked as dead
     // result dx is marked as alive
@@ -3844,6 +3860,7 @@ template <typename Adaptor,
     }
     }
     // argument ax is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result dx is marked as alive
 
@@ -3870,6 +3887,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
     // argument dx is killed and marked as dead
     // result ax is marked as dead
@@ -3952,7 +3970,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -4024,7 +4044,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -4096,7 +4118,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -4178,7 +4202,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -4261,7 +4287,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -4344,7 +4372,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -4408,6 +4438,7 @@ template <typename Adaptor,
     }
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -4446,12 +4477,7 @@ template <typename Adaptor,
     {
     auto cond0 = param_0.encodeable_with(FE_MEM(FE_NOREG, 1, FE_AX, 0));
     if (cond0) {
-        AsmReg op3;
-        if (param_1.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op3 = scratch_ax.cur_reg;
-        } else {
-            op3 = param_1.as_reg(this);
-        }
+        AsmReg op3 = param_1.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(LEA64rm, scratch_ax.cur_reg, FE_MEM((*cond0).base, (*cond0).scale, op3, (*cond0).off));
@@ -4461,12 +4487,7 @@ template <typename Adaptor,
     {
     auto cond1 = param_1.encodeable_with(FE_MEM(FE_AX, 0, FE_NOREG, 0));
     if (cond1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(LEA64rm, scratch_ax.cur_reg, FE_MEM(op1, (*cond1).scale, (*cond1).idx, (*cond1).off));
@@ -4475,18 +4496,8 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
-        AsmReg op3;
-        if (param_1.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op3 = scratch_ax.cur_reg;
-        } else {
-            op3 = param_1.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
+        AsmReg op3 = param_1.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(LEA64rm, scratch_ax.cur_reg, FE_MEM(op1, 1, op3, 0));
@@ -4495,7 +4506,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -4567,7 +4580,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -4630,7 +4645,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -4722,7 +4739,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
     // result ax is marked as alive
     // result dx is marked as dead
@@ -4783,6 +4802,7 @@ template <typename Adaptor,
     }
     }
     // argument ax is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result dx is marked as alive
 
@@ -4809,6 +4829,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
     // argument dx is killed and marked as dead
     // result ax is marked as alive
@@ -4906,7 +4927,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
     // result ax is marked as dead
     // result dx is marked as alive
@@ -4974,6 +4997,7 @@ template <typename Adaptor,
     }
     }
     // argument ax is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result dx is marked as alive
 
@@ -5000,6 +5024,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
     // argument dx is killed and marked as dead
     // result ax is marked as dead
@@ -5082,7 +5107,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -5154,7 +5181,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -5226,7 +5255,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument si is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -5308,7 +5339,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -5391,7 +5424,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -5474,7 +5509,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -5538,6 +5575,7 @@ template <typename Adaptor,
     }
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -5615,7 +5653,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
 
 
@@ -5650,7 +5690,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
+    param_3.reset();
     // result si is marked as alive
 
 
@@ -5736,7 +5778,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
 
 
@@ -5771,7 +5815,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
+    param_3.reset();
     // result si is marked as alive
 
 
@@ -5853,6 +5899,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument dx is killed and marked as dead
     // result si is marked as alive
 
@@ -5881,6 +5928,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
     // result dx is marked as alive
 
@@ -5891,7 +5939,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(ADD64rr, scratch_dx.cur_reg, scratch_si.cur_reg);
+        AsmReg op2 = scratch_si.cur_reg;
+        ASMD(ADD64rr, scratch_dx.cur_reg, op2);
         break;
     }
     }
@@ -5923,7 +5972,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument cx is killed and marked as dead
+    param_3.reset();
     // argument di is killed and marked as dead
+    param_0.reset();
     // result cx is marked as alive
 
 
@@ -5933,7 +5984,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(ADD64rr, scratch_dx.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(ADD64rr, scratch_dx.cur_reg, op2);
         break;
     }
     }
@@ -6021,7 +6073,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
 
 
@@ -6056,7 +6110,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
+    param_3.reset();
     // result si is marked as alive
 
 
@@ -6142,7 +6198,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
 
 
@@ -6177,7 +6235,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
+    param_3.reset();
     // result si is marked as alive
 
 
@@ -6263,7 +6323,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
 
 
@@ -6298,7 +6360,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
+    param_3.reset();
     // result si is marked as alive
 
 
@@ -6397,6 +6461,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // result si is marked as alive
 
 
@@ -6454,7 +6519,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(OR64rr, scratch_dx.cur_reg, scratch_si.cur_reg);
+        AsmReg op2 = scratch_si.cur_reg;
+        ASMD(OR64rr, scratch_dx.cur_reg, op2);
         break;
     }
     }
@@ -6492,6 +6558,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
     // result di is marked as alive
 
@@ -6535,6 +6602,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument r8 is killed and marked as dead
+    param_2.reset();
     // argument r8 is killed and marked as dead
 
 
@@ -6543,7 +6611,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(CMOVNZ64rr, scratch_dx.cur_reg, scratch_di.cur_reg);
+        AsmReg op2 = scratch_di.cur_reg;
+        ASMD(CMOVNZ64rr, scratch_dx.cur_reg, op2);
     }
     }
     // argument dx is killed and marked as dead
@@ -6555,7 +6624,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(CMOVZ64rr, scratch_ax.cur_reg, scratch_di.cur_reg);
+        AsmReg op2 = scratch_di.cur_reg;
+        ASMD(CMOVZ64rr, scratch_ax.cur_reg, op2);
     }
     }
     // argument ax is killed and marked as dead
@@ -6652,6 +6722,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result di is marked as alive
 
 
@@ -6680,10 +6751,9 @@ template <typename Adaptor,
     {
     if (1) {
         AsmReg op1 = param_1.as_reg(this);
-        AsmReg op3 = param_1.as_reg(this);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(LEA64rm, scratch_ax.cur_reg, FE_MEM(op1, 1, op3, 0));
+        ASMD(LEA64rm, scratch_ax.cur_reg, FE_MEM(op1, 1, op1, 0));
         break;
     }
     }
@@ -6727,7 +6797,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(OR64rr, scratch_ax.cur_reg, scratch_di.cur_reg);
+        AsmReg op2 = scratch_di.cur_reg;
+        ASMD(OR64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -6765,6 +6836,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
     // result si is marked as alive
 
@@ -6808,6 +6880,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument r8 is killed and marked as dead
+    param_2.reset();
     // argument r8 is killed and marked as dead
 
 
@@ -6816,7 +6889,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(CMOVNZ64rr, scratch_ax.cur_reg, scratch_si.cur_reg);
+        AsmReg op2 = scratch_si.cur_reg;
+        ASMD(CMOVNZ64rr, scratch_ax.cur_reg, op2);
     }
     }
     // argument ax is killed and marked as dead
@@ -6828,7 +6902,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(CMOVZ64rr, scratch_dx.cur_reg, scratch_si.cur_reg);
+        AsmReg op2 = scratch_si.cur_reg;
+        ASMD(CMOVZ64rr, scratch_dx.cur_reg, op2);
     }
     }
     // argument dx is killed and marked as dead
@@ -6926,6 +7001,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result di is marked as alive
 
 
@@ -6954,10 +7030,9 @@ template <typename Adaptor,
     {
     if (1) {
         AsmReg op1 = param_1.as_reg(this);
-        AsmReg op3 = param_1.as_reg(this);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(LEA64rm, scratch_ax.cur_reg, FE_MEM(op1, 1, op3, 0));
+        ASMD(LEA64rm, scratch_ax.cur_reg, FE_MEM(op1, 1, op1, 0));
         break;
     }
     }
@@ -7001,7 +7076,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(OR64rr, scratch_ax.cur_reg, scratch_di.cur_reg);
+        AsmReg op2 = scratch_di.cur_reg;
+        ASMD(OR64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -7059,6 +7135,7 @@ template <typename Adaptor,
     }
     }
     // argument si is killed and marked as dead
+    param_1.reset();
     // result si is marked as alive
 
 
@@ -7082,6 +7159,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument r8 is killed and marked as dead
+    param_2.reset();
     // argument r8 is killed and marked as dead
 
 
@@ -7090,7 +7168,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(CMOVNZ64rr, scratch_ax.cur_reg, scratch_dx.cur_reg);
+        AsmReg op2 = scratch_dx.cur_reg;
+        ASMD(CMOVNZ64rr, scratch_ax.cur_reg, op2);
     }
     }
     // argument ax is killed and marked as dead
@@ -7102,7 +7181,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(CMOVNZ64rr, scratch_dx.cur_reg, scratch_si.cur_reg);
+        AsmReg op2 = scratch_si.cur_reg;
+        ASMD(CMOVNZ64rr, scratch_dx.cur_reg, op2);
     }
     }
     // argument dx is killed and marked as dead
@@ -7223,6 +7303,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_1.reset();
     // result si is marked as alive
 
 
@@ -7235,6 +7316,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // result di is marked as alive
 
 
@@ -7248,6 +7330,7 @@ template <typename Adaptor,
     }
     }
     // argument cx is killed and marked as dead
+    param_2.reset();
     // argument cx is killed and marked as dead
     // result cx is marked as alive
     // result cx is marked as alive
@@ -7280,7 +7363,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(di) is the same as its tied destination
         assert(scratch_di.cur_reg.valid());
-        ASMD(OR64rr, scratch_di.cur_reg, scratch_si.cur_reg);
+        AsmReg op2 = scratch_si.cur_reg;
+        ASMD(OR64rr, scratch_di.cur_reg, op2);
         break;
     }
     }
@@ -7378,7 +7462,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -7482,10 +7568,9 @@ template <typename Adaptor,
     {
     if (1) {
         AsmReg op1 = param_1.as_reg(this);
-        AsmReg op3 = param_1.as_reg(this);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(LEA64rm, scratch_ax.cur_reg, FE_MEM(op1, 1, op3, 0));
+        ASMD(LEA64rm, scratch_ax.cur_reg, FE_MEM(op1, 1, op1, 0));
         break;
     }
     }
@@ -7522,6 +7607,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument dx is killed and marked as dead
+    param_1.reset();
     // result dx is marked as alive
 
 
@@ -7548,6 +7634,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result di is marked as alive
 
 
@@ -7561,6 +7648,7 @@ template <typename Adaptor,
     }
     }
     // argument cx is killed and marked as dead
+    param_2.reset();
     // argument cx is killed and marked as dead
     // result cx is marked as alive
     // result cx is marked as alive
@@ -7593,7 +7681,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(OR64rr, scratch_ax.cur_reg, scratch_di.cur_reg);
+        AsmReg op2 = scratch_di.cur_reg;
+        ASMD(OR64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -7685,7 +7774,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -7789,10 +7880,9 @@ template <typename Adaptor,
     {
     if (1) {
         AsmReg op1 = param_1.as_reg(this);
-        AsmReg op3 = param_1.as_reg(this);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(LEA64rm, scratch_ax.cur_reg, FE_MEM(op1, 1, op3, 0));
+        ASMD(LEA64rm, scratch_ax.cur_reg, FE_MEM(op1, 1, op1, 0));
         break;
     }
     }
@@ -7829,6 +7919,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument dx is killed and marked as dead
+    param_1.reset();
     // result dx is marked as alive
 
 
@@ -7855,6 +7946,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result di is marked as alive
 
 
@@ -7868,6 +7960,7 @@ template <typename Adaptor,
     }
     }
     // argument cx is killed and marked as dead
+    param_2.reset();
     // argument cx is killed and marked as dead
     // result cx is marked as alive
     // result cx is marked as alive
@@ -7900,7 +7993,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(OR64rr, scratch_ax.cur_reg, scratch_di.cur_reg);
+        AsmReg op2 = scratch_di.cur_reg;
+        ASMD(OR64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -8011,7 +8105,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -8049,18 +8145,14 @@ template <typename Adaptor,
     // renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(BSF32rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -8095,18 +8187,14 @@ template <typename Adaptor,
     // renamable $rax = BSF64rr killed renamable $rdi, implicit-def dead $eflags
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(BSF64rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -8129,6 +8217,7 @@ template <typename Adaptor,
     //   liveins: $edi
     //   renamable $edi = OR32ri killed renamable $edi(tied-def 0), 256, implicit-def dead $eflags
     //   renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
+    //   renamable $eax = MOVZX32rr8 killed renamable $al, implicit killed $eax
     //   RET64 killed $eax
     // 
     // # End machine code for function cttzi8.
@@ -8148,18 +8237,35 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // result di is marked as alive
 
 
     // renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
     {
     if (1) {
+        AsmReg op1 = scratch_di.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(BSF32rr, scratch_ax.cur_reg, scratch_di.cur_reg);
+        ASMD(BSF32rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = MOVZX32rr8 killed renamable $al, implicit killed $eax
+    {
+    if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
+        // operand exceeds NumImplicitUses, ignore
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32r8, scratch_ax.cur_reg, op1);
+    }
+    }
+    // argument ax is killed and marked as dead
+    // argument ax is killed and marked as dead
     // result ax is marked as alive
 
 
@@ -8182,6 +8288,7 @@ template <typename Adaptor,
     //   liveins: $edi
     //   renamable $edi = OR32ri killed renamable $edi(tied-def 0), 65536, implicit-def dead $eflags
     //   renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
+    //   renamable $eax = MOVZX32rr16 killed renamable $ax, implicit killed $eax
     //   RET64 killed $eax
     // 
     // # End machine code for function cttzi16.
@@ -8201,18 +8308,35 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // result di is marked as alive
 
 
     // renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
     {
     if (1) {
+        AsmReg op1 = scratch_di.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(BSF32rr, scratch_ax.cur_reg, scratch_di.cur_reg);
+        ASMD(BSF32rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // renamable $eax = MOVZX32rr16 killed renamable $ax, implicit killed $eax
+    {
+    if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
+        // operand exceeds NumImplicitUses, ignore
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(MOVZXr32r16, scratch_ax.cur_reg, op1);
+    }
+    }
+    // argument ax is killed and marked as dead
+    // argument ax is killed and marked as dead
     // result ax is marked as alive
 
 
@@ -8285,8 +8409,7 @@ template <typename Adaptor,
     {
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
-        AsmReg op1 = param_0.as_reg(this);
-        ASMD(TEST32rr, op0, op1);
+        ASMD(TEST32rr, op0, op0);
         break;
     }
     }
@@ -8314,9 +8437,10 @@ template <typename Adaptor,
     // renamable $eax = BSF32rr killed renamable $edi, implicit-def dead $eflags
     {
     if (1) {
+        AsmReg op1 = scratch_di.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(BSF32rr, scratch_ax.cur_reg, scratch_di.cur_reg);
+        ASMD(BSF32rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument di is killed and marked as dead
@@ -8418,8 +8542,7 @@ template <typename Adaptor,
     {
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
-        AsmReg op1 = param_0.as_reg(this);
-        ASMD(TEST64rr, op0, op1);
+        ASMD(TEST64rr, op0, op0);
         break;
     }
     }
@@ -8447,9 +8570,10 @@ template <typename Adaptor,
     // renamable $rax = BSF64rr killed renamable $rdi, implicit-def dead $eflags
     {
     if (1) {
+        AsmReg op1 = scratch_di.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(BSF64rr, scratch_ax.cur_reg, scratch_di.cur_reg);
+        ASMD(BSF64rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument di is killed and marked as dead
@@ -8517,12 +8641,7 @@ template <typename Adaptor,
     // renamable $eax = MOVZX32rr8 killed renamable $dil, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -8530,6 +8649,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -8537,9 +8657,10 @@ template <typename Adaptor,
     // renamable $eax = BSR32rr killed renamable $eax, implicit-def dead $eflags
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(BSR32rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        ASMD(BSR32rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument ax is killed and marked as dead
@@ -8604,12 +8725,7 @@ template <typename Adaptor,
     // renamable $eax = MOVZX32rr16 killed renamable $di, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -8617,6 +8733,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -8624,9 +8741,10 @@ template <typename Adaptor,
     // renamable $eax = BSR32rr killed renamable $eax, implicit-def dead $eflags
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(BSR32rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        ASMD(BSR32rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument ax is killed and marked as dead
@@ -8689,18 +8807,14 @@ template <typename Adaptor,
     // renamable $eax = BSR32rr killed renamable $edi, implicit-def dead $eflags
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(BSR32rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -8748,18 +8862,14 @@ template <typename Adaptor,
     // renamable $rax = BSR64rr killed renamable $rdi, implicit-def dead $eflags
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(BSR64rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -8813,12 +8923,7 @@ template <typename Adaptor,
     // renamable $eax = MOVZX32rr8 killed renamable $dil, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -8826,6 +8931,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -8833,9 +8939,10 @@ template <typename Adaptor,
     // renamable $ecx = BSR32rr renamable $eax, implicit-def dead $eflags
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def cx has not been allocated yet
         scratch_cx.alloc_from_bank(0);
-        ASMD(BSR32rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        ASMD(BSR32rr, scratch_cx.cur_reg, op1);
     }
     }
     // result cx is marked as alive
@@ -8869,8 +8976,9 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op0 = scratch_ax.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(TEST8rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        ASMD(TEST8rr, op0, op0);
         break;
     }
     }
@@ -8896,7 +9004,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(CMOVNZ32rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(CMOVNZ32rr, scratch_ax.cur_reg, op2);
     }
     }
     // argument ax is killed and marked as dead
@@ -8942,12 +9051,7 @@ template <typename Adaptor,
     // renamable $eax = MOVZX32rr16 killed renamable $di, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -8955,6 +9059,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -8962,9 +9067,10 @@ template <typename Adaptor,
     // renamable $ecx = BSR32rr renamable $eax, implicit-def dead $eflags
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def cx has not been allocated yet
         scratch_cx.alloc_from_bank(0);
-        ASMD(BSR32rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        ASMD(BSR32rr, scratch_cx.cur_reg, op1);
     }
     }
     // result cx is marked as alive
@@ -8998,8 +9104,9 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op0 = scratch_ax.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(TEST16rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        ASMD(TEST16rr, op0, op0);
         break;
     }
     }
@@ -9025,7 +9132,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(CMOVNZ32rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(CMOVNZ32rr, scratch_ax.cur_reg, op2);
     }
     }
     // argument ax is killed and marked as dead
@@ -9103,8 +9211,7 @@ template <typename Adaptor,
     {
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
-        AsmReg op1 = param_0.as_reg(this);
-        ASMD(TEST32rr, op0, op1);
+        ASMD(TEST32rr, op0, op0);
         break;
     }
     }
@@ -9132,9 +9239,10 @@ template <typename Adaptor,
     // renamable $eax = BSR32rr killed renamable $edi, implicit-def dead $eflags
     {
     if (1) {
+        AsmReg op1 = scratch_di.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(BSR32rr, scratch_ax.cur_reg, scratch_di.cur_reg);
+        ASMD(BSR32rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument di is killed and marked as dead
@@ -9249,8 +9357,7 @@ template <typename Adaptor,
     {
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
-        AsmReg op1 = param_0.as_reg(this);
-        ASMD(TEST64rr, op0, op1);
+        ASMD(TEST64rr, op0, op0);
         break;
     }
     }
@@ -9278,9 +9385,10 @@ template <typename Adaptor,
     // renamable $rax = BSR64rr killed renamable $rdi, implicit-def dead $eflags
     {
     if (1) {
+        AsmReg op1 = scratch_di.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(BSR64rr, scratch_ax.cur_reg, scratch_di.cur_reg);
+        ASMD(BSR64rr, scratch_ax.cur_reg, op1);
     }
     }
     // argument di is killed and marked as dead
@@ -9343,12 +9451,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $al = ADD8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     //   $al = KILL killed renamable $al, implicit killed $eax
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $al, killed $ecx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $al, killed $rcx
     // 
     // # End machine code for function of_add_i8.
     // 
@@ -9360,7 +9468,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -9375,6 +9483,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -9415,14 +9524,16 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
     // argument ax is killed and marked as dead
     // result ax is marked as alive
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -9440,12 +9551,12 @@ template <typename Adaptor,
     // KILL is a no-op
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $al, killed $ecx
+    // RET64 killed $al, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -9465,12 +9576,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $al = SUB8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     //   $al = KILL killed renamable $al, implicit killed $eax
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $al, killed $ecx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $al, killed $rcx
     // 
     // # End machine code for function of_sub_i8.
     // 
@@ -9482,7 +9593,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -9497,6 +9608,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -9537,14 +9649,16 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
     // argument ax is killed and marked as dead
     // result ax is marked as alive
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -9562,12 +9676,12 @@ template <typename Adaptor,
     // KILL is a no-op
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $al, killed $ecx
+    // RET64 killed $al, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -9587,12 +9701,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   $al = KILL killed renamable $al, implicit killed $eax
     //   IMUL8r killed renamable $cl, implicit-def $al, implicit-def $eflags, implicit-def $ax, implicit killed $al, implicit killed $ecx
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $al, killed $ecx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $al, killed $rcx
     // 
     // # End machine code for function of_mul_i8.
     // 
@@ -9606,7 +9720,7 @@ template <typename Adaptor,
     scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -9621,6 +9735,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -9654,13 +9769,15 @@ template <typename Adaptor,
     }
     } while (false);
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
     // result ax is marked as alive
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -9674,12 +9791,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $al, killed $ecx
+    // RET64 killed $al, killed $rcx
     scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
@@ -9700,12 +9817,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $al = ADD8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
-    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     //   $al = KILL killed renamable $al, implicit killed $eax
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $al, killed $ecx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $al, killed $rcx
     // 
     // # End machine code for function of_add_u8.
     // 
@@ -9717,7 +9834,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -9732,6 +9849,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -9772,14 +9890,16 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
     // argument ax is killed and marked as dead
     // result ax is marked as alive
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -9797,12 +9917,12 @@ template <typename Adaptor,
     // KILL is a no-op
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $al, killed $ecx
+    // RET64 killed $al, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -9822,12 +9942,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $al = SUB8rr killed renamable $al(tied-def 0), killed renamable $cl, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
-    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     //   $al = KILL killed renamable $al, implicit killed $eax
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $al, killed $ecx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $al, killed $rcx
     // 
     // # End machine code for function of_sub_u8.
     // 
@@ -9839,7 +9959,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -9854,6 +9974,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -9894,14 +10015,16 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
     // argument ax is killed and marked as dead
     // result ax is marked as alive
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -9919,12 +10042,12 @@ template <typename Adaptor,
     // KILL is a no-op
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $al, killed $ecx
+    // RET64 killed $al, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -9944,12 +10067,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   $al = KILL killed renamable $al, implicit killed $eax
     //   MUL8r killed renamable $cl, implicit-def $al, implicit-def $eflags, implicit-def $ax, implicit killed $al, implicit killed $ecx
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $al, killed $ecx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $al, killed $rcx
     // 
     // # End machine code for function of_mul_u8.
     // 
@@ -9963,7 +10086,7 @@ template <typename Adaptor,
     scratch_alloc_specific(AsmReg::AX, scratch_ax, {&param_0, &param_1}, reg_backup_ax);
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -9978,6 +10101,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -10011,13 +10135,15 @@ template <typename Adaptor,
     }
     } while (false);
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
     // result ax is marked as alive
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -10031,12 +10157,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $al, killed $ecx
+    // RET64 killed $al, killed $rcx
     scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
@@ -10057,12 +10183,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $ax = ADD16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     //   $ax = KILL killed renamable $ax, implicit killed $eax
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $ax, killed $ecx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $ax, killed $rcx
     // 
     // # End machine code for function of_add_i16.
     // 
@@ -10074,7 +10200,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -10089,6 +10215,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -10129,14 +10256,16 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
     // argument ax is killed and marked as dead
     // result ax is marked as alive
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -10154,12 +10283,12 @@ template <typename Adaptor,
     // KILL is a no-op
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $ax, killed $ecx
+    // RET64 killed $ax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -10179,12 +10308,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $ax = SUB16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     //   $ax = KILL killed renamable $ax, implicit killed $eax
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $ax, killed $ecx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $ax, killed $rcx
     // 
     // # End machine code for function of_sub_i16.
     // 
@@ -10196,7 +10325,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -10211,6 +10340,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -10251,14 +10381,16 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
     // argument ax is killed and marked as dead
     // result ax is marked as alive
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -10276,12 +10408,12 @@ template <typename Adaptor,
     // KILL is a no-op
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $ax, killed $ecx
+    // RET64 killed $ax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -10301,12 +10433,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $ax = IMUL16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     //   $ax = KILL killed renamable $ax, implicit killed $eax
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $ax, killed $ecx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $ax, killed $rcx
     // 
     // # End machine code for function of_mul_i16.
     // 
@@ -10318,7 +10450,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -10333,6 +10465,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -10362,14 +10495,16 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
     // argument ax is killed and marked as dead
     // result ax is marked as alive
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -10387,12 +10522,12 @@ template <typename Adaptor,
     // KILL is a no-op
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $ax, killed $ecx
+    // RET64 killed $ax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -10412,12 +10547,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $ax = ADD16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
-    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     //   $ax = KILL killed renamable $ax, implicit killed $eax
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $ax, killed $ecx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $ax, killed $rcx
     // 
     // # End machine code for function of_add_u16.
     // 
@@ -10429,7 +10564,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -10444,6 +10579,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -10484,14 +10620,16 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
     // argument ax is killed and marked as dead
     // result ax is marked as alive
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -10509,12 +10647,12 @@ template <typename Adaptor,
     // KILL is a no-op
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $ax, killed $ecx
+    // RET64 killed $ax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -10534,12 +10672,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $ax = SUB16rr killed renamable $ax(tied-def 0), killed renamable $cx, implicit-def $eflags, implicit killed $ecx, implicit killed $eax, implicit-def $eax
-    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     //   $ax = KILL killed renamable $ax, implicit killed $eax
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $ax, killed $ecx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $ax, killed $rcx
     // 
     // # End machine code for function of_sub_u16.
     // 
@@ -10551,7 +10689,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -10566,6 +10704,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -10606,14 +10745,16 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
     // argument ax is killed and marked as dead
     // result ax is marked as alive
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -10631,12 +10772,12 @@ template <typename Adaptor,
     // KILL is a no-op
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $ax, killed $ecx
+    // RET64 killed $ax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -10656,12 +10797,12 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    //   renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags, implicit-def $rsi
     //   $ax = KILL killed renamable $ax, implicit killed $eax
     //   MUL16r killed renamable $cx, implicit-def $ax, implicit-def dead $dx, implicit-def $eflags, implicit killed $ax, implicit killed $ecx
-    //   renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
-    //   $ecx = MOV32rr killed $esi
-    //   RET64 killed $ax, killed $ecx
+    //   renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $rsi, implicit-def $rsi
+    //   $rcx = MOV64rr killed $rsi
+    //   RET64 killed $ax, killed $rcx
     // 
     // # End machine code for function of_mul_u16.
     // 
@@ -10678,7 +10819,7 @@ template <typename Adaptor,
     scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
 
 
-    // renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    // renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags, implicit-def $rsi
     do {
     {
     if (1) {
@@ -10693,6 +10834,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result si is marked as alive
     // result si is marked as alive
 
 
@@ -10726,13 +10868,15 @@ template <typename Adaptor,
     }
     } while (false);
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
     // result ax is marked as alive
     // result dx is marked as dead
 
 
-    // renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    // renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $rsi, implicit-def $rsi
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -10746,12 +10890,12 @@ template <typename Adaptor,
     // result si is marked as alive
 
 
-    // $ecx = MOV32rr killed $esi
+    // $rcx = MOV64rr killed $rsi
     // aliasing cx to si
     // source si is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $ax, killed $ecx
+    // RET64 killed $ax, killed $rcx
     scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
     scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
     // returning reg ax as result_0
@@ -10773,11 +10917,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $eax = ADD32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $eax, killed $ecx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $eax, killed $rcx
     // 
     // # End machine code for function of_add_i32.
     // 
@@ -10789,7 +10933,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -10804,6 +10948,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -10838,11 +10983,13 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -10856,12 +11003,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $eax, killed $ecx
+    // RET64 killed $eax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -10881,11 +11028,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $eax = SUB32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $eax, killed $ecx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $eax, killed $rcx
     // 
     // # End machine code for function of_sub_i32.
     // 
@@ -10897,7 +11044,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -10912,6 +11059,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -10946,11 +11094,13 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -10964,12 +11114,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $eax, killed $ecx
+    // RET64 killed $eax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -10989,11 +11139,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $eax = IMUL32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $eax, killed $ecx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $eax, killed $rcx
     // 
     // # End machine code for function of_mul_i32.
     // 
@@ -11005,7 +11155,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -11020,6 +11170,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -11045,11 +11196,13 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -11063,12 +11216,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $eax, killed $ecx
+    // RET64 killed $eax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -11088,11 +11241,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $eax = ADD32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
-    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $eax, killed $ecx
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $eax, killed $rcx
     // 
     // # End machine code for function of_add_u32.
     // 
@@ -11104,7 +11257,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -11119,6 +11272,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -11153,11 +11307,13 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -11171,12 +11327,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $eax, killed $ecx
+    // RET64 killed $eax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -11196,11 +11352,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $eax = SUB32rr killed renamable $eax(tied-def 0), killed renamable $ecx, implicit-def $eflags
-    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $eax, killed $ecx
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $eax, killed $rcx
     // 
     // # End machine code for function of_sub_u32.
     // 
@@ -11212,7 +11368,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -11227,6 +11383,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -11261,11 +11418,13 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -11279,12 +11438,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $eax, killed $ecx
+    // RET64 killed $eax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -11304,11 +11463,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $eax, $ecx
-    //   renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    //   renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags, implicit-def $rsi
     //   MUL32r killed renamable $ecx, implicit-def $eax, implicit-def dead $edx, implicit-def $eflags, implicit killed $eax
-    //   renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
-    //   $ecx = MOV32rr killed $esi
-    //   RET64 killed $eax, killed $ecx
+    //   renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $rsi, implicit-def $rsi
+    //   $rcx = MOV64rr killed $rsi
+    //   RET64 killed $eax, killed $rcx
     // 
     // # End machine code for function of_mul_u32.
     // 
@@ -11325,7 +11484,7 @@ template <typename Adaptor,
     scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
 
 
-    // renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    // renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags, implicit-def $rsi
     do {
     {
     if (1) {
@@ -11340,6 +11499,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result si is marked as alive
     // result si is marked as alive
 
 
@@ -11367,12 +11527,14 @@ template <typename Adaptor,
     }
     } while (false);
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result dx is marked as dead
 
 
-    // renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    // renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $rsi, implicit-def $rsi
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -11386,12 +11548,12 @@ template <typename Adaptor,
     // result si is marked as alive
 
 
-    // $ecx = MOV32rr killed $esi
+    // $rcx = MOV64rr killed $rsi
     // aliasing cx to si
     // source si is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $eax, killed $ecx
+    // RET64 killed $eax, killed $rcx
     scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
     scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
     // returning reg ax as result_0
@@ -11413,11 +11575,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rax, $rcx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $rax, killed $ecx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $rax, killed $rcx
     // 
     // # End machine code for function of_add_i64.
     // 
@@ -11429,7 +11591,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -11444,6 +11606,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -11478,11 +11641,13 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -11496,12 +11661,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $rax, killed $ecx
+    // RET64 killed $rax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -11521,11 +11686,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rax, $rcx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $rax, killed $ecx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $rax, killed $rcx
     // 
     // # End machine code for function of_sub_i64.
     // 
@@ -11537,7 +11702,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -11552,6 +11717,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -11586,11 +11752,13 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -11604,12 +11772,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $rax, killed $ecx
+    // RET64 killed $rax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -11629,11 +11797,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rax, $rcx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $rax = IMUL64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
-    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $rax, killed $ecx
+    //   renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $rax, killed $rcx
     // 
     // # End machine code for function of_mul_i64.
     // 
@@ -11645,7 +11813,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -11660,6 +11828,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -11685,11 +11854,13 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 0, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -11703,12 +11874,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $rax, killed $ecx
+    // RET64 killed $rax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -11728,11 +11899,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rax, $rcx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
-    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $rax, killed $ecx
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $rax, killed $rcx
     // 
     // # End machine code for function of_add_u64.
     // 
@@ -11744,7 +11915,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -11759,6 +11930,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -11793,11 +11965,13 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -11811,12 +11985,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $rax, killed $ecx
+    // RET64 killed $rax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -11836,11 +12010,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rax, $rcx
-    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    //   renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     //   renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rcx, implicit-def $eflags
-    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
-    //   $ecx = MOV32rr killed $edx
-    //   RET64 killed $rax, killed $ecx
+    //   renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
+    //   $rcx = MOV64rr killed $rdx
+    //   RET64 killed $rax, killed $rcx
     // 
     // # End machine code for function of_sub_u64.
     // 
@@ -11852,7 +12026,7 @@ template <typename Adaptor,
     ScratchReg scratch_cx{derived()};
 
 
-    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags
+    // renamable $edx = XOR32rr undef $edx(tied-def 0), undef $edx, implicit-def dead $eflags, implicit-def $rdx
     do {
     {
     if (1) {
@@ -11867,6 +12041,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result dx is marked as alive
     // result dx is marked as alive
 
 
@@ -11901,11 +12076,13 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $edx, implicit-def $edx
+    // renamable $dl = SETCCr 2, implicit killed $eflags, implicit killed $rdx, implicit-def $rdx
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -11919,12 +12096,12 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // $ecx = MOV32rr killed $edx
+    // $rcx = MOV64rr killed $rdx
     // aliasing cx to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $rax, killed $ecx
+    // RET64 killed $rax, killed $rcx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -11944,11 +12121,11 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $rax, $rcx
-    //   renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    //   renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags, implicit-def $rsi
     //   MUL64r killed renamable $rcx, implicit-def $rax, implicit-def dead $rdx, implicit-def $eflags, implicit killed $rax
-    //   renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
-    //   $ecx = MOV32rr killed $esi
-    //   RET64 killed $rax, killed $ecx
+    //   renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $rsi, implicit-def $rsi
+    //   $rcx = MOV64rr killed $rsi
+    //   RET64 killed $rax, killed $rcx
     // 
     // # End machine code for function of_mul_u64.
     // 
@@ -11965,7 +12142,7 @@ template <typename Adaptor,
     scratch_alloc_specific(AsmReg::DX, scratch_dx, {&param_0, &param_1}, reg_backup_dx);
 
 
-    // renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    // renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags, implicit-def $rsi
     do {
     {
     if (1) {
@@ -11980,6 +12157,7 @@ template <typename Adaptor,
     }
     }
     } while (false);
+    // result si is marked as alive
     // result si is marked as alive
 
 
@@ -12007,12 +12185,14 @@ template <typename Adaptor,
     }
     } while (false);
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument ax is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result dx is marked as dead
 
 
-    // renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    // renamable $sil = SETCCr 0, implicit killed $eflags, implicit killed $rsi, implicit-def $rsi
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
@@ -12026,12 +12206,12 @@ template <typename Adaptor,
     // result si is marked as alive
 
 
-    // $ecx = MOV32rr killed $esi
+    // $rcx = MOV64rr killed $rsi
     // aliasing cx to si
     // source si is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $rax, killed $ecx
+    // RET64 killed $rax, killed $rcx
     scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
     scratch_check_fixed_backup(scratch_dx, reg_backup_dx, false);
     // returning reg ax as result_0
@@ -12056,8 +12236,8 @@ template <typename Adaptor,
     //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
     //   renamable $rcx = ADC64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
     //   renamable $dl = SETCCr 0, implicit killed $eflags
-    //   renamable $edx = MOVZX32rr8 killed renamable $dl
-    //   RET64 killed $rax, killed $rcx, killed $edx
+    //   renamable $edx = MOVZX32rr8 killed renamable $dl, implicit-def $rdx
+    //   RET64 killed $rax, killed $rcx, killed $rdx
     // 
     // # End machine code for function of_add_i128.
     // 
@@ -12103,7 +12283,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
 
 
@@ -12138,7 +12320,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument di is killed and marked as dead
+    param_3.reset();
     // result cx is marked as alive
 
 
@@ -12153,19 +12337,21 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // renamable $edx = MOVZX32rr8 killed renamable $dl
+    // renamable $edx = MOVZX32rr8 killed renamable $dl, implicit-def $rdx
     {
     if (1) {
+        AsmReg op1 = scratch_dx.cur_reg;
         // def dx has not been allocated yet
         scratch_dx.alloc_from_bank(0);
-        ASMD(MOVZXr32r8, scratch_dx.cur_reg, scratch_dx.cur_reg);
+        ASMD(MOVZXr32r8, scratch_dx.cur_reg, op1);
     }
     }
     // argument dx is killed and marked as dead
     // result dx is marked as alive
+    // result dx is marked as alive
 
 
-    // RET64 killed $rax, killed $rcx, killed $edx
+    // RET64 killed $rax, killed $rcx, killed $rdx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -12189,8 +12375,8 @@ template <typename Adaptor,
     //   renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
     //   renamable $rcx = SBB64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
     //   renamable $dl = SETCCr 0, implicit killed $eflags
-    //   renamable $edx = MOVZX32rr8 killed renamable $dl
-    //   RET64 killed $rax, killed $rcx, killed $edx
+    //   renamable $edx = MOVZX32rr8 killed renamable $dl, implicit-def $rdx
+    //   RET64 killed $rax, killed $rcx, killed $rdx
     // 
     // # End machine code for function of_sub_i128.
     // 
@@ -12236,7 +12422,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
 
 
@@ -12271,7 +12459,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument di is killed and marked as dead
+    param_3.reset();
     // result cx is marked as alive
 
 
@@ -12286,19 +12476,21 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // renamable $edx = MOVZX32rr8 killed renamable $dl
+    // renamable $edx = MOVZX32rr8 killed renamable $dl, implicit-def $rdx
     {
     if (1) {
+        AsmReg op1 = scratch_dx.cur_reg;
         // def dx has not been allocated yet
         scratch_dx.alloc_from_bank(0);
-        ASMD(MOVZXr32r8, scratch_dx.cur_reg, scratch_dx.cur_reg);
+        ASMD(MOVZXr32r8, scratch_dx.cur_reg, op1);
     }
     }
     // argument dx is killed and marked as dead
     // result dx is marked as alive
+    // result dx is marked as alive
 
 
-    // RET64 killed $rax, killed $rcx, killed $edx
+    // RET64 killed $rax, killed $rcx, killed $rdx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -12329,33 +12521,33 @@ template <typename Adaptor,
     //   CFI_INSTRUCTION offset $rbx, -24
     //   CFI_INSTRUCTION offset $r14, -16
     //   $rbx = MOV64rr $rdx
-    //   $r9 = MOV64rr $rcx
+    //   $r8 = MOV64rr $rcx
     //   $r11 = MOV64rr killed $rax
     //   renamable $rcx = SAR64ri killed renamable $rcx(tied-def 0), 63, implicit-def dead $eflags
-    //   $rsi = MOV64rr $rdi
-    //   renamable $rsi = IMUL64rr killed renamable $rsi(tied-def 0), renamable $rcx, implicit-def dead $eflags
+    //   $r9 = MOV64rr $rdi
+    //   renamable $r9 = IMUL64rr killed renamable $r9(tied-def 0), renamable $rcx, implicit-def dead $eflags
     //   $rax = MOV64rr killed $rdx
     //   MUL64r killed renamable $rcx, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
     //   $rcx = MOV64rr killed $rdx
-    //   $r8 = MOV64rr $rax
+    //   $rsi = MOV64rr $rax
     //   renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed $rax, implicit-def dead $eflags
-    //   renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rsi, implicit-def dead $eflags
+    //   renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $r9, implicit-def dead $eflags
     //   $rax = MOV64rr $rdi
     //   renamable $rax = SAR64ri killed renamable $rax(tied-def 0), 63, implicit-def dead $eflags
     //   $r14 = MOV64rr $rax
-    //   renamable $r14 = IMUL64rr killed renamable $r14(tied-def 0), renamable $r9, implicit-def dead $eflags
+    //   renamable $r14 = IMUL64rr killed renamable $r14(tied-def 0), renamable $r8, implicit-def dead $eflags
     //   MUL64r renamable $r11, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
     //   $r10 = MOV64rr $rax
-    //   $rsi = MOV64rr killed $rdx
-    //   renamable $rsi = ADD64rr killed renamable $rsi(tied-def 0), killed renamable $r14, implicit-def dead $eflags
-    //   renamable $rsi = ADD64rr killed renamable $rsi(tied-def 0), killed $rax, implicit-def dead $eflags
-    //   renamable $r10 = ADD64rr killed renamable $r10(tied-def 0), killed renamable $r8, implicit-def $eflags
-    //   renamable $rsi = ADC64rr killed renamable $rsi(tied-def 0), killed renamable $rcx, implicit-def dead $eflags, implicit killed $eflags
+    //   $r9 = MOV64rr killed $rdx
+    //   renamable $r9 = ADD64rr killed renamable $r9(tied-def 0), killed renamable $r14, implicit-def dead $eflags
+    //   renamable $r9 = ADD64rr killed renamable $r9(tied-def 0), killed $rax, implicit-def dead $eflags
+    //   renamable $r10 = ADD64rr killed renamable $r10(tied-def 0), killed renamable $rsi, implicit-def $eflags
+    //   renamable $r9 = ADC64rr killed renamable $r9(tied-def 0), killed renamable $rcx, implicit-def dead $eflags, implicit killed $eflags
     //   $rax = MOV64rr $r11
     //   MUL64r renamable $rbx, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
     //   $rcx = MOV64rr killed $rdx
-    //   $r8 = MOV64rr killed $rax
-    //   $rax = MOV64rr $r9
+    //   $rsi = MOV64rr killed $rax
+    //   $rax = MOV64rr $r8
     //   MUL64r killed renamable $rbx, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
     //   $rbx = MOV64rr killed $rdx
     //   renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rax, implicit-def $eflags
@@ -12367,26 +12559,26 @@ template <typename Adaptor,
     //   renamable $r11 = ADC64rr killed renamable $r11(tied-def 0), killed renamable $rbx, implicit-def $eflags, implicit killed $eflags
     //   renamable $al = SETCCr 2, implicit killed $eflags
     //   renamable $ebx = MOVZX32rr8 killed renamable $al, implicit-def $rbx
-    //   $rax = MOV64rr killed $r9
+    //   $rax = MOV64rr killed $r8
     //   MUL64r killed renamable $rdi, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
     //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $r11, implicit-def $eflags
     //   renamable $rdx = ADC64rr killed renamable $rdx(tied-def 0), killed renamable $rbx, implicit-def dead $eflags, implicit killed $eflags
     //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $r10, implicit-def $eflags
-    //   renamable $rdx = ADC64rr killed renamable $rdx(tied-def 0), killed renamable $rsi, implicit-def dead $eflags, implicit killed $eflags
-    //   $rdi = MOV64rr $rcx
-    //   renamable $rdi = SAR64ri killed renamable $rdi(tied-def 0), 63, implicit-def dead $eflags
-    //   renamable $rdx = XOR64rr killed renamable $rdx(tied-def 0), renamable $rdi, implicit-def dead $eflags
-    //   renamable $rdi = XOR64rr killed renamable $rdi(tied-def 0), killed renamable $rax, implicit-def dead $eflags
-    //   renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
-    //   dead renamable $rdi = OR64rr killed renamable $rdi(tied-def 0), killed renamable $rdx, implicit-def $eflags
-    //   renamable $sil = SETCCr 5, implicit killed $eflags, implicit killed $esi, implicit-def $esi
-    //   $rax = MOV64rr killed $r8
-    //   $edx = MOV32rr killed $esi
+    //   renamable $rdx = ADC64rr killed renamable $rdx(tied-def 0), killed renamable $r9, implicit-def dead $eflags, implicit killed $eflags
+    //   $r8 = MOV64rr $rcx
+    //   renamable $r8 = SAR64ri killed renamable $r8(tied-def 0), 63, implicit-def dead $eflags
+    //   renamable $rdx = XOR64rr killed renamable $rdx(tied-def 0), renamable $r8, implicit-def dead $eflags
+    //   renamable $r8 = XOR64rr killed renamable $r8(tied-def 0), killed renamable $rax, implicit-def dead $eflags
+    //   renamable $edi = XOR32rr undef $edi(tied-def 0), undef $edi, implicit-def dead $eflags, implicit-def $rdi
+    //   dead renamable $r8 = OR64rr killed renamable $r8(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    //   renamable $dil = SETCCr 5, implicit killed $eflags, implicit killed $rdi, implicit-def $rdi
+    //   $rax = MOV64rr killed $rsi
+    //   $rdx = MOV64rr killed $rdi
     //   $rbx = frame-destroy POP64r implicit-def $rsp, implicit $rsp
     //   frame-destroy CFI_INSTRUCTION def_cfa_offset 16
     //   $r14 = frame-destroy POP64r implicit-def $rsp, implicit $rsp
     //   frame-destroy CFI_INSTRUCTION def_cfa_offset 8
-    //   RET64 killed $rax, killed $rcx, killed $edx
+    //   RET64 killed $rax, killed $rcx, killed $rdx
     // 
     // # End machine code for function of_mul_i128.
     // 
@@ -12417,9 +12609,9 @@ template <typename Adaptor,
     // bx is an alias for operand param_2
 
 
-    // $r9 = MOV64rr $rcx
-    // aliasing r9 to cx
-    // r9 is an alias for operand param_1
+    // $r8 = MOV64rr $rcx
+    // aliasing r8 to cx
+    // r8 is an alias for operand param_1
 
 
     // $r11 = MOV64rr killed $rax
@@ -12441,25 +12633,26 @@ template <typename Adaptor,
     // result cx is marked as alive
 
 
-    // $rsi = MOV64rr $rdi
-    // aliasing si to di
-    // si is an alias for operand param_3
+    // $r9 = MOV64rr $rdi
+    // aliasing r9 to di
+    // r9 is an alias for operand param_3
 
 
-    // renamable $rsi = IMUL64rr killed renamable $rsi(tied-def 0), renamable $rcx, implicit-def dead $eflags
+    // renamable $r9 = IMUL64rr killed renamable $r9(tied-def 0), renamable $rcx, implicit-def dead $eflags
     do {
     {
     if (1) {
-        AsmReg inst5_op1 = scratch_si.alloc_from_bank(0);
+        AsmReg inst5_op1 = scratch_r9.alloc_from_bank(0);
         AsmReg inst5_op1_tmp = param_3.as_reg(this);
         ASMD(MOV64rr, inst5_op1, inst5_op1_tmp);
-        ASMD(IMUL64rr, scratch_si.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(IMUL64rr, scratch_r9.cur_reg, op2);
         break;
     }
     }
     } while (false);
-    // argument si is killed and marked as dead
-    // result si is marked as alive
+    // argument r9 is killed and marked as dead
+    // result r9 is marked as alive
 
 
     // $rax = MOV64rr killed $rdx
@@ -12472,10 +12665,11 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op0 = scratch_cx.cur_reg;
         // fixing reg 0 for cond ()
         AsmReg op4_tmp = param_2.as_reg(this);
         ASMD(MOV64rr, scratch_ax.cur_reg, op4_tmp);
-        ASMD(MUL64r, scratch_cx.cur_reg);
+        ASMD(MUL64r, op0);
         break;
     }
     }
@@ -12491,8 +12685,8 @@ template <typename Adaptor,
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // $r8 = MOV64rr $rax
-    // aliasing r8 to ax
+    // $rsi = MOV64rr $rax
+    // aliasing si to ax
 
 
     // renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed $rax, implicit-def dead $eflags
@@ -12502,9 +12696,10 @@ template <typename Adaptor,
         // operand dx has some references
         AsmReg reg_cx = scratch_cx.alloc_from_bank(0);
         ASMD(MOV64rr, reg_cx, scratch_dx.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
         // def cx has not been allocated yet
         scratch_cx.alloc_from_bank(0);
-        ASMD(ADD64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        ASMD(ADD64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -12515,27 +12710,28 @@ template <typename Adaptor,
     // result cx is marked as alive
 
 
-    // renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rsi, implicit-def dead $eflags
+    // renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $r9, implicit-def dead $eflags
     do {
     {
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
-        ASMD(ADD64rr, scratch_cx.cur_reg, scratch_si.cur_reg);
+        AsmReg op2 = scratch_r9.cur_reg;
+        ASMD(ADD64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
     } while (false);
     // argument cx is killed and marked as dead
-    // argument si is killed and marked as dead
+    // argument r9 is killed and marked as dead
     // result cx is marked as alive
 
 
     // $rax = MOV64rr $rdi
     // aliasing ax to di
-    // r8 is still aliased to the value of ax so we emit an explicit copy
-    scratch_r8.alloc_from_bank(0);
-    ASMD(MOV64rr, scratch_r8.cur_reg, scratch_ax.cur_reg);
+    // si is still aliased to the value of ax so we emit an explicit copy
+    scratch_si.alloc_from_bank(0);
+    ASMD(MOV64rr, scratch_si.cur_reg, scratch_ax.cur_reg);
     // ax is an alias for operand param_3
 
 
@@ -12556,7 +12752,7 @@ template <typename Adaptor,
     // aliasing r14 to ax
 
 
-    // renamable $r14 = IMUL64rr killed renamable $r14(tied-def 0), renamable $r9, implicit-def dead $eflags
+    // renamable $r14 = IMUL64rr killed renamable $r14(tied-def 0), renamable $r8, implicit-def dead $eflags
     do {
     {
     auto cond0 = param_1.encodeable_as_mem();
@@ -12616,81 +12812,85 @@ template <typename Adaptor,
     // aliasing r10 to ax
 
 
-    // $rsi = MOV64rr killed $rdx
-    // aliasing si to dx
+    // $r9 = MOV64rr killed $rdx
+    // aliasing r9 to dx
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // renamable $rsi = ADD64rr killed renamable $rsi(tied-def 0), killed renamable $r14, implicit-def dead $eflags
+    // renamable $r9 = ADD64rr killed renamable $r9(tied-def 0), killed renamable $r14, implicit-def dead $eflags
     do {
     {
     if (1) {
         // operand dx has some references
-        AsmReg reg_si = scratch_si.alloc_from_bank(0);
-        ASMD(MOV64rr, reg_si, scratch_dx.cur_reg);
-        // def si has not been allocated yet
-        scratch_si.alloc_from_bank(0);
-        ASMD(ADD64rr, scratch_si.cur_reg, scratch_r14.cur_reg);
+        AsmReg reg_r9 = scratch_r9.alloc_from_bank(0);
+        ASMD(MOV64rr, reg_r9, scratch_dx.cur_reg);
+        AsmReg op2 = scratch_r14.cur_reg;
+        // def r9 has not been allocated yet
+        scratch_r9.alloc_from_bank(0);
+        ASMD(ADD64rr, scratch_r9.cur_reg, op2);
         break;
     }
     }
     } while (false);
-    // argument si is killed and marked as dead
-    // removing alias from si to dx
+    // argument r9 is killed and marked as dead
+    // removing alias from r9 to dx
     // argument r14 is killed and marked as dead
-    // result si is marked as alive
+    // result r9 is marked as alive
 
 
-    // renamable $rsi = ADD64rr killed renamable $rsi(tied-def 0), killed $rax, implicit-def dead $eflags
+    // renamable $r9 = ADD64rr killed renamable $r9(tied-def 0), killed $rax, implicit-def dead $eflags
     do {
     {
     if (1) {
-        // operand 1(si) is the same as its tied destination
-        assert(scratch_si.cur_reg.valid());
-        ASMD(ADD64rr, scratch_si.cur_reg, scratch_ax.cur_reg);
+        // operand 1(r9) is the same as its tied destination
+        assert(scratch_r9.cur_reg.valid());
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(ADD64rr, scratch_r9.cur_reg, op2);
         break;
     }
     }
     } while (false);
-    // argument si is killed and marked as dead
+    // argument r9 is killed and marked as dead
     // argument ax is killed and marked as dead
-    // result si is marked as alive
+    // result r9 is marked as alive
 
 
-    // renamable $r10 = ADD64rr killed renamable $r10(tied-def 0), killed renamable $r8, implicit-def $eflags
+    // renamable $r10 = ADD64rr killed renamable $r10(tied-def 0), killed renamable $rsi, implicit-def $eflags
     do {
     {
     if (1) {
         // operand ax has some references
         AsmReg reg_r10 = scratch_r10.alloc_from_bank(0);
         ASMD(MOV64rr, reg_r10, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_si.cur_reg;
         // def r10 has not been allocated yet
         scratch_r10.alloc_from_bank(0);
-        ASMD(ADD64rr, scratch_r10.cur_reg, scratch_r8.cur_reg);
+        ASMD(ADD64rr, scratch_r10.cur_reg, op2);
         break;
     }
     }
     } while (false);
     // argument r10 is killed and marked as dead
     // removing alias from r10 to ax
-    // argument r8 is killed and marked as dead
+    // argument si is killed and marked as dead
     // result r10 is marked as alive
 
 
-    // renamable $rsi = ADC64rr killed renamable $rsi(tied-def 0), killed renamable $rcx, implicit-def dead $eflags, implicit killed $eflags
+    // renamable $r9 = ADC64rr killed renamable $r9(tied-def 0), killed renamable $rcx, implicit-def dead $eflags, implicit killed $eflags
     do {
     {
     if (1) {
-        // operand 1(si) is the same as its tied destination
-        assert(scratch_si.cur_reg.valid());
-        ASMD(ADC64rr, scratch_si.cur_reg, scratch_cx.cur_reg);
+        // operand 1(r9) is the same as its tied destination
+        assert(scratch_r9.cur_reg.valid());
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(ADC64rr, scratch_r9.cur_reg, op2);
         break;
     }
     }
     } while (false);
-    // argument si is killed and marked as dead
+    // argument r9 is killed and marked as dead
     // argument cx is killed and marked as dead
-    // result si is marked as alive
+    // result r9 is marked as alive
 
 
     // $rax = MOV64rr $r11
@@ -12731,16 +12931,16 @@ template <typename Adaptor,
     // source dx is killed, all aliases redirected and marked as dead
 
 
-    // $r8 = MOV64rr killed $rax
-    // aliasing r8 to ax
+    // $rsi = MOV64rr killed $rax
+    // aliasing si to ax
     // source ax is killed, all aliases redirected and marked as dead
 
 
-    // $rax = MOV64rr $r9
-    // aliasing ax to r9
-    // r8 is still aliased to the value of ax so we emit an explicit copy
-    scratch_r8.alloc_from_bank(0);
-    ASMD(MOV64rr, scratch_r8.cur_reg, scratch_ax.cur_reg);
+    // $rax = MOV64rr $r8
+    // aliasing ax to r8
+    // si is still aliased to the value of ax so we emit an explicit copy
+    scratch_si.alloc_from_bank(0);
+    ASMD(MOV64rr, scratch_si.cur_reg, scratch_ax.cur_reg);
     // ax is an alias for operand param_1
 
 
@@ -12772,6 +12972,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument bx is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
     // result ax is marked as alive
     // result dx is marked as alive
@@ -12788,7 +12989,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
-        ASMD(ADD64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(ADD64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -12844,6 +13046,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result dx is marked as alive
 
@@ -12859,7 +13062,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
-        ASMD(ADD64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(ADD64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -12876,9 +13080,10 @@ template <typename Adaptor,
         // operand dx has some references
         AsmReg reg_r11 = scratch_r11.alloc_from_bank(0);
         ASMD(MOV64rr, reg_r11, scratch_dx.cur_reg);
+        AsmReg op2 = scratch_bx.cur_reg;
         // def r11 has not been allocated yet
         scratch_r11.alloc_from_bank(0);
-        ASMD(ADC64rr, scratch_r11.cur_reg, scratch_bx.cur_reg);
+        ASMD(ADC64rr, scratch_r11.cur_reg, op2);
         break;
     }
     }
@@ -12903,9 +13108,10 @@ template <typename Adaptor,
     // renamable $ebx = MOVZX32rr8 killed renamable $al, implicit-def $rbx
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def bx has not been allocated yet
         scratch_bx.alloc_from_bank(0);
-        ASMD(MOVZXr32r8, scratch_bx.cur_reg, scratch_ax.cur_reg);
+        ASMD(MOVZXr32r8, scratch_bx.cur_reg, op1);
     }
     }
     // argument ax is killed and marked as dead
@@ -12913,10 +13119,10 @@ template <typename Adaptor,
     // result bx is marked as alive
 
 
-    // $rax = MOV64rr killed $r9
-    // aliasing ax to r9
+    // $rax = MOV64rr killed $r8
+    // aliasing ax to r8
     // ax is an alias for operand param_1
-    // source r9 is killed, all aliases redirected and marked as dead
+    // source r8 is killed, all aliases redirected and marked as dead
 
 
     // MUL64r killed renamable $rdi, implicit-def $rax, implicit-def $rdx, implicit-def dead $eflags, implicit killed $rax
@@ -12943,7 +13149,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_3.reset();
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
     // result dx is marked as alive
 
@@ -12954,7 +13162,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(ADD64rr, scratch_ax.cur_reg, scratch_r11.cur_reg);
+        AsmReg op2 = scratch_r11.cur_reg;
+        ASMD(ADD64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -12970,7 +13179,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(ADC64rr, scratch_dx.cur_reg, scratch_bx.cur_reg);
+        AsmReg op2 = scratch_bx.cur_reg;
+        ASMD(ADC64rr, scratch_dx.cur_reg, op2);
         break;
     }
     }
@@ -12986,7 +13196,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(ADD64rr, scratch_ax.cur_reg, scratch_r10.cur_reg);
+        AsmReg op2 = scratch_r10.cur_reg;
+        ASMD(ADD64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -12996,49 +13207,51 @@ template <typename Adaptor,
     // result ax is marked as alive
 
 
-    // renamable $rdx = ADC64rr killed renamable $rdx(tied-def 0), killed renamable $rsi, implicit-def dead $eflags, implicit killed $eflags
+    // renamable $rdx = ADC64rr killed renamable $rdx(tied-def 0), killed renamable $r9, implicit-def dead $eflags, implicit killed $eflags
     do {
     {
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(ADC64rr, scratch_dx.cur_reg, scratch_si.cur_reg);
+        AsmReg op2 = scratch_r9.cur_reg;
+        ASMD(ADC64rr, scratch_dx.cur_reg, op2);
         break;
     }
     }
     } while (false);
     // argument dx is killed and marked as dead
-    // argument si is killed and marked as dead
+    // argument r9 is killed and marked as dead
     // result dx is marked as alive
 
 
-    // $rdi = MOV64rr $rcx
-    // aliasing di to cx
+    // $r8 = MOV64rr $rcx
+    // aliasing r8 to cx
 
 
-    // renamable $rdi = SAR64ri killed renamable $rdi(tied-def 0), 63, implicit-def dead $eflags
+    // renamable $r8 = SAR64ri killed renamable $r8(tied-def 0), 63, implicit-def dead $eflags
     {
     if (1) {
         // operand cx has some references
-        AsmReg reg_di = scratch_di.alloc_from_bank(0);
-        ASMD(MOV64rr, reg_di, scratch_cx.cur_reg);
-        // def di has not been allocated yet
-        scratch_di.alloc_from_bank(0);
-        ASMD(SAR64ri, scratch_di.cur_reg, 0x3f);
+        AsmReg reg_r8 = scratch_r8.alloc_from_bank(0);
+        ASMD(MOV64rr, reg_r8, scratch_cx.cur_reg);
+        // def r8 has not been allocated yet
+        scratch_r8.alloc_from_bank(0);
+        ASMD(SAR64ri, scratch_r8.cur_reg, 0x3f);
     }
     }
-    // argument di is killed and marked as dead
-    // removing alias from di to cx
-    // result di is marked as alive
+    // argument r8 is killed and marked as dead
+    // removing alias from r8 to cx
+    // result r8 is marked as alive
 
 
-    // renamable $rdx = XOR64rr killed renamable $rdx(tied-def 0), renamable $rdi, implicit-def dead $eflags
+    // renamable $rdx = XOR64rr killed renamable $rdx(tied-def 0), renamable $r8, implicit-def dead $eflags
     do {
     {
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(XOR64rr, scratch_dx.cur_reg, scratch_di.cur_reg);
+        AsmReg op2 = scratch_r8.cur_reg;
+        ASMD(XOR64rr, scratch_dx.cur_reg, op2);
         break;
     }
     }
@@ -13047,91 +13260,94 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // renamable $rdi = XOR64rr killed renamable $rdi(tied-def 0), killed renamable $rax, implicit-def dead $eflags
+    // renamable $r8 = XOR64rr killed renamable $r8(tied-def 0), killed renamable $rax, implicit-def dead $eflags
     do {
     {
     if (1) {
-        // operand 1(di) is the same as its tied destination
-        assert(scratch_di.cur_reg.valid());
-        ASMD(XOR64rr, scratch_di.cur_reg, scratch_ax.cur_reg);
+        // operand 1(r8) is the same as its tied destination
+        assert(scratch_r8.cur_reg.valid());
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(XOR64rr, scratch_r8.cur_reg, op2);
         break;
     }
     }
     } while (false);
-    // argument di is killed and marked as dead
+    // argument r8 is killed and marked as dead
     // argument ax is killed and marked as dead
-    // result di is marked as alive
+    // result r8 is marked as alive
 
 
-    // renamable $esi = XOR32rr undef $esi(tied-def 0), undef $esi, implicit-def dead $eflags
+    // renamable $edi = XOR32rr undef $edi(tied-def 0), undef $edi, implicit-def dead $eflags, implicit-def $rdi
     do {
     {
     if (1) {
         // undef tied
         // undef allocate scratch
-        AsmReg inst49_op2 = scratch_si.alloc_from_bank(0);
+        AsmReg inst49_op2 = scratch_di.alloc_from_bank(0);
 
-        // def si has not been allocated yet
-        scratch_si.alloc_from_bank(0);
-        ASMD(XOR32rr, scratch_si.cur_reg, inst49_op2);
+        // def di has not been allocated yet
+        scratch_di.alloc_from_bank(0);
+        ASMD(XOR32rr, scratch_di.cur_reg, inst49_op2);
         break;
     }
     }
     } while (false);
-    // result si is marked as alive
+    // result di is marked as alive
+    // result di is marked as alive
 
 
-    // dead renamable $rdi = OR64rr killed renamable $rdi(tied-def 0), killed renamable $rdx, implicit-def $eflags
+    // dead renamable $r8 = OR64rr killed renamable $r8(tied-def 0), killed renamable $rdx, implicit-def $eflags
     do {
     {
     if (1) {
-        // operand 1(di) is the same as its tied destination
-        assert(scratch_di.cur_reg.valid());
-        ASMD(OR64rr, scratch_di.cur_reg, scratch_dx.cur_reg);
+        // operand 1(r8) is the same as its tied destination
+        assert(scratch_r8.cur_reg.valid());
+        AsmReg op2 = scratch_dx.cur_reg;
+        ASMD(OR64rr, scratch_r8.cur_reg, op2);
         break;
     }
     }
     } while (false);
-    // argument di is killed and marked as dead
+    // argument r8 is killed and marked as dead
     // argument dx is killed and marked as dead
-    // result di is marked as dead
+    // result r8 is marked as dead
 
 
-    // renamable $sil = SETCCr 5, implicit killed $eflags, implicit killed $esi, implicit-def $esi
+    // renamable $dil = SETCCr 5, implicit killed $eflags, implicit killed $rdi, implicit-def $rdi
     {
     if (1) {
         // operand exceeds NumImplicitUses, ignore
-        // def si has not been allocated yet
-        scratch_si.alloc_from_bank(0);
-        ASMD(SETNZ8r, scratch_si.cur_reg);
+        // def di has not been allocated yet
+        scratch_di.alloc_from_bank(0);
+        ASMD(SETNZ8r, scratch_di.cur_reg);
     }
     }
-    // argument si is killed and marked as dead
-    // result si is marked as alive
-    // result si is marked as alive
+    // argument di is killed and marked as dead
+    // result di is marked as alive
+    // result di is marked as alive
 
 
-    // $rax = MOV64rr killed $r8
-    // aliasing ax to r8
-    // source r8 is killed, all aliases redirected and marked as dead
-
-
-    // $edx = MOV32rr killed $esi
-    // aliasing dx to si
+    // $rax = MOV64rr killed $rsi
+    // aliasing ax to si
     // source si is killed, all aliases redirected and marked as dead
 
 
-    // RET64 killed $rax, killed $rcx, killed $edx
+    // $rdx = MOV64rr killed $rdi
+    // aliasing dx to di
+    // source di is killed, all aliases redirected and marked as dead
+
+
+    // RET64 killed $rax, killed $rcx, killed $rdx
     scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
     scratch_check_fixed_backup(scratch_dx, reg_backup_dx, true);
     // returning reg ax as result_0
-    // ax is an alias for r8
-    result_0 = std::move(scratch_r8);
+    // ax is an alias for si
+    result_0 = std::move(scratch_si);
     // returning reg cx as result_1
     result_1 = std::move(scratch_cx);
     // returning reg dx as result_2
-    // dx is an alias for si
-    result_2 = std::move(scratch_si);
+    // dx is an alias for di
+    result_2 = std::move(scratch_di);
     return true;
 
 }
@@ -13149,8 +13365,8 @@ template <typename Adaptor,
     //   renamable $rax = ADD64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
     //   renamable $rcx = ADC64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
     //   renamable $dl = SETCCr 2, implicit killed $eflags
-    //   renamable $edx = MOVZX32rr8 killed renamable $dl
-    //   RET64 killed $rax, killed $rcx, killed $edx
+    //   renamable $edx = MOVZX32rr8 killed renamable $dl, implicit-def $rdx
+    //   RET64 killed $rax, killed $rcx, killed $rdx
     // 
     // # End machine code for function of_add_u128.
     // 
@@ -13196,7 +13412,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
 
 
@@ -13231,7 +13449,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument di is killed and marked as dead
+    param_3.reset();
     // result cx is marked as alive
 
 
@@ -13246,19 +13466,21 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // renamable $edx = MOVZX32rr8 killed renamable $dl
+    // renamable $edx = MOVZX32rr8 killed renamable $dl, implicit-def $rdx
     {
     if (1) {
+        AsmReg op1 = scratch_dx.cur_reg;
         // def dx has not been allocated yet
         scratch_dx.alloc_from_bank(0);
-        ASMD(MOVZXr32r8, scratch_dx.cur_reg, scratch_dx.cur_reg);
+        ASMD(MOVZXr32r8, scratch_dx.cur_reg, op1);
     }
     }
     // argument dx is killed and marked as dead
     // result dx is marked as alive
+    // result dx is marked as alive
 
 
-    // RET64 killed $rax, killed $rcx, killed $edx
+    // RET64 killed $rax, killed $rcx, killed $rdx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -13282,8 +13504,8 @@ template <typename Adaptor,
     //   renamable $rax = SUB64rr killed renamable $rax(tied-def 0), killed renamable $rdx, implicit-def $eflags
     //   renamable $rcx = SBB64rr killed renamable $rcx(tied-def 0), killed renamable $rdi, implicit-def $eflags, implicit killed $eflags
     //   renamable $dl = SETCCr 2, implicit killed $eflags
-    //   renamable $edx = MOVZX32rr8 killed renamable $dl
-    //   RET64 killed $rax, killed $rcx, killed $edx
+    //   renamable $edx = MOVZX32rr8 killed renamable $dl, implicit-def $rdx
+    //   RET64 killed $rax, killed $rcx, killed $rdx
     // 
     // # End machine code for function of_sub_u128.
     // 
@@ -13329,7 +13551,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
 
 
@@ -13364,7 +13588,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument cx is killed and marked as dead
+    param_1.reset();
     // argument di is killed and marked as dead
+    param_3.reset();
     // result cx is marked as alive
 
 
@@ -13379,19 +13605,21 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // renamable $edx = MOVZX32rr8 killed renamable $dl
+    // renamable $edx = MOVZX32rr8 killed renamable $dl, implicit-def $rdx
     {
     if (1) {
+        AsmReg op1 = scratch_dx.cur_reg;
         // def dx has not been allocated yet
         scratch_dx.alloc_from_bank(0);
-        ASMD(MOVZXr32r8, scratch_dx.cur_reg, scratch_dx.cur_reg);
+        ASMD(MOVZXr32r8, scratch_dx.cur_reg, op1);
     }
     }
     // argument dx is killed and marked as dead
     // result dx is marked as alive
+    // result dx is marked as alive
 
 
-    // RET64 killed $rax, killed $rcx, killed $edx
+    // RET64 killed $rax, killed $rcx, killed $rdx
     // returning reg ax as result_0
     result_0 = std::move(scratch_ax);
     // returning reg cx as result_1
@@ -13434,8 +13662,8 @@ template <typename Adaptor,
     //   renamable $rcx = ADD64rr killed renamable $rcx(tied-def 0), killed renamable $rdx, implicit-def $eflags
     //   renamable $dl = SETCCr 2, implicit killed $eflags
     //   renamable $dl = OR8rr killed renamable $dl(tied-def 0), killed renamable $dil, implicit-def dead $eflags
-    //   renamable $edx = MOVZX32rr8 killed renamable $dl
-    //   RET64 killed $rax, killed $rcx, killed $edx
+    //   renamable $edx = MOVZX32rr8 killed renamable $dl, implicit-def $rdx
+    //   RET64 killed $rax, killed $rcx, killed $rdx
     // 
     // # End machine code for function of_mul_u128.
     // 
@@ -13490,8 +13718,7 @@ template <typename Adaptor,
     {
     if (1) {
         AsmReg op0 = param_3.as_reg(this);
-        AsmReg op1 = param_3.as_reg(this);
-        ASMD(TEST64rr, op0, op1);
+        ASMD(TEST64rr, op0, op0);
         break;
     }
     }
@@ -13530,8 +13757,7 @@ template <typename Adaptor,
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
-        AsmReg op1 = param_1.as_reg(this);
-        ASMD(TEST64rr, op0, op1);
+        ASMD(TEST64rr, op0, op0);
         break;
     }
     }
@@ -13555,7 +13781,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(r9) is the same as its tied destination
         assert(scratch_r9.cur_reg.valid());
-        ASMD(AND8rr, scratch_r9.cur_reg, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(AND8rr, scratch_r9.cur_reg, op2);
         break;
     }
     }
@@ -13596,6 +13823,7 @@ template <typename Adaptor,
     } while (false);
     // argument dx is killed and marked as dead
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
     // result dx is marked as dead
 
@@ -13649,6 +13877,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_3.reset();
     // result ax is marked as alive
     // result dx is marked as dead
 
@@ -13670,7 +13899,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(di) is the same as its tied destination
         assert(scratch_di.cur_reg.valid());
-        ASMD(OR8rr, scratch_di.cur_reg, scratch_r10.cur_reg);
+        AsmReg op2 = scratch_r10.cur_reg;
+        ASMD(OR8rr, scratch_di.cur_reg, op2);
         break;
     }
     }
@@ -13686,7 +13916,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(di) is the same as its tied destination
         assert(scratch_di.cur_reg.valid());
-        ASMD(OR8rr, scratch_di.cur_reg, scratch_r9.cur_reg);
+        AsmReg op2 = scratch_r9.cur_reg;
+        ASMD(OR8rr, scratch_di.cur_reg, op2);
         break;
     }
     }
@@ -13702,7 +13933,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
-        ASMD(ADD64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(ADD64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -13742,7 +13974,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument si is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result dx is marked as alive
 
@@ -13753,7 +13987,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
-        ASMD(ADD64rr, scratch_cx.cur_reg, scratch_dx.cur_reg);
+        AsmReg op2 = scratch_dx.cur_reg;
+        ASMD(ADD64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -13780,7 +14015,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(OR8rr, scratch_dx.cur_reg, scratch_di.cur_reg);
+        AsmReg op2 = scratch_di.cur_reg;
+        ASMD(OR8rr, scratch_dx.cur_reg, op2);
         break;
     }
     }
@@ -13790,19 +14026,21 @@ template <typename Adaptor,
     // result dx is marked as alive
 
 
-    // renamable $edx = MOVZX32rr8 killed renamable $dl
+    // renamable $edx = MOVZX32rr8 killed renamable $dl, implicit-def $rdx
     {
     if (1) {
+        AsmReg op1 = scratch_dx.cur_reg;
         // def dx has not been allocated yet
         scratch_dx.alloc_from_bank(0);
-        ASMD(MOVZXr32r8, scratch_dx.cur_reg, scratch_dx.cur_reg);
+        ASMD(MOVZXr32r8, scratch_dx.cur_reg, op1);
     }
     }
     // argument dx is killed and marked as dead
     // result dx is marked as alive
+    // result dx is marked as alive
 
 
-    // RET64 killed $rax, killed $rcx, killed $edx
+    // RET64 killed $rax, killed $rcx, killed $rdx
     scratch_check_fixed_backup(scratch_ax, reg_backup_ax, true);
     scratch_check_fixed_backup(scratch_dx, reg_backup_dx, true);
     // returning reg ax as result_0
@@ -13859,7 +14097,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
@@ -13914,7 +14154,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
@@ -13969,7 +14211,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
@@ -14024,7 +14268,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
@@ -14079,7 +14325,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
@@ -14134,7 +14382,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
@@ -14189,7 +14439,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
@@ -14244,7 +14496,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
@@ -14292,6 +14546,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -14339,6 +14594,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -14386,6 +14642,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -14433,6 +14690,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -14490,7 +14748,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
@@ -14517,6 +14777,7 @@ template <typename Adaptor,
     } while (false);
     // argument xmm0 is killed and marked as dead
     // argument xmm2 is killed and marked as dead
+    param_2.reset();
     // result xmm0 is marked as alive
 
 
@@ -14574,7 +14835,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
@@ -14601,6 +14864,7 @@ template <typename Adaptor,
     } while (false);
     // argument xmm0 is killed and marked as dead
     // argument xmm2 is killed and marked as dead
+    param_2.reset();
     // result xmm0 is marked as alive
 
 
@@ -14644,12 +14908,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_xmm0, 1)) {
-            op1 = scratch_xmm0.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_xmm0, 1);
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
         ASMD(SSE_CVTSD2SSrr, scratch_xmm0.cur_reg, op1);
@@ -14658,6 +14917,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -14701,12 +14961,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_xmm0, 1)) {
-            op1 = scratch_xmm0.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_xmm0, 1);
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
         ASMD(SSE_CVTSS2SDrr, scratch_xmm0.cur_reg, op1);
@@ -14715,6 +14970,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -14768,6 +15024,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -14822,6 +15079,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -14879,6 +15137,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -14979,6 +15238,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -14986,9 +15246,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_xmm0.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(SSE_CVTTSS2SI64rr, scratch_ax.cur_reg, scratch_xmm0.cur_reg);
+        ASMD(SSE_CVTTSS2SI64rr, scratch_ax.cur_reg, op1);
         break;
     }
     }
@@ -15003,7 +15264,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(AND64rr, scratch_ax.cur_reg, scratch_dx.cur_reg);
+        AsmReg op2 = scratch_dx.cur_reg;
+        ASMD(AND64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -15019,7 +15281,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(OR64rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(OR64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -15079,6 +15342,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -15133,6 +15397,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -15190,6 +15455,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -15290,6 +15556,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -15297,9 +15564,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_xmm0.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(SSE_CVTTSD2SI64rr, scratch_ax.cur_reg, scratch_xmm0.cur_reg);
+        ASMD(SSE_CVTTSD2SI64rr, scratch_ax.cur_reg, op1);
         break;
     }
     }
@@ -15314,7 +15582,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(AND64rr, scratch_ax.cur_reg, scratch_dx.cur_reg);
+        AsmReg op2 = scratch_dx.cur_reg;
+        ASMD(AND64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -15330,7 +15599,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(OR64rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(OR64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -15373,12 +15643,7 @@ template <typename Adaptor,
     // renamable $eax = MOVSX32rr8 killed renamable $dil, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -15386,6 +15651,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -15394,9 +15660,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SS32rr, scratch_xmm0.cur_reg, scratch_ax.cur_reg);
+        ASMD(SSE_CVTSI2SS32rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -15438,12 +15705,7 @@ template <typename Adaptor,
     // renamable $eax = MOVSX32rr16 killed renamable $di, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -15451,6 +15713,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -15459,9 +15722,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SS32rr, scratch_xmm0.cur_reg, scratch_ax.cur_reg);
+        ASMD(SSE_CVTSI2SS32rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -15520,6 +15784,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -15573,6 +15838,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -15609,12 +15875,7 @@ template <typename Adaptor,
     // renamable $eax = MOVZX32rr8 killed renamable $dil, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -15622,6 +15883,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -15630,9 +15892,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SS32rr, scratch_xmm0.cur_reg, scratch_ax.cur_reg);
+        ASMD(SSE_CVTSI2SS32rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -15674,12 +15937,7 @@ template <typename Adaptor,
     // renamable $eax = MOVZX32rr16 killed renamable $di, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -15687,6 +15945,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -15695,9 +15954,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SS32rr, scratch_xmm0.cur_reg, scratch_ax.cur_reg);
+        ASMD(SSE_CVTSI2SS32rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -15758,12 +16018,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV32rr, scratch_ax.cur_reg, op1);
@@ -15772,6 +16027,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result ax is marked as alive
 
@@ -15780,9 +16036,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SS64rr, scratch_xmm0.cur_reg, scratch_ax.cur_reg);
+        ASMD(SSE_CVTSI2SS64rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -15866,8 +16123,7 @@ template <typename Adaptor,
     {
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
-        AsmReg op1 = param_0.as_reg(this);
-        ASMD(TEST64rr, op0, op1);
+        ASMD(TEST64rr, op0, op0);
         break;
     }
     }
@@ -15900,9 +16156,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_di.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SS64rr, scratch_xmm0.cur_reg, scratch_di.cur_reg);
+        ASMD(SSE_CVTSI2SS64rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -15963,7 +16220,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(di) is the same as its tied destination
         assert(scratch_di.cur_reg.valid());
-        ASMD(OR64rr, scratch_di.cur_reg, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(OR64rr, scratch_di.cur_reg, op2);
         break;
     }
     }
@@ -15977,9 +16235,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_di.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SS64rr, scratch_xmm0.cur_reg, scratch_di.cur_reg);
+        ASMD(SSE_CVTSI2SS64rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -15994,7 +16253,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(xmm0) is the same as its tied destination
         assert(scratch_xmm0.cur_reg.valid());
-        ASMD(SSE_ADDSSrr, scratch_xmm0.cur_reg, scratch_xmm0.cur_reg);
+        AsmReg op2 = scratch_xmm0.cur_reg;
+        ASMD(SSE_ADDSSrr, scratch_xmm0.cur_reg, op2);
         break;
     }
     }
@@ -16042,12 +16302,7 @@ template <typename Adaptor,
     // renamable $eax = MOVSX32rr8 killed renamable $dil, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -16055,6 +16310,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -16063,9 +16319,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SD32rr, scratch_xmm0.cur_reg, scratch_ax.cur_reg);
+        ASMD(SSE_CVTSI2SD32rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -16107,12 +16364,7 @@ template <typename Adaptor,
     // renamable $eax = MOVSX32rr16 killed renamable $di, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -16120,6 +16372,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -16128,9 +16381,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SD32rr, scratch_xmm0.cur_reg, scratch_ax.cur_reg);
+        ASMD(SSE_CVTSI2SD32rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -16189,6 +16443,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -16242,6 +16497,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result xmm0 is marked as alive
 
 
@@ -16278,12 +16534,7 @@ template <typename Adaptor,
     // renamable $eax = MOVZX32rr8 killed renamable $dil, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -16291,6 +16542,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -16299,9 +16551,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SD32rr, scratch_xmm0.cur_reg, scratch_ax.cur_reg);
+        ASMD(SSE_CVTSI2SD32rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -16343,12 +16596,7 @@ template <typename Adaptor,
     // renamable $eax = MOVZX32rr16 killed renamable $di, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -16356,6 +16604,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -16364,9 +16613,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SD32rr, scratch_xmm0.cur_reg, scratch_ax.cur_reg);
+        ASMD(SSE_CVTSI2SD32rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -16427,12 +16677,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV32rr, scratch_ax.cur_reg, op1);
@@ -16441,6 +16686,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result ax is marked as alive
 
@@ -16449,9 +16695,10 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_CVTSI2SD64rr, scratch_xmm0.cur_reg, scratch_ax.cur_reg);
+        ASMD(SSE_CVTSI2SD64rr, scratch_xmm0.cur_reg, op1);
         break;
     }
     }
@@ -16507,6 +16754,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // result xmm1 is marked as alive
 
 
@@ -16560,9 +16808,10 @@ template <typename Adaptor,
         } else {
             ASMD(SSE_MOVUPDrr, reg_xmm0, scratch_xmm1.cur_reg);
         }
+        AsmReg op2 = scratch_xmm1.cur_reg;
         // def xmm0 has not been allocated yet
         scratch_xmm0.alloc_from_bank(1);
-        ASMD(SSE_UNPCKHPDrr, scratch_xmm0.cur_reg, scratch_xmm1.cur_reg);
+        ASMD(SSE_UNPCKHPDrr, scratch_xmm0.cur_reg, op2);
     }
     }
     // argument xmm0 is killed and marked as dead
@@ -16576,7 +16825,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(xmm0) is the same as its tied destination
         assert(scratch_xmm0.cur_reg.valid());
-        ASMD(SSE_ADDSDrr, scratch_xmm0.cur_reg, scratch_xmm1.cur_reg);
+        AsmReg op2 = scratch_xmm1.cur_reg;
+        ASMD(SSE_ADDSDrr, scratch_xmm0.cur_reg, op2);
         break;
     }
     }
@@ -16617,12 +16867,7 @@ template <typename Adaptor,
     // renamable $eax = MOVSX32rr8 killed renamable $dil, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -16630,6 +16875,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -16670,12 +16916,7 @@ template <typename Adaptor,
     // renamable $rax = MOVSX64rr8 killed renamable $dil, implicit killed $rdi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -16683,6 +16924,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -16718,12 +16960,7 @@ template <typename Adaptor,
     // renamable $eax = MOVSX32rr16 killed renamable $di, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -16731,6 +16968,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -16771,12 +17009,7 @@ template <typename Adaptor,
     // renamable $rax = MOVSX64rr16 killed renamable $di, implicit killed $rdi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -16784,6 +17017,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -16819,18 +17053,14 @@ template <typename Adaptor,
     // renamable $rax = MOVSX64rr32 killed renamable $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVSXr64r32, scratch_ax.cur_reg, op1);
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -16910,6 +17140,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -16941,6 +17172,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -17021,6 +17253,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument ax is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -17052,6 +17285,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument cx is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -17100,6 +17334,7 @@ template <typename Adaptor,
     }
     }
     // argument ax is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -17134,12 +17369,7 @@ template <typename Adaptor,
     // renamable $eax = MOVZX32rr8 killed renamable $dil, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -17147,6 +17377,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -17182,12 +17413,7 @@ template <typename Adaptor,
     // renamable $eax = MOVZX32rr16 killed renamable $di, implicit killed $edi
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // operand exceeds NumImplicitUses, ignore
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
@@ -17195,6 +17421,7 @@ template <typename Adaptor,
     }
     }
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -17249,12 +17476,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV32rr, scratch_ax.cur_reg, op1);
@@ -17263,6 +17485,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
     // result ax is marked as alive
 
@@ -17335,8 +17558,11 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -17422,8 +17648,11 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -17509,8 +17738,11 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -17596,8 +17828,11 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -17683,8 +17918,11 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -17770,8 +18008,11 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -17857,8 +18098,11 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -17944,8 +18188,11 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -18031,8 +18278,11 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -18118,8 +18368,11 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // argument ax is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -18179,12 +18432,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVZXr32m8, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18193,15 +18441,17 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
     // renamable $eax = MOVZX32rr8 killed renamable $al
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(MOVZXr32r8, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        ASMD(MOVZXr32r8, scratch_ax.cur_reg, op1);
     }
     }
     // argument ax is killed and marked as dead
@@ -18250,12 +18500,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVZXr32m16, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18264,15 +18509,17 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
     // renamable $eax = MOVZX32rr16 killed renamable $ax
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(MOVZXr32r16, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        ASMD(MOVZXr32r16, scratch_ax.cur_reg, op1);
     }
     }
     // argument ax is killed and marked as dead
@@ -18320,12 +18567,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV32rm, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18334,6 +18576,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -18378,12 +18621,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV64rm, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18392,6 +18630,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -18437,12 +18676,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVZXr32m8, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18451,15 +18685,17 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
     // renamable $eax = MOVZX32rr8 killed renamable $al
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(MOVZXr32r8, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        ASMD(MOVZXr32r8, scratch_ax.cur_reg, op1);
     }
     }
     // argument ax is killed and marked as dead
@@ -18508,12 +18744,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVZXr32m16, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18522,15 +18753,17 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
     // renamable $eax = MOVZX32rr16 killed renamable $ax
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(MOVZXr32r16, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        ASMD(MOVZXr32r16, scratch_ax.cur_reg, op1);
     }
     }
     // argument ax is killed and marked as dead
@@ -18578,12 +18811,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV32rm, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18592,6 +18820,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -18636,12 +18865,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV64rm, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18650,6 +18874,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -18695,12 +18920,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVZXr32m8, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18709,15 +18929,17 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
     // renamable $eax = MOVZX32rr8 killed renamable $al
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(MOVZXr32r8, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        ASMD(MOVZXr32r8, scratch_ax.cur_reg, op1);
     }
     }
     // argument ax is killed and marked as dead
@@ -18766,12 +18988,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOVZXr32m16, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18780,15 +18997,17 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
     // renamable $eax = MOVZX32rr16 killed renamable $ax
     {
     if (1) {
+        AsmReg op1 = scratch_ax.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(MOVZXr32r16, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        ASMD(MOVZXr32r16, scratch_ax.cur_reg, op1);
     }
     }
     // argument ax is killed and marked as dead
@@ -18836,12 +19055,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV32rm, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18850,6 +19064,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -18894,12 +19109,7 @@ template <typename Adaptor,
     }
     {
     if (1) {
-        AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_ax, 0)) {
-            op1 = scratch_ax.cur_reg;
-        } else {
-            op1 = param_0.as_reg(this);
-        }
+        AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_ax, 0);
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
         ASMD(MOV64rm, scratch_ax.cur_reg, FE_MEM(op1, 0, FE_NOREG, 0));
@@ -18908,6 +19118,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // result ax is marked as alive
 
 
@@ -18971,6 +19182,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
 
 
@@ -18984,7 +19196,9 @@ template <typename Adaptor,
     }
     }
     // argument ax is killed and marked as dead
+    param_1.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
 
 
@@ -19048,6 +19262,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
 
 
@@ -19061,7 +19276,9 @@ template <typename Adaptor,
     }
     }
     // argument ax is killed and marked as dead
+    param_1.reset();
     // argument dx is killed and marked as dead
+    param_2.reset();
     // result ax is marked as alive
 
 
@@ -19130,6 +19347,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
 
 
@@ -19143,7 +19361,9 @@ template <typename Adaptor,
     }
     }
     // argument ax is killed and marked as dead
+    param_1.reset();
     // argument cx is killed and marked as dead
+    param_3.reset();
     // result ax is marked as alive
 
 
@@ -19157,7 +19377,9 @@ template <typename Adaptor,
     }
     }
     // argument dx is killed and marked as dead
+    param_2.reset();
     // argument r8 is killed and marked as dead
+    param_4.reset();
     // result dx is marked as alive
 
 
@@ -19234,6 +19456,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
 
 
@@ -19360,6 +19583,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
 
 
@@ -19432,7 +19656,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $xmm0, $xmm1
-    //   renamable $xmm0 = nofpexcept CMPSSrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
+    //   renamable $xmm0 = nofpexcept CMPSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
     //   renamable $eax = MOVSS2DIrr killed renamable $xmm0
     //   renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags
     //   RET64 killed $eax
@@ -19447,7 +19671,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // renamable $xmm0 = nofpexcept CMPSSrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
+    // renamable $xmm0 = nofpexcept CMPSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
     do {
     {
     auto cond0 = param_1.encodeable_as_mem();
@@ -19469,16 +19693,19 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
     // renamable $eax = MOVSS2DIrr killed renamable $xmm0
     {
     if (1) {
+        AsmReg op1 = scratch_xmm0.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(SSE_MOVD_X2Grr, scratch_ax.cur_reg, scratch_xmm0.cur_reg);
+        ASMD(SSE_MOVD_X2Grr, scratch_ax.cur_reg, op1);
     }
     }
     // argument xmm0 is killed and marked as dead
@@ -19567,7 +19794,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -19654,7 +19883,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -19741,7 +19972,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
 
 
     // renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -19828,7 +20061,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
 
 
     // renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -19915,7 +20150,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 5, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -20002,7 +20239,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 11, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -20089,7 +20328,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 4, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -20176,7 +20417,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
 
 
     // renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -20263,7 +20506,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
 
 
     // renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -20350,7 +20595,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -20437,7 +20684,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -20471,7 +20720,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $xmm0, $xmm1
-    //   renamable $xmm0 = nofpexcept CMPSSrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
+    //   renamable $xmm0 = nofpexcept CMPSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
     //   renamable $eax = MOVSS2DIrr killed renamable $xmm0
     //   renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags
     //   RET64 killed $eax
@@ -20486,7 +20735,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // renamable $xmm0 = nofpexcept CMPSSrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
+    // renamable $xmm0 = nofpexcept CMPSSrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
     do {
     {
     auto cond0 = param_1.encodeable_as_mem();
@@ -20508,16 +20757,19 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
     // renamable $eax = MOVSS2DIrr killed renamable $xmm0
     {
     if (1) {
+        AsmReg op1 = scratch_xmm0.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(SSE_MOVD_X2Grr, scratch_ax.cur_reg, scratch_xmm0.cur_reg);
+        ASMD(SSE_MOVD_X2Grr, scratch_ax.cur_reg, op1);
     }
     }
     // argument xmm0 is killed and marked as dead
@@ -20606,7 +20858,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 10, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -20640,7 +20894,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $xmm0, $xmm1
-    //   renamable $xmm0 = nofpexcept CMPSDrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
+    //   renamable $xmm0 = nofpexcept CMPSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
     //   renamable $rax = MOVSDto64rr killed renamable $xmm0
     //   renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags, implicit killed $rax, implicit-def $rax
     //   $eax = KILL killed renamable $eax, implicit killed $rax
@@ -20656,7 +20910,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // renamable $xmm0 = nofpexcept CMPSDrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
+    // renamable $xmm0 = nofpexcept CMPSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 0, implicit $mxcsr
     do {
     {
     auto cond0 = param_1.encodeable_as_mem();
@@ -20678,16 +20932,19 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
     // renamable $rax = MOVSDto64rr killed renamable $xmm0
     {
     if (1) {
+        AsmReg op1 = scratch_xmm0.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(SSE_MOVQ_X2Grr, scratch_ax.cur_reg, scratch_xmm0.cur_reg);
+        ASMD(SSE_MOVQ_X2Grr, scratch_ax.cur_reg, op1);
     }
     }
     // argument xmm0 is killed and marked as dead
@@ -20783,7 +21040,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -20870,7 +21129,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -20957,7 +21218,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
 
 
     // renamable $al = SETCCr 7, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -21044,7 +21307,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
 
 
     // renamable $al = SETCCr 3, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -21131,7 +21396,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 5, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -21218,7 +21485,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 11, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -21305,7 +21574,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 4, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -21392,7 +21663,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
 
 
     // renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -21479,7 +21752,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
 
 
     // renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -21566,7 +21841,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 2, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -21653,7 +21930,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 6, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -21687,7 +21966,7 @@ template <typename Adaptor,
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $xmm0, $xmm1
-    //   renamable $xmm0 = nofpexcept CMPSDrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
+    //   renamable $xmm0 = nofpexcept CMPSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
     //   renamable $rax = MOVSDto64rr killed renamable $xmm0
     //   renamable $eax = AND32ri killed renamable $eax(tied-def 0), 1, implicit-def dead $eflags, implicit killed $rax, implicit-def $rax
     //   $eax = KILL killed renamable $eax, implicit killed $rax
@@ -21703,7 +21982,7 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // renamable $xmm0 = nofpexcept CMPSDrri killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
+    // renamable $xmm0 = nofpexcept CMPSDrr killed renamable $xmm0(tied-def 0), killed renamable $xmm1, 4, implicit $mxcsr
     do {
     {
     auto cond0 = param_1.encodeable_as_mem();
@@ -21725,16 +22004,19 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
     // result xmm0 is marked as alive
 
 
     // renamable $rax = MOVSDto64rr killed renamable $xmm0
     {
     if (1) {
+        AsmReg op1 = scratch_xmm0.cur_reg;
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(SSE_MOVQ_X2Grr, scratch_ax.cur_reg, scratch_xmm0.cur_reg);
+        ASMD(SSE_MOVQ_X2Grr, scratch_ax.cur_reg, op1);
     }
     }
     // argument xmm0 is killed and marked as dead
@@ -21830,7 +22112,9 @@ template <typename Adaptor,
     }
     } while (false);
     // argument xmm0 is killed and marked as dead
+    param_0.reset();
     // argument xmm1 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 10, implicit killed $eflags, implicit killed $eax, implicit-def $eax
@@ -21895,6 +22179,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -21914,7 +22199,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP32ri, scratch_ax.cur_reg, 0x7fc00000);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(CMP32ri, op0, 0x7fc00000);
         break;
     }
     }
@@ -21936,7 +22222,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP32ri, scratch_ax.cur_reg, 0x7f800001);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(CMP32ri, op0, 0x7f800001);
         break;
     }
     }
@@ -21961,7 +22248,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(AND8rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(AND8rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -22006,6 +22294,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -22054,6 +22343,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -22073,7 +22363,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP32ri, scratch_ax.cur_reg, 0x7fc00000);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(CMP32ri, op0, 0x7fc00000);
         break;
     }
     }
@@ -22127,6 +22418,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -22189,20 +22481,23 @@ template <typename Adaptor,
     {
     auto cond0 = param_1.encodeable_as_mem();
     if (cond0) {
-        ASMD(SSE_UCOMISSrm, scratch_xmm1.cur_reg, (*cond0));
+        AsmReg op0 = scratch_xmm1.cur_reg;
+        ASMD(SSE_UCOMISSrm, op0, (*cond0));
         break;
     }
     }
     {
     if (1) {
+        AsmReg op0 = scratch_xmm1.cur_reg;
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(SSE_UCOMISSrr, scratch_xmm1.cur_reg, op1);
+        ASMD(SSE_UCOMISSrr, op0, op1);
         break;
     }
     }
     } while (false);
     // argument xmm1 is killed and marked as dead
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 3, implicit killed $eflags
@@ -22251,6 +22546,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -22304,6 +22600,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -22311,7 +22608,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(TEST32rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(TEST32rr, op0, op0);
         break;
     }
     }
@@ -22357,7 +22655,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP32ri, scratch_ax.cur_reg, 0x7f000000);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(CMP32ri, op0, 0x7f000000);
         break;
     }
     }
@@ -22382,7 +22681,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(AND8rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(AND8rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -22427,6 +22727,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -22480,6 +22781,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -22487,7 +22789,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(TEST32rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(TEST32rr, op0, op0);
         break;
     }
     }
@@ -22533,7 +22836,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP32ri, scratch_ax.cur_reg, 0x7fffff);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(CMP32ri, op0, 0x7fffff);
         break;
     }
     }
@@ -22558,7 +22862,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(AND8rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(AND8rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -22603,6 +22908,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -22625,8 +22931,8 @@ template <typename Adaptor,
     // bb.0 (%ir-block.2):
     //   liveins: $edi, $xmm0
     //   renamable $eax = MOVSS2DIrr killed renamable $xmm0
-    //   dead renamable $eax = NEG32r killed renamable $eax(tied-def 0), implicit-def $eflags
-    //   renamable $al = SETCCr 0, implicit killed $eflags
+    //   CMP32ri killed renamable $eax, -2147483648, implicit-def $eflags
+    //   renamable $al = SETCCr 4, implicit killed $eflags
     //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
     //   RET64 killed $al
     // 
@@ -22650,27 +22956,29 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // dead renamable $eax = NEG32r killed renamable $eax(tied-def 0), implicit-def $eflags
+    // CMP32ri killed renamable $eax, -2147483648, implicit-def $eflags
+    do {
     {
     if (1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        ASMD(NEG32r, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(CMP32ri, op0, -0x80000000);
+        break;
     }
     }
+    } while (false);
     // argument ax is killed and marked as dead
-    // result ax is marked as dead
 
 
-    // renamable $al = SETCCr 0, implicit killed $eflags
+    // renamable $al = SETCCr 4, implicit killed $eflags
     {
     if (1) {
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(SETO8r, scratch_ax.cur_reg);
+        ASMD(SETZ8r, scratch_ax.cur_reg);
     }
     }
     // result ax is marked as alive
@@ -22711,6 +23019,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -22758,6 +23067,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -22765,7 +23075,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(TEST32rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(TEST32rr, op0, op0);
         break;
     }
     }
@@ -22820,6 +23131,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -22868,6 +23180,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -22887,7 +23200,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP32ri, scratch_ax.cur_reg, 0x7fffff);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(CMP32ri, op0, 0x7fffff);
         break;
     }
     }
@@ -22941,6 +23255,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -22994,6 +23309,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -23001,7 +23317,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(TEST32rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(TEST32rr, op0, op0);
         break;
     }
     }
@@ -23047,7 +23364,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP32ri, scratch_ax.cur_reg, 0x7f000000);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(CMP32ri, op0, 0x7f000000);
         break;
     }
     }
@@ -23072,7 +23390,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(AND8rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(AND8rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -23117,6 +23436,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -23160,6 +23480,235 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         SymRef &op4_sym = this->sym_is_fpclass_pinf_float_cp0;
+        if (op4_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+            const std::array<u8, 4> data = {0x0, 0x0, 0x80, 0x7F};
+            op4_sym = derived()->assembler.sym_def_data("", data, 4, true, false, true, false);
+        }
+        ASMD(SSE_UCOMISSrm, op0, FE_MEM(FE_IP, 0, FE_NOREG, 0));
+        derived()->assembler.reloc_text_pc32(op4_sym, derived()->assembler.text_cur_off() - 4, -4);
+    }
+    }
+    // argument xmm0 is killed and marked as dead
+    param_1.reset();
+
+
+    // renamable $al = SETCCr 3, implicit killed $eflags
+    {
+    if (1) {
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SETNC8r, scratch_ax.cur_reg);
+    }
+    }
+    // result ax is marked as alive
+
+
+    // renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
+    do {
+    {
+    auto cond0 = param_0.encodeable_as_imm32_sext();
+    if (cond0) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8ri, scratch_ax.cur_reg, (*cond0));
+        break;
+    }
+    }
+    {
+    auto cond1 = param_0.encodeable_as_mem();
+    if (cond1) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8rm, scratch_ax.cur_reg, (*cond1));
+        break;
+    }
+    }
+    {
+    if (1) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        AsmReg op2 = param_0.as_reg(this);
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8rr, scratch_ax.cur_reg, op2);
+        break;
+    }
+    }
+    } while (false);
+    // argument ax is killed and marked as dead
+    // argument di is killed and marked as dead
+    param_0.reset();
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $al
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_is_fpclass_nan_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function is_fpclass_nan_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi, $xmm0
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $edi, $xmm0
+    //   nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 10, implicit killed $eflags
+    //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
+    //   RET64 killed $al
+    // 
+    // # End machine code for function is_fpclass_nan_float.
+    // 
+
+    // Mapping di to param_0
+    // Mapping xmm0 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    do {
+    {
+    auto cond0 = param_1.encodeable_as_mem();
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(SSE_UCOMISSrm, op0, (*cond0));
+        break;
+    }
+    }
+    {
+    if (1) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(SSE_UCOMISSrr, op0, op0);
+        break;
+    }
+    }
+    } while (false);
+    // argument xmm0 is killed and marked as dead
+    param_1.reset();
+    // argument xmm0 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 10, implicit killed $eflags
+    {
+    if (1) {
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SETP8r, scratch_ax.cur_reg);
+    }
+    }
+    // result ax is marked as alive
+
+
+    // renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
+    do {
+    {
+    auto cond1 = param_0.encodeable_as_imm32_sext();
+    if (cond1) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8ri, scratch_ax.cur_reg, (*cond1));
+        break;
+    }
+    }
+    {
+    auto cond2 = param_0.encodeable_as_mem();
+    if (cond2) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8rm, scratch_ax.cur_reg, (*cond2));
+        break;
+    }
+    }
+    {
+    if (1) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        AsmReg op2 = param_0.as_reg(this);
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8rr, scratch_ax.cur_reg, op2);
+        break;
+    }
+    }
+    } while (false);
+    // argument ax is killed and marked as dead
+    // argument di is killed and marked as dead
+    param_0.reset();
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $al
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_is_fpclass_inf_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function is_fpclass_inf_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Constant Pool:
+    //   cp#0: <float 0x7FFFFFFFE0000000, float 0x7FFFFFFFE0000000, float 0x7FFFFFFFE0000000, float 0x7FFFFFFFE0000000>, align=16
+    //   cp#1: 0x7FF0000000000000, align=4
+    // Function Live Ins: $edi, $xmm0
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $edi, $xmm0
+    //   renamable $xmm0 = ANDPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    //   nofpexcept UCOMISSrm killed renamable $xmm0, $rip, 1, $noreg, %const.1, $noreg, implicit-def $eflags, implicit $mxcsr :: (load (s32) from constant-pool)
+    //   renamable $al = SETCCr 3, implicit killed $eflags
+    //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
+    //   RET64 killed $al
+    // 
+    // # End machine code for function is_fpclass_inf_float.
+    // 
+
+    // Mapping di to param_0
+    // Mapping xmm0 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = ANDPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    {
+    if (1) {
+        // operand 1(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        SymRef &op5_sym = this->sym_is_fpclass_inf_float_cp0;
+        if (op5_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+            const std::array<u8, 16> data = {0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x7F};
+            op5_sym = derived()->assembler.sym_def_data("", data, 16, true, false, true, false);
+        }
+        ASMD(SSE_ANDPSrm, scratch_xmm0.cur_reg, FE_MEM(FE_IP, 0, FE_NOREG, 0));
+        derived()->assembler.reloc_text_pc32(op5_sym, derived()->assembler.text_cur_off() - 4, -4);
+    }
+    }
+    // argument xmm0 is killed and marked as dead
+    param_1.reset();
+    // result xmm0 is marked as alive
+
+
+    // nofpexcept UCOMISSrm killed renamable $xmm0, $rip, 1, $noreg, %const.1, $noreg, implicit-def $eflags, implicit $mxcsr :: (load (s32) from constant-pool)
+    {
+    if (1) {
+        AsmReg op0 = scratch_xmm0.cur_reg;
+        SymRef &op4_sym = this->sym_is_fpclass_inf_float_cp1;
         if (op4_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
             const std::array<u8, 4> data = {0x0, 0x0, 0x80, 0x7F};
             op4_sym = derived()->assembler.sym_def_data("", data, 4, true, false, true, false);
@@ -23217,232 +23766,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
-    // argument di is killed and marked as dead
-    // result ax is marked as alive
-
-
-    // RET64 killed $al
-    // returning reg ax as result_0
-    result_0 = std::move(scratch_ax);
-    return true;
-
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_is_fpclass_nan_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
-    // # Machine code for function is_fpclass_nan_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
-    // Function Live Ins: $edi, $xmm0
-    // 
-    // bb.0 (%ir-block.2):
-    //   liveins: $edi, $xmm0
-    //   nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
-    //   renamable $al = SETCCr 10, implicit killed $eflags
-    //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
-    //   RET64 killed $al
-    // 
-    // # End machine code for function is_fpclass_nan_float.
-    // 
-
-    // Mapping di to param_0
-    // Mapping xmm0 to param_1
-    ScratchReg scratch_ax{derived()};
-    ScratchReg scratch_di{derived()};
-    ScratchReg scratch_xmm0{derived()};
-
-
-    // nofpexcept UCOMISSrr killed renamable $xmm0, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
-    do {
-    {
-    auto cond0 = param_1.encodeable_as_mem();
-    if (cond0) {
-        AsmReg op0 = param_1.as_reg(this);
-        ASMD(SSE_UCOMISSrm, op0, (*cond0));
-        break;
-    }
-    }
-    {
-    if (1) {
-        AsmReg op0 = param_1.as_reg(this);
-        AsmReg op1 = param_1.as_reg(this);
-        ASMD(SSE_UCOMISSrr, op0, op1);
-        break;
-    }
-    }
-    } while (false);
-    // argument xmm0 is killed and marked as dead
-    // argument xmm0 is killed and marked as dead
-
-
-    // renamable $al = SETCCr 10, implicit killed $eflags
-    {
-    if (1) {
-        // def ax has not been allocated yet
-        scratch_ax.alloc_from_bank(0);
-        ASMD(SETP8r, scratch_ax.cur_reg);
-    }
-    }
-    // result ax is marked as alive
-
-
-    // renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
-    do {
-    {
-    auto cond1 = param_0.encodeable_as_imm32_sext();
-    if (cond1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8ri, scratch_ax.cur_reg, (*cond1));
-        break;
-    }
-    }
-    {
-    auto cond2 = param_0.encodeable_as_mem();
-    if (cond2) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8rm, scratch_ax.cur_reg, (*cond2));
-        break;
-    }
-    }
-    {
-    if (1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        AsmReg op2 = param_0.as_reg(this);
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8rr, scratch_ax.cur_reg, op2);
-        break;
-    }
-    }
-    } while (false);
-    // argument ax is killed and marked as dead
-    // argument di is killed and marked as dead
-    // argument di is killed and marked as dead
-    // result ax is marked as alive
-
-
-    // RET64 killed $al
-    // returning reg ax as result_0
-    result_0 = std::move(scratch_ax);
-    return true;
-
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_is_fpclass_inf_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
-    // # Machine code for function is_fpclass_inf_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
-    // Function Live Ins: $edi, $xmm0
-    // 
-    // bb.0 (%ir-block.2):
-    //   liveins: $edi, $xmm0
-    //   renamable $eax = MOVSS2DIrr killed renamable $xmm0
-    //   renamable $eax = AND32ri killed renamable $eax(tied-def 0), 2147483647, implicit-def dead $eflags
-    //   CMP32ri killed renamable $eax, 2139095040, implicit-def $eflags
-    //   renamable $al = SETCCr 4, implicit killed $eflags
-    //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
-    //   RET64 killed $al
-    // 
-    // # End machine code for function is_fpclass_inf_float.
-    // 
-
-    // Mapping di to param_0
-    // Mapping xmm0 to param_1
-    ScratchReg scratch_ax{derived()};
-    ScratchReg scratch_di{derived()};
-    ScratchReg scratch_xmm0{derived()};
-
-
-    // renamable $eax = MOVSS2DIrr killed renamable $xmm0
-    {
-    if (1) {
-        AsmReg op1 = param_1.as_reg(this);
-        // def ax has not been allocated yet
-        scratch_ax.alloc_from_bank(0);
-        ASMD(SSE_MOVD_X2Grr, scratch_ax.cur_reg, op1);
-    }
-    }
-    // argument xmm0 is killed and marked as dead
-    // result ax is marked as alive
-
-
-    // renamable $eax = AND32ri killed renamable $eax(tied-def 0), 2147483647, implicit-def dead $eflags
-    {
-    if (1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        ASMD(AND32ri, scratch_ax.cur_reg, 0x7fffffff);
-    }
-    }
-    // argument ax is killed and marked as dead
-    // result ax is marked as alive
-
-
-    // CMP32ri killed renamable $eax, 2139095040, implicit-def $eflags
-    do {
-    {
-    if (1) {
-        ASMD(CMP32ri, scratch_ax.cur_reg, 0x7f800000);
-        break;
-    }
-    }
-    } while (false);
-    // argument ax is killed and marked as dead
-
-
-    // renamable $al = SETCCr 4, implicit killed $eflags
-    {
-    if (1) {
-        // def ax has not been allocated yet
-        scratch_ax.alloc_from_bank(0);
-        ASMD(SETZ8r, scratch_ax.cur_reg);
-    }
-    }
-    // result ax is marked as alive
-
-
-    // renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
-    do {
-    {
-    auto cond0 = param_0.encodeable_as_imm32_sext();
-    if (cond0) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8ri, scratch_ax.cur_reg, (*cond0));
-        break;
-    }
-    }
-    {
-    auto cond1 = param_0.encodeable_as_mem();
-    if (cond1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8rm, scratch_ax.cur_reg, (*cond1));
-        break;
-    }
-    }
-    {
-    if (1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        AsmReg op2 = param_0.as_reg(this);
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8rr, scratch_ax.cur_reg, op2);
-        break;
-    }
-    }
-    } while (false);
-    // argument ax is killed and marked as dead
-    // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -23492,6 +23816,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -23523,7 +23848,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP32ri, scratch_ax.cur_reg, 0x7f000000);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(CMP32ri, op0, 0x7f000000);
         break;
     }
     }
@@ -23577,6 +23903,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -23594,14 +23921,16 @@ template <typename Adaptor,
           class BaseTy,
           typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_is_fpclass_finite_float(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function is_fpclass_finite_float: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Constant Pool:
+    //   cp#0: <float 0x7FFFFFFFE0000000, float 0x7FFFFFFFE0000000, float 0x7FFFFFFFE0000000, float 0x7FFFFFFFE0000000>, align=16
+    //   cp#1: 0x7FF0000000000000, align=4
     // Function Live Ins: $edi, $xmm0
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $edi, $xmm0
-    //   renamable $eax = MOVSS2DIrr killed renamable $xmm0
-    //   renamable $eax = AND32ri killed renamable $eax(tied-def 0), 2147483647, implicit-def dead $eflags
-    //   CMP32ri killed renamable $eax, 2139095040, implicit-def $eflags
-    //   renamable $al = SETCCr 12, implicit killed $eflags
+    //   renamable $xmm0 = ANDPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    //   nofpexcept UCOMISSrm killed renamable $xmm0, $rip, 1, $noreg, %const.1, $noreg, implicit-def $eflags, implicit $mxcsr :: (load (s32) from constant-pool)
+    //   renamable $al = SETCCr 5, implicit killed $eflags
     //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
     //   RET64 killed $al
     // 
@@ -23615,49 +23944,47 @@ template <typename Adaptor,
     ScratchReg scratch_xmm0{derived()};
 
 
-    // renamable $eax = MOVSS2DIrr killed renamable $xmm0
+    // renamable $xmm0 = ANDPSrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
     {
     if (1) {
-        AsmReg op1 = param_1.as_reg(this);
-        // def ax has not been allocated yet
-        scratch_ax.alloc_from_bank(0);
-        ASMD(SSE_MOVD_X2Grr, scratch_ax.cur_reg, op1);
+        // operand 1(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        SymRef &op5_sym = this->sym_is_fpclass_finite_float_cp0;
+        if (op5_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+            const std::array<u8, 16> data = {0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x7F};
+            op5_sym = derived()->assembler.sym_def_data("", data, 16, true, false, true, false);
+        }
+        ASMD(SSE_ANDPSrm, scratch_xmm0.cur_reg, FE_MEM(FE_IP, 0, FE_NOREG, 0));
+        derived()->assembler.reloc_text_pc32(op5_sym, derived()->assembler.text_cur_off() - 4, -4);
     }
     }
     // argument xmm0 is killed and marked as dead
-    // result ax is marked as alive
+    param_1.reset();
+    // result xmm0 is marked as alive
 
 
-    // renamable $eax = AND32ri killed renamable $eax(tied-def 0), 2147483647, implicit-def dead $eflags
+    // nofpexcept UCOMISSrm killed renamable $xmm0, $rip, 1, $noreg, %const.1, $noreg, implicit-def $eflags, implicit $mxcsr :: (load (s32) from constant-pool)
     {
     if (1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        ASMD(AND32ri, scratch_ax.cur_reg, 0x7fffffff);
+        AsmReg op0 = scratch_xmm0.cur_reg;
+        SymRef &op4_sym = this->sym_is_fpclass_finite_float_cp1;
+        if (op4_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+            const std::array<u8, 4> data = {0x0, 0x0, 0x80, 0x7F};
+            op4_sym = derived()->assembler.sym_def_data("", data, 4, true, false, true, false);
+        }
+        ASMD(SSE_UCOMISSrm, op0, FE_MEM(FE_IP, 0, FE_NOREG, 0));
+        derived()->assembler.reloc_text_pc32(op4_sym, derived()->assembler.text_cur_off() - 4, -4);
     }
     }
-    // argument ax is killed and marked as dead
-    // result ax is marked as alive
+    // argument xmm0 is killed and marked as dead
 
 
-    // CMP32ri killed renamable $eax, 2139095040, implicit-def $eflags
-    do {
-    {
-    if (1) {
-        ASMD(CMP32ri, scratch_ax.cur_reg, 0x7f800000);
-        break;
-    }
-    }
-    } while (false);
-    // argument ax is killed and marked as dead
-
-
-    // renamable $al = SETCCr 12, implicit killed $eflags
+    // renamable $al = SETCCr 5, implicit killed $eflags
     {
     if (1) {
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(SETL8r, scratch_ax.cur_reg);
+        ASMD(SETNZ8r, scratch_ax.cur_reg);
     }
     }
     // result ax is marked as alive
@@ -23698,6 +24025,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -23754,6 +24082,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -23774,7 +24103,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
-        ASMD(AND64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(AND64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -23799,7 +24129,9 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_cx.cur_reg;
+        AsmReg op1 = scratch_ax.cur_reg;
+        ASMD(CMP64rr, op0, op1);
         break;
     }
     }
@@ -23833,7 +24165,9 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_cx.cur_reg;
+        AsmReg op1 = scratch_ax.cur_reg;
+        ASMD(CMP64rr, op0, op1);
         break;
     }
     }
@@ -23859,7 +24193,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(AND8rr, scratch_ax.cur_reg, scratch_dx.cur_reg);
+        AsmReg op2 = scratch_dx.cur_reg;
+        ASMD(AND8rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -23904,6 +24239,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -23955,6 +24291,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -23975,7 +24312,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
-        ASMD(AND64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(AND64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -24000,7 +24338,9 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_cx.cur_reg;
+        AsmReg op1 = scratch_ax.cur_reg;
+        ASMD(CMP64rr, op0, op1);
         break;
     }
     }
@@ -24055,6 +24395,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -24117,20 +24458,23 @@ template <typename Adaptor,
     {
     auto cond0 = param_1.encodeable_as_mem();
     if (cond0) {
-        ASMD(SSE_UCOMISDrm, scratch_xmm1.cur_reg, (*cond0));
+        AsmReg op0 = scratch_xmm1.cur_reg;
+        ASMD(SSE_UCOMISDrm, op0, (*cond0));
         break;
     }
     }
     {
     if (1) {
+        AsmReg op0 = scratch_xmm1.cur_reg;
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(SSE_UCOMISDrr, scratch_xmm1.cur_reg, op1);
+        ASMD(SSE_UCOMISDrr, op0, op1);
         break;
     }
     }
     } while (false);
     // argument xmm1 is killed and marked as dead
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
 
 
     // renamable $al = SETCCr 3, implicit killed $eflags
@@ -24179,6 +24523,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -24236,6 +24581,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -24256,7 +24602,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
-        ASMD(AND64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(AND64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -24282,7 +24629,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(ADD64rr, scratch_dx.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(ADD64rr, scratch_dx.cur_reg, op2);
         break;
     }
     }
@@ -24308,8 +24656,9 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op0 = scratch_dx.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(CMP32ri, scratch_dx.cur_reg, 0x3ff);
+        ASMD(CMP32ri, op0, 0x3ff);
         break;
     }
     }
@@ -24333,7 +24682,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(TEST64rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(TEST64rr, op0, op0);
         break;
     }
     }
@@ -24359,7 +24709,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(AND8rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(AND8rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -24404,6 +24755,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -24460,6 +24812,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -24480,7 +24833,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
-        ASMD(AND64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(AND64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -24516,7 +24870,9 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP64rr, scratch_cx.cur_reg, scratch_dx.cur_reg);
+        AsmReg op0 = scratch_cx.cur_reg;
+        AsmReg op1 = scratch_dx.cur_reg;
+        ASMD(CMP64rr, op0, op1);
         break;
     }
     }
@@ -24540,7 +24896,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(TEST64rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(TEST64rr, op0, op0);
         break;
     }
     }
@@ -24566,7 +24923,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(AND8rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(AND8rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -24611,6 +24969,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -24633,8 +24992,9 @@ template <typename Adaptor,
     // bb.0 (%ir-block.2):
     //   liveins: $edi, $xmm0
     //   renamable $rax = MOVSDto64rr killed renamable $xmm0
-    //   dead renamable $rax = NEG64r killed renamable $rax(tied-def 0), implicit-def $eflags
-    //   renamable $al = SETCCr 0, implicit killed $eflags
+    //   renamable $rcx = MOV64ri -9223372036854775808
+    //   CMP64rr killed renamable $rax, killed renamable $rcx, implicit-def $eflags
+    //   renamable $al = SETCCr 4, implicit killed $eflags
     //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
     //   RET64 killed $al
     // 
@@ -24646,6 +25006,7 @@ template <typename Adaptor,
     ScratchReg scratch_ax{derived()};
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_xmm0{derived()};
+    ScratchReg scratch_cx{derived()};
 
 
     // renamable $rax = MOVSDto64rr killed renamable $xmm0
@@ -24658,27 +25019,42 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
-    // dead renamable $rax = NEG64r killed renamable $rax(tied-def 0), implicit-def $eflags
+    // renamable $rcx = MOV64ri -9223372036854775808
     {
     if (1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        ASMD(NEG64r, scratch_ax.cur_reg);
+        // def cx has not been allocated yet
+        scratch_cx.alloc_from_bank(0);
+        ASMD(MOV64ri, scratch_cx.cur_reg, -0x8000000000000000);
     }
     }
+    // result cx is marked as alive
+
+
+    // CMP64rr killed renamable $rax, killed renamable $rcx, implicit-def $eflags
+    do {
+    {
+    if (1) {
+        AsmReg op0 = scratch_ax.cur_reg;
+        AsmReg op1 = scratch_cx.cur_reg;
+        ASMD(CMP64rr, op0, op1);
+        break;
+    }
+    }
+    } while (false);
     // argument ax is killed and marked as dead
-    // result ax is marked as dead
+    // argument cx is killed and marked as dead
 
 
-    // renamable $al = SETCCr 0, implicit killed $eflags
+    // renamable $al = SETCCr 4, implicit killed $eflags
     {
     if (1) {
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(SETO8r, scratch_ax.cur_reg);
+        ASMD(SETZ8r, scratch_ax.cur_reg);
     }
     }
     // result ax is marked as alive
@@ -24719,6 +25095,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -24766,6 +25143,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -24773,7 +25151,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(TEST64rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(TEST64rr, op0, op0);
         break;
     }
     }
@@ -24828,6 +25207,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -24878,6 +25258,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -24908,7 +25289,9 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(CMP64rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op0 = scratch_ax.cur_reg;
+        AsmReg op1 = scratch_cx.cur_reg;
+        ASMD(CMP64rr, op0, op1);
         break;
     }
     }
@@ -24963,6 +25346,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -25020,6 +25404,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -25040,7 +25425,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
-        ASMD(AND64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(AND64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -25066,7 +25452,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(dx) is the same as its tied destination
         assert(scratch_dx.cur_reg.valid());
-        ASMD(ADD64rr, scratch_dx.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(ADD64rr, scratch_dx.cur_reg, op2);
         break;
     }
     }
@@ -25092,8 +25479,9 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op0 = scratch_dx.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(CMP32ri, scratch_dx.cur_reg, 0x3ff);
+        ASMD(CMP32ri, op0, 0x3ff);
         break;
     }
     }
@@ -25117,7 +25505,8 @@ template <typename Adaptor,
     do {
     {
     if (1) {
-        ASMD(TEST64rr, scratch_ax.cur_reg, scratch_ax.cur_reg);
+        AsmReg op0 = scratch_ax.cur_reg;
+        ASMD(TEST64rr, op0, op0);
         break;
     }
     }
@@ -25143,7 +25532,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(AND8rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(AND8rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -25188,6 +25578,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -25231,6 +25622,235 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         SymRef &op4_sym = this->sym_is_fpclass_pinf_double_cp0;
+        if (op4_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+            const std::array<u8, 8> data = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xF0, 0x7F};
+            op4_sym = derived()->assembler.sym_def_data("", data, 8, true, false, true, false);
+        }
+        ASMD(SSE_UCOMISDrm, op0, FE_MEM(FE_IP, 0, FE_NOREG, 0));
+        derived()->assembler.reloc_text_pc32(op4_sym, derived()->assembler.text_cur_off() - 4, -4);
+    }
+    }
+    // argument xmm0 is killed and marked as dead
+    param_1.reset();
+
+
+    // renamable $al = SETCCr 3, implicit killed $eflags
+    {
+    if (1) {
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SETNC8r, scratch_ax.cur_reg);
+    }
+    }
+    // result ax is marked as alive
+
+
+    // renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
+    do {
+    {
+    auto cond0 = param_0.encodeable_as_imm32_sext();
+    if (cond0) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8ri, scratch_ax.cur_reg, (*cond0));
+        break;
+    }
+    }
+    {
+    auto cond1 = param_0.encodeable_as_mem();
+    if (cond1) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8rm, scratch_ax.cur_reg, (*cond1));
+        break;
+    }
+    }
+    {
+    if (1) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        AsmReg op2 = param_0.as_reg(this);
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8rr, scratch_ax.cur_reg, op2);
+        break;
+    }
+    }
+    } while (false);
+    // argument ax is killed and marked as dead
+    // argument di is killed and marked as dead
+    param_0.reset();
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $al
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_is_fpclass_nan_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function is_fpclass_nan_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $edi, $xmm0
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $edi, $xmm0
+    //   nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    //   renamable $al = SETCCr 10, implicit killed $eflags
+    //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
+    //   RET64 killed $al
+    // 
+    // # End machine code for function is_fpclass_nan_double.
+    // 
+
+    // Mapping di to param_0
+    // Mapping xmm0 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
+    do {
+    {
+    auto cond0 = param_1.encodeable_as_mem();
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(SSE_UCOMISDrm, op0, (*cond0));
+        break;
+    }
+    }
+    {
+    if (1) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(SSE_UCOMISDrr, op0, op0);
+        break;
+    }
+    }
+    } while (false);
+    // argument xmm0 is killed and marked as dead
+    param_1.reset();
+    // argument xmm0 is killed and marked as dead
+
+
+    // renamable $al = SETCCr 10, implicit killed $eflags
+    {
+    if (1) {
+        // def ax has not been allocated yet
+        scratch_ax.alloc_from_bank(0);
+        ASMD(SETP8r, scratch_ax.cur_reg);
+    }
+    }
+    // result ax is marked as alive
+
+
+    // renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
+    do {
+    {
+    auto cond1 = param_0.encodeable_as_imm32_sext();
+    if (cond1) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8ri, scratch_ax.cur_reg, (*cond1));
+        break;
+    }
+    }
+    {
+    auto cond2 = param_0.encodeable_as_mem();
+    if (cond2) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8rm, scratch_ax.cur_reg, (*cond2));
+        break;
+    }
+    }
+    {
+    if (1) {
+        // operand 1(ax) is the same as its tied destination
+        assert(scratch_ax.cur_reg.valid());
+        AsmReg op2 = param_0.as_reg(this);
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(OR8rr, scratch_ax.cur_reg, op2);
+        break;
+    }
+    }
+    } while (false);
+    // argument ax is killed and marked as dead
+    // argument di is killed and marked as dead
+    param_0.reset();
+    // argument di is killed and marked as dead
+    // result ax is marked as alive
+
+
+    // RET64 killed $al
+    // returning reg ax as result_0
+    result_0 = std::move(scratch_ax);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_is_fpclass_inf_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+    // # Machine code for function is_fpclass_inf_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Constant Pool:
+    //   cp#0: <double 0x7FFFFFFFFFFFFFFF, double 0x7FFFFFFFFFFFFFFF>, align=16
+    //   cp#1: 0x7FF0000000000000, align=8
+    // Function Live Ins: $edi, $xmm0
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $edi, $xmm0
+    //   renamable $xmm0 = ANDPDrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    //   nofpexcept UCOMISDrm killed renamable $xmm0, $rip, 1, $noreg, %const.1, $noreg, implicit-def $eflags, implicit $mxcsr :: (load (s64) from constant-pool)
+    //   renamable $al = SETCCr 3, implicit killed $eflags
+    //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
+    //   RET64 killed $al
+    // 
+    // # End machine code for function is_fpclass_inf_double.
+    // 
+
+    // Mapping di to param_0
+    // Mapping xmm0 to param_1
+    ScratchReg scratch_ax{derived()};
+    ScratchReg scratch_di{derived()};
+    ScratchReg scratch_xmm0{derived()};
+
+
+    // renamable $xmm0 = ANDPDrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    {
+    if (1) {
+        // operand 1(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        SymRef &op5_sym = this->sym_is_fpclass_inf_double_cp0;
+        if (op5_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+            const std::array<u8, 16> data = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F};
+            op5_sym = derived()->assembler.sym_def_data("", data, 16, true, false, true, false);
+        }
+        ASMD(SSE_ANDPDrm, scratch_xmm0.cur_reg, FE_MEM(FE_IP, 0, FE_NOREG, 0));
+        derived()->assembler.reloc_text_pc32(op5_sym, derived()->assembler.text_cur_off() - 4, -4);
+    }
+    }
+    // argument xmm0 is killed and marked as dead
+    param_1.reset();
+    // result xmm0 is marked as alive
+
+
+    // nofpexcept UCOMISDrm killed renamable $xmm0, $rip, 1, $noreg, %const.1, $noreg, implicit-def $eflags, implicit $mxcsr :: (load (s64) from constant-pool)
+    {
+    if (1) {
+        AsmReg op0 = scratch_xmm0.cur_reg;
+        SymRef &op4_sym = this->sym_is_fpclass_inf_double_cp1;
         if (op4_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
             const std::array<u8, 8> data = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xF0, 0x7F};
             op4_sym = derived()->assembler.sym_def_data("", data, 8, true, false, true, false);
@@ -25288,262 +25908,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
-    // argument di is killed and marked as dead
-    // result ax is marked as alive
-
-
-    // RET64 killed $al
-    // returning reg ax as result_0
-    result_0 = std::move(scratch_ax);
-    return true;
-
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_is_fpclass_nan_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
-    // # Machine code for function is_fpclass_nan_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
-    // Function Live Ins: $edi, $xmm0
-    // 
-    // bb.0 (%ir-block.2):
-    //   liveins: $edi, $xmm0
-    //   nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
-    //   renamable $al = SETCCr 10, implicit killed $eflags
-    //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
-    //   RET64 killed $al
-    // 
-    // # End machine code for function is_fpclass_nan_double.
-    // 
-
-    // Mapping di to param_0
-    // Mapping xmm0 to param_1
-    ScratchReg scratch_ax{derived()};
-    ScratchReg scratch_di{derived()};
-    ScratchReg scratch_xmm0{derived()};
-
-
-    // nofpexcept UCOMISDrr killed renamable $xmm0, killed renamable $xmm0, implicit-def $eflags, implicit $mxcsr
-    do {
-    {
-    auto cond0 = param_1.encodeable_as_mem();
-    if (cond0) {
-        AsmReg op0 = param_1.as_reg(this);
-        ASMD(SSE_UCOMISDrm, op0, (*cond0));
-        break;
-    }
-    }
-    {
-    if (1) {
-        AsmReg op0 = param_1.as_reg(this);
-        AsmReg op1 = param_1.as_reg(this);
-        ASMD(SSE_UCOMISDrr, op0, op1);
-        break;
-    }
-    }
-    } while (false);
-    // argument xmm0 is killed and marked as dead
-    // argument xmm0 is killed and marked as dead
-
-
-    // renamable $al = SETCCr 10, implicit killed $eflags
-    {
-    if (1) {
-        // def ax has not been allocated yet
-        scratch_ax.alloc_from_bank(0);
-        ASMD(SETP8r, scratch_ax.cur_reg);
-    }
-    }
-    // result ax is marked as alive
-
-
-    // renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
-    do {
-    {
-    auto cond1 = param_0.encodeable_as_imm32_sext();
-    if (cond1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8ri, scratch_ax.cur_reg, (*cond1));
-        break;
-    }
-    }
-    {
-    auto cond2 = param_0.encodeable_as_mem();
-    if (cond2) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8rm, scratch_ax.cur_reg, (*cond2));
-        break;
-    }
-    }
-    {
-    if (1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        AsmReg op2 = param_0.as_reg(this);
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8rr, scratch_ax.cur_reg, op2);
-        break;
-    }
-    }
-    } while (false);
-    // argument ax is killed and marked as dead
-    // argument di is killed and marked as dead
-    // argument di is killed and marked as dead
-    // result ax is marked as alive
-
-
-    // RET64 killed $al
-    // returning reg ax as result_0
-    result_0 = std::move(scratch_ax);
-    return true;
-
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_is_fpclass_inf_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
-    // # Machine code for function is_fpclass_inf_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
-    // Function Live Ins: $edi, $xmm0
-    // 
-    // bb.0 (%ir-block.2):
-    //   liveins: $edi, $xmm0
-    //   renamable $rax = MOVSDto64rr killed renamable $xmm0
-    //   renamable $rcx = MOV64ri 9223372036854775807
-    //   renamable $rcx = AND64rr killed renamable $rcx(tied-def 0), killed renamable $rax, implicit-def dead $eflags
-    //   renamable $rax = MOV64ri 9218868437227405312
-    //   CMP64rr killed renamable $rcx, killed renamable $rax, implicit-def $eflags
-    //   renamable $al = SETCCr 4, implicit killed $eflags
-    //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
-    //   RET64 killed $al
-    // 
-    // # End machine code for function is_fpclass_inf_double.
-    // 
-
-    // Mapping di to param_0
-    // Mapping xmm0 to param_1
-    ScratchReg scratch_ax{derived()};
-    ScratchReg scratch_di{derived()};
-    ScratchReg scratch_xmm0{derived()};
-    ScratchReg scratch_cx{derived()};
-
-
-    // renamable $rax = MOVSDto64rr killed renamable $xmm0
-    {
-    if (1) {
-        AsmReg op1 = param_1.as_reg(this);
-        // def ax has not been allocated yet
-        scratch_ax.alloc_from_bank(0);
-        ASMD(SSE_MOVQ_X2Grr, scratch_ax.cur_reg, op1);
-    }
-    }
-    // argument xmm0 is killed and marked as dead
-    // result ax is marked as alive
-
-
-    // renamable $rcx = MOV64ri 9223372036854775807
-    {
-    if (1) {
-        // def cx has not been allocated yet
-        scratch_cx.alloc_from_bank(0);
-        ASMD(MOV64ri, scratch_cx.cur_reg, 0x7fffffffffffffff);
-    }
-    }
-    // result cx is marked as alive
-
-
-    // renamable $rcx = AND64rr killed renamable $rcx(tied-def 0), killed renamable $rax, implicit-def dead $eflags
-    do {
-    {
-    if (1) {
-        // operand 1(cx) is the same as its tied destination
-        assert(scratch_cx.cur_reg.valid());
-        ASMD(AND64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
-        break;
-    }
-    }
-    } while (false);
-    // argument cx is killed and marked as dead
-    // argument ax is killed and marked as dead
-    // result cx is marked as alive
-
-
-    // renamable $rax = MOV64ri 9218868437227405312
-    {
-    if (1) {
-        // def ax has not been allocated yet
-        scratch_ax.alloc_from_bank(0);
-        ASMD(MOV64ri, scratch_ax.cur_reg, 0x7ff0000000000000);
-    }
-    }
-    // result ax is marked as alive
-
-
-    // CMP64rr killed renamable $rcx, killed renamable $rax, implicit-def $eflags
-    do {
-    {
-    if (1) {
-        ASMD(CMP64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
-        break;
-    }
-    }
-    } while (false);
-    // argument cx is killed and marked as dead
-    // argument ax is killed and marked as dead
-
-
-    // renamable $al = SETCCr 4, implicit killed $eflags
-    {
-    if (1) {
-        // def ax has not been allocated yet
-        scratch_ax.alloc_from_bank(0);
-        ASMD(SETZ8r, scratch_ax.cur_reg);
-    }
-    }
-    // result ax is marked as alive
-
-
-    // renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
-    do {
-    {
-    auto cond0 = param_0.encodeable_as_imm32_sext();
-    if (cond0) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8ri, scratch_ax.cur_reg, (*cond0));
-        break;
-    }
-    }
-    {
-    auto cond1 = param_0.encodeable_as_mem();
-    if (cond1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8rm, scratch_ax.cur_reg, (*cond1));
-        break;
-    }
-    }
-    {
-    if (1) {
-        // operand 1(ax) is the same as its tied destination
-        assert(scratch_ax.cur_reg.valid());
-        AsmReg op2 = param_0.as_reg(this);
-        // operand exceeds NumImplicitUses, ignore
-        ASMD(OR8rr, scratch_ax.cur_reg, op2);
-        break;
-    }
-    }
-    } while (false);
-    // argument ax is killed and marked as dead
-    // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -25597,6 +25962,7 @@ template <typename Adaptor,
     }
     }
     // argument xmm0 is killed and marked as dead
+    param_1.reset();
     // result ax is marked as alive
 
 
@@ -25617,7 +25983,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(cx) is the same as its tied destination
         assert(scratch_cx.cur_reg.valid());
-        ASMD(AND64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
+        AsmReg op2 = scratch_ax.cur_reg;
+        ASMD(AND64rr, scratch_cx.cur_reg, op2);
         break;
     }
     }
@@ -25644,7 +26011,8 @@ template <typename Adaptor,
     if (1) {
         // operand 1(ax) is the same as its tied destination
         assert(scratch_ax.cur_reg.valid());
-        ASMD(ADD64rr, scratch_ax.cur_reg, scratch_cx.cur_reg);
+        AsmReg op2 = scratch_cx.cur_reg;
+        ASMD(ADD64rr, scratch_ax.cur_reg, op2);
         break;
     }
     }
@@ -25670,8 +26038,9 @@ template <typename Adaptor,
     do {
     {
     if (1) {
+        AsmReg op0 = scratch_ax.cur_reg;
         // operand exceeds NumImplicitUses, ignore
-        ASMD(CMP32ri, scratch_ax.cur_reg, 0x3ff);
+        ASMD(CMP32ri, op0, 0x3ff);
         break;
     }
     }
@@ -25726,6 +26095,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -25743,16 +26113,16 @@ template <typename Adaptor,
           class BaseTy,
           typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_is_fpclass_finite_double(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
     // # Machine code for function is_fpclass_finite_double: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Constant Pool:
+    //   cp#0: <double 0x7FFFFFFFFFFFFFFF, double 0x7FFFFFFFFFFFFFFF>, align=16
+    //   cp#1: 0x7FF0000000000000, align=8
     // Function Live Ins: $edi, $xmm0
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $edi, $xmm0
-    //   renamable $rax = MOVSDto64rr killed renamable $xmm0
-    //   renamable $rcx = MOV64ri 9223372036854775807
-    //   renamable $rcx = AND64rr killed renamable $rcx(tied-def 0), killed renamable $rax, implicit-def dead $eflags
-    //   renamable $rax = MOV64ri 9218868437227405312
-    //   CMP64rr killed renamable $rcx, killed renamable $rax, implicit-def $eflags
-    //   renamable $al = SETCCr 12, implicit killed $eflags
+    //   renamable $xmm0 = ANDPDrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
+    //   nofpexcept UCOMISDrm killed renamable $xmm0, $rip, 1, $noreg, %const.1, $noreg, implicit-def $eflags, implicit $mxcsr :: (load (s64) from constant-pool)
+    //   renamable $al = SETCCr 5, implicit killed $eflags
     //   renamable $al = OR8rr killed renamable $al(tied-def 0), killed renamable $dil, implicit-def dead $eflags, implicit killed $edi
     //   RET64 killed $al
     // 
@@ -25764,79 +26134,49 @@ template <typename Adaptor,
     ScratchReg scratch_ax{derived()};
     ScratchReg scratch_di{derived()};
     ScratchReg scratch_xmm0{derived()};
-    ScratchReg scratch_cx{derived()};
 
 
-    // renamable $rax = MOVSDto64rr killed renamable $xmm0
+    // renamable $xmm0 = ANDPDrm killed renamable $xmm0(tied-def 0), $rip, 1, $noreg, %const.0, $noreg :: (load (s128) from constant-pool)
     {
     if (1) {
-        AsmReg op1 = param_1.as_reg(this);
-        // def ax has not been allocated yet
-        scratch_ax.alloc_from_bank(0);
-        ASMD(SSE_MOVQ_X2Grr, scratch_ax.cur_reg, op1);
+        // operand 1(param_1) is tied so try to salvage or materialize
+        param_1.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
+        SymRef &op5_sym = this->sym_is_fpclass_finite_double_cp0;
+        if (op5_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+            const std::array<u8, 16> data = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F};
+            op5_sym = derived()->assembler.sym_def_data("", data, 16, true, false, true, false);
+        }
+        ASMD(SSE_ANDPDrm, scratch_xmm0.cur_reg, FE_MEM(FE_IP, 0, FE_NOREG, 0));
+        derived()->assembler.reloc_text_pc32(op5_sym, derived()->assembler.text_cur_off() - 4, -4);
     }
     }
     // argument xmm0 is killed and marked as dead
-    // result ax is marked as alive
+    param_1.reset();
+    // result xmm0 is marked as alive
 
 
-    // renamable $rcx = MOV64ri 9223372036854775807
+    // nofpexcept UCOMISDrm killed renamable $xmm0, $rip, 1, $noreg, %const.1, $noreg, implicit-def $eflags, implicit $mxcsr :: (load (s64) from constant-pool)
     {
     if (1) {
-        // def cx has not been allocated yet
-        scratch_cx.alloc_from_bank(0);
-        ASMD(MOV64ri, scratch_cx.cur_reg, 0x7fffffffffffffff);
+        AsmReg op0 = scratch_xmm0.cur_reg;
+        SymRef &op4_sym = this->sym_is_fpclass_finite_double_cp1;
+        if (op4_sym == Assembler::INVALID_SYM_REF) [[unlikely]] {
+            const std::array<u8, 8> data = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xF0, 0x7F};
+            op4_sym = derived()->assembler.sym_def_data("", data, 8, true, false, true, false);
+        }
+        ASMD(SSE_UCOMISDrm, op0, FE_MEM(FE_IP, 0, FE_NOREG, 0));
+        derived()->assembler.reloc_text_pc32(op4_sym, derived()->assembler.text_cur_off() - 4, -4);
     }
     }
-    // result cx is marked as alive
+    // argument xmm0 is killed and marked as dead
 
 
-    // renamable $rcx = AND64rr killed renamable $rcx(tied-def 0), killed renamable $rax, implicit-def dead $eflags
-    do {
-    {
-    if (1) {
-        // operand 1(cx) is the same as its tied destination
-        assert(scratch_cx.cur_reg.valid());
-        ASMD(AND64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
-        break;
-    }
-    }
-    } while (false);
-    // argument cx is killed and marked as dead
-    // argument ax is killed and marked as dead
-    // result cx is marked as alive
-
-
-    // renamable $rax = MOV64ri 9218868437227405312
+    // renamable $al = SETCCr 5, implicit killed $eflags
     {
     if (1) {
         // def ax has not been allocated yet
         scratch_ax.alloc_from_bank(0);
-        ASMD(MOV64ri, scratch_ax.cur_reg, 0x7ff0000000000000);
-    }
-    }
-    // result ax is marked as alive
-
-
-    // CMP64rr killed renamable $rcx, killed renamable $rax, implicit-def $eflags
-    do {
-    {
-    if (1) {
-        ASMD(CMP64rr, scratch_cx.cur_reg, scratch_ax.cur_reg);
-        break;
-    }
-    }
-    } while (false);
-    // argument cx is killed and marked as dead
-    // argument ax is killed and marked as dead
-
-
-    // renamable $al = SETCCr 12, implicit killed $eflags
-    {
-    if (1) {
-        // def ax has not been allocated yet
-        scratch_ax.alloc_from_bank(0);
-        ASMD(SETL8r, scratch_ax.cur_reg);
+        ASMD(SETNZ8r, scratch_ax.cur_reg);
     }
     }
     // result ax is marked as alive
@@ -25877,6 +26217,7 @@ template <typename Adaptor,
     } while (false);
     // argument ax is killed and marked as dead
     // argument di is killed and marked as dead
+    param_0.reset();
     // argument di is killed and marked as dead
     // result ax is marked as alive
 
@@ -25926,6 +26267,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
 
 
     // RET64
@@ -25971,6 +26313,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
 
 
     // RET64
@@ -26016,6 +26359,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
 
 
     // RET64
@@ -26061,6 +26405,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
 
 
     // RET64
@@ -26106,6 +26451,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
 
 
     // RET64
@@ -26151,6 +26497,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
 
 
     // RET64
@@ -26196,6 +26543,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
 
 
     // RET64
@@ -26241,6 +26589,7 @@ template <typename Adaptor,
     }
     } while (false);
     // argument di is killed and marked as dead
+    param_0.reset();
 
 
     // RET64

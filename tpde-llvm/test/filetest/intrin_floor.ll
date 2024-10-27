@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 declare float @llvm.floor.f32(float)
 declare double @llvm.floor.f64(double)
@@ -24,6 +24,26 @@ define float @floorf32(float %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: floorf32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    bl 0x30 <floorf32+0x30>
+; ARM64:     R_AARCH64_CALL26 floorf
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = call float @llvm.floor.f32(float %0)
   ret float %1
@@ -43,6 +63,26 @@ define double @floorf64(double %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    <unknown>
+;
+; ARM64-LABEL: floorf64>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    bl 0xa0 <floorf64+0x30>
+; ARM64:     R_AARCH64_CALL26 floor
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = call double @llvm.floor.f64(double %0)
   ret double %1

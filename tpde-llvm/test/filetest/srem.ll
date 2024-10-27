@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 define i8 @srem_i8_1(i8 %0) {
 ; X64-LABEL: srem_i8_1>:
@@ -25,6 +25,30 @@ define i8 @srem_i8_1(i8 %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: srem_i8_1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxtb w0, w0
+; ARM64:    mov x1, #0x1 // =1
+; ARM64:    sxtb w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i8 %0, 1
   ret i8 %1
@@ -49,6 +73,30 @@ define i8 @srem_i8_-1(i8 %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: srem_i8_-1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxtb w0, w0
+; ARM64:    mov x1, #0xff // =255
+; ARM64:    sxtb w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i8 %0, -1
   ret i8 %1
@@ -73,6 +121,30 @@ define i8 @srem_i8_28(i8 %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: srem_i8_28>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxtb w0, w0
+; ARM64:    mov x1, #0x1c // =28
+; ARM64:    sxtb w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i8 %0, 28
   ret i8 %1
@@ -96,6 +168,29 @@ define i8 @srem_i8_i8(i8 %0, i8 %1) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i8_i8>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxtb w0, w0
+; ARM64:    sxtb w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i8 %0, %1
   ret i8 %2
@@ -120,6 +215,30 @@ define i8 @srem_i8_32(i8 %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: srem_i8_32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxtb w0, w0
+; ARM64:    mov x1, #0x20 // =32
+; ARM64:    sxtb w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i8 %0, 32
   ret i8 %1
@@ -145,6 +264,30 @@ define i16 @srem_i16_1(i16 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i16_1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxth w0, w0
+; ARM64:    mov x1, #0x1 // =1
+; ARM64:    sxth w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i16 %0, 1
   ret i16 %1
@@ -170,6 +313,30 @@ define i16 @srem_i16_-1(i16 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i16_-1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxth w0, w0
+; ARM64:    mov x1, #0xffff // =65535
+; ARM64:    sxth w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i16 %0, -1
   ret i16 %1
@@ -195,6 +362,30 @@ define i16 @srem_i16_28(i16 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i16_28>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxth w0, w0
+; ARM64:    mov x1, #0x1c // =28
+; ARM64:    sxth w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i16 %0, 28
   ret i16 %1
@@ -220,6 +411,30 @@ define i16 @srem_i16_32(i16 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i16_32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxth w0, w0
+; ARM64:    mov x1, #0x20 // =32
+; ARM64:    sxth w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i16 %0, 32
   ret i16 %1
@@ -242,6 +457,29 @@ define i16 @srem_i16_i16(i16 %0, i16 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i16_i16>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxth w0, w0
+; ARM64:    sxth w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i16 %0, %1
   ret i16 %2
@@ -263,6 +501,28 @@ define i32 @srem_i32_1(i32 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: srem_i32_1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #0x1 // =1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i32 %0, 1
   ret i32 %1
@@ -284,6 +544,28 @@ define i32 @srem_i32_-1(i32 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: srem_i32_-1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #0xffffffff // =4294967295
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i32 %0, -1
   ret i32 %1
@@ -305,6 +587,28 @@ define i32 @srem_i32_28(i32 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: srem_i32_28>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #0x1c // =28
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i32 %0, 28
   ret i32 %1
@@ -326,6 +630,28 @@ define i32 @srem_i32_32(i32 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: srem_i32_32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #0x20 // =32
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i32 %0, 32
   ret i32 %1
@@ -346,6 +672,27 @@ define i32 @srem_i32_i32(i32 %0, i32 %1) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i32_i32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i32 %0, %1
   ret i32 %2
@@ -366,6 +713,28 @@ define i64 @srem_i64_1(i64 %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: srem_i64_1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #0x1 // =1
+; ARM64:    sdiv x2, x0, x1
+; ARM64:    msub x1, x2, x1, x0
+; ARM64:    mov x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i64 %0, 1
   ret i64 %1
@@ -386,6 +755,28 @@ define i64 @srem_i64_-1(i64 %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: srem_i64_-1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #-0x1 // =-1
+; ARM64:    sdiv x2, x0, x1
+; ARM64:    msub x1, x2, x1, x0
+; ARM64:    mov x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i64 %0, -1
   ret i64 %1
@@ -406,6 +797,28 @@ define i64 @srem_i64_28(i64 %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: srem_i64_28>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #0x1c // =28
+; ARM64:    sdiv x2, x0, x1
+; ARM64:    msub x1, x2, x1, x0
+; ARM64:    mov x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i64 %0, 28
   ret i64 %1
@@ -426,6 +839,28 @@ define i64 @srem_i64_32(i64 %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: srem_i64_32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #0x20 // =32
+; ARM64:    sdiv x2, x0, x1
+; ARM64:    msub x1, x2, x1, x0
+; ARM64:    mov x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = srem i64 %0, 32
   ret i64 %1
@@ -447,6 +882,27 @@ define i64 @srem_i64_i64(i64 %0, i64 %1) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i64_i64>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sdiv x2, x0, x1
+; ARM64:    msub x1, x2, x1, x0
+; ARM64:    mov x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i64 %0, %1
   ret i64 %2
@@ -470,6 +926,29 @@ define i8 @srem_i8_salvage(i8 %0, i8 %1) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i8_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxtb w0, w0
+; ARM64:    sxtb w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i8 %0, %1
   ret i8 %2
@@ -492,6 +971,29 @@ define i16 @srem_i16_salvage(i16 %0, i16 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i16_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxth w0, w0
+; ARM64:    sxth w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i16 %0, %1
   ret i16 %2
@@ -512,6 +1014,27 @@ define i32 @srem_i32_salvage(i32 %0, i32 %1) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i32_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i32 %0, %1
   ret i32 %2
@@ -533,6 +1056,27 @@ define i64 @srem_i64_salvage(i64 %0, i64 %1) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i64_salvage>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sdiv x2, x0, x1
+; ARM64:    msub x1, x2, x1, x0
+; ARM64:    mov x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i64 %0, %1
   ret i64 %2
@@ -562,6 +1106,33 @@ define i8 @srem_i8_no_salvage(i8 %0, i8 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: srem_i8_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxtb w2, w0
+; ARM64:    sxtb w1, w1
+; ARM64:    sdiv w3, w2, w1
+; ARM64:    msub w1, w3, w1, w2
+; ARM64:    sxtb w0, w0
+; ARM64:    sxtb w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i8 %0, %1
   %3 = srem i8 %0, %2
@@ -591,6 +1162,33 @@ define i16 @srem_i16_no_salvage(i16 %0, i16 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: srem_i16_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxth w2, w0
+; ARM64:    sxth w1, w1
+; ARM64:    sdiv w3, w2, w1
+; ARM64:    msub w1, w3, w1, w2
+; ARM64:    sxth w0, w0
+; ARM64:    sxth w1, w1
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i16 %0, %1
   %3 = srem i16 %0, %2
@@ -616,6 +1214,29 @@ define i32 @srem_i32_no_salvage(i32 %0, i32 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: srem_i32_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    sdiv w2, w0, w1
+; ARM64:    msub w1, w2, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i32 %0, %1
   %3 = srem i32 %0, %2
@@ -641,6 +1262,29 @@ define i64 @srem_i64_no_salvage(i64 %0, i64 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: srem_i64_no_salvage>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sdiv x2, x0, x1
+; ARM64:    msub x1, x2, x1, x0
+; ARM64:    sdiv x2, x0, x1
+; ARM64:    msub x1, x2, x1, x0
+; ARM64:    mov x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = srem i64 %0, %1
   %3 = srem i64 %0, %2

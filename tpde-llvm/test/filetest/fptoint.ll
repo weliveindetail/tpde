@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel --section=.text --section=.rodata - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 define i32 @f32toi32(float %0) {
 ; X64-LABEL: f32toi32>:
@@ -19,6 +19,25 @@ define i32 @f32toi32(float %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: f32toi32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    fcvtzs w0, s0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = fptosi float %0 to i32
   ret i32 %1
@@ -37,6 +56,25 @@ define i32 @f32tou32(float %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: f32tou32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    fcvtzu w0, s0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = fptoui float %0 to i32
   ret i32 %1
@@ -55,6 +93,25 @@ define i64 @f32toi64(float %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: f32toi64>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    fcvtzs x0, s0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = fptosi float %0 to i64
   ret i64 %1
@@ -79,6 +136,25 @@ define i64 @f32tou64(float %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: f32tou64>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    fcvtzu x0, s0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = fptoui float %0 to i64
   ret i64 %1
@@ -98,6 +174,25 @@ define i32 @f64toi32(double %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: f64toi32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    fcvtzs w0, d0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = fptosi double %0 to i32
   ret i32 %1
@@ -116,6 +211,25 @@ define i32 @f64tou32(double %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: f64tou32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    fcvtzu w0, d0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = fptoui double %0 to i32
   ret i32 %1
@@ -134,6 +248,25 @@ define i64 @f64toi64(double %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: f64toi64>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    fcvtzs x0, d0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = fptosi double %0 to i64
   ret i64 %1
@@ -158,6 +291,25 @@ define i64 @f64tou64(double %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: f64tou64>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    fcvtzu x0, d0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = fptoui double %0 to i64
   ret i64 %1

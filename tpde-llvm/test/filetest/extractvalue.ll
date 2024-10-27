@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel --section=.text --section=.rodata - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 %struct.i8_i32 = type { i8, i32 }
 %struct.ptr_i32 = type { ptr, i32 }
@@ -24,6 +24,28 @@ define i8 @extract_i8_i32_0(ptr %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: extract_i8_i32_0>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldrb w1, [x0]
+; ARM64:    add x3, x0, #0x4
+; ARM64:    ldr w2, [x3]
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.i8_i32, ptr %0
   %2 = extractvalue %struct.i8_i32 %1, 0
@@ -43,6 +65,28 @@ define i32 @extract_i8_i32_1(ptr %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: extract_i8_i32_1>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldrb w1, [x0]
+; ARM64:    add x3, x0, #0x4
+; ARM64:    ldr w2, [x3]
+; ARM64:    mov w0, w2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.i8_i32, ptr %0
   %2 = extractvalue %struct.i8_i32 %1, 1
@@ -67,6 +111,32 @@ define i8 @extract_i8_i32_0_no_salvage(ptr %0) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: extract_i8_i32_0_no_salvage>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldrb w1, [x0]
+; ARM64:    add x3, x0, #0x4
+; ARM64:    ldr w2, [x3]
+; ARM64:    mov w3, w1
+; ARM64:    strb w1, [x0]
+; ARM64:    add x4, x0, #0x4
+; ARM64:    str w2, [x4]
+; ARM64:    mov w0, w3
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.i8_i32, ptr %0
   %2 = extractvalue %struct.i8_i32 %1, 0
@@ -92,6 +162,32 @@ define i32 @extract_i8_i32_1_no_salvage(ptr %0) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: extract_i8_i32_1_no_salvage>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldrb w1, [x0]
+; ARM64:    add x3, x0, #0x4
+; ARM64:    ldr w2, [x3]
+; ARM64:    mov w3, w2
+; ARM64:    strb w1, [x0]
+; ARM64:    add x4, x0, #0x4
+; ARM64:    str w2, [x4]
+; ARM64:    mov w0, w3
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.i8_i32, ptr %0
   %2 = extractvalue %struct.i8_i32 %1, 1
@@ -113,6 +209,28 @@ define ptr @extract_ptr_i32_0(ptr %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: extract_ptr_i32_0>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr x1, [x0]
+; ARM64:    add x3, x0, #0x8
+; ARM64:    ldr w2, [x3]
+; ARM64:    mov x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.ptr_i32, ptr %0
   %2 = extractvalue %struct.ptr_i32 %1, 0
@@ -132,6 +250,28 @@ define i32 @extract_ptr_i32_1(ptr %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: extract_ptr_i32_1>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr x1, [x0]
+; ARM64:    add x3, x0, #0x8
+; ARM64:    ldr w2, [x3]
+; ARM64:    mov w0, w2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.ptr_i32, ptr %0
   %2 = extractvalue %struct.ptr_i32 %1, 1
@@ -154,6 +294,32 @@ define ptr @extract_ptr_i32_0_no_salvage(ptr %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: extract_ptr_i32_0_no_salvage>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr x1, [x0]
+; ARM64:    add x3, x0, #0x8
+; ARM64:    ldr w2, [x3]
+; ARM64:    mov x3, x1
+; ARM64:    str x1, [x0]
+; ARM64:    add x4, x0, #0x8
+; ARM64:    str w2, [x4]
+; ARM64:    mov x0, x3
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.ptr_i32, ptr %0
   %2 = extractvalue %struct.ptr_i32 %1, 0
@@ -178,6 +344,32 @@ define i32 @extract_ptr_i32_1_no_salvage(ptr %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: extract_ptr_i32_1_no_salvage>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr x1, [x0]
+; ARM64:    add x3, x0, #0x8
+; ARM64:    ldr w2, [x3]
+; ARM64:    mov w3, w2
+; ARM64:    str x1, [x0]
+; ARM64:    add x4, x0, #0x8
+; ARM64:    str w2, [x4]
+; ARM64:    mov w0, w3
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.ptr_i32, ptr %0
   %2 = extractvalue %struct.ptr_i32 %1, 1
@@ -198,6 +390,27 @@ define float @extract_f32_ptr_0(ptr %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: extract_f32_ptr_0>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr s0, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    ldr x1, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.f32_ptr, ptr %0
   %2 = extractvalue %struct.f32_ptr %1, 0
@@ -216,6 +429,28 @@ define ptr @extract_f32_ptr_1(ptr %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: extract_f32_ptr_1>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr s0, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    ldr x1, [x2]
+; ARM64:    mov x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.f32_ptr, ptr %0
   %2 = extractvalue %struct.f32_ptr %1, 1
@@ -238,6 +473,32 @@ define float @extract_f32_ptr_0_no_salvage(ptr %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: extract_f32_ptr_0_no_salvage>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr s0, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    ldr x1, [x2]
+; ARM64:    mov v1.16b, v0.16b
+; ARM64:    str s0, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    str x1, [x2]
+; ARM64:    mov v0.16b, v1.16b
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.f32_ptr, ptr %0
   %2 = extractvalue %struct.f32_ptr %1, 0
@@ -262,6 +523,32 @@ define ptr @extract_f32_ptr_1_no_salvage(ptr %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: extract_f32_ptr_1_no_salvage>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr s0, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    ldr x1, [x2]
+; ARM64:    mov x2, x1
+; ARM64:    str s0, [x0]
+; ARM64:    add x3, x0, #0x8
+; ARM64:    str x1, [x3]
+; ARM64:    mov x0, x2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.f32_ptr, ptr %0
   %2 = extractvalue %struct.f32_ptr %1, 1
@@ -284,6 +571,30 @@ define i128 @extract_i128_i1_0(ptr %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: extract_i128_i1_0>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x1, x2, [x0]
+; ARM64:    mov x3, x1
+; ARM64:    add x4, x0, #0x10
+; ARM64:    ldrb w1, [x4]
+; ARM64:    mov x0, x3
+; ARM64:    mov x1, x2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.i128_i1, ptr %0
   %2 = extractvalue %struct.i128_i1 %1, 0
@@ -305,6 +616,29 @@ define i1 @extract_i128_i1_1(ptr %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: extract_i128_i1_1>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x1, x2, [x0]
+; ARM64:    mov x3, x1
+; ARM64:    add x4, x0, #0x10
+; ARM64:    ldrb w1, [x4]
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.i128_i1, ptr %0
   %2 = extractvalue %struct.i128_i1 %1, 1
@@ -334,6 +668,35 @@ define i128 @extract_i128_i1_0_no_salvage(ptr %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: extract_i128_i1_0_no_salvage>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x1, x2, [x0]
+; ARM64:    mov x3, x1
+; ARM64:    add x4, x0, #0x10
+; ARM64:    ldrb w1, [x4]
+; ARM64:    mov x4, x2
+; ARM64:    mov x5, x3
+; ARM64:    stp x3, x2, [x0]
+; ARM64:    add x6, x0, #0x10
+; ARM64:    strb w1, [x6]
+; ARM64:    mov x0, x5
+; ARM64:    mov x1, x4
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.i128_i1, ptr %0
   %2 = extractvalue %struct.i128_i1 %1, 0
@@ -362,6 +725,33 @@ define i1 @extract_i128_i1_1_no_salvage(ptr %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    <unknown>
+;
+; ARM64-LABEL: extract_i128_i1_1_no_salvage>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x1, x2, [x0]
+; ARM64:    mov x3, x1
+; ARM64:    add x4, x0, #0x10
+; ARM64:    ldrb w1, [x4]
+; ARM64:    mov w4, w1
+; ARM64:    stp x3, x2, [x0]
+; ARM64:    add x5, x0, #0x10
+; ARM64:    strb w1, [x5]
+; ARM64:    mov w0, w4
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.i128_i1, ptr %0
   %2 = extractvalue %struct.i128_i1 %1, 1

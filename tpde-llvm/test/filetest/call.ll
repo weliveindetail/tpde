@@ -62,22 +62,21 @@ define i128 @call_i128_void() {
 ; X64-LABEL: call_i128_void>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x48
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x50
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fn_i128_void-0x4
 ; X64:    mov rcx, rax
 ; X64:    add rcx, 0xa
-; X64:    mov rbx, rdx
-; X64:    adc rbx, 0x0
+; X64:    adc rdx, 0x0
 ; X64:    mov rax, rcx
-; X64:    mov rdx, rbx
-; X64:    add rsp, 0x48
-; X64:    pop rbx
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %0 = call i128 @fn_i128_void()
@@ -89,23 +88,21 @@ define i32 @call_i128_void_ret_i32(i32 %0) {
 ; X64-LABEL: call_i128_void_ret_i32>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x48
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x50
 ; X64:    mov dword ptr [rbp - 0x2c], edi
 ; X64:  <L0>:
 ; X64:    call <L0>
 ; X64:     R_X86_64_PLT32 fn_i128_void-0x4
 ; X64:    mov rcx, rax
 ; X64:    add rcx, 0xa
-; X64:    mov rbx, rdx
-; X64:    adc rbx, 0x0
+; X64:    adc rdx, 0x0
 ; X64:    mov eax, dword ptr [rbp - 0x2c]
-; X64:    add rsp, 0x48
-; X64:    pop rbx
+; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rax], al
 entry:
   %1 = call i128 @fn_i128_void()
   %2 = add i128 %1, 10

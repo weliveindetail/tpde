@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 define void @ashr_i8_3(i8 %0) {
 ; X64-LABEL: ashr_i8_3>:
@@ -19,6 +19,27 @@ define void @ashr_i8_3(i8 %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: ashr_i8_3>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxtb w0, w0
+; ARM64:    mov x1, #0x3 // =3
+; ARM64:    asr w0, w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %1 = ashr i8 %0, 3
     ret void
@@ -39,6 +60,27 @@ define void @ashr_i8_i8(i8 %0, i8 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: ashr_i8_i8>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxtb w0, w0
+; ARM64:    and w1, w1, #0xff
+; ARM64:    asr w0, w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %2 = ashr i8 %0, %1
     ret void
@@ -57,6 +99,27 @@ define void @ashr_i16_3(i16 %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: ashr_i16_3>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxth w0, w0
+; ARM64:    mov x1, #0x3 // =3
+; ARM64:    asr w0, w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %1 = ashr i16 %0, 3
     ret void
@@ -75,6 +138,27 @@ define void @ashr_i16_i16(i16 %0, i16 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+;
+; ARM64-LABEL: ashr_i16_i16>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxth w0, w0
+; ARM64:    and w1, w1, #0xffff
+; ARM64:    asr w0, w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %2 = ashr i16 %0, %1
     ret void
@@ -94,6 +178,26 @@ define void @ashr_i32_3(i32 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: ashr_i32_3>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #0x3 // =3
+; ARM64:    asr w0, w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %1 = ashr i32 %0, 3
     ret void
@@ -113,6 +217,25 @@ define void @ashr_i32_i32(i32 %0, i32 %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: ashr_i32_i32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    asr w0, w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %2 = ashr i32 %0, %1
     ret void
@@ -131,6 +254,26 @@ define void @ashr_i64_3(i64 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: ashr_i64_3>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #0x3 // =3
+; ARM64:    asr x0, x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %1 = ashr i64 %0, 3
     ret void
@@ -150,6 +293,25 @@ define void @ashr_i64_i64(i64 %0, i64 %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: ashr_i64_i64>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    asr x0, x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %2 = ashr i64 %0, %1
     ret void
@@ -169,6 +331,29 @@ define void @ashr_i21_3(i21 %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: ashr_i21_3>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #0xb // =11
+; ARM64:    lsl w0, w0, w1
+; ARM64:    asr w1, w0, w1
+; ARM64:    mov x0, #0x3 // =3
+; ARM64:    asr w1, w1, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %1 = ashr i21 %0, 3
     ret void
@@ -190,6 +375,30 @@ define void @ashr_i21_i21(i21 %0, i21 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: ashr_i21_i21>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x2, #0xb // =11
+; ARM64:    lsl w0, w0, w2
+; ARM64:    asr w2, w0, w2
+; ARM64:    mov x0, #0x1fffff // =2097151
+; ARM64:    and w0, w0, w1
+; ARM64:    asr w2, w2, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %2 = ashr i21 %0, %1
     ret void
@@ -209,6 +418,29 @@ define void @ashr_i37_3(i37 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: ashr_i37_3>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, #0x1b // =27
+; ARM64:    lsl x0, x0, x1
+; ARM64:    asr x1, x0, x1
+; ARM64:    mov x0, #0x3 // =3
+; ARM64:    asr x1, x1, x0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %1 = ashr i37 %0, 3
     ret void
@@ -229,6 +461,30 @@ define void @ashr_i37_i37(i37 %0, i37 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+;
+; ARM64-LABEL: ashr_i37_i37>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x2, #0x1b // =27
+; ARM64:    lsl x0, x0, x2
+; ARM64:    asr x2, x0, x2
+; ARM64:    mov x0, #0x1fffffffff // =137438953471
+; ARM64:    and x0, x0, x1
+; ARM64:    asr x2, x2, x0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %2 = ashr i37 %0, %1
     ret void
@@ -256,6 +512,33 @@ define i128 @ashr_i128_3(i128 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: ashr_i128_3>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    lsl x2, x1, #1
+; ARM64:    mov x3, #0x3 // =3
+; ARM64:    mvn w4, w3
+; ARM64:    lsr x5, x0, x3
+; ARM64:    asr x6, x1, x3
+; ARM64:    lsl x2, x2, x4
+; ARM64:    orr x3, x2, x5
+; ARM64:    mov x0, x3
+; ARM64:    mov x1, x6
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %1 = ashr i128 %0, 3
     ret i128 %1
@@ -278,6 +561,30 @@ define i128 @ashr_i128_74(i128 %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: ashr_i128_74>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    asr x2, x1, #63
+; ARM64:    mov x4, #0xa // =10
+; ARM64:    asr x3, x1, x4
+; ARM64:    mov x4, x2
+; ARM64:    mov x0, x3
+; ARM64:    mov x1, x4
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %1 = ashr i128 %0, 74
     ret i128 %1
@@ -305,6 +612,33 @@ define i128 @ashr_i128_128(i128 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: ashr_i128_128>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    lsl x2, x1, #1
+; ARM64:    mov x3, #0x80 // =128
+; ARM64:    mvn w4, w3
+; ARM64:    lsr x5, x0, x3
+; ARM64:    asr x6, x1, x3
+; ARM64:    lsl x2, x2, x4
+; ARM64:    orr x3, x2, x5
+; ARM64:    mov x0, x3
+; ARM64:    mov x1, x6
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %1 = ashr i128 %0, 128
     ret i128 %1
@@ -326,6 +660,27 @@ define void @ashr_i64_no_salvage_imm(i64 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: ashr_i64_no_salvage_imm>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x2, #0x3 // =3
+; ARM64:    asr x1, x0, x2
+; ARM64:    asr x0, x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %1 = ashr i64 %0, 3
     %2 = ashr i64 %0, %1
@@ -348,6 +703,26 @@ define void @ashr_i64_no_salvage_reg(i64 %0, i64 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: ashr_i64_no_salvage_reg>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    asr x2, x0, x1
+; ARM64:    asr x0, x0, x2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %2 = ashr i64 %0, %1
     %3 = ashr i64 %0, %2
@@ -374,6 +749,35 @@ define void @ashr_i37_no_salvage_imm(i37 %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: ashr_i37_no_salvage_imm>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x2, #0x1b // =27
+; ARM64:    lsl x1, x0, x2
+; ARM64:    asr x2, x1, x2
+; ARM64:    mov x1, #0x3 // =3
+; ARM64:    asr x2, x2, x1
+; ARM64:    mov x1, #0x1b // =27
+; ARM64:    lsl x0, x0, x1
+; ARM64:    asr x1, x0, x1
+; ARM64:    mov x0, #0x1fffffffff // =137438953471
+; ARM64:    and x0, x0, x2
+; ARM64:    asr x1, x1, x0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %1 = ashr i37 %0, 3
     %2 = ashr i37 %0, %1
@@ -405,6 +809,36 @@ define void @ashr_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    <unknown>
+;
+; ARM64-LABEL: ashr_i37_no_salvage_reg>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, #0x1b // =27
+; ARM64:    lsl x2, x0, x3
+; ARM64:    asr x3, x2, x3
+; ARM64:    mov x2, #0x1fffffffff // =137438953471
+; ARM64:    and x2, x2, x1
+; ARM64:    asr x3, x3, x2
+; ARM64:    mov x1, #0x1b // =27
+; ARM64:    lsl x0, x0, x1
+; ARM64:    asr x1, x0, x1
+; ARM64:    mov x0, #0x1fffffffff // =137438953471
+; ARM64:    and x0, x0, x3
+; ARM64:    asr x1, x1, x0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %2 = ashr i37 %0, %1
     %3 = ashr i37 %0, %2

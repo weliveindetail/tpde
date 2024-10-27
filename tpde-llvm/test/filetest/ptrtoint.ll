@@ -4,6 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel --section=.text --section=.rodata - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 ; COM: these are all no-ops
 define i64 @ptrtoint_i64(ptr %0) {
@@ -20,6 +21,24 @@ define i64 @ptrtoint_i64(ptr %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: ptrtoint_i64>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
   %1 = ptrtoint ptr %0 to i64
   ret i64 %1
@@ -38,6 +57,25 @@ define i64 @ptrtoint_i64_no_salvage(ptr %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: ptrtoint_i64_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, x0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
   %1 = ptrtoint ptr %0 to i64
   %2 = ptrtoint ptr %0 to i64
@@ -55,6 +93,24 @@ define i32 @ptrtoint_i32(ptr %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: ptrtoint_i32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
   %1 = ptrtoint ptr %0 to i32
   ret i32 %1
@@ -73,6 +129,25 @@ define i32 @ptrtoint_i32_no_salvage(ptr %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: ptrtoint_i32_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w1, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
   %1 = ptrtoint ptr %0 to i32
   %2 = ptrtoint ptr %0 to i32

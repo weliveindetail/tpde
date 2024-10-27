@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 @basic_int = internal dso_local global i32 5, align 4
 @basic_array = dso_local global [20 x i32] zeroinitializer, align 16
@@ -27,6 +27,29 @@ define i32 @load_basic_int() {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: load_basic_int>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adrp x1, 0x0 <load_basic_int>
+; ARM64:     R_AARCH64_ADR_PREL_PG_HI21 basic_int
+; ARM64:    add x1, x1, #0x0
+; ARM64:     R_AARCH64_ADD_ABS_LO12_NC basic_int
+; ARM64:    ldr w0, [x1]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %0 = load i32, ptr @basic_int
   ret i32 %0
@@ -44,6 +67,29 @@ define ptr @load_func_ptr() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+;
+; ARM64-LABEL: load_func_ptr>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adrp x1, 0x0 <load_basic_int>
+; ARM64:     R_AARCH64_ADR_PREL_PG_HI21 func_ptr
+; ARM64:    ldr x1, [x1]
+; ARM64:     R_AARCH64_LDST64_ABS_LO12_NC func_ptr
+; ARM64:    ldr x0, [x1]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %0 = load ptr, ptr @func_ptr
   ret ptr %0
@@ -61,10 +107,150 @@ define void @store_global_ptr(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+;
+; ARM64-LABEL: store_global_ptr>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adrp x1, 0x0 <load_basic_int>
+; ARM64:     R_AARCH64_ADR_PREL_PG_HI21 global_ptr
+; ARM64:    ldr x1, [x1]
+; ARM64:     R_AARCH64_LDST64_ABS_LO12_NC global_ptr
+; ARM64:    str x0, [x1]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   store ptr %0, ptr @global_ptr
   ret void
+}
+
+define ptr @get_global() {
+; X64-LABEL: get_global>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    lea rax, <get_global+0x13>
+; X64:     R_X86_64_PC32 basic_int-0x4
+; X64:    add rsp, 0x30
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: get_global>:
+; ARM64:    sub sp, sp, #0xa0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adrp x0, 0x0 <load_basic_int>
+; ARM64:     R_AARCH64_ADR_PREL_PG_HI21 basic_int
+; ARM64:    add x0, x0, #0x0
+; ARM64:     R_AARCH64_ADD_ABS_LO12_NC basic_int
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xa0
+; ARM64:    ret
+; ARM64:     ...
+entry:
+  ret ptr @basic_int
+}
+
+define ptr @get_func1() {
+; X64-LABEL: get_func1>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    mov rax, qword ptr <get_func1+0x13>
+; X64:     R_X86_64_GOTPCREL func_ptr-0x4
+; X64:    add rsp, 0x30
+; X64:    pop rbp
+; X64:    ret
+; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: get_func1>:
+; ARM64:    sub sp, sp, #0xa0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adrp x0, 0x0 <load_basic_int>
+; ARM64:     R_AARCH64_ADR_PREL_PG_HI21 func_ptr
+; ARM64:    ldr x0, [x0]
+; ARM64:     R_AARCH64_LDST64_ABS_LO12_NC func_ptr
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xa0
+; ARM64:    ret
+; ARM64:     ...
+entry:
+  ret ptr @func_ptr
+}
+
+define ptr @get_func2() {
+; X64-LABEL: get_func2>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    mov rax, qword ptr <get_func2+0x13>
+; X64:     R_X86_64_GOTPCREL some_func-0x4
+; X64:    add rsp, 0x30
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rax], al
+; X64:    <unknown>
+;
+; ARM64-LABEL: get_func2>:
+; ARM64:    sub sp, sp, #0xa0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adrp x0, 0x0 <load_basic_int>
+; ARM64:     R_AARCH64_ADR_PREL_PG_HI21 some_func
+; ARM64:    ldr x0, [x0]
+; ARM64:     R_AARCH64_LDST64_ABS_LO12_NC some_func
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xa0
+; ARM64:    ret
+; ARM64:     ...
+entry:
+  ret ptr @some_func
 }
 ;; NOTE: These prefixes are unused and the list is autogenerated. Do not add tests below this line:
 ; CHECK: {{.*}}

@@ -8,6 +8,7 @@
 
 ; RUN: llvm-as -o %t/out.bc %s
 ; RUN: tpde_llvm --bitcode %t/out.bc | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+; RUN: tpde_llvm --target=aarch64 --bitcode %t/out.bc | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 define void @empty() {
 ; CHECK-LABEL: empty>:
@@ -19,7 +20,22 @@ define void @empty() {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    add byte ptr [rax], al
+; ARM64:    sub sp, sp, #0xa0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xa0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     ret void
 }

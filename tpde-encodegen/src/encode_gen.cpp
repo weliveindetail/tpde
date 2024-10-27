@@ -596,41 +596,11 @@ bool generate_inst(std::string        &buf,
             exit(1);
         };
 
-        // for architectures that generally don't tie-def their operands
-        // we still need to handle the case where we have an instruction like
-        // add x0, x0, x1
-        // and prevent x1 from trying to salvage into x0 because it is not
-        // allocated
-        //
-        // TODO(ts): I think it should be fine to handle the use of x0 as
-        // non-tied and allow an AsmOperand reg to be used instead
-        const auto def_is_tied = [inst,
-                                  &state](const llvm::MachineOperand &op) {
-            if (op.isTied()) {
-                return true;
-            }
-            if (!op.isReg()) {
-                return false;
-            }
-
-            if (state.target->reg_should_be_ignored(op.getReg())) {
-                return false;
-            }
-            auto reg = state.target->reg_id_from_mc_reg(op.getReg());
-            for (const auto &use : inst->explicit_uses()) {
-                if (!use.isReg() || !use.getReg().isValid()
-                    || state.target->reg_should_be_ignored(use.getReg())) {
-                    continue;
-                }
-                auto use_reg = state.target->reg_id_from_mc_reg(use.getReg());
-                if (reg == use_reg) {
-                    return true;
-                }
-            }
-            return false;
-        };
-
         const auto inst_id = state.cur_inst_id;
+
+        // Map from register ID their operand to prevent loading the same
+        // register twice.
+        llvm::DenseMap<unsigned, std::string> allocated_regs;
 
         std::vector<unsigned> implicit_ops_handled{};
         unsigned              implicit_uses = 0; //, explicit_uses = 0;
@@ -687,6 +657,19 @@ bool generate_inst(std::string        &buf,
 
             auto orig_reg_id = state.target->reg_id_from_mc_reg(use.getReg());
 
+            // TODO(ae): I don't think this is correct. But how to handle
+            // XOR32rr undef tied-def eax, undef eax?
+            if (!use.isTied()) {
+                auto [it, inserted] =
+                    allocated_regs.try_emplace(orig_reg_id, "");
+                if (!inserted) {
+                    if (!it->second.empty()) {
+                        use_ops.push_back(it->second);
+                    }
+                    continue;
+                }
+            }
+
             if (use.isUndef()) {
                 if (use.isTied()) {
                     state.fmt_line(buf, 8, "// undef tied");
@@ -703,6 +686,7 @@ bool generate_inst(std::string        &buf,
                                    state.target->reg_bank(orig_reg_id));
                     use_ops.push_back(
                         std::format("inst{}_op{}", inst_id, op_idx));
+                    allocated_regs[orig_reg_id] = use_ops.back();
                 }
                 continue;
             }
@@ -765,17 +749,22 @@ bool generate_inst(std::string        &buf,
             }
 
             if (!use.isTied()) {
+                auto op_name = std::format("op{}", use.getOperandNo());
                 if (reg_info.ty == ValueInfo::SCRATCHREG) {
                     // TODO(ts): if this reg is also used as a def-reg
                     // should we mark it as allocated here?
-                    use_ops.push_back(std::format(
-                        "scratch_{}.cur_reg",
-                        state.target->reg_name_lower(resolved_reg_id)));
+                    state.fmt_line(
+                        buf,
+                        8,
+                        "AsmReg {} = scratch_{}.cur_reg;",
+                        op_name,
+                        state.target->reg_name_lower(resolved_reg_id));
+                    use_ops.push_back(std::move(op_name));
+                    allocated_regs[orig_reg_id] = use_ops.back();
                     continue;
                 }
 
                 auto handled = false;
-                auto op_name = std::format("op{}", use.getOperandNo());
                 if (state.can_salvage_operand(use)) {
                     const auto op_bank =
                         state.target->reg_bank(resolved_reg_id);
@@ -786,9 +775,9 @@ bool generate_inst(std::string        &buf,
                         const auto def_reg_id =
                             state.target->reg_id_from_mc_reg(def->getReg());
 
-                        if (def_reg_id != orig_reg_id && def_is_tied(*def)) {
-                            continue;
-                        }
+                        // if (def_reg_id != orig_reg_id && def_is_tied(*def)) {
+                        //     continue;
+                        // }
 
                         const auto def_bank =
                             state.target->reg_bank(def_reg_id);
@@ -799,31 +788,15 @@ bool generate_inst(std::string        &buf,
 
                         const auto def_reg_name =
                             state.target->reg_name_lower(def_reg_id);
-                        state.fmt_line(buf, 8, "AsmReg {};", op_name);
-                        // TODO(ts): make try_salvage_if_nonalloc
-                        // return the correct register?
-                        state.fmt_line(buf,
-                                       8,
-                                       "if "
-                                       "({}.try_salvage_if_"
-                                       "nonalloc(scratch_{}, "
-                                       "{})) "
-                                       "{{",
-                                       reg_info.operand_name,
-                                       def_reg_name,
-                                       def_bank);
-                        state.fmt_line(buf,
-                                       8 + 4,
-                                       "{} = scratch_{}.cur_reg;",
-                                       op_name,
-                                       def_reg_name);
-                        state.fmt_line(buf, 8, "}} else {{");
-                        state.fmt_line(buf,
-                                       8 + 4,
-                                       "{} = {}.as_reg(this);",
-                                       op_name,
-                                       reg_info.operand_name);
-                        state.fmt_line(buf, 8, "}}");
+                        state.fmt_line(
+                            buf,
+                            8,
+                            "AsmReg {} = {}.as_reg_try_salvage(this, "
+                            "scratch_{}, {});",
+                            op_name,
+                            reg_info.operand_name,
+                            def_reg_name,
+                            def_bank);
                         handled = true;
                         break;
                     }
@@ -837,6 +810,7 @@ bool generate_inst(std::string        &buf,
                 }
 
                 use_ops.push_back(std::move(op_name));
+                allocated_regs[orig_reg_id] = use_ops.back();
                 continue;
             }
 
@@ -1203,6 +1177,11 @@ bool generate_inst(std::string        &buf,
         } else if (reg_info.ty == ValueInfo::ASM_OPERAND) {
             assert(state.operand_ref_counts[reg_info.operand_name] > 0);
             state.operand_ref_counts[reg_info.operand_name] -= 1;
+            // TODO(ae): shouldn't the ref count be always zero when killed?
+            // assert(state.operand_ref_counts[reg_info.operand_name] == 0);
+            if (state.operand_ref_counts[reg_info.operand_name] == 0) {
+                state.fmt_line(buf, 4, "{}.reset();", reg_info.operand_name);
+            }
         }
 
         reg_info.ty      = ValueInfo::SCRATCHREG;

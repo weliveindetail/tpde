@@ -1275,6 +1275,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
         derived()->encode_loadv128(std::move(ptr_op), res_scratch);
         break;
     }
+#if 0
     case v256: {
         auto ptr_op = calc_ptr_op();
         if (!derived()->encode_loadv256(std::move(ptr_op), res_scratch)) {
@@ -1289,6 +1290,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
         }
         break;
     }
+#endif
     case complex: {
         res.reset_without_refcount();
 
@@ -1390,6 +1392,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
             case v128:
                 derived()->encode_loadv128(std::move(part_addr), res_scratch);
                 break;
+#if 0
             case v256:
                 if (!derived()->encode_loadv256(std::move(part_addr),
                                                 res_scratch)) {
@@ -1402,6 +1405,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
                     return false;
                 }
                 break;
+#endif
             default: assert(0); return false;
             }
 
@@ -1518,6 +1522,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
         derived()->encode_storev128(std::move(ptr_op), std::move(op_ref));
         break;
     }
+#if 0
     case v256: {
         auto ptr_op = calc_ptr_op();
         if (!derived()->encode_storev256(std::move(ptr_op),
@@ -1534,6 +1539,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
         }
         break;
     }
+#endif
     case complex: {
         op_ref.reset_without_refcount();
 
@@ -1624,6 +1630,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
             case v128:
                 derived()->encode_storev128(std::move(part_addr), part_ref);
                 break;
+#if 0
             case v256:
                 if (!derived()->encode_storev256(std::move(part_addr),
                                                  part_ref)) {
@@ -1636,6 +1643,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
                     return false;
                 }
                 break;
+#endif
             default: assert(0); return false;
             }
 
@@ -3206,13 +3214,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
                 labels = std::span{label_vec.begin(), range};
             }
 
-            derived()->switch_emit_jump_table(default_label,
-                                              labels,
-                                              cmp_reg,
-                                              cases[begin].first,
-                                              cases[end - 1].first,
-                                              width_is_32);
-            return;
+            // Give target the option to emit a jump table.
+            if (derived()->switch_emit_jump_table(default_label,
+                                                  labels,
+                                                  cmp_reg,
+                                                  cases[begin].first,
+                                                  cases[end - 1].first,
+                                                  width_is_32)) {
+                return;
+            }
         }
 
         // do a binary search step
@@ -3973,24 +3983,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
     const auto width = ty->getIntegerBitWidth();
 
     if (width == 128) {
-        using EncodeFnTy     = bool (Derived::*)(AsmOperand,
-                                             AsmOperand,
-                                             AsmOperand,
-                                             AsmOperand,
-                                             ScratchReg &,
-                                             ScratchReg &,
-                                             ScratchReg &);
-        EncodeFnTy encode_fn = nullptr;
-        switch (op) {
-        case OverflowOp::uadd: encode_fn = &Derived::encode_of_add_u128; break;
-        case OverflowOp::sadd: encode_fn = &Derived::encode_of_add_i128; break;
-        case OverflowOp::usub: encode_fn = &Derived::encode_of_sub_u128; break;
-        case OverflowOp::ssub: encode_fn = &Derived::encode_of_sub_i128; break;
-        case OverflowOp::umul: encode_fn = &Derived::encode_of_mul_u128; break;
-        case OverflowOp::smul: encode_fn = &Derived::encode_of_mul_i128; break;
-        default: __builtin_unreachable();
-        }
-
         auto lhs_ref = this->val_ref(llvm_val_idx(llvm_lhs), 0);
         auto rhs_ref = this->val_ref(llvm_val_idx(llvm_rhs), 0);
         lhs_ref.inc_ref_count();
@@ -4000,13 +3992,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
         ScratchReg res_val{derived()}, res_val_high{derived()},
             res_of{derived()};
 
-        if (!(derived()->*encode_fn)(std::move(lhs_ref),
-                                     std::move(lhs_op_high),
-                                     std::move(rhs_ref),
-                                     std::move(rhs_op_high),
-                                     res_val,
-                                     res_val_high,
-                                     res_of)) {
+        if (!derived()->handle_overflow_intrin_128(op,
+                                                   std::move(lhs_ref),
+                                                   std::move(lhs_op_high),
+                                                   std::move(rhs_ref),
+                                                   std::move(rhs_op_high),
+                                                   res_val,
+                                                   res_val_high,
+                                                   res_of)) {
             return false;
         }
 

@@ -4,6 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 define float @frem_f32_1(float %0) {
 ; X64-LABEL: frem_f32_1>:
@@ -20,6 +21,27 @@ define float @frem_f32_1(float %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: frem_f32_1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    fmov s1, #1.00000000
+; ARM64:    bl 0x34 <frem_f32_1+0x34>
+; ARM64:     R_AARCH64_CALL26 fmodf
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = frem float %0, 1.0
     ret float %1
@@ -40,6 +62,29 @@ define float @frem_f32_5_32(float %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: frem_f32_5_32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x0, #0x3d71 // =15729
+; ARM64:    movk x0, #0x40aa, lsl #16
+; ARM64:    fmov s1, w0
+; ARM64:    bl 0xac <frem_f32_5_32+0x3c>
+; ARM64:     R_AARCH64_CALL26 fmodf
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = frem float %0, 0x401547AE20000000
     ret float %1
@@ -60,6 +105,26 @@ define float @frem_f32_f32(float %0, float %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: frem_f32_f32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    bl 0x110 <frem_f32_f32+0x30>
+; ARM64:     R_AARCH64_CALL26 fmodf
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %2 = frem float %0, %1
     ret float %2
@@ -82,6 +147,27 @@ define double @frem_f64_1(double %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: frem_f64_1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    fmov d1, #1.00000000
+; ARM64:    bl 0x184 <frem_f64_1+0x34>
+; ARM64:     R_AARCH64_CALL26 fmod
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = frem double %0, 1.0
     ret double %1
@@ -104,6 +190,31 @@ define double @frem_f64_5_32(double %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: frem_f64_5_32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x0, #0xe148 // =57672
+; ARM64:    movk x0, #0x147a, lsl #16
+; ARM64:    movk x0, #0x47ae, lsl #32
+; ARM64:    movk x0, #0x4015, lsl #48
+; ARM64:    fmov d1, x0
+; ARM64:    bl 0x204 <frem_f64_5_32+0x44>
+; ARM64:     R_AARCH64_CALL26 fmod
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = frem double %0, 5.32
     ret double %1
@@ -124,6 +235,26 @@ define double @frem_f64_f64(double %0, double %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: frem_f64_f64>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    bl 0x270 <frem_f64_f64+0x30>
+; ARM64:     R_AARCH64_CALL26 fmod
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %2 = frem double %0, %1
     ret double %2
@@ -152,6 +283,33 @@ define float @frem_f32_no_salvage_imm(float %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: frem_f32_no_salvage_imm>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    str s0, [x29, #0xa0]
+; ARM64:    fmov s1, #1.00000000
+; ARM64:    bl 0x2e8 <frem_f32_no_salvage_imm+0x38>
+; ARM64:     R_AARCH64_CALL26 fmodf
+; ARM64:    str s0, [x29, #0xa4]
+; ARM64:    ldr s0, [x29, #0xa0]
+; ARM64:    ldr s1, [x29, #0xa4]
+; ARM64:    bl 0x2f8 <frem_f32_no_salvage_imm+0x48>
+; ARM64:     R_AARCH64_CALL26 fmodf
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = frem float %0, 1.0
     %2 = frem float %0, %1
@@ -178,6 +336,32 @@ define float @frem_f32_no_salvage_reg(float %0, float %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: frem_f32_no_salvage_reg>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    str s0, [x29, #0xa0]
+; ARM64:    bl 0x364 <frem_f32_no_salvage_reg+0x34>
+; ARM64:     R_AARCH64_CALL26 fmodf
+; ARM64:    str s0, [x29, #0xa8]
+; ARM64:    ldr s0, [x29, #0xa0]
+; ARM64:    ldr s1, [x29, #0xa8]
+; ARM64:    bl 0x374 <frem_f32_no_salvage_reg+0x44>
+; ARM64:     R_AARCH64_CALL26 fmodf
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %2 = frem float %0, %1
     %3 = frem float %0, %2
@@ -207,6 +391,33 @@ define double @frem_f64_no_salvage_imm(double %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: frem_f64_no_salvage_imm>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    str d0, [x29, #0xa0]
+; ARM64:    fmov d1, #1.00000000
+; ARM64:    bl 0x3e8 <frem_f64_no_salvage_imm+0x38>
+; ARM64:     R_AARCH64_CALL26 fmod
+; ARM64:    str d0, [x29, #0xa8]
+; ARM64:    ldr d0, [x29, #0xa0]
+; ARM64:    ldr d1, [x29, #0xa8]
+; ARM64:    bl 0x3f8 <frem_f64_no_salvage_imm+0x48>
+; ARM64:     R_AARCH64_CALL26 fmod
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = frem double %0, 1.0
     %2 = frem double %0, %1
@@ -233,6 +444,32 @@ define double @frem_f64_no_salvage_reg(double %0, double %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: frem_f64_no_salvage_reg>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    str d0, [x29, #0xa0]
+; ARM64:    bl 0x464 <frem_f64_no_salvage_reg+0x34>
+; ARM64:     R_AARCH64_CALL26 fmod
+; ARM64:    str d0, [x29, #0xb0]
+; ARM64:    ldr d0, [x29, #0xa0]
+; ARM64:    ldr d1, [x29, #0xb0]
+; ARM64:    bl 0x474 <frem_f64_no_salvage_reg+0x44>
+; ARM64:     R_AARCH64_CALL26 fmod
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %2 = frem double %0, %1
     %3 = frem double %0, %2

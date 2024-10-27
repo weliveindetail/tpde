@@ -4,6 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel --section=.text --section=.rodata - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 
 define void @dyn_alloca_const() {
@@ -21,6 +22,26 @@ define void @dyn_alloca_const() {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: dyn_alloca_const>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sub sp, sp, #0x10
+; ARM64:    mov sp, x29
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -43,6 +64,26 @@ define void @dyn_alloca_const_align_32() {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: dyn_alloca_const_align_32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sub sp, sp, #0x10
+; ARM64:    mov sp, x29
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -68,6 +109,30 @@ define void @dyn_alloca_dyn_i8_cnt_i64(i64 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: dyn_alloca_dyn_i8_cnt_i64>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x19, x0
+; ARM64:    sub x19, sp, x19
+; ARM64:    and x19, x19, #0xfffffffffffffff0
+; ARM64:    mov sp, x19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -92,6 +157,30 @@ define void @dyn_alloca_dyn_i8_cnt_i32(i32 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: dyn_alloca_dyn_i8_cnt_i32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w19, w0
+; ARM64:    sub x19, sp, x19
+; ARM64:    and x19, x19, #0xfffffffffffffff0
+; ARM64:    mov sp, x19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -118,6 +207,30 @@ define void @dyn_alloca_dyn_i32_cnt_i64(i64 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: dyn_alloca_dyn_i32_cnt_i64>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x19, x0
+; ARM64:    sub x19, sp, x19, lsl #2
+; ARM64:    and x19, x19, #0xfffffffffffffff0
+; ARM64:    mov sp, x19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -143,6 +256,30 @@ define void @dyn_alloca_dyn_i32_cnt_i32(i32 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: dyn_alloca_dyn_i32_cnt_i32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w19, w0
+; ARM64:    sub x19, sp, x19, lsl #2
+; ARM64:    and x19, x19, #0xfffffffffffffff0
+; ARM64:    mov sp, x19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -171,6 +308,32 @@ define void @dyn_alloca_dyn_si3_cnt_i64(i64 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: dyn_alloca_dyn_si3_cnt_i64>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x19, x0
+; ARM64:    mov x0, #0xc // =12
+; ARM64:    mul x19, x19, x0
+; ARM64:    sub x19, sp, x19
+; ARM64:    and x19, x19, #0xfffffffffffffff0
+; ARM64:    mov sp, x19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -196,6 +359,32 @@ define void @dyn_alloca_dyn_si3_cnt_i32(i32 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: dyn_alloca_dyn_si3_cnt_i32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w19, w0
+; ARM64:    mov x0, #0xc // =12
+; ARM64:    mul x19, x19, x0
+; ARM64:    sub x19, sp, x19
+; ARM64:    and x19, x19, #0xfffffffffffffff0
+; ARM64:    mov sp, x19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 
@@ -223,6 +412,32 @@ define void @dyn_alloca_dyn_si3_cnt_i16(i16 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: dyn_alloca_dyn_si3_cnt_i16>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w19, w0
+; ARM64:    mov x0, #0xc // =12
+; ARM64:    mul x19, x19, x0
+; ARM64:    sub x19, sp, x19
+; ARM64:    and x19, x19, #0xfffffffffffffff0
+; ARM64:    mov sp, x19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -253,6 +468,32 @@ define i64 @dyn_alloca_dyn_i8_cnt_i64_no_salvage(i64 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: dyn_alloca_dyn_i8_cnt_i64_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x19, x0
+; ARM64:    mov x0, x19
+; ARM64:    sub x0, sp, x0
+; ARM64:    and x0, x0, #0xfffffffffffffff0
+; ARM64:    mov sp, x0
+; ARM64:    mov x0, x19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -281,6 +522,32 @@ define i32 @dyn_alloca_dyn_i32_cnt_i32_no_salvage(i32 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: dyn_alloca_dyn_i32_cnt_i32_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w19, w0
+; ARM64:    mov w0, w19
+; ARM64:    sub x0, sp, x0, lsl #2
+; ARM64:    and x0, x0, #0xfffffffffffffff0
+; ARM64:    mov sp, x0
+; ARM64:    mov w0, w19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -308,6 +575,34 @@ define i64 @dyn_alloca_dyn_si3_cnt_i64_no_salvage(i64 %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: dyn_alloca_dyn_si3_cnt_i64_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x19, x0
+; ARM64:    mov x0, x19
+; ARM64:    mov x1, #0xc // =12
+; ARM64:    mul x0, x0, x1
+; ARM64:    sub x0, sp, x0
+; ARM64:    and x0, x0, #0xfffffffffffffff0
+; ARM64:    mov sp, x0
+; ARM64:    mov x0, x19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -336,6 +631,34 @@ define i32 @dyn_alloca_dyn_si3_cnt_i32_no_salvage(i32 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: dyn_alloca_dyn_si3_cnt_i32_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w19, w0
+; ARM64:    mov w0, w19
+; ARM64:    mov x1, #0xc // =12
+; ARM64:    mul x0, x0, x1
+; ARM64:    sub x0, sp, x0
+; ARM64:    and x0, x0, #0xfffffffffffffff0
+; ARM64:    mov sp, x0
+; ARM64:    mov w0, w19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:
@@ -363,6 +686,34 @@ define i16 @dyn_alloca_dyn_si3_cnt_i16_no_salvage(i16 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: dyn_alloca_dyn_si3_cnt_i16_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [x29, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w19, w0
+; ARM64:    mov w0, w19
+; ARM64:    mov x1, #0xc // =12
+; ARM64:    mul x0, x0, x1
+; ARM64:    sub x0, sp, x0
+; ARM64:    and x0, x0, #0xfffffffffffffff0
+; ARM64:    mov sp, x0
+; ARM64:    mov w0, w19
+; ARM64:    mov sp, x29
+; ARM64:    ldr x19, [x29, #0x10]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     br label %bb1
 bb1:

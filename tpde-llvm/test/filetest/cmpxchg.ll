@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel --section=.text --section=.rodata - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 ; COM: ptr, cmp, new_val
 define void @cmpxchg_mono_mono(ptr %0, i64 %1, i64 %2) {
@@ -23,6 +23,29 @@ define void @cmpxchg_mono_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cmpxchg_mono_mono>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, x1
+; ARM64:    cas x3, x2, [x0]
+; ARM64:    cmp x3, x1
+; ARM64:    mov x0, x3
+; ARM64:    cset w1, eq
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = cmpxchg ptr %0, i64 %1, i64 %2 monotonic monotonic
   ret void
@@ -45,6 +68,29 @@ define void @cmpxchg_acq_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cmpxchg_acq_mono>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, x1
+; ARM64:    casa x3, x2, [x0]
+; ARM64:    cmp x3, x1
+; ARM64:    mov x0, x3
+; ARM64:    cset w1, eq
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = cmpxchg ptr %0, i64 %1, i64 %2 acquire monotonic
   ret void
@@ -66,6 +112,29 @@ define void @cmpxchg_acq_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cmpxchg_acq_acq>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, x1
+; ARM64:    casa x3, x2, [x0]
+; ARM64:    cmp x3, x1
+; ARM64:    mov x0, x3
+; ARM64:    cset w1, eq
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = cmpxchg ptr %0, i64 %1, i64 %2 acquire acquire
   ret void
@@ -88,6 +157,29 @@ define void @cmpxchg_rel_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cmpxchg_rel_mono>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, x1
+; ARM64:    casl x3, x2, [x0]
+; ARM64:    cmp x3, x1
+; ARM64:    mov x0, x3
+; ARM64:    cset w1, eq
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = cmpxchg ptr %0, i64 %1, i64 %2 release monotonic
   ret void
@@ -109,6 +201,29 @@ define void @cmpxchg_rel_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cmpxchg_rel_acq>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, x1
+; ARM64:    casal x3, x2, [x0]
+; ARM64:    cmp x3, x1
+; ARM64:    mov x0, x3
+; ARM64:    cset w1, eq
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = cmpxchg ptr %0, i64 %1, i64 %2 release acquire
   ret void
@@ -131,6 +246,29 @@ define void @cmpxchg_acqrel_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cmpxchg_acqrel_mono>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, x1
+; ARM64:    casal x3, x2, [x0]
+; ARM64:    cmp x3, x1
+; ARM64:    mov x0, x3
+; ARM64:    cset w1, eq
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = cmpxchg ptr %0, i64 %1, i64 %2 acq_rel monotonic
   ret void
@@ -152,6 +290,29 @@ define void @cmpxchg_acqrel_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cmpxchg_acqrel_acq>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, x1
+; ARM64:    casal x3, x2, [x0]
+; ARM64:    cmp x3, x1
+; ARM64:    mov x0, x3
+; ARM64:    cset w1, eq
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = cmpxchg ptr %0, i64 %1, i64 %2 acq_rel acquire
   ret void
@@ -174,6 +335,29 @@ define void @cmpxchg_seqcst_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cmpxchg_seqcst_mono>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, x1
+; ARM64:    casal x3, x2, [x0]
+; ARM64:    cmp x3, x1
+; ARM64:    mov x0, x3
+; ARM64:    cset w1, eq
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = cmpxchg ptr %0, i64 %1, i64 %2 seq_cst monotonic
   ret void
@@ -195,6 +379,29 @@ define void @cmpxchg_seqcst_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cmpxchg_seqcst_acq>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, x1
+; ARM64:    casal x3, x2, [x0]
+; ARM64:    cmp x3, x1
+; ARM64:    mov x0, x3
+; ARM64:    cset w1, eq
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = cmpxchg ptr %0, i64 %1, i64 %2 seq_cst acquire
   ret void
@@ -216,6 +423,29 @@ define void @cmpxchg_seqcst_seqcst(ptr %0, i64 %1, i64 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    <unknown>
+;
+; ARM64-LABEL: cmpxchg_seqcst_seqcst>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, x1
+; ARM64:    casal x3, x2, [x0]
+; ARM64:    cmp x3, x1
+; ARM64:    mov x0, x3
+; ARM64:    cset w1, eq
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = cmpxchg ptr %0, i64 %1, i64 %2 seq_cst seq_cst
   ret void

@@ -3,7 +3,7 @@
 ;
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
-; RUN: tpde_llvm %s -o %t.o && clang -o %t %t.o && %t
+; RUN: tpde_llvm --target=aarch64 %s -o %t.o && clang -o %t %t.o && %t
 
 @alias = dso_local unnamed_addr alias void (), ptr @alias_impl
 

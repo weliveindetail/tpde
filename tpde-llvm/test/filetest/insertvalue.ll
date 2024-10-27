@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel --section=.text --section=.rodata - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 %struct.i8_i32 = type { i8, i32 }
 %struct.ptr_i32 = type { ptr, i32 }
@@ -26,6 +26,30 @@ define void @insert_i8_i32_0(ptr %0, i8 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: insert_i8_i32_0>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldrb w2, [x0]
+; ARM64:    add x4, x0, #0x4
+; ARM64:    ldr w3, [x4]
+; ARM64:    strb w1, [x0]
+; ARM64:    add x2, x0, #0x4
+; ARM64:    str w3, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.i8_i32, ptr %0
   %3 = insertvalue %struct.i8_i32 %2, i8 %1, 0
@@ -49,6 +73,30 @@ define void @insert_i8_i32_1(ptr %0, i32 %1) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: insert_i8_i32_1>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldrb w2, [x0]
+; ARM64:    add x4, x0, #0x4
+; ARM64:    ldr w3, [x4]
+; ARM64:    strb w2, [x0]
+; ARM64:    add x3, x0, #0x4
+; ARM64:    str w1, [x3]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.i8_i32, ptr %0
   %3 = insertvalue %struct.i8_i32 %2, i32 %1, 1
@@ -76,6 +124,34 @@ define void @insert_i8_i32_0_nosalvage(ptr %0, i8 %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: insert_i8_i32_0_nosalvage>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldrb w2, [x0]
+; ARM64:    add x4, x0, #0x4
+; ARM64:    ldr w3, [x4]
+; ARM64:    mov w4, w3
+; ARM64:    strb w2, [x0]
+; ARM64:    add x5, x0, #0x4
+; ARM64:    str w3, [x5]
+; ARM64:    strb w1, [x0]
+; ARM64:    add x2, x0, #0x4
+; ARM64:    str w4, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.i8_i32, ptr %0
   %3 = insertvalue %struct.i8_i32 %2, i8 %1, 0
@@ -101,6 +177,34 @@ define void @insert_i8_i32_1_nosalvage(ptr %0, i32 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: insert_i8_i32_1_nosalvage>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldrb w2, [x0]
+; ARM64:    add x4, x0, #0x4
+; ARM64:    ldr w3, [x4]
+; ARM64:    mov w4, w2
+; ARM64:    strb w2, [x0]
+; ARM64:    add x5, x0, #0x4
+; ARM64:    str w3, [x5]
+; ARM64:    strb w4, [x0]
+; ARM64:    add x2, x0, #0x4
+; ARM64:    str w1, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.i8_i32, ptr %0
   %3 = insertvalue %struct.i8_i32 %2, i32 %1, 1
@@ -125,6 +229,30 @@ define void @insert_ptr_i32_0(ptr %0, ptr %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: insert_ptr_i32_0>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr x2, [x0]
+; ARM64:    add x4, x0, #0x8
+; ARM64:    ldr w3, [x4]
+; ARM64:    str x1, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    str w3, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.ptr_i32, ptr %0
   %3 = insertvalue %struct.ptr_i32 %2, ptr %1, 0
@@ -147,6 +275,30 @@ define void @insert_ptr_i32_1(ptr %0, i32 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: insert_ptr_i32_1>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr x2, [x0]
+; ARM64:    add x4, x0, #0x8
+; ARM64:    ldr w3, [x4]
+; ARM64:    str x2, [x0]
+; ARM64:    add x3, x0, #0x8
+; ARM64:    str w1, [x3]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.ptr_i32, ptr %0
   %3 = insertvalue %struct.ptr_i32 %2, i32 %1, 1
@@ -173,6 +325,34 @@ define void @insert_ptr_i32_0_nosalvage(ptr %0, ptr %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: insert_ptr_i32_0_nosalvage>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr x2, [x0]
+; ARM64:    add x4, x0, #0x8
+; ARM64:    ldr w3, [x4]
+; ARM64:    mov w4, w3
+; ARM64:    str x2, [x0]
+; ARM64:    add x5, x0, #0x8
+; ARM64:    str w3, [x5]
+; ARM64:    str x1, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    str w4, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.ptr_i32, ptr %0
   %3 = insertvalue %struct.ptr_i32 %2, ptr %1, 0
@@ -196,6 +376,28 @@ define void @insert_ptr_i32_poison(ptr %0, ptr %1, i32 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: insert_ptr_i32_poison>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w3, #0x0 // =0
+; ARM64:    str x1, [x0]
+; ARM64:    add x3, x0, #0x8
+; ARM64:    str w2, [x3]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = insertvalue %struct.ptr_i32 poison, ptr %1, 0
   %4 = insertvalue %struct.ptr_i32 %3, i32 %2, 1
@@ -219,6 +421,30 @@ define ptr @insert_ptr_i32_poison_nosalvage(ptr %0, ptr %1, i32 %2) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: insert_ptr_i32_poison_nosalvage>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x3, x1
+; ARM64:    mov w4, #0x0 // =0
+; ARM64:    str x3, [x0]
+; ARM64:    add x4, x0, #0x8
+; ARM64:    str w2, [x4]
+; ARM64:    mov x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = insertvalue %struct.ptr_i32 poison, ptr %1, 0
   %4 = insertvalue %struct.ptr_i32 %3, i32 %2, 1
@@ -243,6 +469,30 @@ define i32 @insert_ptr_i32_poison_nosalvage1(ptr %0, ptr %1, i32 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: insert_ptr_i32_poison_nosalvage1>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w3, #0x0 // =0
+; ARM64:    mov w3, w2
+; ARM64:    str x1, [x0]
+; ARM64:    add x4, x0, #0x8
+; ARM64:    str w3, [x4]
+; ARM64:    mov w0, w2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = insertvalue %struct.ptr_i32 poison, ptr %1, 0
   %4 = insertvalue %struct.ptr_i32 %3, i32 %2, 1
@@ -269,6 +519,34 @@ define void @insert_ptr_i32_1_nosalvage(ptr %0, i32 %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: insert_ptr_i32_1_nosalvage>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr x2, [x0]
+; ARM64:    add x4, x0, #0x8
+; ARM64:    ldr w3, [x4]
+; ARM64:    mov x4, x2
+; ARM64:    str x2, [x0]
+; ARM64:    add x5, x0, #0x8
+; ARM64:    str w3, [x5]
+; ARM64:    str x4, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    str w1, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.ptr_i32, ptr %0
   %3 = insertvalue %struct.ptr_i32 %2, i32 %1, 1
@@ -293,6 +571,30 @@ define void @insert_f32_ptr_0(ptr %0, float %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: insert_f32_ptr_0>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr s1, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    ldr x1, [x2]
+; ARM64:    str s0, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    str x1, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.f32_ptr, ptr %0
   %3 = insertvalue %struct.f32_ptr %2, float %1, 0
@@ -315,6 +617,30 @@ define void @insert_f32_ptr_1(ptr %0, ptr %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: insert_f32_ptr_1>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr s0, [x0]
+; ARM64:    add x3, x0, #0x8
+; ARM64:    ldr x2, [x3]
+; ARM64:    str s0, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    str x1, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.f32_ptr, ptr %0
   %3 = insertvalue %struct.f32_ptr %2, ptr %1, 1
@@ -341,6 +667,34 @@ define void @insert_f32_ptr_0_nosalvage(ptr %0, float %1) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: insert_f32_ptr_0_nosalvage>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr s1, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    ldr x1, [x2]
+; ARM64:    mov x2, x1
+; ARM64:    str s1, [x0]
+; ARM64:    add x3, x0, #0x8
+; ARM64:    str x1, [x3]
+; ARM64:    str s0, [x0]
+; ARM64:    add x1, x0, #0x8
+; ARM64:    str x2, [x1]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.f32_ptr, ptr %0
   %3 = insertvalue %struct.f32_ptr %2, float %1, 0
@@ -367,6 +721,34 @@ define void @insert_f32_ptr_1_nosalvage(ptr %0, ptr %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: insert_f32_ptr_1_nosalvage>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldr s0, [x0]
+; ARM64:    add x3, x0, #0x8
+; ARM64:    ldr x2, [x3]
+; ARM64:    mov v1.16b, v0.16b
+; ARM64:    str s0, [x0]
+; ARM64:    add x3, x0, #0x8
+; ARM64:    str x2, [x3]
+; ARM64:    str s1, [x0]
+; ARM64:    add x2, x0, #0x8
+; ARM64:    str x1, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.f32_ptr, ptr %0
   %3 = insertvalue %struct.f32_ptr %2, ptr %1, 1
@@ -396,6 +778,31 @@ define void @insert_i128_i1_0(ptr %0, i128 %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: insert_i128_i1_0>:
+; ARM64:    sub sp, sp, #0x100
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x1, x4, [x0]
+; ARM64:    mov x5, x1
+; ARM64:    add x6, x0, #0x10
+; ARM64:    ldrb w1, [x6]
+; ARM64:    stp x2, x3, [x0]
+; ARM64:    add x4, x0, #0x10
+; ARM64:    strb w1, [x4]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0x100
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.i128_i1, ptr %0
   %3 = insertvalue %struct.i128_i1 %2, i128 %1, 0
@@ -420,6 +827,31 @@ define void @insert_i128_i1_1(ptr %0, i1 %1) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: insert_i128_i1_1>:
+; ARM64:    sub sp, sp, #0xf0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x2, x3, [x0]
+; ARM64:    mov x4, x2
+; ARM64:    add x5, x0, #0x10
+; ARM64:    ldrb w2, [x5]
+; ARM64:    stp x4, x3, [x0]
+; ARM64:    add x2, x0, #0x10
+; ARM64:    strb w1, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xf0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.i128_i1, ptr %0
   %3 = insertvalue %struct.i128_i1 %2, i1 %1, 1
@@ -452,6 +884,35 @@ define void @insert_i128_i1_0_nosalvage(ptr %0, i128 %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: insert_i128_i1_0_nosalvage>:
+; ARM64:    sub sp, sp, #0x100
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x1, x4, [x0]
+; ARM64:    mov x5, x1
+; ARM64:    add x6, x0, #0x10
+; ARM64:    ldrb w1, [x6]
+; ARM64:    mov w6, w1
+; ARM64:    stp x5, x4, [x0]
+; ARM64:    add x7, x0, #0x10
+; ARM64:    strb w1, [x7]
+; ARM64:    stp x2, x3, [x0]
+; ARM64:    add x1, x0, #0x10
+; ARM64:    strb w6, [x1]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0x100
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.i128_i1, ptr %0
   %3 = insertvalue %struct.i128_i1 %2, i128 %1, 0
@@ -483,6 +944,36 @@ define void @insert_i128_i1_1_nosalvage(ptr %0, i1 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: insert_i128_i1_1_nosalvage>:
+; ARM64:    sub sp, sp, #0xf0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x2, x3, [x0]
+; ARM64:    mov x4, x2
+; ARM64:    add x5, x0, #0x10
+; ARM64:    ldrb w2, [x5]
+; ARM64:    mov x5, x4
+; ARM64:    mov x6, x3
+; ARM64:    stp x4, x3, [x0]
+; ARM64:    add x7, x0, #0x10
+; ARM64:    strb w2, [x7]
+; ARM64:    stp x5, x6, [x0]
+; ARM64:    add x2, x0, #0x10
+; ARM64:    strb w1, [x2]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xf0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = load %struct.i128_i1, ptr %0
   %3 = insertvalue %struct.i128_i1 %2, i1 %1, 1

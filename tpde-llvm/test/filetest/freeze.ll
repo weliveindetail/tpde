@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 define i8 @freeze_i8(i8 %0) {
 ; X64-LABEL: freeze_i8>:
@@ -17,6 +17,24 @@ define i8 @freeze_i8(i8 %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: freeze_i8>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = freeze i8 %0
   ret i8 %1
@@ -36,6 +54,25 @@ define i8 @freeze_i8_no_salvage(i8 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: freeze_i8_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w1, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = freeze i8 %0
   %2 = freeze i8 %0
@@ -57,6 +94,24 @@ define i64 @freeze_i64(i64 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: freeze_i64>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = freeze i64 %0
   ret i64 %1
@@ -75,6 +130,25 @@ define i64 @freeze_i64_no_salvage(i64 %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: freeze_i64_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x1, x0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = freeze i64 %0
   %2 = freeze i64 %0
@@ -93,6 +167,24 @@ define float @freeze_float(float %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: freeze_float>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = freeze float %0
   ret float %1
@@ -111,6 +203,25 @@ define float @freeze_float_no_salvage(float %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: freeze_float_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov v1.16b, v0.16b
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = freeze float %0
   %2 = freeze float %0
@@ -138,6 +249,31 @@ define void @freeze_i128_i1(ptr %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: freeze_i128_i1>:
+; ARM64:    sub sp, sp, #0xf0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x1, x2, [x0]
+; ARM64:    mov x3, x1
+; ARM64:    add x4, x0, #0x10
+; ARM64:    ldrb w1, [x4]
+; ARM64:    stp x3, x2, [x0]
+; ARM64:    add x4, x0, #0x10
+; ARM64:    strb w1, [x4]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xf0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.i128_i1, ptr %0
   %2 = freeze %struct.i128_i1 %1
@@ -168,6 +304,34 @@ define void @freeze_i128_i1_no_salvage(ptr %0) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    <unknown>
+;
+; ARM64-LABEL: freeze_i128_i1_no_salvage>:
+; ARM64:    sub sp, sp, #0x110
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    ldp x1, x2, [x0]
+; ARM64:    mov x3, x1
+; ARM64:    add x4, x0, #0x10
+; ARM64:    ldrb w1, [x4]
+; ARM64:    mov x4, x3
+; ARM64:    mov x5, x2
+; ARM64:    mov w6, w1
+; ARM64:    stp x4, x5, [x0]
+; ARM64:    add x1, x0, #0x10
+; ARM64:    strb w6, [x1]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0x110
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = load %struct.i128_i1, ptr %0
   %2 = freeze %struct.i128_i1 %1

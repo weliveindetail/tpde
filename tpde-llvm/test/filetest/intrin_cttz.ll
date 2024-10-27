@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 declare i8   @llvm.cttz.i8  (i8, i1)
 declare i16   @llvm.cttz.i16  (i16, i1)
@@ -19,10 +19,33 @@ define void @cttz_i8(i8 %0) {
 ; X64:    sub rsp, 0x30
 ; X64:    or edi, 0x100
 ; X64:    bsf eax, edi
+; X64:    movzx eax, al
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:     ...
+; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: cttz_i8>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    orr w0, w0, #0x100
+; ARM64:    rbit w0, w0
+; ARM64:    clz w1, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = call i8 @llvm.cttz.i8(i8 %0, i1 0)
     ret void
@@ -42,6 +65,26 @@ define void @cttz_i8_zero_poison(i8 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cttz_i8_zero_poison>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    rbit w0, w0
+; ARM64:    clz w1, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = call i8 @llvm.cttz.i8(i8 %0, i1 1)
     ret void
@@ -55,10 +98,33 @@ define void @cttz_i16(i16 %0) {
 ; X64:    sub rsp, 0x30
 ; X64:    or edi, 0x10000
 ; X64:    bsf eax, edi
+; X64:    movzx eax, ax
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:     ...
+; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: cttz_i16>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    orr w0, w0, #0x10000
+; ARM64:    rbit w0, w0
+; ARM64:    clz w1, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = call i16 @llvm.cttz.i16(i16 %0, i1 0)
     ret void
@@ -78,6 +144,26 @@ define void @cttz_i16_zero_poison(i16 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cttz_i16_zero_poison>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    rbit w0, w0
+; ARM64:    clz w1, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = call i16 @llvm.cttz.i16(i16 %0, i1 1)
     ret void
@@ -102,6 +188,26 @@ define void @cttz_i32(i32 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cttz_i32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    rbit w0, w0
+; ARM64:    clz w1, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = call i32 @llvm.cttz.i32(i32 %0, i1 0)
     ret void
@@ -121,6 +227,26 @@ define void @cttz_i32_zero_poison(i32 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cttz_i32_zero_poison>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    rbit w0, w0
+; ARM64:    clz w1, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = call i32 @llvm.cttz.i32(i32 %0, i1 1)
     ret void
@@ -144,6 +270,26 @@ define void @cttz_i64(i64 %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cttz_i64>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    rbit x0, x0
+; ARM64:    clz x1, x0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = call i64 @llvm.cttz.i64(i64 %0, i1 0)
     ret void
@@ -162,6 +308,26 @@ define void @cttz_i64_zero_poison(i64 %0) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: cttz_i64_zero_poison>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    rbit x0, x0
+; ARM64:    clz x1, x0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = call i64 @llvm.cttz.i64(i64 %0, i1 1)
     ret void
@@ -193,6 +359,28 @@ define void @cttz_i32_no_salvage(i32 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: cttz_i32_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    rbit w1, w0
+; ARM64:    clz w2, w1
+; ARM64:    rbit w0, w0
+; ARM64:    clz w1, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = call i32 @llvm.cttz.i32(i32 %0, i1 0)
     %2 = call i32 @llvm.cttz.i32(i32 %0, i1 0)
@@ -225,6 +413,28 @@ define void @cttz_i64_no_salvage(i64 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: cttz_i64_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    rbit x1, x0
+; ARM64:    clz x2, x1
+; ARM64:    rbit x0, x0
+; ARM64:    clz x1, x0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %1 = call i64 @llvm.cttz.i64(i64 %0, i1 0)
     %2 = call i64 @llvm.cttz.i64(i64 %0, i1 0)
@@ -240,14 +450,39 @@ define void @cttz_i16_no_salvage(i16 %0) {
 ; X64:    mov eax, edi
 ; X64:    or eax, 0x10000
 ; X64:    bsf ecx, eax
+; X64:    movzx ecx, cx
 ; X64:    or edi, 0x10000
 ; X64:    bsf eax, edi
+; X64:    movzx eax, ax
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    add byte ptr [rax], al
 ; X64:    <unknown>
+;
+; ARM64-LABEL: cttz_i16_no_salvage>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    orr w1, w0, #0x10000
+; ARM64:    rbit w1, w1
+; ARM64:    clz w2, w1
+; ARM64:    orr w0, w0, #0x10000
+; ARM64:    rbit w0, w0
+; ARM64:    clz w1, w0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
 
     %1 = call i16 @llvm.cttz.i16(i16 %0, i1 0)

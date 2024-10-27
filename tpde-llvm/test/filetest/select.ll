@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 define i32 @select_i32_reg(i1 %0, i32 %1, i32 %2) {
 ; X64-LABEL: select_i32_reg>:
@@ -19,6 +19,27 @@ define i32 @select_i32_reg(i1 %0, i32 %1, i32 %2) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: select_i32_reg>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    tst w0, #0x1
+; ARM64:    csel w2, w2, w1, eq
+; ARM64:    mov w0, w2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %3 = select i1 %0, i32 %1, i32 %2
     ret i32 %3
@@ -39,6 +60,27 @@ define i64 @select_i64_reg(i1 %0, i64 %1, i64 %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: select_i64_reg>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    tst w0, #0x1
+; ARM64:    csel x2, x2, x1, eq
+; ARM64:    mov x0, x2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %3 = select i1 %0, i64 %1, i64 %2
     ret i64 %3
@@ -60,6 +102,27 @@ define ptr @select_ptr_reg(i1 %0, ptr %1, ptr %2) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: select_ptr_reg>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    tst w0, #0x1
+; ARM64:    csel x2, x2, x1, eq
+; ARM64:    mov x0, x2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %3 = select i1 %0, ptr %1, ptr %2
     ret ptr %3
@@ -69,22 +132,40 @@ define i128 @select_i128_reg(i1 %0, i128 %1, i128 %2) {
 ; X64-LABEL: select_i128_reg>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x58
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x60
 ; X64:    test dil, 0x1
 ; X64:    mov rax, rsi
 ; X64:    cmove rax, rcx
-; X64:    mov rbx, rdx
-; X64:    cmove rbx, r8
-; X64:    mov rdx, rbx
-; X64:    add rsp, 0x58
-; X64:    pop rbx
+; X64:    cmove rdx, r8
+; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: select_i128_reg>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    tst w0, #0x1
+; ARM64:    csel x0, x4, x2, eq
+; ARM64:    csel x5, x5, x3, eq
+; ARM64:    mov x1, x5
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %3 = select i1 %0, i128 %1, i128 %2
     ret i128 %3
@@ -105,6 +186,27 @@ define float @select_f32_reg(i1 %0, float %1, float %2) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: select_f32_reg>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    tst w0, #0x1
+; ARM64:    fcsel s1, s1, s0, eq
+; ARM64:    mov v0.16b, v1.16b
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %3 = select i1 %0, float %1, float %2
     ret float %3
@@ -125,6 +227,27 @@ define double @select_f64_reg(i1 %0, double %1, double %2) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: select_f64_reg>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    tst w0, #0x1
+; ARM64:    fcsel d1, d1, d0, eq
+; ARM64:    mov v0.16b, v1.16b
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
   entry:
     %3 = select i1 %0, double %1, double %2
     ret double %3
@@ -137,22 +260,40 @@ define %struct.i8_i64 @select_i8_i64_0(i1 %0, %struct.i8_i64 %1, %struct.i8_i64 
 ; X64-LABEL: select_i8_i64_0>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x58
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x60
 ; X64:    test dil, 0x1
 ; X64:    mov rax, rsi
 ; X64:    cmove rax, rcx
-; X64:    mov rbx, rdx
-; X64:    cmove rbx, r8
-; X64:    mov rdx, rbx
-; X64:    add rsp, 0x58
-; X64:    pop rbx
+; X64:    cmove rdx, r8
+; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: select_i8_i64_0>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    tst w0, #0x1
+; ARM64:    csel x0, x3, x1, eq
+; ARM64:    csel x4, x4, x2, eq
+; ARM64:    mov x1, x4
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = select i1 %0, %struct.i8_i64 %1, %struct.i8_i64 %2
   ret %struct.i8_i64 %3
@@ -162,21 +303,39 @@ define %struct.i8_i64 @select_i8_i64_1(i1 %0, %struct.i8_i64 %1, %struct.i8_i64 
 ; X64-LABEL: select_i8_i64_1>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x58
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x60
 ; X64:    test dil, 0x1
 ; X64:    mov rax, rcx
 ; X64:    cmove rax, rsi
-; X64:    mov rbx, r8
-; X64:    cmove rbx, rdx
-; X64:    mov rdx, rbx
-; X64:    add rsp, 0x58
-; X64:    pop rbx
+; X64:    cmove r8, rdx
+; X64:    mov rdx, r8
+; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    <unknown>
+;
+; ARM64-LABEL: select_i8_i64_1>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    tst w0, #0x1
+; ARM64:    csel x0, x1, x3, eq
+; ARM64:    csel x2, x2, x4, eq
+; ARM64:    mov x1, x2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %3 = select i1 %0, %struct.i8_i64 %2, %struct.i8_i64 %1
   ret %struct.i8_i64 %3

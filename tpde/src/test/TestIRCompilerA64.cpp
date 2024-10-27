@@ -127,7 +127,7 @@ bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
         auto spilled   = this->spill_before_branch();
 
         this->generate_branch_to_block(
-            Jump::Jmp, static_cast<IRBlockRef>(block_idx), false, true);
+            Jump::jmp, static_cast<IRBlockRef>(block_idx), false, true);
 
         this->release_spilled_regs(spilled);
         return true;
@@ -154,19 +154,19 @@ bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
         if (this->analyzer.block_ref(this->next_block()) == true_block) {
             this->generate_branch_to_block(
                 Jump::Jeq, false_block, false_needs_split, false);
-            this->generate_branch_to_block(Jump::Jmp, true_block, false, true);
+            this->generate_branch_to_block(Jump::jmp, true_block, false, true);
         } else if (this->analyzer.block_ref(this->next_block())
                    == false_block) {
             this->generate_branch_to_block(
                 Jump::Jne, true_block, true_needs_split, false);
-            this->generate_branch_to_block(Jump::Jmp, false_block, false, true);
+            this->generate_branch_to_block(Jump::jmp, false_block, false, true);
         } else if (!true_needs_split) {
             this->generate_branch_to_block(Jump::Jne, true_block, false, false);
-            this->generate_branch_to_block(Jump::Jmp, false_block, false, true);
+            this->generate_branch_to_block(Jump::jmp, false_block, false, true);
         } else {
             this->generate_branch_to_block(
                 Jump::Jeq, false_block, false_needs_split, false);
-            this->generate_branch_to_block(Jump::Jmp, true_block, false, true);
+            this->generate_branch_to_block(Jump::jmp, true_block, false, true);
         }
 
         this->release_spilled_regs(spilled);

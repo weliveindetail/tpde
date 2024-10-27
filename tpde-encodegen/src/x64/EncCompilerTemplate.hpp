@@ -219,7 +219,7 @@ struct EncodeCompiler {
         [[nodiscard]] std::optional<FeMem> encodeable_with(FeMem other) const noexcept;
         AsmReg             as_reg(EncodeCompiler *compiler) noexcept;
         bool               try_salvage(ScratchReg &, u8 bank) noexcept;
-        bool          try_salvage_if_nonalloc(ScratchReg &, u8 bank) noexcept;
+        AsmReg as_reg_try_salvage(EncodeCompiler *, ScratchReg &, u8 bank) noexcept;
         void          try_salvage_or_materialize(EncodeCompiler *compiler,
                                                  ScratchReg     &dst_scratch,
                                                  u8              bank,
@@ -563,12 +563,15 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy,
           typename Config>
-bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
-    try_salvage_if_nonalloc(ScratchReg &dst_scratch, const u8 bank) noexcept {
-    if (!dst_scratch.cur_reg.invalid()) {
-        return false;
+typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
+    EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
+    as_reg_try_salvage(EncodeCompiler *compiler,
+                       ScratchReg &dst_scratch,
+                       u8 bank) noexcept {
+    if (try_salvage(dst_scratch, bank)) {
+        return dst_scratch.cur_reg;
     }
-    return try_salvage(dst_scratch, bank);
+    return as_reg(compiler);
 }
 
 template <typename Adaptor,

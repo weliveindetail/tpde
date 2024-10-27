@@ -4,6 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --symbolize-operands --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 define i32 @empty_switch(i32 %0) {
 ; X64-LABEL: empty_switch>:
@@ -22,6 +23,27 @@ define i32 @empty_switch(i32 %0) {
 ; X64:     ...
 ; X64:    3d: 00 00 add byte ptr [rax], al
 ; X64:    3f: 00 55 48 add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: empty_switch>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    b 0x34 <empty_switch+0x34>
+; ARM64:    b 0x38 <empty_switch+0x38>
+; ARM64:    mov x0, #0xffffffff // =4294967295
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   switch i32 %0, label %default []
 default:
@@ -70,6 +92,51 @@ define i32 @basic_switch(i32 %0) {
 ; X64:    d6: 5d pop rbp
 ; X64:    d7: c3 ret
 ; X64:     ...
+;
+; ARM64-LABEL: basic_switch>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    cmp w0, #0x0
+; ARM64:    b.eq 0xc0 <basic_switch+0x50>
+; ARM64:    cmp w0, #0x1
+; ARM64:    b.eq 0xc4 <basic_switch+0x54>
+; ARM64:    cmp w0, #0x2
+; ARM64:    b.eq 0xc8 <basic_switch+0x58>
+; ARM64:    b 0xbc <basic_switch+0x4c>
+; ARM64:    b 0x168 <basic_switch+0xf8>
+; ARM64:    b 0xcc <basic_switch+0x5c>
+; ARM64:    b 0x100 <basic_switch+0x90>
+; ARM64:    b 0x134 <basic_switch+0xc4>
+; ARM64:    mov w0, #0x0 // =0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x1 // =1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x2 // =2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0xffffffff // =4294967295
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   switch i32 %0, label %default [ i32 0, label %eq0
                                   i32 1, label %eq1
@@ -220,6 +287,77 @@ define i32 @switch_table(i32 %0) {
 ; X64:    1ee: 48 83 c4 30 add rsp, 0x30
 ; X64:    1f2: 5d pop rbp
 ; X64:    1f3: c3 ret
+;
+; ARM64-LABEL: switch_table>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    cmp w0, #0x4
+; ARM64:    b.eq 0x21c <switch_table+0x7c>
+; ARM64:    b.hi 0x1f8 <switch_table+0x58>
+; ARM64:    cmp w0, #0x0
+; ARM64:    b.eq 0x210 <switch_table+0x70>
+; ARM64:    cmp w0, #0x1
+; ARM64:    b.eq 0x214 <switch_table+0x74>
+; ARM64:    cmp w0, #0x2
+; ARM64:    b.eq 0x218 <switch_table+0x78>
+; ARM64:    b 0x20c <switch_table+0x6c>
+; ARM64:    cmp w0, #0x5
+; ARM64:    b.eq 0x220 <switch_table+0x80>
+; ARM64:    cmp w0, #0x6
+; ARM64:    b.eq 0x224 <switch_table+0x84>
+; ARM64:    b 0x20c <switch_table+0x6c>
+; ARM64:    b 0x360 <switch_table+0x1c0>
+; ARM64:    b 0x228 <switch_table+0x88>
+; ARM64:    b 0x25c <switch_table+0xbc>
+; ARM64:    b 0x290 <switch_table+0xf0>
+; ARM64:    b 0x2c4 <switch_table+0x124>
+; ARM64:    b 0x2f8 <switch_table+0x158>
+; ARM64:    b 0x32c <switch_table+0x18c>
+; ARM64:    mov w0, #0x0 // =0
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x1 // =1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x2 // =2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x4 // =4
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x5 // =5
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x6 // =6
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0xffffffff // =4294967295
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   switch i32 %0, label %default [
     i32 0, label %eq0
@@ -316,6 +454,77 @@ define i32 @switch_table2(i32 %0) {
 ; X64:    30f: c3 ret
 ; X64:    31c: 00 00 add byte ptr [rax], al
 ; X64:    31e: 00 00 add byte ptr [rax], al
+;
+; ARM64-LABEL: switch_table2>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    cmp w0, #0x7
+; ARM64:    b.eq 0x41c <switch_table2+0x7c>
+; ARM64:    b.hi 0x3f8 <switch_table2+0x58>
+; ARM64:    cmp w0, #0x3
+; ARM64:    b.eq 0x410 <switch_table2+0x70>
+; ARM64:    cmp w0, #0x4
+; ARM64:    b.eq 0x414 <switch_table2+0x74>
+; ARM64:    cmp w0, #0x5
+; ARM64:    b.eq 0x418 <switch_table2+0x78>
+; ARM64:    b 0x40c <switch_table2+0x6c>
+; ARM64:    cmp w0, #0x8
+; ARM64:    b.eq 0x420 <switch_table2+0x80>
+; ARM64:    cmp w0, #0x9
+; ARM64:    b.eq 0x424 <switch_table2+0x84>
+; ARM64:    b 0x40c <switch_table2+0x6c>
+; ARM64:    b 0x560 <switch_table2+0x1c0>
+; ARM64:    b 0x428 <switch_table2+0x88>
+; ARM64:    b 0x45c <switch_table2+0xbc>
+; ARM64:    b 0x490 <switch_table2+0xf0>
+; ARM64:    b 0x4c4 <switch_table2+0x124>
+; ARM64:    b 0x4f8 <switch_table2+0x158>
+; ARM64:    b 0x52c <switch_table2+0x18c>
+; ARM64:    mov x0, #0x3 // =3
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x4 // =4
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x5 // =5
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x7 // =7
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x8 // =8
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x9 // =9
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0xffffffff // =4294967295
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   switch i32 %0, label %default [
     i32 3, label %eq3
@@ -406,6 +615,69 @@ define i32 @switch_binsearch(i32 %0) {
 ; X64:     ...
 ; X64:    3ffd: 00 00 add byte ptr [rax], al
 ; X64:    3fff: 00 <unknown>
+;
+; ARM64-LABEL: switch_binsearch>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    cmp w0, #0x3
+; ARM64:    b.eq 0x610 <switch_binsearch+0x70>
+; ARM64:    b.hi 0x5f0 <switch_binsearch+0x50>
+; ARM64:    cmp w0, #0x1
+; ARM64:    b.eq 0x608 <switch_binsearch+0x68>
+; ARM64:    cmp w0, #0x2
+; ARM64:    b.eq 0x60c <switch_binsearch+0x6c>
+; ARM64:    b 0x604 <switch_binsearch+0x64>
+; ARM64:    cmp w0, #0x64
+; ARM64:    b.eq 0x614 <switch_binsearch+0x74>
+; ARM64:    cmp w0, #0x65
+; ARM64:    b.eq 0x618 <switch_binsearch+0x78>
+; ARM64:    b 0x604 <switch_binsearch+0x64>
+; ARM64:    b 0x720 <switch_binsearch+0x180>
+; ARM64:    b 0x61c <switch_binsearch+0x7c>
+; ARM64:    b 0x650 <switch_binsearch+0xb0>
+; ARM64:    b 0x684 <switch_binsearch+0xe4>
+; ARM64:    b 0x6b8 <switch_binsearch+0x118>
+; ARM64:    b 0x6ec <switch_binsearch+0x14c>
+; ARM64:    mov x0, #0x1 // =1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x2 // =2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x3 // =3
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x64 // =100
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0x65 // =101
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0xffffffff // =4294967295
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   switch i32 %0, label %default [
     i32 1, label %eq1

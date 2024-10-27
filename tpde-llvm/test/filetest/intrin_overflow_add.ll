@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 declare {i8, i1} @llvm.sadd.with.overflow.i8(i8, i8)
 declare {i16, i1} @llvm.sadd.with.overflow.i16(i16, i16)
@@ -31,6 +31,29 @@ define i8 @uadd_i8_0(i8 %0, i8 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+;
+; ARM64-LABEL: uadd_i8_0>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    and w0, w0, #0xff
+; ARM64:    add w0, w0, w1, uxtb
+; ARM64:    lsr w1, w0, #8
+; ARM64:    and x2, x0, #0xff
+; ARM64:    mov w0, w2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i8, i1} @llvm.uadd.with.overflow.i8(i8 %0, i8 %1)
   %3 = extractvalue {i8, i1} %2, 0
@@ -50,6 +73,29 @@ define i1 @uadd_i8_1(i8 %0, i8 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: uadd_i8_1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    and w0, w0, #0xff
+; ARM64:    add w0, w0, w1, uxtb
+; ARM64:    lsr w1, w0, #8
+; ARM64:    and x2, x0, #0xff
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i8, i1} @llvm.uadd.with.overflow.i8(i8 %0, i8 %1)
   %3 = extractvalue {i8, i1} %2, 1
@@ -69,6 +115,29 @@ define i16 @uadd_i16_0(i16 %0, i16 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+;
+; ARM64-LABEL: uadd_i16_0>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    and w0, w0, #0xffff
+; ARM64:    add w0, w0, w1, uxth
+; ARM64:    lsr w1, w0, #16
+; ARM64:    and x2, x0, #0xffff
+; ARM64:    mov w0, w2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i16, i1} @llvm.uadd.with.overflow.i16(i16 %0, i16 %1)
   %3 = extractvalue {i16, i1} %2, 0
@@ -88,6 +157,29 @@ define i1 @uadd_i16_1(i16 %0, i16 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: uadd_i16_1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    and w0, w0, #0xffff
+; ARM64:    add w0, w0, w1, uxth
+; ARM64:    lsr w1, w0, #16
+; ARM64:    and x2, x0, #0xffff
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i16, i1} @llvm.uadd.with.overflow.i16(i16 %0, i16 %1)
   %3 = extractvalue {i16, i1} %2, 1
@@ -108,6 +200,26 @@ define i32 @uadd_i32_0(i32 %0, i32 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: uadd_i32_0>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds w0, w0, w1
+; ARM64:    cset w1, hs
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i32, i1} @llvm.uadd.with.overflow.i32(i32 %0, i32 %1)
   %3 = extractvalue {i32, i1} %2, 0
@@ -128,6 +240,27 @@ define i1 @uadd_i32_1(i32 %0, i32 %1) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: uadd_i32_1>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds w0, w0, w1
+; ARM64:    cset w1, hs
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i32, i1} @llvm.uadd.with.overflow.i32(i32 %0, i32 %1)
   %3 = extractvalue {i32, i1} %2, 1
@@ -150,6 +283,26 @@ define i64 @uadd_i64_0(i64 %0, i64 %1) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: uadd_i64_0>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds x0, x0, x1
+; ARM64:    cset w1, hs
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i64, i1} @llvm.uadd.with.overflow.i64(i64 %0, i64 %1)
   %3 = extractvalue {i64, i1} %2, 0
@@ -169,6 +322,27 @@ define i1 @uadd_i64_1(i64 %0, i64 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: uadd_i64_1>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds x0, x0, x1
+; ARM64:    cset w1, hs
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i64, i1} @llvm.uadd.with.overflow.i64(i64 %0, i64 %1)
   %3 = extractvalue {i64, i1} %2, 1
@@ -179,22 +353,41 @@ define i128 @uadd_i128_0(i128 %0, i128 %1) {
 ; X64-LABEL: uadd_i128_0>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x68
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x70
 ; X64:    mov rax, rdi
 ; X64:    add rax, rdx
-; X64:    mov rbx, rsi
-; X64:    adc rbx, rcx
-; X64:    setb r8b
-; X64:    movzx r8d, r8b
-; X64:    mov rdx, rbx
-; X64:    add rsp, 0x68
-; X64:    pop rbx
+; X64:    adc rsi, rcx
+; X64:    setb cl
+; X64:    movzx ecx, cl
+; X64:    mov rdx, rsi
+; X64:    add rsp, 0x70
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:     ...
+;
+; ARM64-LABEL: uadd_i128_0>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds x4, x0, x2
+; ARM64:    adcs x5, x1, x3
+; ARM64:    cset w6, hs
+; ARM64:    mov x0, x4
+; ARM64:    mov x1, x5
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i128, i1} @llvm.uadd.with.overflow.i128(i128 %0, i128 %1)
   %3 = extractvalue {i128, i1} %2, 0
@@ -205,22 +398,41 @@ define i1 @uadd_i128_1(i128 %0, i128 %1) {
 ; X64-LABEL: uadd_i128_1>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x78
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x80
 ; X64:    mov rax, rdi
 ; X64:    add rax, rdx
-; X64:    mov rbx, rsi
-; X64:    adc rbx, rcx
-; X64:    setb r8b
-; X64:    movzx r8d, r8b
-; X64:    mov eax, r8d
-; X64:    add rsp, 0x78
-; X64:    pop rbx
+; X64:    adc rsi, rcx
+; X64:    setb cl
+; X64:    movzx ecx, cl
+; X64:    mov eax, ecx
+; X64:    add rsp, 0x80
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: uadd_i128_1>:
+; ARM64:    sub sp, sp, #0xf0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds x4, x0, x2
+; ARM64:    adcs x5, x1, x3
+; ARM64:    cset w6, hs
+; ARM64:    mov w0, w6
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xf0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i128, i1} @llvm.uadd.with.overflow.i128(i128 %0, i128 %1)
   %3 = extractvalue {i128, i1} %2, 1
@@ -242,6 +454,30 @@ define i8 @sadd_i8_0(i8 %0, i8 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+;
+; ARM64-LABEL: sadd_i8_0>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxtb w0, w0
+; ARM64:    add w0, w0, w1, sxtb
+; ARM64:    cmp w0, w0, sxtb
+; ARM64:    and x1, x0, #0xff
+; ARM64:    cset w2, ne
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i8, i1} @llvm.sadd.with.overflow.i8(i8 %0, i8 %1)
   %3 = extractvalue {i8, i1} %2, 0
@@ -261,6 +497,30 @@ define i1 @sadd_i8_1(i8 %0, i8 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: sadd_i8_1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxtb w0, w0
+; ARM64:    add w0, w0, w1, sxtb
+; ARM64:    cmp w0, w0, sxtb
+; ARM64:    and x1, x0, #0xff
+; ARM64:    cset w2, ne
+; ARM64:    mov w0, w2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i8, i1} @llvm.sadd.with.overflow.i8(i8 %0, i8 %1)
   %3 = extractvalue {i8, i1} %2, 1
@@ -280,6 +540,30 @@ define i16 @sadd_i16_0(i16 %0, i16 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+;
+; ARM64-LABEL: sadd_i16_0>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxth w0, w0
+; ARM64:    add w0, w0, w1, sxth
+; ARM64:    cmp w0, w0, sxth
+; ARM64:    and x1, x0, #0xffff
+; ARM64:    cset w2, ne
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i16, i1} @llvm.sadd.with.overflow.i16(i16 %0, i16 %1)
   %3 = extractvalue {i16, i1} %2, 0
@@ -299,6 +583,30 @@ define i1 @sadd_i16_1(i16 %0, i16 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: sadd_i16_1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sxth w0, w0
+; ARM64:    add w0, w0, w1, sxth
+; ARM64:    cmp w0, w0, sxth
+; ARM64:    and x1, x0, #0xffff
+; ARM64:    cset w2, ne
+; ARM64:    mov w0, w2
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i16, i1} @llvm.sadd.with.overflow.i16(i16 %0, i16 %1)
   %3 = extractvalue {i16, i1} %2, 1
@@ -319,6 +627,26 @@ define i32 @sadd_i32_0(i32 %0, i32 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: sadd_i32_0>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds w0, w0, w1
+; ARM64:    cset w1, vs
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %0, i32 %1)
   %3 = extractvalue {i32, i1} %2, 0
@@ -339,6 +667,27 @@ define i1 @sadd_i32_1(i32 %0, i32 %1) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: sadd_i32_1>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds w0, w0, w1
+; ARM64:    cset w1, vs
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %0, i32 %1)
   %3 = extractvalue {i32, i1} %2, 1
@@ -361,6 +710,26 @@ define i64 @sadd_i64_0(i64 %0, i64 %1) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: sadd_i64_0>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds x0, x0, x1
+; ARM64:    cset w1, vs
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %0, i64 %1)
   %3 = extractvalue {i64, i1} %2, 0
@@ -380,6 +749,27 @@ define i1 @sadd_i64_1(i64 %0, i64 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: sadd_i64_1>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds x0, x0, x1
+; ARM64:    cset w1, vs
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %0, i64 %1)
   %3 = extractvalue {i64, i1} %2, 1
@@ -390,22 +780,41 @@ define i128 @sadd_i128_0(i128 %0, i128 %1) {
 ; X64-LABEL: sadd_i128_0>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x68
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x70
 ; X64:    mov rax, rdi
 ; X64:    add rax, rdx
-; X64:    mov rbx, rsi
-; X64:    adc rbx, rcx
-; X64:    seto r8b
-; X64:    movzx r8d, r8b
-; X64:    mov rdx, rbx
-; X64:    add rsp, 0x68
-; X64:    pop rbx
+; X64:    adc rsi, rcx
+; X64:    seto cl
+; X64:    movzx ecx, cl
+; X64:    mov rdx, rsi
+; X64:    add rsp, 0x70
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:     ...
+;
+; ARM64-LABEL: sadd_i128_0>:
+; ARM64:    sub sp, sp, #0xe0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds x4, x0, x2
+; ARM64:    adcs x5, x1, x3
+; ARM64:    cset w6, vs
+; ARM64:    mov x0, x4
+; ARM64:    mov x1, x5
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xe0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i128, i1} @llvm.sadd.with.overflow.i128(i128 %0, i128 %1)
   %3 = extractvalue {i128, i1} %2, 0
@@ -416,23 +825,41 @@ define i1 @sadd_i128_1(i128 %0, i128 %1) {
 ; X64-LABEL: sadd_i128_1>:
 ; X64:    push rbp
 ; X64:    mov rbp, rsp
-; X64:    push rbx
-; X64:    nop dword ptr [rax + rax]
-; X64:    sub rsp, 0x78
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x80
 ; X64:    mov rax, rdi
 ; X64:    add rax, rdx
-; X64:    mov rbx, rsi
-; X64:    adc rbx, rcx
-; X64:    seto r8b
-; X64:    movzx r8d, r8b
-; X64:    mov eax, r8d
-; X64:    add rsp, 0x78
-; X64:    pop rbx
+; X64:    adc rsi, rcx
+; X64:    seto cl
+; X64:    movzx ecx, cl
+; X64:    mov eax, ecx
+; X64:    add rsp, 0x80
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    add byte ptr [rax], al
 ; X64:    <unknown>
+;
+; ARM64-LABEL: sadd_i128_1>:
+; ARM64:    sub sp, sp, #0xf0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    adds x4, x0, x2
+; ARM64:    adcs x5, x1, x3
+; ARM64:    cset w6, vs
+; ARM64:    mov w0, w6
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xf0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call {i128, i1} @llvm.sadd.with.overflow.i128(i128 %0, i128 %1)
   %3 = extractvalue {i128, i1} %2, 1

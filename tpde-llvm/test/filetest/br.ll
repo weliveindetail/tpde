@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel --section=.text --section=.rodata - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 define i64 @br_simple1(i64 %0) {
 ; X64-LABEL: br_simple1>:
@@ -21,6 +21,27 @@ define i64 @br_simple1(i64 %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: br_simple1>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [sp, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x19, x0
+; ARM64:    mov x0, x19
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    ldr x19, [sp, #0x10]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   br label %block1
 block1:
@@ -52,6 +73,36 @@ define i64 @condbr0(i64 %0, i1 %1) {
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: condbr0>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [sp, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x19, x0
+; ARM64:    tst w1, #0x1
+; ARM64:    b.eq 0xe0 <condbr0+0x70>
+; ARM64:    mov x0, x19
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    ldr x19, [sp, #0x10]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, #0xa // =10
+; ARM64:    add x0, x0, x19
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    ldr x19, [sp, #0x10]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   br i1 %1, label %block1, label %block2
 block1:
@@ -84,6 +135,36 @@ define i64 @condbr1(i64 %0, i1 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: condbr1>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    str x19, [sp, #0x10]
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x19, x0
+; ARM64:    tst w1, #0x1
+; ARM64:    b.ne 0x194 <condbr1+0x74>
+; ARM64:    mov x0, #0xa // =10
+; ARM64:    add x0, x0, x19
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    ldr x19, [sp, #0x10]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
+; ARM64:    mov x0, x19
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    ldr x19, [sp, #0x10]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   br i1 %1, label %block1, label %block2
 block2:

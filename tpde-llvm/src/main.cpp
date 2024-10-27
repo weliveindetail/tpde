@@ -9,6 +9,7 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
 
+#include "arm64/LLVMCompilerArm64.hpp"
 #include "x64/LLVMCompilerX64.hpp"
 
 #include <format>
@@ -43,12 +44,11 @@ int main(int argc, char *argv[]) {
     args::Flag input_is_bitcode(
         parser, "bitcode", "Is the input LLVM-Bitcode?", {"bitcode"});
 
-    args::ValueFlag<std::string> target(
-        parser,
-        "target",
-        "Target architecture",
-        {"target"},
-        args::Options::None);
+    args::ValueFlag<std::string> target(parser,
+                                        "target",
+                                        "Target architecture",
+                                        {"target"},
+                                        args::Options::None);
 
     args::ValueFlag<std::string> obj_out_path(
         parser,
@@ -151,12 +151,21 @@ int main(int argc, char *argv[]) {
 
     using CompileFn = bool(llvm::Module &, std::vector<uint8_t> &, bool);
     CompileFn *compile_fn;
-    if (target && target.Get() == "x86_64") {
-        compile_fn = tpde_llvm::x64::compile_llvm;
-    } else {
+    if (!target) {
         // TODO: extract architecture from module
-        std::cerr << "Unspecified or unknown architecture, assuming x86_64\n";
+        std::cerr << "Unspecified architecture, assuming x86_64\n";
         compile_fn = tpde_llvm::x64::compile_llvm;
+#if defined(TPDE_LLVM_X64)
+    } else if (target.Get() == "x86_64") {
+        compile_fn = tpde_llvm::x64::compile_llvm;
+#endif
+#if defined(TPDE_LLVM_ARM64)
+    } else if (target.Get() == "aarch64") {
+        compile_fn = tpde_llvm::arm64::compile_llvm;
+#endif
+    } else {
+        std::cerr << "Unknown architecture, assuming x86_64\n";
+        return 1;
     }
 
     std::vector<uint8_t> buf;

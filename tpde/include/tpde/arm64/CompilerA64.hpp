@@ -55,17 +55,19 @@
         compiler->assembler.text_write_ptr                           += 4;     \
     } while (false)
 
-// check if the instruction could be successfully encoded
-#define ASMIF(op, ...)                                                         \
+// check if the instruction could be successfully encoded with custom compiler
+#define ASMIFC(compiler, op, ...)                                              \
     (([&]() -> bool {                                                          \
-        this->assembler.text_ensure_space(4);                                  \
+        compiler->assembler.text_ensure_space(4);                              \
         u32 inst = de64_##op(__VA_ARGS__);                                     \
         if (inst == 0)                                                         \
             return false;                                                      \
-        *reinterpret_cast<u32 *>(this->assembler.text_write_ptr)  = inst;      \
-        this->assembler.text_write_ptr                           += 4;         \
+        *reinterpret_cast<u32 *>(compiler->assembler.text_write_ptr)  = inst;  \
+        compiler->assembler.text_write_ptr                           += 4;     \
         return true;                                                           \
     })())
+// check if the instruction could be successfully encoded
+#define ASMIF(...) ASMIFC(this, __VA_ARGS__)
 
 namespace tpde::a64 {
 
@@ -516,7 +518,9 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
             Jeq,
             Jne,
             Jcs,
+            Jhs = Jcs,
             Jcc,
+            Jlo = Jcc,
             Jmi,
             Jpl,
             Jvs,
@@ -527,7 +531,8 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
             Jlt,
             Jgt,
             Jle,
-            Jmp,
+            // TDOO: consistency
+            jmp,
             Cbz,
             Cbnz,
             Tbz,
@@ -539,7 +544,7 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
         bool   cmp_is_32;
         u8     test_bit;
 
-        constexpr Jump() : kind(Kind::Jmp) {}
+        constexpr Jump() : kind(Kind::jmp) {}
 
         constexpr Jump(Kind kind) : kind(kind), cmp_is_32(false), test_bit(0) {
             assert(kind != Cbz && kind != Cbnz && kind != Tbz && kind != Tbnz);
@@ -1276,9 +1281,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
 
         if (last_reg.valid()) {
             if (this->register_file.reg_bank(last_reg) == 0) {
-                *write_ptr = de64_STRxu(last_reg, stack_reg, frame_off);
+                *write_ptr++ = de64_STRxu(last_reg, stack_reg, frame_off);
             } else {
-                *write_ptr = de64_STRdu(last_reg, stack_reg, frame_off);
+                *write_ptr++ = de64_STRdu(last_reg, stack_reg, frame_off);
             }
             ++inst_written;
         }
@@ -1374,9 +1379,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
 
         if (last_reg.valid()) {
             if (this->register_file.reg_bank(last_reg) == 0) {
-                *write_ptr = de64_LDRxu(last_reg, stack_reg, frame_off);
+                *write_ptr++ = de64_LDRxu(last_reg, stack_reg, frame_off);
             } else {
-                *write_ptr = de64_LDRdu(last_reg, stack_reg, frame_off);
+                *write_ptr++ = de64_LDRdu(last_reg, stack_reg, frame_off);
             }
         }
 
@@ -1855,7 +1860,7 @@ typename CompilerA64<Adaptor, Derived, BaseTy, Config>::Jump
     case Jump::Jlt: return jmp.change_kind(Jump::Jge);
     case Jump::Jgt: return jmp.change_kind(Jump::Jle);
     case Jump::Jle: return jmp.change_kind(Jump::Jgt);
-    case Jump::Jmp: return jmp;
+    case Jump::jmp: return jmp;
     case Jump::Cbz: return jmp.change_kind(Jump::Cbnz);
     case Jump::Cbnz: return jmp.change_kind(Jump::Cbz);
     case Jump::Tbz: return jmp.change_kind(Jump::Tbnz);
@@ -1887,7 +1892,7 @@ typename CompilerA64<Adaptor, Derived, BaseTy, Config>::Jump
     case Jump::Jlt: return jmp.change_kind(Jump::Jgt);
     case Jump::Jgt: return jmp.change_kind(Jump::Jlt);
     case Jump::Jle: return jmp.change_kind(Jump::Jge);
-    case Jump::Jmp: return jmp;
+    case Jump::jmp: return jmp;
     case Jump::Cbz: return jmp.change_kind(Jump::Cbz);
     case Jump::Cbnz: return jmp.change_kind(Jump::Cbnz);
     case Jump::Tbz: return jmp.change_kind(Jump::Tbz);
@@ -1907,7 +1912,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_branch_to_block(
     const bool needs_split,
     const bool last_inst) noexcept {
     const auto target_idx = this->analyzer.block_idx(target);
-    if (!needs_split || jmp.kind == Jump::Jmp) {
+    if (!needs_split || jmp.kind == Jump::jmp) {
         this->derived()->move_to_phi_nodes(target_idx);
 
         if (!last_inst
@@ -1920,7 +1925,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_branch_to_block(
 
         this->derived()->move_to_phi_nodes(target_idx);
 
-        generate_raw_jump(Jump::Jmp, this->block_labels[(u32)target_idx]);
+        generate_raw_jump(Jump::jmp, this->block_labels[(u32)target_idx]);
 
         this->assembler.label_place(tmp_label);
     }
@@ -1935,7 +1940,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
     Jump jmp, Assembler::Label target_label) noexcept {
     const auto is_pending = this->assembler.label_is_pending(target_label);
     this->assembler.text_ensure_space(4);
-    if (jmp.kind == Jump::Jmp) {
+    if (jmp.kind == Jump::jmp) {
         if (is_pending) {
             ASMNC(B, 0);
             this->assembler.add_unresolved_entry(
@@ -2167,7 +2172,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_set(
     case Jump::Jlt: ASMNC(CSETw, dst, DA_LT); break;
     case Jump::Jgt: ASMNC(CSETw, dst, DA_GT); break;
     case Jump::Jle: ASMNC(CSETw, dst, DA_LE); break;
-    case Jump::Jmp: ASMNC(CSETw, dst, DA_AL); break;
+    case Jump::jmp: ASMNC(CSETw, dst, DA_AL); break;
     default: assert(0); __builtin_unreachable();
     }
 }
