@@ -1215,34 +1215,10 @@ bool LLVMCompilerX64::handle_intrin(IRValueRef         inst_idx,
     }
 }
 
-extern bool compile_llvm(llvm::LLVMContext    &ctx,
-                         llvm::Module         &mod,
-                         const char           *out_path,
-                         [[maybe_unused]] bool print_liveness) {
-    auto adaptor  = std::make_unique<LLVMAdaptor>(ctx, mod);
-    auto compiler = std::make_unique<LLVMCompilerX64>(std::move(adaptor));
-#ifdef TPDE_TESTING
-    compiler->analyzer.test_print_liveness = print_liveness;
-#endif
-
-
-    if (!compiler->compile()) {
-        assert(0);
-        return false;
-    }
-
-    std::ofstream         out{out_path, std::ios::binary};
-    const std::vector<u8> data = compiler->assembler.build_object_file();
-    out.write(reinterpret_cast<const char *>(data.data()), data.size());
-
-    return true;
-}
-
-extern bool compile_llvm(llvm::LLVMContext    &ctx,
-                         llvm::Module         &mod,
+extern bool compile_llvm(llvm::Module         &mod,
                          std::vector<u8>      &out_buf,
                          [[maybe_unused]] bool print_liveness) {
-    auto adaptor  = std::make_unique<LLVMAdaptor>(ctx, mod);
+    auto adaptor  = std::make_unique<LLVMAdaptor>(mod.getContext(), mod);
     auto compiler = std::make_unique<LLVMCompilerX64>(std::move(adaptor));
 
 #ifdef TPDE_TESTING

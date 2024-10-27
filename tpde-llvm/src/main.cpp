@@ -12,6 +12,7 @@
 #include "x64/LLVMCompilerX64.hpp"
 
 #include <format>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <stdio.h>
@@ -41,6 +42,13 @@ int main(int argc, char *argv[]) {
 
     args::Flag input_is_bitcode(
         parser, "bitcode", "Is the input LLVM-Bitcode?", {"bitcode"});
+
+    args::ValueFlag<std::string> target(
+        parser,
+        "target",
+        "Target architecture",
+        {"target"},
+        args::Options::None);
 
     args::ValueFlag<std::string> obj_out_path(
         parser,
@@ -141,22 +149,27 @@ int main(int argc, char *argv[]) {
         mod->print(llvm::outs(), nullptr);
     }
 
-    if (obj_out_path) {
-        if (!tpde_llvm::x64::compile_llvm(
-                *context, *mod, obj_out_path.Get().c_str(), print_liveness)) {
-            std::cerr << std::format("Failed to compile\n");
-            return 1;
-        }
+    using CompileFn = bool(llvm::Module &, std::vector<uint8_t> &, bool);
+    CompileFn *compile_fn;
+    if (target && target.Get() == "x86_64") {
+        compile_fn = tpde_llvm::x64::compile_llvm;
     } else {
-        std::vector<uint8_t> out_buf;
-        if (!tpde_llvm::x64::compile_llvm(
-                *context, *mod, out_buf, print_liveness)) {
-            std::cerr << std::format("Failed to compile\n");
-            return 1;
-        }
+        // TODO: extract architecture from module
+        std::cerr << "Unspecified or unknown architecture, assuming x86_64\n";
+        compile_fn = tpde_llvm::x64::compile_llvm;
+    }
 
-        // very hacky
-        fwrite(out_buf.data(), 1, out_buf.size(), stdout);
+    std::vector<uint8_t> buf;
+    if (!compile_fn(*mod, buf, print_liveness)) {
+        std::cerr << std::format("Failed to compile\n");
+        return 1;
+    }
+
+    if (!obj_out_path || obj_out_path.Get() == "-") {
+        std::cout.write(reinterpret_cast<const char *>(buf.data()), buf.size());
+    } else {
+        std::ofstream out{obj_out_path.Get().c_str(), std::ios::binary};
+        out.write(reinterpret_cast<const char *>(buf.data()), buf.size());
     }
 
     if (print_ir) {

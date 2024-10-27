@@ -6,15 +6,9 @@
 #include <llvm/IR/LLVMContext.h>
 
 namespace tpde_llvm::x64 {
-extern bool compile_llvm(llvm::LLVMContext &ctx,
-                         llvm::Module      &mod,
-                         const char        *out_path,
-                         bool               print_liveness);
 
-
-extern bool compile_llvm(llvm::LLVMContext    &ctx,
-                         llvm::Module         &mod,
-                         std::vector<uint8_t> &out_path,
+extern bool compile_llvm(llvm::Module         &mod,
+                         std::vector<uint8_t> &out_buf,
                          bool                  print_liveness);
 
 extern bool compile_llvm(llvm::LLVMContext       &ctx,
