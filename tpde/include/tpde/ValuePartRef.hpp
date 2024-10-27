@@ -514,7 +514,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
     if (const auto &liveness = state.v.compiler->analyzer.liveness_info(
             static_cast<u32>(state.v.local_idx));
         liveness.last_full
-        && liveness.last != state.v.compiler->cur_block_idx) {
+        && static_cast<u32>(liveness.last) >= static_cast<u32>(state.v.compiler->cur_block_idx)) {
         // need to wait until release
         auto &free_list_head =
             state.v.compiler->assignments
