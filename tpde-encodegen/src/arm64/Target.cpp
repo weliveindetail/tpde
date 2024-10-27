@@ -77,8 +77,23 @@ void EncodingTargetArm64::get_inst_candidates(
                             std::back_inserter(buf), ", {}", ops[reg_idx++]);
                     }
                 } else if (op.isImm()) {
-                    std::format_to(
-                        std::back_inserter(buf), ", {:#x}", op.getImm());
+                    if (mnem.starts_with("CCMP") || mnem.starts_with("FCCMP") ||
+                        mnem.starts_with("CS") || mnem.starts_with("FCSEL")) {
+                        std::array<std::string_view, 16> ccs = {
+                            "DA_EQ", "DA_NE", "DA_HS", "DA_LO",
+                            "DA_MI", "DA_PL", "DA_VS", "DA_VC",
+                            "DA_HI", "DA_LS", "DA_GE", "DA_LT",
+                            "DA_GT", "DA_LE", "DA_AL", "DA_NV" };
+                        std::format_to(
+                            std::back_inserter(buf), ", {}", ccs[op.getImm()]);
+                    } else if (op.getOperandNo() == 0 &&
+                               mnem.starts_with("PRFM")) {
+                        std::format_to(
+                            std::back_inserter(buf), ", (Da64PrfOp){}", op.getImm());
+                    } else {
+                        std::format_to(
+                            std::back_inserter(buf), ", {:#x}", op.getImm());
+                    }
                 } else {
                     assert(false);
                 }
@@ -150,11 +165,11 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "LDRBBui") {
         // TODO: Handle expr with base+off, merge offsets
         // TODO: If offset is zero, handle expr with base+index
-        handle_default("LDRBwu");
+        handle_default("LDRBu");
     } else if (Name == "LDRHHui") {
         // TODO: Handle expr with base+off, merge offsets
         // TODO: If offset is zero, handle expr with base+index
-        handle_default("LDRHwu");
+        handle_default("LDRHu");
     } else if (Name == "LDRWui") {
         // TODO: Handle expr with base+off, merge offsets
         // TODO: If offset is zero, handle expr with base+index
@@ -190,11 +205,11 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "STRBBui") {
         // TODO: Handle expr with base+off, merge offsets
         // TODO: If offset is zero, handle expr with base+index
-        handle_default("STRBwu");
+        handle_default("STRBu");
     } else if (Name == "STRHHui") {
         // TODO: Handle expr with base+off, merge offsets
         // TODO: If offset is zero, handle expr with base+index
-        handle_default("STRHwu");
+        handle_default("STRHu");
     } else if (Name == "STRWui") {
         // TODO: Handle expr with base+off, merge offsets
         // TODO: If offset is zero, handle expr with base+index
@@ -690,9 +705,9 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "FCSELDrrr") {
         handle_default("FCSELd");
     } else if (Name == "FCMPSrr") {
-        handle_default("FCMPs");
+        handle_default("FCMP_s");
     } else if (Name == "FCMPDrr") {
-        handle_default("FCMPd");
+        handle_default("FCMP_d");
     } else if (Name == "FADDSrr") {
         handle_default("FADDs");
     } else if (Name == "FADDDrr") {

@@ -290,9 +290,6 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
         val_ref.lock();
         return reg;
     }
-    if (std::holds_alternative<AsmReg>(state)) {
-        return std::get<AsmReg>(state);
-    }
     if (is_imm()) {
         const auto &data = std::get<Immediate>(state);
         ScratchReg  dst{compiler->derived()};
@@ -302,9 +299,87 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
         state = std::move(dst);
         return dst_reg;
     }
-    // TODO(ts): allow mem operands with scratchreg param?
-    assert(0);
-    exit(1);
+    Expr *expr = std::get_if<Expr>(&state);
+    if (!expr) {
+        // TODO(ts): allow mem operands with scratchreg param?
+        assert(0);
+        exit(1);
+    }
+
+    if (expr->has_base() && !expr->has_index() && expr->disp == 0) {
+        return expr->base_reg();
+    }
+
+    ScratchReg scratch{compiler->derived()};
+    if (!expr->has_base() && !expr->has_index()) {
+        AsmReg dst = scratch.alloc_gp();
+        compiler->derived()->materialize_constant(expr->disp, 0, 8, dst);
+        expr->disp = 0;
+    } else if (!expr->has_base() && expr->has_index()) {
+        AsmReg index_reg = expr->index_reg();
+        if (std::holds_alternative<ScratchReg>(expr->index)) {
+            scratch = std::move(std::get<ScratchReg>(expr->index));
+        } else {
+            (void)scratch.alloc_gp();
+        }
+        AsmReg dst = scratch.cur_reg;
+        if ((expr->scale & (expr->scale - 1)) == 0) {
+            const auto shift = __builtin_ctzl(expr->scale);
+            ASMC(compiler->derived(), LSLxi, dst, index_reg, shift);
+        } else {
+            ScratchReg scratch2{compiler->derived()};
+            AsmReg tmp2 = scratch2.alloc_gp();
+            compiler->derived()->materialize_constant(expr->scale, 0, 8, tmp2);
+            ASMC(compiler->derived(), MULx, dst, index_reg, tmp2);
+        }
+    } else if (expr->has_base() && expr->has_index()) {
+        AsmReg base_reg = expr->base_reg();
+        AsmReg index_reg = expr->index_reg();
+        if (std::holds_alternative<ScratchReg>(expr->base)) {
+            scratch = std::move(std::get<ScratchReg>(expr->base));
+        } else if (std::holds_alternative<ScratchReg>(expr->index)) {
+            scratch = std::move(std::get<ScratchReg>(expr->index));
+        } else {
+            (void)scratch.alloc_gp();
+        }
+        AsmReg dst = scratch.cur_reg;
+        if ((expr->scale & (expr->scale - 1)) == 0) {
+            const auto shift = __builtin_ctzl(expr->scale);
+            ASMC(compiler->derived(), ADDx_lsl, dst, base_reg, index_reg, shift);
+        } else {
+            ScratchReg scratch2{compiler->derived()};
+            AsmReg tmp2 = scratch2.alloc_gp();
+            compiler->derived()->materialize_constant(expr->scale, 0, 8, tmp2);
+            ASMC(compiler->derived(), MULx, tmp2, index_reg, tmp2);
+            ASMC(compiler->derived(), ADDx, dst, base_reg, tmp2);
+        }
+    } else if (expr->has_base() && !expr->has_index()) {
+        AsmReg base_reg = expr->base_reg();
+        if (std::holds_alternative<ScratchReg>(expr->base)) {
+            scratch = std::move(std::get<ScratchReg>(expr->base));
+        } else {
+            (void)scratch.alloc_gp();
+        }
+        AsmReg dst = scratch.cur_reg;
+        if (ASMIFC(compiler->derived(), ADDxi, dst, base_reg, expr->disp)) {
+            expr->disp = 0;
+        }
+    } else {
+        assert(0);
+    }
+
+    AsmReg dst = scratch.cur_reg;
+    if (expr->disp != 0) {
+        if (!ASMIFC(compiler->derived(), ADDxi, dst, dst, expr->disp)) {
+            ScratchReg scratch2{compiler->derived()};
+            AsmReg tmp2 = scratch2.alloc_gp();
+            compiler->derived()->materialize_constant(expr->disp, 0, 8, tmp2);
+            ASMC(compiler->derived(), ADDx, dst, dst, tmp2);
+        }
+    }
+
+    state = std::move(scratch);
+    return dst;
 }
 
 template <typename Adaptor,

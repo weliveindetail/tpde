@@ -10,6 +10,8 @@
     #define TARGET_V3 __attribute__((target("arch=x86-64-v3")))
     #define TARGET_V4 __attribute__((target("arch=x86-64-v4")))
 #elif defined(__aarch64__)
+    #include <arm_neon.h>
+
     // ARMv8.0 lacks atomic instructions (would generate libcalls)
     #define TARGET_V1 __attribute__((target("arch=armv8.1-a")))
 #else
@@ -61,6 +63,10 @@ __m256 TARGET_V3 loadv256(__m256* ptr) { return *ptr; }
 __m512 TARGET_V4 loadv512(__m512* ptr) { return *ptr; }
 #endif
 
+#ifdef __aarch64__
+uint64x2_t TARGET_V1 loadv128(uint64x2_t *ptr) { return *ptr; }
+#endif
+
 // --------------------------
 // stores
 // --------------------------
@@ -84,6 +90,10 @@ void TARGET_V1 storef64(double* ptr, double value) { *ptr = value; }
 void TARGET_V1 storev128(__m128* ptr, __m128 value) { *ptr = value; }
 void TARGET_V3 storev256(__m256* ptr, __m256 value) { *ptr = value; }
 void TARGET_V4 storev512(__m512* ptr, __m512 value) { *ptr = value; }
+#endif
+
+#ifdef __aarch64__
+void TARGET_V1 storev128(uint64x2_t *ptr, uint64x2_t value) { *ptr = value; }
 #endif
 
 // --------------------------
@@ -217,7 +227,7 @@ u64 TARGET_V1 ctlzi64(u64 a) { if (a == 0) { return 64; } else { return __builti
 // integer overflow
 // --------------------------
 
-#define RES_STRUCT(ty) struct res_##ty { ty val; u32 of; };
+#define RES_STRUCT(ty) struct res_##ty { ty val; u64 of; };
 RES_STRUCT(i8)
 RES_STRUCT(u8)
 RES_STRUCT(i16)

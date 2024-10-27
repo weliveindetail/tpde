@@ -251,6 +251,7 @@ struct EncodeCompiler {
     bool encode_loadi128(AsmOperand param_0, ScratchReg &result_0, ScratchReg &result_1);
     bool encode_loadf32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_loadf64(AsmOperand param_0, ScratchReg &result_0);
+    bool encode_loadv128(AsmOperand param_0, ScratchReg &result_0);
     bool encode_storei8(AsmOperand param_0, AsmOperand param_1);
     bool encode_storei16(AsmOperand param_0, AsmOperand param_1);
     bool encode_storei32(AsmOperand param_0, AsmOperand param_1);
@@ -262,6 +263,7 @@ struct EncodeCompiler {
     bool encode_storei128(AsmOperand param_0, AsmOperand param_1, AsmOperand param_2);
     bool encode_storef32(AsmOperand param_0, AsmOperand param_1);
     bool encode_storef64(AsmOperand param_0, AsmOperand param_1);
+    bool encode_storev128(AsmOperand param_0, AsmOperand param_1);
     bool encode_addi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_subi32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
     bool encode_muli32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
@@ -319,24 +321,24 @@ struct EncodeCompiler {
     bool encode_ctlzi16(AsmOperand param_0, ScratchReg &result_0);
     bool encode_ctlzi32(AsmOperand param_0, ScratchReg &result_0);
     bool encode_ctlzi64(AsmOperand param_0, ScratchReg &result_0);
-    bool encode_of_add_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_sub_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_mul_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_add_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_sub_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_mul_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_add_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_sub_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_mul_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_add_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_sub_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_mul_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_add_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_sub_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_mul_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_add_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_sub_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
-    bool encode_of_mul_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0);
+    bool encode_of_add_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_add_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_sub_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
+    bool encode_of_mul_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
     bool encode_of_add_i64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
     bool encode_of_sub_i64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
     bool encode_of_mul_i64(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1);
@@ -525,9 +527,6 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
         val_ref.lock();
         return reg;
     }
-    if (std::holds_alternative<AsmReg>(state)) {
-        return std::get<AsmReg>(state);
-    }
     if (is_imm()) {
         const auto &data = std::get<Immediate>(state);
         ScratchReg  dst{compiler->derived()};
@@ -537,9 +536,87 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
         state = std::move(dst);
         return dst_reg;
     }
-    // TODO(ts): allow mem operands with scratchreg param?
-    assert(0);
-    exit(1);
+    Expr *expr = std::get_if<Expr>(&state);
+    if (!expr) {
+        // TODO(ts): allow mem operands with scratchreg param?
+        assert(0);
+        exit(1);
+    }
+
+    if (expr->has_base() && !expr->has_index() && expr->disp == 0) {
+        return expr->base_reg();
+    }
+
+    ScratchReg scratch{compiler->derived()};
+    if (!expr->has_base() && !expr->has_index()) {
+        AsmReg dst = scratch.alloc_gp();
+        compiler->derived()->materialize_constant(expr->disp, 0, 8, dst);
+        expr->disp = 0;
+    } else if (!expr->has_base() && expr->has_index()) {
+        AsmReg index_reg = expr->index_reg();
+        if (std::holds_alternative<ScratchReg>(expr->index)) {
+            scratch = std::move(std::get<ScratchReg>(expr->index));
+        } else {
+            (void)scratch.alloc_gp();
+        }
+        AsmReg dst = scratch.cur_reg;
+        if ((expr->scale & (expr->scale - 1)) == 0) {
+            const auto shift = __builtin_ctzl(expr->scale);
+            ASMC(compiler->derived(), LSLxi, dst, index_reg, shift);
+        } else {
+            ScratchReg scratch2{compiler->derived()};
+            AsmReg tmp2 = scratch2.alloc_gp();
+            compiler->derived()->materialize_constant(expr->scale, 0, 8, tmp2);
+            ASMC(compiler->derived(), MULx, dst, index_reg, tmp2);
+        }
+    } else if (expr->has_base() && expr->has_index()) {
+        AsmReg base_reg = expr->base_reg();
+        AsmReg index_reg = expr->index_reg();
+        if (std::holds_alternative<ScratchReg>(expr->base)) {
+            scratch = std::move(std::get<ScratchReg>(expr->base));
+        } else if (std::holds_alternative<ScratchReg>(expr->index)) {
+            scratch = std::move(std::get<ScratchReg>(expr->index));
+        } else {
+            (void)scratch.alloc_gp();
+        }
+        AsmReg dst = scratch.cur_reg;
+        if ((expr->scale & (expr->scale - 1)) == 0) {
+            const auto shift = __builtin_ctzl(expr->scale);
+            ASMC(compiler->derived(), ADDx_lsl, dst, base_reg, index_reg, shift);
+        } else {
+            ScratchReg scratch2{compiler->derived()};
+            AsmReg tmp2 = scratch2.alloc_gp();
+            compiler->derived()->materialize_constant(expr->scale, 0, 8, tmp2);
+            ASMC(compiler->derived(), MULx, tmp2, index_reg, tmp2);
+            ASMC(compiler->derived(), ADDx, dst, base_reg, tmp2);
+        }
+    } else if (expr->has_base() && !expr->has_index()) {
+        AsmReg base_reg = expr->base_reg();
+        if (std::holds_alternative<ScratchReg>(expr->base)) {
+            scratch = std::move(std::get<ScratchReg>(expr->base));
+        } else {
+            (void)scratch.alloc_gp();
+        }
+        AsmReg dst = scratch.cur_reg;
+        if (ASMIFC(compiler->derived(), ADDxi, dst, base_reg, expr->disp)) {
+            expr->disp = 0;
+        }
+    } else {
+        assert(0);
+    }
+
+    AsmReg dst = scratch.cur_reg;
+    if (expr->disp != 0) {
+        if (!ASMIFC(compiler->derived(), ADDxi, dst, dst, expr->disp)) {
+            ScratchReg scratch2{compiler->derived()};
+            AsmReg tmp2 = scratch2.alloc_gp();
+            compiler->derived()->materialize_constant(expr->disp, 0, 8, tmp2);
+            ASMC(compiler->derived(), ADDx, dst, dst, tmp2);
+        }
+    }
+
+    state = std::move(scratch);
+    return dst;
 }
 
 template <typename Adaptor,
@@ -857,7 +934,7 @@ template <typename Adaptor,
         }
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(LDRBwu, scratch_x0.cur_reg, op1, 0x0);
+        ASMD(LDRBu, scratch_x0.cur_reg, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
     // result x0 is marked as alive
@@ -900,7 +977,7 @@ template <typename Adaptor,
         }
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(LDRHwu, scratch_x0.cur_reg, op1, 0x0);
+        ASMD(LDRHu, scratch_x0.cur_reg, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
     // result x0 is marked as alive
@@ -1028,7 +1105,7 @@ template <typename Adaptor,
         AsmReg op1 = param_0.as_reg(this);
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(LDRBwu, scratch_x8.cur_reg, op1, 0x2);
+        ASMD(LDRBu, scratch_x8.cur_reg, op1, 0x2);
     }
     // result x8 is marked as alive
 
@@ -1043,7 +1120,7 @@ template <typename Adaptor,
         }
         // def x9 has not been allocated yet
         scratch_x9.alloc_from_bank(0);
-        ASMD(LDRHwu, scratch_x9.cur_reg, op1, 0x0);
+        ASMD(LDRHu, scratch_x9.cur_reg, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
     // result x9 is marked as alive
@@ -1096,7 +1173,7 @@ template <typename Adaptor,
         AsmReg op1 = param_0.as_reg(this);
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(LDRBwu, scratch_x8.cur_reg, op1, 0x4);
+        ASMD(LDRBu, scratch_x8.cur_reg, op1, 0x4);
     }
     // result x8 is marked as alive
     // result x8 is marked as alive
@@ -1166,7 +1243,7 @@ template <typename Adaptor,
         AsmReg op1 = param_0.as_reg(this);
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(LDRHwu, scratch_x8.cur_reg, op1, 0x2);
+        ASMD(LDRHu, scratch_x8.cur_reg, op1, 0x2);
     }
     // result x8 is marked as alive
     // result x8 is marked as alive
@@ -1238,7 +1315,7 @@ template <typename Adaptor,
         AsmReg op1 = param_0.as_reg(this);
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(LDRBwu, scratch_x8.cur_reg, op1, 0x6);
+        ASMD(LDRBu, scratch_x8.cur_reg, op1, 0x6);
     }
     // result x8 is marked as alive
 
@@ -1248,7 +1325,7 @@ template <typename Adaptor,
         AsmReg op1 = param_0.as_reg(this);
         // def x9 has not been allocated yet
         scratch_x9.alloc_from_bank(0);
-        ASMD(LDRHwu, scratch_x9.cur_reg, op1, 0x2);
+        ASMD(LDRHu, scratch_x9.cur_reg, op1, 0x2);
     }
     // result x9 is marked as alive
 
@@ -1443,6 +1520,45 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_loadv128(AsmOperand param_0, ScratchReg &result_0) {
+    // # Machine code for function loadv128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $x0
+    // 
+    // bb.0 (%ir-block.1):
+    //   liveins: $x0
+    //   renamable $q0 = LDRQui killed renamable $x0, 0 :: (load (s128) from %ir.0, !tbaa !4)
+    //   RET undef $lr, implicit killed $q0
+    // 
+    // # End machine code for function loadv128.
+    // 
+
+    // Mapping x0 to param_0
+    ScratchReg scratch_x0{derived()};
+    ScratchReg scratch_v0{derived()};
+
+
+    // renamable $q0 = LDRQui killed renamable $x0, 0 :: (load (s128) from %ir.0, !tbaa !4)
+    if (1) {
+        AsmReg op1 = param_0.as_reg(this);
+        // def v0 has not been allocated yet
+        scratch_v0.alloc_from_bank(1);
+        ASMD(LDRqu, scratch_v0.cur_reg, op1, 0x0);
+    }
+    // argument x0 is killed and marked as dead
+    // result v0 is marked as alive
+
+
+    // RET undef $lr, implicit killed $q0
+    // returning reg v0 as result_0
+    result_0 = std::move(scratch_v0);
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
           typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storei8(AsmOperand param_0, AsmOperand param_1) {
     // # Machine code for function storei8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $x0, $w1
@@ -1465,7 +1581,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(STRBwu, op0, op1, 0x0);
+        ASMD(STRBu, op0, op1, 0x0);
     }
     // argument x1 is killed and marked as dead
     // argument x0 is killed and marked as dead
@@ -1502,7 +1618,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(STRHwu, op0, op1, 0x0);
+        ASMD(STRHu, op0, op1, 0x0);
     }
     // argument x1 is killed and marked as dead
     // argument x0 is killed and marked as dead
@@ -1627,7 +1743,7 @@ template <typename Adaptor,
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
-        ASMD(STRHwu, op0, op1, 0x0);
+        ASMD(STRHu, op0, op1, 0x0);
     }
     // argument x1 is killed and marked as dead
     // argument x1 is killed and marked as dead
@@ -1637,7 +1753,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
-        ASMD(STRBwu, scratch_x8.cur_reg, op1, 0x2);
+        ASMD(STRBu, scratch_x8.cur_reg, op1, 0x2);
     }
     // argument x8 is killed and marked as dead
     // argument x0 is killed and marked as dead
@@ -1699,7 +1815,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
-        ASMD(STRBwu, scratch_x8.cur_reg, op1, 0x4);
+        ASMD(STRBu, scratch_x8.cur_reg, op1, 0x4);
     }
     // argument x8 is killed and marked as dead
     // argument x0 is killed and marked as dead
@@ -1761,7 +1877,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
-        ASMD(STRHwu, scratch_x8.cur_reg, op1, 0x2);
+        ASMD(STRHu, scratch_x8.cur_reg, op1, 0x2);
     }
     // argument x8 is killed and marked as dead
     // argument x0 is killed and marked as dead
@@ -1834,7 +1950,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
-        ASMD(STRBwu, scratch_x8.cur_reg, op1, 0x6);
+        ASMD(STRBu, scratch_x8.cur_reg, op1, 0x6);
     }
     // argument x8 is killed and marked as dead
     // argument x8 is killed and marked as dead
@@ -1844,7 +1960,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
-        ASMD(STRHwu, scratch_x9.cur_reg, op1, 0x2);
+        ASMD(STRHu, scratch_x9.cur_reg, op1, 0x2);
     }
     // argument x9 is killed and marked as dead
     // argument x0 is killed and marked as dead
@@ -1961,6 +2077,43 @@ template <typename Adaptor,
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         ASMD(STRdu, op0, op1, 0x0);
+    }
+    // argument v0 is killed and marked as dead
+    // argument x0 is killed and marked as dead
+
+
+    // RET undef $lr
+    return true;
+
+}
+
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_storev128(AsmOperand param_0, AsmOperand param_1) {
+    // # Machine code for function storev128: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
+    // Function Live Ins: $x0, $q0
+    // 
+    // bb.0 (%ir-block.2):
+    //   liveins: $q0, $x0
+    //   STRQui killed renamable $q0, killed renamable $x0, 0 :: (store (s128) into %ir.0, !tbaa !4)
+    //   RET undef $lr
+    // 
+    // # End machine code for function storev128.
+    // 
+
+    // Mapping x0 to param_0
+    // Mapping v0 to param_1
+    ScratchReg scratch_x0{derived()};
+    ScratchReg scratch_v0{derived()};
+
+
+    // STRQui killed renamable $q0, killed renamable $x0, 0 :: (store (s128) into %ir.0, !tbaa !4)
+    if (1) {
+        AsmReg op0 = param_1.as_reg(this);
+        AsmReg op1 = param_0.as_reg(this);
+        ASMD(STRqu, op0, op1, 0x0);
     }
     // argument v0 is killed and marked as dead
     // argument x0 is killed and marked as dead
@@ -2719,7 +2872,7 @@ template <typename Adaptor,
         }
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSNEGw, scratch_x0.cur_reg, op1, op2, 0x5);
+        ASMD(CSNEGw, scratch_x0.cur_reg, op1, op2, DA_PL);
     }
     // argument x0 is killed and marked as dead
     // argument x0 is killed and marked as dead
@@ -3481,7 +3634,7 @@ template <typename Adaptor,
         }
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSNEGx, scratch_x0.cur_reg, op1, op2, 0x5);
+        ASMD(CSNEGx, scratch_x0.cur_reg, op1, op2, DA_PL);
     }
     // argument x0 is killed and marked as dead
     // argument x0 is killed and marked as dead
@@ -4143,7 +4296,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x0.cur_reg, DA_ZR, scratch_x9.cur_reg, 0x1);
+        ASMD(CSELx, scratch_x0.cur_reg, DA_ZR, scratch_x9.cur_reg, DA_NE);
     }
     // result x0 is marked as alive
 
@@ -4152,7 +4305,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x1.cur_reg, scratch_x9.cur_reg, scratch_x8.cur_reg, 0x1);
+        ASMD(CSELx, scratch_x1.cur_reg, scratch_x9.cur_reg, scratch_x8.cur_reg, DA_NE);
     }
     // argument x9 is killed and marked as dead
     // argument x8 is killed and marked as dead
@@ -4297,7 +4450,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x1.cur_reg, DA_ZR, scratch_x9.cur_reg, 0x1);
+        ASMD(CSELx, scratch_x1.cur_reg, DA_ZR, scratch_x9.cur_reg, DA_NE);
     }
     // result x1 is marked as alive
 
@@ -4306,7 +4459,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x0.cur_reg, scratch_x9.cur_reg, scratch_x8.cur_reg, 0x1);
+        ASMD(CSELx, scratch_x0.cur_reg, scratch_x9.cur_reg, scratch_x8.cur_reg, DA_NE);
     }
     // argument x9 is killed and marked as dead
     // argument x8 is killed and marked as dead
@@ -4463,7 +4616,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x1.cur_reg, scratch_x11.cur_reg, scratch_x9.cur_reg, 0x1);
+        ASMD(CSELx, scratch_x1.cur_reg, scratch_x11.cur_reg, scratch_x9.cur_reg, DA_NE);
     }
     // argument x11 is killed and marked as dead
     // result x1 is marked as alive
@@ -4473,7 +4626,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x0.cur_reg, scratch_x9.cur_reg, scratch_x8.cur_reg, 0x1);
+        ASMD(CSELx, scratch_x0.cur_reg, scratch_x9.cur_reg, scratch_x8.cur_reg, DA_NE);
     }
     // argument x9 is killed and marked as dead
     // argument x8 is killed and marked as dead
@@ -5717,7 +5870,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELw, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 0x0);
+        ASMD(CSELw, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, DA_EQ);
     }
     // argument x8 is killed and marked as dead
     // argument x9 is killed and marked as dead
@@ -5809,7 +5962,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELw, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 0x0);
+        ASMD(CSELw, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, DA_EQ);
     }
     // argument x8 is killed and marked as dead
     // argument x9 is killed and marked as dead
@@ -5913,7 +6066,7 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_add_i8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
@@ -5922,10 +6075,9 @@ template <typename Adaptor,
     //   renamable $w8 = SBFMWri killed renamable $w0, 0, 7
     //   renamable $w8 = ADDWrx killed renamable $w8, killed renamable $w1, 32, implicit-def $x8
     //   $wzr = SUBSWrx renamable $w8, renamable $w8, 32, implicit-def $nzcv
-    //   renamable $x8 = ANDXri killed renamable $x8, 4103
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    //   renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
-    //   RET undef $lr, implicit killed $x0
+    //   $x0 = ANDXri killed renamable $x8, 4103
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_add_i8.
     // 
@@ -5933,7 +6085,6 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
     ScratchReg scratch_x8{derived()};
 
@@ -5978,40 +6129,31 @@ template <typename Adaptor,
     }
 
 
-    // renamable $x8 = ANDXri killed renamable $x8, 4103
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(ANDxi, scratch_x8.cur_reg, scratch_x8.cur_reg, 0xff);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    if (1) {
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x0);
-    }
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
+    // $x0 = ANDXri killed renamable $x8, 4103
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 32);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xff);
     }
     // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -6020,7 +6162,7 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_sub_i8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
@@ -6029,10 +6171,9 @@ template <typename Adaptor,
     //   renamable $w8 = SBFMWri killed renamable $w0, 0, 7
     //   renamable $w8 = SUBWrx killed renamable $w8, killed renamable $w1, 32, implicit-def $x8
     //   $wzr = SUBSWrx renamable $w8, renamable $w8, 32, implicit-def $nzcv
-    //   renamable $x8 = ANDXri killed renamable $x8, 4103
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    //   renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
-    //   RET undef $lr, implicit killed $x0
+    //   $x0 = ANDXri killed renamable $x8, 4103
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_sub_i8.
     // 
@@ -6040,7 +6181,6 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
     ScratchReg scratch_x8{derived()};
 
@@ -6085,40 +6225,31 @@ template <typename Adaptor,
     }
 
 
-    // renamable $x8 = ANDXri killed renamable $x8, 4103
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(ANDxi, scratch_x8.cur_reg, scratch_x8.cur_reg, 0xff);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    if (1) {
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x0);
-    }
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
+    // $x0 = ANDXri killed renamable $x8, 4103
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 32);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xff);
     }
     // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -6127,7 +6258,7 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_i8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_mul_i8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
@@ -6137,10 +6268,9 @@ template <typename Adaptor,
     //   renamable $w9 = SBFMWri killed renamable $w0, 0, 7
     //   renamable $w8 = MADDWrrr killed renamable $w9, killed renamable $w8, $wzr, implicit-def $x8
     //   $wzr = SUBSWrx renamable $w8, renamable $w8, 32, implicit-def $nzcv
-    //   renamable $x8 = ANDXri killed renamable $x8, 4103
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    //   renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
-    //   RET undef $lr, implicit killed $x0
+    //   $x0 = ANDXri killed renamable $x8, 4103
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_mul_i8.
     // 
@@ -6203,40 +6333,31 @@ template <typename Adaptor,
     }
 
 
-    // renamable $x8 = ANDXri killed renamable $x8, 4103
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(ANDxi, scratch_x8.cur_reg, scratch_x8.cur_reg, 0xff);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    if (1) {
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x0);
-    }
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
+    // $x0 = ANDXri killed renamable $x8, 4103
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 32);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xff);
     }
     // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -6245,20 +6366,17 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_add_u8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $w0, $w1
-    //   renamable $w9 = ANDWri killed renamable $w0, 7
-    //   renamable $x8 = MOVZXi 1, 32
-    //   renamable $w9 = ADDWrx killed renamable $w9, killed renamable $w1, 0, implicit-def $x9
-    //   renamable $w10 = UBFMWri renamable $w9, 8, 31
-    //   $wzr = SUBSWri killed renamable $w10, 0, 0, implicit-def $nzcv
-    //   renamable $x0 = CSELXr killed renamable $x8, $xzr, 1, implicit killed $nzcv
-    //   renamable $x0 = BFMXri killed renamable $x0(tied-def 0), killed renamable $x9, 0, 7
-    //   RET undef $lr, implicit killed $x0
+    //   renamable $w8 = ANDWri killed renamable $w0, 7
+    //   renamable $w8 = ADDWrx killed renamable $w8, killed renamable $w1, 0, implicit-def $x8
+    //   renamable $w1 = UBFMWri renamable $w8, 8, 31, implicit-def $x1
+    //   $x0 = ANDXri killed renamable $x8, 4103
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_add_u8.
     // 
@@ -6266,95 +6384,69 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
     ScratchReg scratch_x8{derived()};
-    ScratchReg scratch_x10{derived()};
 
 
-    // renamable $w9 = ANDWri killed renamable $w0, 7
+    // renamable $w8 = ANDWri killed renamable $w0, 7
     if (1) {
         AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op1 = scratch_x9.cur_reg;
+        if (param_0.try_salvage_if_nonalloc(scratch_x8, 0)) {
+            op1 = scratch_x8.cur_reg;
         } else {
             op1 = param_0.as_reg(this);
         }
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(ANDwi, scratch_x9.cur_reg, op1, 0xff);
-    }
-    // argument x0 is killed and marked as dead
-    // result x9 is marked as alive
-
-
-    // renamable $x8 = MOVZXi 1, 32
-    if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(MOVZx_shift, scratch_x8.cur_reg, 0x1, 2);
+        ASMD(ANDwi, scratch_x8.cur_reg, op1, 0xff);
     }
+    // argument x0 is killed and marked as dead
     // result x8 is marked as alive
 
 
-    // renamable $w9 = ADDWrx killed renamable $w9, killed renamable $w1, 0, implicit-def $x9
+    // renamable $w8 = ADDWrx killed renamable $w8, killed renamable $w1, 0, implicit-def $x8
     if (1) {
         AsmReg op2;
-        if (param_1.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op2 = scratch_x9.cur_reg;
+        if (param_1.try_salvage_if_nonalloc(scratch_x8, 0)) {
+            op2 = scratch_x8.cur_reg;
         } else {
             op2 = param_1.as_reg(this);
         }
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(ADDw_uxtb, scratch_x9.cur_reg, scratch_x9.cur_reg, op2, 0);
+        // def x8 has not been allocated yet
+        scratch_x8.alloc_from_bank(0);
+        ASMD(ADDw_uxtb, scratch_x8.cur_reg, scratch_x8.cur_reg, op2, 0);
     }
-    // argument x9 is killed and marked as dead
+    // argument x8 is killed and marked as dead
     // argument x1 is killed and marked as dead
-    // result x9 is marked as alive
-    // result x9 is marked as alive
+    // result x8 is marked as alive
+    // result x8 is marked as alive
 
 
-    // renamable $w10 = UBFMWri renamable $w9, 8, 31
+    // renamable $w1 = UBFMWri renamable $w8, 8, 31, implicit-def $x1
     if (1) {
-        // def x10 has not been allocated yet
-        scratch_x10.alloc_from_bank(0);
-        ASMD(UBFMw, scratch_x10.cur_reg, scratch_x9.cur_reg, 0x8, 0x1f);
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(UBFMw, scratch_x1.cur_reg, scratch_x8.cur_reg, 0x8, 0x1f);
     }
-    // result x10 is marked as alive
+    // result x1 is marked as alive
+    // result x1 is marked as alive
 
 
-    // $wzr = SUBSWri killed renamable $w10, 0, 0, implicit-def $nzcv
-    if (1) {
-        ASMD(SUBSwi, DA_ZR, scratch_x10.cur_reg, 0);
-    }
-    // argument x10 is killed and marked as dead
-
-
-    // renamable $x0 = CSELXr killed renamable $x8, $xzr, 1, implicit killed $nzcv
+    // $x0 = ANDXri killed renamable $x8, 4103
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, 0x1);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xff);
     }
     // argument x8 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // renamable $x0 = BFMXri killed renamable $x0(tied-def 0), killed renamable $x9, 0, 7
-    if (1) {
-        // operand 1(x0) is the same as its tied destination
-        assert(scratch_x0.cur_reg.valid());
-        ASMD(BFMx, scratch_x0.cur_reg, scratch_x9.cur_reg, 0x0, 0x7);
-    }
-    // argument x0 is killed and marked as dead
-    // argument x9 is killed and marked as dead
-    // result x0 is marked as alive
-
-
-    // RET undef $lr, implicit killed $x0
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -6363,7 +6455,7 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_sub_u8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
@@ -6372,10 +6464,9 @@ template <typename Adaptor,
     //   renamable $w8 = ANDWri killed renamable $w0, 7
     //   renamable $w8 = SUBWrx killed renamable $w8, killed renamable $w1, 0, implicit-def $x8
     //   $wzr = ANDSWri renamable $w8, 1559, implicit-def $nzcv
-    //   renamable $x8 = ANDXri killed renamable $x8, 4103
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    //   renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
-    //   RET undef $lr, implicit killed $x0
+    //   $x0 = ANDXri killed renamable $x8, 4103
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_sub_u8.
     // 
@@ -6383,7 +6474,6 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
     ScratchReg scratch_x8{derived()};
 
@@ -6428,40 +6518,31 @@ template <typename Adaptor,
     }
 
 
-    // renamable $x8 = ANDXri killed renamable $x8, 4103
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(ANDxi, scratch_x8.cur_reg, scratch_x8.cur_reg, 0xff);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    if (1) {
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x0);
-    }
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
+    // $x0 = ANDXri killed renamable $x8, 4103
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 32);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xff);
     }
     // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -6470,7 +6551,7 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_u8(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_mul_u8: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
@@ -6480,10 +6561,9 @@ template <typename Adaptor,
     //   renamable $w9 = ANDWri killed renamable $w0, 7
     //   renamable $w8 = MADDWrrr killed renamable $w9, killed renamable $w8, $wzr, implicit-def $x8
     //   $wzr = ANDSWri renamable $w8, 1543, implicit-def $nzcv
-    //   renamable $x8 = ANDXri killed renamable $x8, 4103
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    //   renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
-    //   RET undef $lr, implicit killed $x0
+    //   $x0 = ANDXri killed renamable $x8, 4103
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_mul_u8.
     // 
@@ -6546,40 +6626,31 @@ template <typename Adaptor,
     }
 
 
-    // renamable $x8 = ANDXri killed renamable $x8, 4103
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(ANDxi, scratch_x8.cur_reg, scratch_x8.cur_reg, 0xff);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    if (1) {
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x0);
-    }
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
+    // $x0 = ANDXri killed renamable $x8, 4103
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 32);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xff);
     }
     // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -6588,7 +6659,7 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_add_i16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
@@ -6597,10 +6668,9 @@ template <typename Adaptor,
     //   renamable $w8 = SBFMWri killed renamable $w0, 0, 15
     //   renamable $w8 = ADDWrx killed renamable $w8, killed renamable $w1, 40, implicit-def $x8
     //   $wzr = SUBSWrx renamable $w8, renamable $w8, 40, implicit-def $nzcv
-    //   renamable $x8 = ANDXri killed renamable $x8, 4111
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    //   renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
-    //   RET undef $lr, implicit killed $x0
+    //   $x0 = ANDXri killed renamable $x8, 4111
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_add_i16.
     // 
@@ -6608,7 +6678,6 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
     ScratchReg scratch_x8{derived()};
 
@@ -6653,40 +6722,31 @@ template <typename Adaptor,
     }
 
 
-    // renamable $x8 = ANDXri killed renamable $x8, 4111
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(ANDxi, scratch_x8.cur_reg, scratch_x8.cur_reg, 0xffff);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    if (1) {
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x0);
-    }
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
+    // $x0 = ANDXri killed renamable $x8, 4111
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 32);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xffff);
     }
     // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -6695,7 +6755,7 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_sub_i16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
@@ -6704,10 +6764,9 @@ template <typename Adaptor,
     //   renamable $w8 = SBFMWri killed renamable $w0, 0, 15
     //   renamable $w8 = SUBWrx killed renamable $w8, killed renamable $w1, 40, implicit-def $x8
     //   $wzr = SUBSWrx renamable $w8, renamable $w8, 40, implicit-def $nzcv
-    //   renamable $x8 = ANDXri killed renamable $x8, 4111
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    //   renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
-    //   RET undef $lr, implicit killed $x0
+    //   $x0 = ANDXri killed renamable $x8, 4111
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_sub_i16.
     // 
@@ -6715,7 +6774,6 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
     ScratchReg scratch_x8{derived()};
 
@@ -6760,40 +6818,31 @@ template <typename Adaptor,
     }
 
 
-    // renamable $x8 = ANDXri killed renamable $x8, 4111
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(ANDxi, scratch_x8.cur_reg, scratch_x8.cur_reg, 0xffff);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    if (1) {
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x0);
-    }
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
+    // $x0 = ANDXri killed renamable $x8, 4111
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 32);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xffff);
     }
     // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -6802,7 +6851,7 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_i16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_mul_i16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
@@ -6812,10 +6861,9 @@ template <typename Adaptor,
     //   renamable $w9 = SBFMWri killed renamable $w0, 0, 15
     //   renamable $w8 = MADDWrrr killed renamable $w9, killed renamable $w8, $wzr, implicit-def $x8
     //   $wzr = SUBSWrx renamable $w8, renamable $w8, 40, implicit-def $nzcv
-    //   renamable $x8 = ANDXri killed renamable $x8, 4111
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    //   renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
-    //   RET undef $lr, implicit killed $x0
+    //   $x0 = ANDXri killed renamable $x8, 4111
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_mul_i16.
     // 
@@ -6878,40 +6926,31 @@ template <typename Adaptor,
     }
 
 
-    // renamable $x8 = ANDXri killed renamable $x8, 4111
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(ANDxi, scratch_x8.cur_reg, scratch_x8.cur_reg, 0xffff);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    if (1) {
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x0);
-    }
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
+    // $x0 = ANDXri killed renamable $x8, 4111
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 32);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xffff);
     }
     // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -6920,20 +6959,17 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_add_u16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $w0, $w1
-    //   renamable $w9 = ANDWri killed renamable $w0, 15
-    //   renamable $x8 = MOVZXi 1, 32
-    //   renamable $w9 = ADDWrx killed renamable $w9, killed renamable $w1, 8, implicit-def $x9
-    //   renamable $w10 = UBFMWri renamable $w9, 16, 31
-    //   $wzr = SUBSWri killed renamable $w10, 0, 0, implicit-def $nzcv
-    //   renamable $x0 = CSELXr killed renamable $x8, $xzr, 1, implicit killed $nzcv
-    //   renamable $x0 = BFMXri killed renamable $x0(tied-def 0), killed renamable $x9, 0, 15
-    //   RET undef $lr, implicit killed $x0
+    //   renamable $w8 = ANDWri killed renamable $w0, 15
+    //   renamable $w8 = ADDWrx killed renamable $w8, killed renamable $w1, 8, implicit-def $x8
+    //   renamable $w1 = UBFMWri renamable $w8, 16, 31, implicit-def $x1
+    //   $x0 = ANDXri killed renamable $x8, 4111
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_add_u16.
     // 
@@ -6941,95 +6977,69 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
     ScratchReg scratch_x8{derived()};
-    ScratchReg scratch_x10{derived()};
 
 
-    // renamable $w9 = ANDWri killed renamable $w0, 15
+    // renamable $w8 = ANDWri killed renamable $w0, 15
     if (1) {
         AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op1 = scratch_x9.cur_reg;
+        if (param_0.try_salvage_if_nonalloc(scratch_x8, 0)) {
+            op1 = scratch_x8.cur_reg;
         } else {
             op1 = param_0.as_reg(this);
         }
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(ANDwi, scratch_x9.cur_reg, op1, 0xffff);
-    }
-    // argument x0 is killed and marked as dead
-    // result x9 is marked as alive
-
-
-    // renamable $x8 = MOVZXi 1, 32
-    if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(MOVZx_shift, scratch_x8.cur_reg, 0x1, 2);
+        ASMD(ANDwi, scratch_x8.cur_reg, op1, 0xffff);
     }
+    // argument x0 is killed and marked as dead
     // result x8 is marked as alive
 
 
-    // renamable $w9 = ADDWrx killed renamable $w9, killed renamable $w1, 8, implicit-def $x9
+    // renamable $w8 = ADDWrx killed renamable $w8, killed renamable $w1, 8, implicit-def $x8
     if (1) {
         AsmReg op2;
-        if (param_1.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op2 = scratch_x9.cur_reg;
+        if (param_1.try_salvage_if_nonalloc(scratch_x8, 0)) {
+            op2 = scratch_x8.cur_reg;
         } else {
             op2 = param_1.as_reg(this);
         }
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(ADDw_uxth, scratch_x9.cur_reg, scratch_x9.cur_reg, op2, 8);
+        // def x8 has not been allocated yet
+        scratch_x8.alloc_from_bank(0);
+        ASMD(ADDw_uxth, scratch_x8.cur_reg, scratch_x8.cur_reg, op2, 8);
     }
-    // argument x9 is killed and marked as dead
+    // argument x8 is killed and marked as dead
     // argument x1 is killed and marked as dead
-    // result x9 is marked as alive
-    // result x9 is marked as alive
+    // result x8 is marked as alive
+    // result x8 is marked as alive
 
 
-    // renamable $w10 = UBFMWri renamable $w9, 16, 31
+    // renamable $w1 = UBFMWri renamable $w8, 16, 31, implicit-def $x1
     if (1) {
-        // def x10 has not been allocated yet
-        scratch_x10.alloc_from_bank(0);
-        ASMD(UBFMw, scratch_x10.cur_reg, scratch_x9.cur_reg, 0x10, 0x1f);
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(UBFMw, scratch_x1.cur_reg, scratch_x8.cur_reg, 0x10, 0x1f);
     }
-    // result x10 is marked as alive
+    // result x1 is marked as alive
+    // result x1 is marked as alive
 
 
-    // $wzr = SUBSWri killed renamable $w10, 0, 0, implicit-def $nzcv
-    if (1) {
-        ASMD(SUBSwi, DA_ZR, scratch_x10.cur_reg, 0);
-    }
-    // argument x10 is killed and marked as dead
-
-
-    // renamable $x0 = CSELXr killed renamable $x8, $xzr, 1, implicit killed $nzcv
+    // $x0 = ANDXri killed renamable $x8, 4111
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, 0x1);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xffff);
     }
     // argument x8 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // renamable $x0 = BFMXri killed renamable $x0(tied-def 0), killed renamable $x9, 0, 15
-    if (1) {
-        // operand 1(x0) is the same as its tied destination
-        assert(scratch_x0.cur_reg.valid());
-        ASMD(BFMx, scratch_x0.cur_reg, scratch_x9.cur_reg, 0x0, 0xf);
-    }
-    // argument x0 is killed and marked as dead
-    // argument x9 is killed and marked as dead
-    // result x0 is marked as alive
-
-
-    // RET undef $lr, implicit killed $x0
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -7038,7 +7048,7 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_sub_u16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
@@ -7047,10 +7057,9 @@ template <typename Adaptor,
     //   renamable $w8 = ANDWri killed renamable $w0, 15
     //   renamable $w8 = SUBWrx killed renamable $w8, killed renamable $w1, 8, implicit-def $x8
     //   $wzr = ANDSWri renamable $w8, 1039, implicit-def $nzcv
-    //   renamable $x8 = ANDXri killed renamable $x8, 4111
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    //   renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
-    //   RET undef $lr, implicit killed $x0
+    //   $x0 = ANDXri killed renamable $x8, 4111
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_sub_u16.
     // 
@@ -7058,7 +7067,6 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
     ScratchReg scratch_x8{derived()};
 
@@ -7103,40 +7111,31 @@ template <typename Adaptor,
     }
 
 
-    // renamable $x8 = ANDXri killed renamable $x8, 4111
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(ANDxi, scratch_x8.cur_reg, scratch_x8.cur_reg, 0xffff);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    if (1) {
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x0);
-    }
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
+    // $x0 = ANDXri killed renamable $x8, 4111
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 32);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xffff);
     }
     // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -7145,7 +7144,7 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_u16(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_mul_u16: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
@@ -7155,10 +7154,9 @@ template <typename Adaptor,
     //   renamable $w9 = ANDWri killed renamable $w0, 15
     //   renamable $w8 = MADDWrrr killed renamable $w9, killed renamable $w8, $wzr, implicit-def $x8
     //   $wzr = ANDSWri renamable $w8, 1039, implicit-def $nzcv
-    //   renamable $x8 = ANDXri killed renamable $x8, 4111
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    //   renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
-    //   RET undef $lr, implicit killed $x0
+    //   $x0 = ANDXri killed renamable $x8, 4111
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_mul_u16.
     // 
@@ -7221,40 +7219,31 @@ template <typename Adaptor,
     }
 
 
-    // renamable $x8 = ANDXri killed renamable $x8, 4111
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(ANDxi, scratch_x8.cur_reg, scratch_x8.cur_reg, 0xffff);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // renamable $w9 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x9
-    if (1) {
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x0);
-    }
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 32
+    // $x0 = ANDXri killed renamable $x8, 4111
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 32);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xffff);
     }
     // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -7263,17 +7252,15 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_add_i32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $w0, $w1
-    //   renamable $x8 = MOVZXi 1, 32
-    //   $w9 = ADDSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x9
-    //   renamable $x8 = CSELXr killed renamable $x8, $xzr, 6, implicit killed $nzcv
-    //   $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 0
-    //   RET undef $lr, implicit killed $x0
+    //   $w0 = ADDSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x0
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_add_i32.
     // 
@@ -7281,68 +7268,48 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
-    ScratchReg scratch_x8{derived()};
 
 
-    // renamable $x8 = MOVZXi 1, 32
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(MOVZx_shift, scratch_x8.cur_reg, 0x1, 2);
-    }
-    // result x8 is marked as alive
-
-
-    // $w9 = ADDSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x9
+    // $w0 = ADDSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x0
     if (1) {
         AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op1 = scratch_x9.cur_reg;
+        if (param_0.try_salvage_if_nonalloc(scratch_x0, 0)) {
+            op1 = scratch_x0.cur_reg;
         } else {
             op1 = param_0.as_reg(this);
         }
         AsmReg op2;
-        if (param_1.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op2 = scratch_x9.cur_reg;
+        if (param_1.try_salvage_if_nonalloc(scratch_x0, 0)) {
+            op2 = scratch_x0.cur_reg;
         } else {
             op2 = param_1.as_reg(this);
         }
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(ADDSw_lsl, scratch_x9.cur_reg, op1, op2, 0);
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(ADDSw_lsl, scratch_x0.cur_reg, op1, op2, 0);
     }
     // argument x0 is killed and marked as dead
     // argument x1 is killed and marked as dead
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x8 = CSELXr killed renamable $x8, $xzr, 6, implicit killed $nzcv
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x8.cur_reg, scratch_x8.cur_reg, DA_ZR, 0x6);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 0
-    if (1) {
-        // def x0 has not been allocated yet
-        scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 0);
-    }
-    // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
+    // result x0 is marked as alive
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_VC);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -7351,17 +7318,15 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_sub_i32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $w0, $w1
-    //   renamable $x8 = MOVZXi 1, 32
-    //   $w9 = SUBSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x9
-    //   renamable $x8 = CSELXr killed renamable $x8, $xzr, 6, implicit killed $nzcv
-    //   $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 0
-    //   RET undef $lr, implicit killed $x0
+    //   $w0 = SUBSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x0
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_sub_i32.
     // 
@@ -7369,68 +7334,48 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
-    ScratchReg scratch_x8{derived()};
 
 
-    // renamable $x8 = MOVZXi 1, 32
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(MOVZx_shift, scratch_x8.cur_reg, 0x1, 2);
-    }
-    // result x8 is marked as alive
-
-
-    // $w9 = SUBSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x9
+    // $w0 = SUBSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x0
     if (1) {
         AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op1 = scratch_x9.cur_reg;
+        if (param_0.try_salvage_if_nonalloc(scratch_x0, 0)) {
+            op1 = scratch_x0.cur_reg;
         } else {
             op1 = param_0.as_reg(this);
         }
         AsmReg op2;
-        if (param_1.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op2 = scratch_x9.cur_reg;
+        if (param_1.try_salvage_if_nonalloc(scratch_x0, 0)) {
+            op2 = scratch_x0.cur_reg;
         } else {
             op2 = param_1.as_reg(this);
         }
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(SUBSw_lsl, scratch_x9.cur_reg, op1, op2, 0);
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(SUBSw_lsl, scratch_x0.cur_reg, op1, op2, 0);
     }
     // argument x0 is killed and marked as dead
     // argument x1 is killed and marked as dead
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x8 = CSELXr killed renamable $x8, $xzr, 6, implicit killed $nzcv
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x8.cur_reg, scratch_x8.cur_reg, DA_ZR, 0x6);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 0
-    if (1) {
-        // def x0 has not been allocated yet
-        scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 0);
-    }
-    // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
+    // result x0 is marked as alive
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_VC);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -7439,18 +7384,17 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_i32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_mul_i32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $w0, $w1
-    //   renamable $x9 = SMADDLrrr killed renamable $w0, killed renamable $w1, $xzr
-    //   renamable $x8 = MOVZXi 1, 32
-    //   $xzr = SUBSXrx renamable $x9, renamable $w9, 48, implicit-def $nzcv
-    //   renamable $x0 = CSELXr killed renamable $x8, $xzr, 1, implicit killed $nzcv
-    //   renamable $x0 = BFMXri killed renamable $x0(tied-def 0), killed renamable $x9, 0, 31
-    //   RET undef $lr, implicit killed $x0
+    //   renamable $x8 = SMADDLrrr killed renamable $w0, killed renamable $w1, $xzr
+    //   $xzr = SUBSXrx renamable $x8, renamable $w8, 48, implicit-def $nzcv
+    //   $x0 = ANDXri killed renamable $x8, 4127
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_mul_i32.
     // 
@@ -7458,73 +7402,64 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
     ScratchReg scratch_x8{derived()};
 
 
-    // renamable $x9 = SMADDLrrr killed renamable $w0, killed renamable $w1, $xzr
+    // renamable $x8 = SMADDLrrr killed renamable $w0, killed renamable $w1, $xzr
     if (1) {
         AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op1 = scratch_x9.cur_reg;
+        if (param_0.try_salvage_if_nonalloc(scratch_x8, 0)) {
+            op1 = scratch_x8.cur_reg;
         } else {
             op1 = param_0.as_reg(this);
         }
         AsmReg op2;
-        if (param_1.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op2 = scratch_x9.cur_reg;
+        if (param_1.try_salvage_if_nonalloc(scratch_x8, 0)) {
+            op2 = scratch_x8.cur_reg;
         } else {
             op2 = param_1.as_reg(this);
         }
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(SMADDL, scratch_x9.cur_reg, op1, op2, DA_ZR);
+        // def x8 has not been allocated yet
+        scratch_x8.alloc_from_bank(0);
+        ASMD(SMADDL, scratch_x8.cur_reg, op1, op2, DA_ZR);
     }
     // argument x0 is killed and marked as dead
     // argument x1 is killed and marked as dead
-    // result x9 is marked as alive
-
-
-    // renamable $x8 = MOVZXi 1, 32
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(MOVZx_shift, scratch_x8.cur_reg, 0x1, 2);
-    }
     // result x8 is marked as alive
 
 
-    // $xzr = SUBSXrx renamable $x9, renamable $w9, 48, implicit-def $nzcv
+    // $xzr = SUBSXrx renamable $x8, renamable $w8, 48, implicit-def $nzcv
     if (1) {
-        ASMD(SUBSx_sxtw, DA_ZR, scratch_x9.cur_reg, scratch_x9.cur_reg, 48);
+        ASMD(SUBSx_sxtw, DA_ZR, scratch_x8.cur_reg, scratch_x8.cur_reg, 48);
     }
 
 
-    // renamable $x0 = CSELXr killed renamable $x8, $xzr, 1, implicit killed $nzcv
+    // $x0 = ANDXri killed renamable $x8, 4127
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, 0x1);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xffffffff);
     }
     // argument x8 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // renamable $x0 = BFMXri killed renamable $x0(tied-def 0), killed renamable $x9, 0, 31
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
     if (1) {
-        // operand 1(x0) is the same as its tied destination
-        assert(scratch_x0.cur_reg.valid());
-        ASMD(BFMx, scratch_x0.cur_reg, scratch_x9.cur_reg, 0x0, 0x1f);
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
     }
-    // argument x0 is killed and marked as dead
-    // argument x9 is killed and marked as dead
-    // result x0 is marked as alive
+    // result x1 is marked as alive
+    // result x1 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -7533,17 +7468,15 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_add_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_add_u32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $w0, $w1
-    //   renamable $x8 = MOVZXi 1, 32
-    //   $w9 = ADDSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x9
-    //   renamable $x8 = CSELXr killed renamable $x8, $xzr, 2, implicit killed $nzcv
-    //   $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 0
-    //   RET undef $lr, implicit killed $x0
+    //   $w0 = ADDSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x0
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 3, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_add_u32.
     // 
@@ -7551,68 +7484,48 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
-    ScratchReg scratch_x8{derived()};
 
 
-    // renamable $x8 = MOVZXi 1, 32
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(MOVZx_shift, scratch_x8.cur_reg, 0x1, 2);
-    }
-    // result x8 is marked as alive
-
-
-    // $w9 = ADDSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x9
+    // $w0 = ADDSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x0
     if (1) {
         AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op1 = scratch_x9.cur_reg;
+        if (param_0.try_salvage_if_nonalloc(scratch_x0, 0)) {
+            op1 = scratch_x0.cur_reg;
         } else {
             op1 = param_0.as_reg(this);
         }
         AsmReg op2;
-        if (param_1.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op2 = scratch_x9.cur_reg;
+        if (param_1.try_salvage_if_nonalloc(scratch_x0, 0)) {
+            op2 = scratch_x0.cur_reg;
         } else {
             op2 = param_1.as_reg(this);
         }
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(ADDSw_lsl, scratch_x9.cur_reg, op1, op2, 0);
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(ADDSw_lsl, scratch_x0.cur_reg, op1, op2, 0);
     }
     // argument x0 is killed and marked as dead
     // argument x1 is killed and marked as dead
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x8 = CSELXr killed renamable $x8, $xzr, 2, implicit killed $nzcv
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x8.cur_reg, scratch_x8.cur_reg, DA_ZR, 0x2);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 0
-    if (1) {
-        // def x0 has not been allocated yet
-        scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 0);
-    }
-    // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
+    // result x0 is marked as alive
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 3, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_LO);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -7621,17 +7534,15 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_sub_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_sub_u32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $w0, $w1
-    //   renamable $x8 = MOVZXi 1, 32
-    //   $w9 = SUBSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x9
-    //   renamable $x8 = CSELXr killed renamable $x8, $xzr, 3, implicit killed $nzcv
-    //   $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 0
-    //   RET undef $lr, implicit killed $x0
+    //   $w0 = SUBSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x0
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 2, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_sub_u32.
     // 
@@ -7639,68 +7550,48 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
-    ScratchReg scratch_x8{derived()};
 
 
-    // renamable $x8 = MOVZXi 1, 32
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(MOVZx_shift, scratch_x8.cur_reg, 0x1, 2);
-    }
-    // result x8 is marked as alive
-
-
-    // $w9 = SUBSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x9
+    // $w0 = SUBSWrs killed renamable $w0, killed renamable $w1, 0, implicit-def $nzcv, implicit-def $x0
     if (1) {
         AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op1 = scratch_x9.cur_reg;
+        if (param_0.try_salvage_if_nonalloc(scratch_x0, 0)) {
+            op1 = scratch_x0.cur_reg;
         } else {
             op1 = param_0.as_reg(this);
         }
         AsmReg op2;
-        if (param_1.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op2 = scratch_x9.cur_reg;
+        if (param_1.try_salvage_if_nonalloc(scratch_x0, 0)) {
+            op2 = scratch_x0.cur_reg;
         } else {
             op2 = param_1.as_reg(this);
         }
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(SUBSw_lsl, scratch_x9.cur_reg, op1, op2, 0);
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(SUBSw_lsl, scratch_x0.cur_reg, op1, op2, 0);
     }
     // argument x0 is killed and marked as dead
     // argument x1 is killed and marked as dead
-    // result x9 is marked as alive
-    // result x9 is marked as alive
-
-
-    // renamable $x8 = CSELXr killed renamable $x8, $xzr, 3, implicit killed $nzcv
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x8.cur_reg, scratch_x8.cur_reg, DA_ZR, 0x3);
-    }
-    // argument x8 is killed and marked as dead
-    // result x8 is marked as alive
-
-
-    // $x0 = ORRXrs killed renamable $x8, killed renamable $x9, 0
-    if (1) {
-        // def x0 has not been allocated yet
-        scratch_x0.alloc_from_bank(0);
-        ASMD(ORRx_lsl, scratch_x0.cur_reg, scratch_x8.cur_reg, scratch_x9.cur_reg, 0);
-    }
-    // argument x8 is killed and marked as dead
-    // argument x9 is killed and marked as dead
+    // result x0 is marked as alive
     // result x0 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // renamable $w1 = CSINCWr $wzr, $wzr, 2, implicit killed $nzcv, implicit-def $x1
+    if (1) {
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_HS);
+    }
+    // result x1 is marked as alive
+    // result x1 is marked as alive
+
+
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -7709,18 +7600,17 @@ template <typename Adaptor,
           typename Derived,
           template <typename, typename, typename>
           class BaseTy,
-          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0) {
+          typename Config>bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::encode_of_mul_u32(AsmOperand param_0, AsmOperand param_1, ScratchReg &result_0, ScratchReg &result_1) {
     // # Machine code for function of_mul_u32: NoPHIs, TracksLiveness, NoVRegs, TiedOpsRewritten, TracksDebugUserValues
     // Function Live Ins: $w0, $w1
     // 
     // bb.0 (%ir-block.2):
     //   liveins: $w0, $w1
-    //   renamable $x9 = UMADDLrrr killed renamable $w0, killed renamable $w1, $xzr
-    //   renamable $x8 = MOVZXi 1, 32
-    //   $xzr = ANDSXri renamable $x9, 6175, implicit-def $nzcv
-    //   renamable $x0 = CSELXr killed renamable $x8, $xzr, 1, implicit killed $nzcv
-    //   renamable $x0 = BFMXri killed renamable $x0(tied-def 0), killed renamable $x9, 0, 31
-    //   RET undef $lr, implicit killed $x0
+    //   renamable $x8 = UMADDLrrr killed renamable $w0, killed renamable $w1, $xzr
+    //   $xzr = ANDSXri renamable $x8, 6175, implicit-def $nzcv
+    //   $x0 = ANDXri killed renamable $x8, 4127
+    //   renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
+    //   RET undef $lr, implicit killed $x0, implicit killed $x1
     // 
     // # End machine code for function of_mul_u32.
     // 
@@ -7728,73 +7618,64 @@ template <typename Adaptor,
     // Mapping x0 to param_0
     // Mapping x1 to param_1
     ScratchReg scratch_x0{derived()};
-    ScratchReg scratch_x9{derived()};
     ScratchReg scratch_x1{derived()};
     ScratchReg scratch_x8{derived()};
 
 
-    // renamable $x9 = UMADDLrrr killed renamable $w0, killed renamable $w1, $xzr
+    // renamable $x8 = UMADDLrrr killed renamable $w0, killed renamable $w1, $xzr
     if (1) {
         AsmReg op1;
-        if (param_0.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op1 = scratch_x9.cur_reg;
+        if (param_0.try_salvage_if_nonalloc(scratch_x8, 0)) {
+            op1 = scratch_x8.cur_reg;
         } else {
             op1 = param_0.as_reg(this);
         }
         AsmReg op2;
-        if (param_1.try_salvage_if_nonalloc(scratch_x9, 0)) {
-            op2 = scratch_x9.cur_reg;
+        if (param_1.try_salvage_if_nonalloc(scratch_x8, 0)) {
+            op2 = scratch_x8.cur_reg;
         } else {
             op2 = param_1.as_reg(this);
         }
-        // def x9 has not been allocated yet
-        scratch_x9.alloc_from_bank(0);
-        ASMD(UMADDL, scratch_x9.cur_reg, op1, op2, DA_ZR);
+        // def x8 has not been allocated yet
+        scratch_x8.alloc_from_bank(0);
+        ASMD(UMADDL, scratch_x8.cur_reg, op1, op2, DA_ZR);
     }
     // argument x0 is killed and marked as dead
     // argument x1 is killed and marked as dead
-    // result x9 is marked as alive
-
-
-    // renamable $x8 = MOVZXi 1, 32
-    if (1) {
-        // def x8 has not been allocated yet
-        scratch_x8.alloc_from_bank(0);
-        ASMD(MOVZx_shift, scratch_x8.cur_reg, 0x1, 2);
-    }
     // result x8 is marked as alive
 
 
-    // $xzr = ANDSXri renamable $x9, 6175, implicit-def $nzcv
+    // $xzr = ANDSXri renamable $x8, 6175, implicit-def $nzcv
     if (1) {
-        ASMD(ANDSxi, DA_ZR, scratch_x9.cur_reg, 0xffffffff00000000);
+        ASMD(ANDSxi, DA_ZR, scratch_x8.cur_reg, 0xffffffff00000000);
     }
 
 
-    // renamable $x0 = CSELXr killed renamable $x8, $xzr, 1, implicit killed $nzcv
+    // $x0 = ANDXri killed renamable $x8, 4127
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, 0x1);
+        ASMD(ANDxi, scratch_x0.cur_reg, scratch_x8.cur_reg, 0xffffffff);
     }
     // argument x8 is killed and marked as dead
     // result x0 is marked as alive
 
 
-    // renamable $x0 = BFMXri killed renamable $x0(tied-def 0), killed renamable $x9, 0, 31
+    // renamable $w1 = CSINCWr $wzr, $wzr, 0, implicit killed $nzcv, implicit-def $x1
     if (1) {
-        // operand 1(x0) is the same as its tied destination
-        assert(scratch_x0.cur_reg.valid());
-        ASMD(BFMx, scratch_x0.cur_reg, scratch_x9.cur_reg, 0x0, 0x1f);
+        // def x1 has not been allocated yet
+        scratch_x1.alloc_from_bank(0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
     }
-    // argument x0 is killed and marked as dead
-    // argument x9 is killed and marked as dead
-    // result x0 is marked as alive
+    // result x1 is marked as alive
+    // result x1 is marked as alive
 
 
-    // RET undef $lr, implicit killed $x0
+    // RET undef $lr, implicit killed $x0, implicit killed $x1
     // returning reg x0 as result_0
     result_0 = std::move(scratch_x0);
+    // returning reg x1 as result_1
+    result_1 = std::move(scratch_x1);
     return true;
 
 }
@@ -7849,7 +7730,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x7);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_VC);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -7914,7 +7795,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x7);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_VC);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -8012,7 +7893,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -8077,7 +7958,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x3);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_LO);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -8142,7 +8023,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x2);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_HS);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -8228,7 +8109,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x0);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_EQ);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -8256,8 +8137,8 @@ template <typename Adaptor,
     //   $x9 = ADDSXrs killed renamable $x0, killed renamable $x2, 0, implicit-def $nzcv
     //   renamable $x10 = ADCSXr killed renamable $x1, killed renamable $x3, implicit-def $nzcv, implicit killed $nzcv
     //   STPXi killed renamable $x9, killed renamable $x10, renamable $x8, 0 :: (store (s64) into %ir.0, align 16, !tbaa !29), (store (s64) into %ir.0 + 8, basealign 16, !tbaa !29)
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv
-    //   STRWui killed renamable $w9, killed renamable $x8, 4 :: (store (s32) into %ir.7, align 16, !tbaa !31)
+    //   renamable $w9 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv, implicit-def $x9
+    //   STRXui killed renamable $x9, killed renamable $x8, 2 :: (store (s64) into %ir.7, align 16, !tbaa !31)
     //   RET undef $lr
     // 
     // # End machine code for function of_add_i128.
@@ -8332,19 +8213,20 @@ template <typename Adaptor,
     // argument x10 is killed and marked as dead
 
 
-    // renamable $w9 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv
+    // renamable $w9 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv, implicit-def $x9
     if (1) {
         // def x9 has not been allocated yet
         scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x7);
+        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, DA_VC);
     }
+    // result x9 is marked as alive
     // result x9 is marked as alive
 
 
-    // STRWui killed renamable $w9, killed renamable $x8, 4 :: (store (s32) into %ir.7, align 16, !tbaa !31)
+    // STRXui killed renamable $x9, killed renamable $x8, 2 :: (store (s64) into %ir.7, align 16, !tbaa !31)
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(STRwu, scratch_x9.cur_reg, op1, 0x4);
+        ASMD(STRxu, scratch_x9.cur_reg, op1, 0x2);
     }
     // argument x9 is killed and marked as dead
     // argument x8 is killed and marked as dead
@@ -8368,8 +8250,8 @@ template <typename Adaptor,
     //   $x9 = SUBSXrs killed renamable $x0, killed renamable $x2, 0, implicit-def $nzcv
     //   renamable $x10 = SBCSXr killed renamable $x1, killed renamable $x3, implicit-def $nzcv, implicit killed $nzcv
     //   STPXi killed renamable $x9, killed renamable $x10, renamable $x8, 0 :: (store (s64) into %ir.0, align 16, !tbaa !29), (store (s64) into %ir.0 + 8, basealign 16, !tbaa !29)
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv
-    //   STRWui killed renamable $w9, killed renamable $x8, 4 :: (store (s32) into %ir.7, align 16, !tbaa !31)
+    //   renamable $w9 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv, implicit-def $x9
+    //   STRXui killed renamable $x9, killed renamable $x8, 2 :: (store (s64) into %ir.7, align 16, !tbaa !31)
     //   RET undef $lr
     // 
     // # End machine code for function of_sub_i128.
@@ -8444,19 +8326,20 @@ template <typename Adaptor,
     // argument x10 is killed and marked as dead
 
 
-    // renamable $w9 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv
+    // renamable $w9 = CSINCWr $wzr, $wzr, 7, implicit killed $nzcv, implicit-def $x9
     if (1) {
         // def x9 has not been allocated yet
         scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x7);
+        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, DA_VC);
     }
+    // result x9 is marked as alive
     // result x9 is marked as alive
 
 
-    // STRWui killed renamable $w9, killed renamable $x8, 4 :: (store (s32) into %ir.7, align 16, !tbaa !31)
+    // STRXui killed renamable $x9, killed renamable $x8, 2 :: (store (s64) into %ir.7, align 16, !tbaa !31)
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(STRwu, scratch_x9.cur_reg, op1, 0x4);
+        ASMD(STRxu, scratch_x9.cur_reg, op1, 0x2);
     }
     // argument x9 is killed and marked as dead
     // argument x8 is killed and marked as dead
@@ -8480,8 +8363,8 @@ template <typename Adaptor,
     //   $x9 = ADDSXrs killed renamable $x0, killed renamable $x2, 0, implicit-def $nzcv
     //   renamable $x10 = ADCSXr killed renamable $x1, killed renamable $x3, implicit-def $nzcv, implicit killed $nzcv
     //   STPXi killed renamable $x9, killed renamable $x10, renamable $x8, 0 :: (store (s64) into %ir.0, align 16, !tbaa !32), (store (s64) into %ir.0 + 8, basealign 16, !tbaa !32)
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 3, implicit killed $nzcv
-    //   STRWui killed renamable $w9, killed renamable $x8, 4 :: (store (s32) into %ir.7, align 16, !tbaa !34)
+    //   renamable $w9 = CSINCWr $wzr, $wzr, 3, implicit killed $nzcv, implicit-def $x9
+    //   STRXui killed renamable $x9, killed renamable $x8, 2 :: (store (s64) into %ir.7, align 16, !tbaa !34)
     //   RET undef $lr
     // 
     // # End machine code for function of_add_u128.
@@ -8556,19 +8439,20 @@ template <typename Adaptor,
     // argument x10 is killed and marked as dead
 
 
-    // renamable $w9 = CSINCWr $wzr, $wzr, 3, implicit killed $nzcv
+    // renamable $w9 = CSINCWr $wzr, $wzr, 3, implicit killed $nzcv, implicit-def $x9
     if (1) {
         // def x9 has not been allocated yet
         scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x3);
+        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, DA_LO);
     }
+    // result x9 is marked as alive
     // result x9 is marked as alive
 
 
-    // STRWui killed renamable $w9, killed renamable $x8, 4 :: (store (s32) into %ir.7, align 16, !tbaa !34)
+    // STRXui killed renamable $x9, killed renamable $x8, 2 :: (store (s64) into %ir.7, align 16, !tbaa !34)
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(STRwu, scratch_x9.cur_reg, op1, 0x4);
+        ASMD(STRxu, scratch_x9.cur_reg, op1, 0x2);
     }
     // argument x9 is killed and marked as dead
     // argument x8 is killed and marked as dead
@@ -8592,8 +8476,8 @@ template <typename Adaptor,
     //   $x9 = SUBSXrs killed renamable $x0, killed renamable $x2, 0, implicit-def $nzcv
     //   renamable $x10 = SBCSXr killed renamable $x1, killed renamable $x3, implicit-def $nzcv, implicit killed $nzcv
     //   STPXi killed renamable $x9, killed renamable $x10, renamable $x8, 0 :: (store (s64) into %ir.0, align 16, !tbaa !32), (store (s64) into %ir.0 + 8, basealign 16, !tbaa !32)
-    //   renamable $w9 = CSINCWr $wzr, $wzr, 2, implicit killed $nzcv
-    //   STRWui killed renamable $w9, killed renamable $x8, 4 :: (store (s32) into %ir.7, align 16, !tbaa !34)
+    //   renamable $w9 = CSINCWr $wzr, $wzr, 2, implicit killed $nzcv, implicit-def $x9
+    //   STRXui killed renamable $x9, killed renamable $x8, 2 :: (store (s64) into %ir.7, align 16, !tbaa !34)
     //   RET undef $lr
     // 
     // # End machine code for function of_sub_u128.
@@ -8668,19 +8552,20 @@ template <typename Adaptor,
     // argument x10 is killed and marked as dead
 
 
-    // renamable $w9 = CSINCWr $wzr, $wzr, 2, implicit killed $nzcv
+    // renamable $w9 = CSINCWr $wzr, $wzr, 2, implicit killed $nzcv, implicit-def $x9
     if (1) {
         // def x9 has not been allocated yet
         scratch_x9.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, 0x2);
+        ASMD(CSINCw, scratch_x9.cur_reg, DA_ZR, DA_ZR, DA_HS);
     }
+    // result x9 is marked as alive
     // result x9 is marked as alive
 
 
-    // STRWui killed renamable $w9, killed renamable $x8, 4 :: (store (s32) into %ir.7, align 16, !tbaa !34)
+    // STRXui killed renamable $x9, killed renamable $x8, 2 :: (store (s64) into %ir.7, align 16, !tbaa !34)
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(STRwu, scratch_x9.cur_reg, op1, 0x4);
+        ASMD(STRxu, scratch_x9.cur_reg, op1, 0x2);
     }
     // argument x9 is killed and marked as dead
     // argument x8 is killed and marked as dead
@@ -11172,7 +11057,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -11262,7 +11147,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -11352,7 +11237,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -11442,7 +11327,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -11532,7 +11417,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -11622,7 +11507,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -11712,7 +11597,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -11802,7 +11687,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -11892,7 +11777,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -11982,7 +11867,7 @@ template <typename Adaptor,
     if (1) {
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x1.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x1 is marked as alive
     // result x1 is marked as alive
@@ -12027,7 +11912,7 @@ template <typename Adaptor,
         }
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(LDRBwu, scratch_x0.cur_reg, op1, 0x0);
+        ASMD(LDRBu, scratch_x0.cur_reg, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
     // result x0 is marked as alive
@@ -12070,7 +11955,7 @@ template <typename Adaptor,
         }
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(LDRHwu, scratch_x0.cur_reg, op1, 0x0);
+        ASMD(LDRHu, scratch_x0.cur_reg, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
     // result x0 is marked as alive
@@ -12562,7 +12447,7 @@ template <typename Adaptor,
         }
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELw, scratch_x0.cur_reg, op1, op2, 0x0);
+        ASMD(CSELw, scratch_x0.cur_reg, op1, op2, DA_EQ);
     }
     // argument x2 is killed and marked as dead
     // argument x1 is killed and marked as dead
@@ -12625,7 +12510,7 @@ template <typename Adaptor,
         }
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x0.cur_reg, op1, op2, 0x0);
+        ASMD(CSELx, scratch_x0.cur_reg, op1, op2, DA_EQ);
     }
     // argument x2 is killed and marked as dead
     // argument x1 is killed and marked as dead
@@ -12694,7 +12579,7 @@ template <typename Adaptor,
         }
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x0.cur_reg, op1, op2, 0x0);
+        ASMD(CSELx, scratch_x0.cur_reg, op1, op2, DA_EQ);
     }
     // argument x4 is killed and marked as dead
     // argument x2 is killed and marked as dead
@@ -12717,7 +12602,7 @@ template <typename Adaptor,
         }
         // def x1 has not been allocated yet
         scratch_x1.alloc_from_bank(0);
-        ASMD(CSELx, scratch_x1.cur_reg, op1, op2, 0x0);
+        ASMD(CSELx, scratch_x1.cur_reg, op1, op2, DA_EQ);
     }
     // argument x5 is killed and marked as dead
     // argument x3 is killed and marked as dead
@@ -12782,7 +12667,7 @@ template <typename Adaptor,
         }
         // def v0 has not been allocated yet
         scratch_v0.alloc_from_bank(1);
-        ASMD(FCSELs, scratch_v0.cur_reg, op1, op2, 0x0);
+        ASMD(FCSELs, scratch_v0.cur_reg, op1, op2, DA_EQ);
     }
     // argument v1 is killed and marked as dead
     // argument v0 is killed and marked as dead
@@ -12845,7 +12730,7 @@ template <typename Adaptor,
         }
         // def v0 has not been allocated yet
         scratch_v0.alloc_from_bank(1);
-        ASMD(FCSELd, scratch_v0.cur_reg, op1, op2, 0x0);
+        ASMD(FCSELd, scratch_v0.cur_reg, op1, op2, DA_EQ);
     }
     // argument v1 is killed and marked as dead
     // argument v0 is killed and marked as dead
@@ -12887,7 +12772,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -12897,7 +12782,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x0 is marked as alive
 
@@ -12937,7 +12822,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -12947,7 +12832,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0xd);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_LE);
     }
     // result x0 is marked as alive
 
@@ -12987,7 +12872,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -12997,7 +12882,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0xb);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_LT);
     }
     // result x0 is marked as alive
 
@@ -13037,7 +12922,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13047,7 +12932,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x5);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_PL);
     }
     // result x0 is marked as alive
 
@@ -13087,7 +12972,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13097,7 +12982,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x8);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_HI);
     }
     // result x0 is marked as alive
 
@@ -13139,7 +13024,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13149,7 +13034,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x5);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_PL);
     }
     // result x8 is marked as alive
 
@@ -13158,7 +13043,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, 0xd);
+        ASMD(CSINCw, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, DA_LE);
     }
     // argument x8 is killed and marked as dead
     // result x0 is marked as alive
@@ -13199,7 +13084,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13209,7 +13094,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x6);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_VS);
     }
     // result x0 is marked as alive
 
@@ -13251,7 +13136,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13261,7 +13146,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -13270,7 +13155,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, 0x7);
+        ASMD(CSINCw, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, DA_VC);
     }
     // argument x8 is killed and marked as dead
     // result x0 is marked as alive
@@ -13311,7 +13196,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13321,7 +13206,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x9);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_LS);
     }
     // result x0 is marked as alive
 
@@ -13361,7 +13246,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13371,7 +13256,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x4);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_MI);
     }
     // result x0 is marked as alive
 
@@ -13411,7 +13296,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13421,7 +13306,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0xa);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_GE);
     }
     // result x0 is marked as alive
 
@@ -13461,7 +13346,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13471,7 +13356,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0xc);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_GT);
     }
     // result x0 is marked as alive
 
@@ -13511,7 +13396,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13521,7 +13406,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x0);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_EQ);
     }
     // result x0 is marked as alive
 
@@ -13561,7 +13446,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13571,7 +13456,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x7);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_VC);
     }
     // result x0 is marked as alive
 
@@ -13611,7 +13496,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13621,7 +13506,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x0 is marked as alive
 
@@ -13661,7 +13546,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13671,7 +13556,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0xd);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_LE);
     }
     // result x0 is marked as alive
 
@@ -13711,7 +13596,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13721,7 +13606,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0xb);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_LT);
     }
     // result x0 is marked as alive
 
@@ -13761,7 +13646,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13771,7 +13656,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x5);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_PL);
     }
     // result x0 is marked as alive
 
@@ -13811,7 +13696,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13821,7 +13706,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x8);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_HI);
     }
     // result x0 is marked as alive
 
@@ -13863,7 +13748,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13873,7 +13758,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x5);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_PL);
     }
     // result x8 is marked as alive
 
@@ -13882,7 +13767,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, 0xd);
+        ASMD(CSINCw, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, DA_LE);
     }
     // argument x8 is killed and marked as dead
     // result x0 is marked as alive
@@ -13923,7 +13808,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13933,7 +13818,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x6);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_VS);
     }
     // result x0 is marked as alive
 
@@ -13975,7 +13860,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -13985,7 +13870,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -13994,7 +13879,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, 0x7);
+        ASMD(CSINCw, scratch_x0.cur_reg, scratch_x8.cur_reg, DA_ZR, DA_VC);
     }
     // argument x8 is killed and marked as dead
     // result x0 is marked as alive
@@ -14035,7 +13920,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -14045,7 +13930,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x9);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_LS);
     }
     // result x0 is marked as alive
 
@@ -14085,7 +13970,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -14095,7 +13980,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x4);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_MI);
     }
     // result x0 is marked as alive
 
@@ -14135,7 +14020,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -14145,7 +14030,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0xa);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_GE);
     }
     // result x0 is marked as alive
 
@@ -14185,7 +14070,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -14195,7 +14080,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0xc);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_GT);
     }
     // result x0 is marked as alive
 
@@ -14235,7 +14120,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -14245,7 +14130,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x0);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_EQ);
     }
     // result x0 is marked as alive
 
@@ -14285,7 +14170,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_0.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -14295,7 +14180,7 @@ template <typename Adaptor,
     if (1) {
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, 0x7);
+        ASMD(CSINCw, scratch_x0.cur_reg, DA_ZR, DA_ZR, DA_VC);
     }
     // result x0 is marked as alive
 
@@ -14386,7 +14271,7 @@ template <typename Adaptor,
 
     // CCMPWr killed renamable $w9, killed renamable $w8, 0, 12, implicit-def $nzcv, implicit killed $nzcv
     if (1) {
-        ASMD(CCMPw, scratch_x9.cur_reg, scratch_x8.cur_reg, 0x0, 0xc);
+        ASMD(CCMPw, scratch_x9.cur_reg, scratch_x8.cur_reg, DA_EQ, DA_GT);
     }
     // argument x9 is killed and marked as dead
     // argument x8 is killed and marked as dead
@@ -14396,7 +14281,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0xa);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_GE);
     }
     // result x8 is marked as alive
 
@@ -14496,7 +14381,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0xd);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_LE);
     }
     // result x8 is marked as alive
 
@@ -14575,7 +14460,7 @@ template <typename Adaptor,
     // nofpexcept FCMPSrr killed renamable $s0, killed renamable $s1, implicit-def $nzcv, implicit $fpcr
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, scratch_v1.cur_reg);
+        ASMD(FCMP_s, op0, scratch_v1.cur_reg);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -14585,7 +14470,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -14694,7 +14579,7 @@ template <typename Adaptor,
 
     // CCMPWi killed renamable $w8, 0, 0, 3, implicit-def $nzcv, implicit killed $nzcv
     if (1) {
-        ASMD(CCMPwi, scratch_x8.cur_reg, 0x0, 0x0, 0x3);
+        ASMD(CCMPwi, scratch_x8.cur_reg, DA_EQ, DA_EQ, DA_LO);
     }
     // argument x8 is killed and marked as dead
 
@@ -14703,7 +14588,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0xa);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_GE);
     }
     // result x8 is marked as alive
 
@@ -14813,7 +14698,7 @@ template <typename Adaptor,
 
     // CCMPWi killed renamable $w9, 0, 0, 3, implicit-def $nzcv, implicit killed $nzcv
     if (1) {
-        ASMD(CCMPwi, scratch_x9.cur_reg, 0x0, 0x0, 0x3);
+        ASMD(CCMPwi, scratch_x9.cur_reg, DA_EQ, DA_EQ, DA_LO);
     }
     // argument x9 is killed and marked as dead
 
@@ -14822,7 +14707,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0xa);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_GE);
     }
     // result x8 is marked as alive
 
@@ -14911,7 +14796,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -14988,7 +14873,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -15088,7 +14973,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x2);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_HS);
     }
     // result x8 is marked as alive
 
@@ -15197,7 +15082,7 @@ template <typename Adaptor,
 
     // CCMPWi killed renamable $w8, 0, 8, 3, implicit-def $nzcv, implicit killed $nzcv
     if (1) {
-        ASMD(CCMPwi, scratch_x8.cur_reg, 0x0, 0x8, 0x3);
+        ASMD(CCMPwi, scratch_x8.cur_reg, DA_EQ, DA_HI, DA_LO);
     }
     // argument x8 is killed and marked as dead
 
@@ -15206,7 +15091,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0xb);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_LT);
     }
     // result x8 is marked as alive
 
@@ -15285,7 +15170,7 @@ template <typename Adaptor,
     // nofpexcept FCMPSrr killed renamable $s0, killed renamable $s1, implicit-def $nzcv, implicit $fpcr
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, scratch_v1.cur_reg);
+        ASMD(FCMP_s, op0, scratch_v1.cur_reg);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -15295,7 +15180,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -15353,7 +15238,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPs, op0, op1);
+        ASMD(FCMP_s, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v0 is killed and marked as dead
@@ -15363,7 +15248,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x7);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_VC);
     }
     // result x8 is marked as alive
 
@@ -15458,7 +15343,7 @@ template <typename Adaptor,
 
     // nofpexcept FCMPSrr killed renamable $s0, killed renamable $s1, implicit-def $nzcv, implicit $fpcr
     if (1) {
-        ASMD(FCMPs, scratch_v0.cur_reg, scratch_v1.cur_reg);
+        ASMD(FCMP_s, scratch_v0.cur_reg, scratch_v1.cur_reg);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -15468,7 +15353,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -15578,7 +15463,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x2);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_HS);
     }
     // result x8 is marked as alive
 
@@ -15674,7 +15559,7 @@ template <typename Adaptor,
 
     // nofpexcept FCMPSrr killed renamable $s0, killed renamable $s1, implicit-def $nzcv, implicit $fpcr
     if (1) {
-        ASMD(FCMPs, scratch_v0.cur_reg, scratch_v1.cur_reg);
+        ASMD(FCMP_s, scratch_v0.cur_reg, scratch_v1.cur_reg);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -15684,7 +15569,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x5);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_PL);
     }
     // result x8 is marked as alive
 
@@ -15693,7 +15578,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, scratch_x8.cur_reg, DA_ZR, 0xd);
+        ASMD(CSINCw, scratch_x8.cur_reg, scratch_x8.cur_reg, DA_ZR, DA_LE);
     }
     // argument x8 is killed and marked as dead
     // result x8 is marked as alive
@@ -15802,7 +15687,7 @@ template <typename Adaptor,
 
     // CCMPXr killed renamable $x9, killed renamable $x8, 0, 12, implicit-def $nzcv, implicit killed $nzcv
     if (1) {
-        ASMD(CCMPx, scratch_x9.cur_reg, scratch_x8.cur_reg, 0x0, 0xc);
+        ASMD(CCMPx, scratch_x9.cur_reg, scratch_x8.cur_reg, DA_EQ, DA_GT);
     }
     // argument x9 is killed and marked as dead
     // argument x8 is killed and marked as dead
@@ -15812,7 +15697,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0xa);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_GE);
     }
     // result x8 is marked as alive
 
@@ -15912,7 +15797,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0xd);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_LE);
     }
     // result x8 is marked as alive
 
@@ -15991,7 +15876,7 @@ template <typename Adaptor,
     // nofpexcept FCMPDrr killed renamable $d0, killed renamable $d1, implicit-def $nzcv, implicit $fpcr
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, scratch_v1.cur_reg);
+        ASMD(FCMP_d, op0, scratch_v1.cur_reg);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -16001,7 +15886,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -16122,7 +16007,7 @@ template <typename Adaptor,
 
     // CCMPXi killed renamable $x9, 0, 0, 3, implicit-def $nzcv, implicit killed $nzcv
     if (1) {
-        ASMD(CCMPxi, scratch_x9.cur_reg, 0x0, 0x0, 0x3);
+        ASMD(CCMPxi, scratch_x9.cur_reg, DA_EQ, DA_EQ, DA_LO);
     }
     // argument x9 is killed and marked as dead
 
@@ -16131,7 +16016,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0xa);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_GE);
     }
     // result x8 is marked as alive
 
@@ -16241,7 +16126,7 @@ template <typename Adaptor,
 
     // CCMPXi killed renamable $x9, 0, 0, 3, implicit-def $nzcv, implicit killed $nzcv
     if (1) {
-        ASMD(CCMPxi, scratch_x9.cur_reg, 0x0, 0x0, 0x3);
+        ASMD(CCMPxi, scratch_x9.cur_reg, DA_EQ, DA_EQ, DA_LO);
     }
     // argument x9 is killed and marked as dead
 
@@ -16250,7 +16135,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0xa);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_GE);
     }
     // result x8 is marked as alive
 
@@ -16339,7 +16224,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -16416,7 +16301,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -16516,7 +16401,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x2);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_HS);
     }
     // result x8 is marked as alive
 
@@ -16637,7 +16522,7 @@ template <typename Adaptor,
 
     // CCMPXi killed renamable $x9, 0, 8, 3, implicit-def $nzcv, implicit killed $nzcv
     if (1) {
-        ASMD(CCMPxi, scratch_x9.cur_reg, 0x0, 0x8, 0x3);
+        ASMD(CCMPxi, scratch_x9.cur_reg, DA_EQ, DA_HI, DA_LO);
     }
     // argument x9 is killed and marked as dead
 
@@ -16646,7 +16531,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0xb);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_LT);
     }
     // result x8 is marked as alive
 
@@ -16725,7 +16610,7 @@ template <typename Adaptor,
     // nofpexcept FCMPDrr killed renamable $d0, killed renamable $d1, implicit-def $nzcv, implicit $fpcr
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, scratch_v1.cur_reg);
+        ASMD(FCMP_d, op0, scratch_v1.cur_reg);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -16735,7 +16620,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -16793,7 +16678,7 @@ template <typename Adaptor,
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_1.as_reg(this);
-        ASMD(FCMPd, op0, op1);
+        ASMD(FCMP_d, op0, op1);
     }
     // argument v0 is killed and marked as dead
     // argument v0 is killed and marked as dead
@@ -16803,7 +16688,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x7);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_VC);
     }
     // result x8 is marked as alive
 
@@ -16898,7 +16783,7 @@ template <typename Adaptor,
 
     // nofpexcept FCMPDrr killed renamable $d0, killed renamable $d1, implicit-def $nzcv, implicit $fpcr
     if (1) {
-        ASMD(FCMPd, scratch_v0.cur_reg, scratch_v1.cur_reg);
+        ASMD(FCMP_d, scratch_v0.cur_reg, scratch_v1.cur_reg);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -16908,7 +16793,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x1);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_NE);
     }
     // result x8 is marked as alive
 
@@ -17030,7 +16915,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x2);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_HS);
     }
     // result x8 is marked as alive
 
@@ -17126,7 +17011,7 @@ template <typename Adaptor,
 
     // nofpexcept FCMPDrr killed renamable $d0, killed renamable $d1, implicit-def $nzcv, implicit $fpcr
     if (1) {
-        ASMD(FCMPd, scratch_v0.cur_reg, scratch_v1.cur_reg);
+        ASMD(FCMP_d, scratch_v0.cur_reg, scratch_v1.cur_reg);
     }
     // argument v0 is killed and marked as dead
     // argument v1 is killed and marked as dead
@@ -17136,7 +17021,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, 0x5);
+        ASMD(CSINCw, scratch_x8.cur_reg, DA_ZR, DA_ZR, DA_PL);
     }
     // result x8 is marked as alive
 
@@ -17145,7 +17030,7 @@ template <typename Adaptor,
     if (1) {
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
-        ASMD(CSINCw, scratch_x8.cur_reg, scratch_x8.cur_reg, DA_ZR, 0xd);
+        ASMD(CSINCw, scratch_x8.cur_reg, scratch_x8.cur_reg, DA_ZR, DA_LE);
     }
     // argument x8 is killed and marked as dead
     // result x8 is marked as alive
@@ -17198,7 +17083,7 @@ template <typename Adaptor,
     // PRFMui 1, killed renamable $x0, 0
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(PRFMu, 0x1, op1, 0x0);
+        ASMD(PRFMu, (Da64PrfOp)1, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
 
@@ -17231,7 +17116,7 @@ template <typename Adaptor,
     // PRFMui 4, killed renamable $x0, 0
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(PRFMu, 0x4, op1, 0x0);
+        ASMD(PRFMu, (Da64PrfOp)4, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
 
@@ -17264,7 +17149,7 @@ template <typename Adaptor,
     // PRFMui 2, killed renamable $x0, 0
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(PRFMu, 0x2, op1, 0x0);
+        ASMD(PRFMu, (Da64PrfOp)2, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
 
@@ -17297,7 +17182,7 @@ template <typename Adaptor,
     // PRFMui 0, killed renamable $x0, 0
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(PRFMu, 0x0, op1, 0x0);
+        ASMD(PRFMu, (Da64PrfOp)0, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
 
@@ -17330,7 +17215,7 @@ template <typename Adaptor,
     // PRFMui 17, killed renamable $x0, 0
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(PRFMu, 0x11, op1, 0x0);
+        ASMD(PRFMu, (Da64PrfOp)17, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
 
@@ -17363,7 +17248,7 @@ template <typename Adaptor,
     // PRFMui 20, killed renamable $x0, 0
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(PRFMu, 0x14, op1, 0x0);
+        ASMD(PRFMu, (Da64PrfOp)20, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
 
@@ -17396,7 +17281,7 @@ template <typename Adaptor,
     // PRFMui 18, killed renamable $x0, 0
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(PRFMu, 0x12, op1, 0x0);
+        ASMD(PRFMu, (Da64PrfOp)18, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
 
@@ -17429,7 +17314,7 @@ template <typename Adaptor,
     // PRFMui 16, killed renamable $x0, 0
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
-        ASMD(PRFMu, 0x10, op1, 0x0);
+        ASMD(PRFMu, (Da64PrfOp)16, op1, 0x0);
     }
     // argument x0 is killed and marked as dead
 
