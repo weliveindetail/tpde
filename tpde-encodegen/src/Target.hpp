@@ -43,13 +43,22 @@ struct MICandidate {
         std::function<void(std::string                        &buf,
                            const llvm::MachineInstr           &mi,
                            llvm::SmallVectorImpl<std::string> &ops)>;
-    Cond      cond;
-    Generator generator;
+    llvm::SmallVector<Cond, 2> conds;
+    Generator                  generator;
 
-    MICandidate(Generator generator) : cond(), generator(generator) {}
+    MICandidate(Generator generator) : conds(), generator(generator) {}
 
     MICandidate(unsigned op_idx, std::string cond_str, Generator generator)
-        : cond(op_idx, cond_str), generator(generator) {}
+        : conds({
+              Cond{op_idx, std::move(cond_str)}
+    }),
+          generator(generator) {}
+
+    MICandidate(Cond cond1, Cond cond2, Generator generator)
+        : conds({cond1, cond2}), generator(generator) {}
+
+    MICandidate(std::initializer_list<Cond> conds, Generator generator)
+        : conds(conds), generator(generator) {}
 };
 
 struct EncodingTarget {

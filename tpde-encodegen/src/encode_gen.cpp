@@ -507,37 +507,60 @@ bool generate_inst(std::string        &buf,
     }
     std::string parent_conds = "0";
     for (const auto &cand : candidates) {
-        std::string                    if_cond     = "";
-        std::string                    cond        = "";
-        unsigned                       repl_op_idx = -1u;
-        llvm::SmallVector<std::string> use_ops;
-        llvm::SmallVector<std::string> ops;
+        std::string                                            if_cond = "";
+        llvm::SmallVector<std::pair<unsigned, std::string>, 2> repl_ops{};
+        llvm::SmallVector<std::string>                         use_ops;
+        llvm::SmallVector<std::string>                         ops;
 
-        if (!cand.cond.cond_str.empty()) {
-            llvm::MachineOperand &cond_op = inst->getOperand(cand.cond.op_idx);
-            auto reg_id = state.target->reg_id_from_mc_reg(cond_op.getReg());
-            if (state.value_map[reg_id].ty != ValueInfo::ASM_OPERAND) {
+        auto wrote_initial_bracket = false;
+        if (!cand.conds.empty()) {
+            auto skip = false;
+            for (auto &cond_entry : cand.conds) {
+                llvm::MachineOperand &cond_op =
+                    inst->getOperand(cond_entry.op_idx);
+                auto reg_id =
+                    state.target->reg_id_from_mc_reg(cond_op.getReg());
+                if (state.value_map[reg_id].ty != ValueInfo::ASM_OPERAND) {
+                    skip = true;
+                    break;
+                }
+                std::string opt =
+                    std::format("{}.{}",
+                                state.value_map[reg_id].operand_name,
+                                cond_entry.cond_str);
+                auto        cond = std::format("cond{}", state.num_conds++);
+                std::string cond_decl = std::format("auto {} = {};", cond, opt);
+
+                if (!wrote_initial_bracket) {
+                    state.fmt_line(buf, 4, "{{");
+                    wrote_initial_bracket = true;
+                }
+
+                // Extremely ugly. We want to execute checks which avoid
+                // requiring fixed registers at the top. For now pretend this is
+                // only relevant when a condition allows replacing an implicit
+                // operands. So essentially, this works exactly for shifts on
+                // x86 and nothing else.
+                // TODO: proper solution? Or explicitly special case x86 shifts?
+                if (cond_entry.op_idx >= inst->getNumExplicitOperands()) {
+                    state.asm_operand_early_conds.push_back(
+                        std::move(cond_decl));
+                    parent_conds += "||" + cond;
+                } else {
+                    state.fmt_line(buf, 4, "{}", cond_decl);
+                }
+                if (if_cond.empty()) {
+                    if_cond = cond;
+                } else {
+                    if_cond += std::format(" && {}", cond);
+                }
+                repl_ops.push_back(std::make_pair(cond_entry.op_idx, cond));
+            }
+            if (skip) {
                 continue;
             }
-            std::string opt       = std::format("{}.{}",
-                                          state.value_map[reg_id].operand_name,
-                                          cand.cond.cond_str);
-            cond                  = std::format("cond{}", state.num_conds++);
-            std::string cond_decl = std::format("auto {} = {}", cond, opt);
-            // Extremely ugly. We want to execute checks which avoid requiring
-            // fixed registers at the top. For now pretend this is only
-            // relevant when a condition allows replacing an implicit operands.
-            // So essentially, this works exactly for shifts on x86 and nothing
-            // else.
-            // TODO: proper solution? Or explicitly special case x86 shifts?
-            if (cand.cond.op_idx >= inst->getNumExplicitOperands()) {
-                state.asm_operand_early_conds.push_back(std::move(cond_decl));
-                parent_conds += "||" + cond;
-                if_cond       = cond;
-            } else {
-                if_cond = cond_decl;
-            }
-            repl_op_idx = cand.cond.op_idx;
+        } else {
+            state.fmt_line(buf, 4, "{{");
         }
 
         // allocate mapping for destinations
@@ -607,8 +630,14 @@ bool generate_inst(std::string        &buf,
                 use_ops.push_back("");
                 continue;
             }
-            if (use.getOperandNo() == repl_op_idx) {
-                use_ops.push_back(std::format("(*{})", cond));
+            if (auto it = std::find_if(repl_ops.begin(),
+                                       repl_ops.end(),
+                                       [&](const auto &entry) {
+                                           return entry.first
+                                                  == use.getOperandNo();
+                                       });
+                it != repl_ops.end()) {
+                use_ops.push_back(std::format("(*{})", it->second));
                 continue;
             }
 
@@ -1097,6 +1126,7 @@ bool generate_inst(std::string        &buf,
         if (candidates.size() > 1) {
             state.fmt_line(buf, 8, "break;");
         }
+        state.fmt_line(buf, 4, "}}");
         state.fmt_line(buf, 4, "}}");
     }
     if (candidates.size() > 1) {
