@@ -810,6 +810,12 @@ void EncodingTargetX64::get_inst_candidates(
     } else if (Name == "SHL64rCL") {
         handle_immrepl("SHL64ri", 3);
         handle_default("SHL64rr", -1, ", FE_CX");
+    } else if (Name == "SHLD64rrCL") {
+        handle_immrepl("SHLD64rri", 4);
+        handle_default("SHLD64rrr", -1, ", FE_CX");
+    } else if (Name == "SHRD64rrCL") {
+        handle_immrepl("SHRD64rri", 4);
+        handle_default("SHRD64rrr", -1, ", FE_CX");
     } else if (Name == "ROR8ri") {
         handle_default("ROR8ri");
     } else if (Name == "ROR16ri") {
@@ -883,6 +889,18 @@ void EncodingTargetX64::get_inst_candidates(
         handle_immrepl("ADD64ri", 2);
         handle_memrepl("ADD64rm", 2);
         handle_default("ADD64rr");
+    } else if (Name == "ADD8mr") {
+        handle_immrepl("ADD8mi", 5, 0);
+        handle_default("ADD8mr", 0);
+    } else if (Name == "ADD16mr") {
+        handle_immrepl("ADD16mi", 5, 0);
+        handle_default("ADD16mr", 0);
+    } else if (Name == "ADD32mr") {
+        handle_immrepl("ADD32mi", 5, 0);
+        handle_default("ADD32mr", 0);
+    } else if (Name == "ADD64mr") {
+        handle_immrepl("ADD64mi", 5, 0);
+        handle_default("ADD64mr", 0);
     } else if (Name == "ADD32ri") {
         handle_default("ADD32ri");
     } else if (Name == "ADD64ri32") {
@@ -903,6 +921,18 @@ void EncodingTargetX64::get_inst_candidates(
         handle_immrepl("ADC64ri", 2);
         handle_memrepl("ADC64rm", 2);
         handle_default("ADC64rr");
+    } else if (Name == "ADC8mr") {
+        handle_immrepl("ADC8mi", 5, 0);
+        handle_default("ADC8mr", 0);
+    } else if (Name == "ADC16mr") {
+        handle_immrepl("ADC16mi", 5, 0);
+        handle_default("ADC16mr", 0);
+    } else if (Name == "ADC32mr") {
+        handle_immrepl("ADC32mi", 5, 0);
+        handle_default("ADC32mr", 0);
+    } else if (Name == "ADC64mr") {
+        handle_immrepl("ADC64mi", 5, 0);
+        handle_default("ADC64mr", 0);
     } else if (Name == "ADC32ri") {
         handle_default("ADC32ri");
     } else if (Name == "ADC64ri32") {
@@ -923,6 +953,18 @@ void EncodingTargetX64::get_inst_candidates(
         handle_immrepl("SUB64ri", 2);
         handle_memrepl("SUB64rm", 2);
         handle_default("SUB64rr");
+    } else if (Name == "SUB8mr") {
+        handle_immrepl("SUB8mi", 5, 0);
+        handle_default("SUB8mr", 0);
+    } else if (Name == "SUB16mr") {
+        handle_immrepl("SUB16mi", 5, 0);
+        handle_default("SUB16mr", 0);
+    } else if (Name == "SUB32mr") {
+        handle_immrepl("SUB32mi", 5, 0);
+        handle_default("SUB32mr", 0);
+    } else if (Name == "SUB64mr") {
+        handle_immrepl("SUB64mi", 5, 0);
+        handle_default("SUB64mr", 0);
     } else if (Name == "SBB32rr") {
         handle_immrepl("SBB32ri", 2);
         handle_memrepl("SBB32rm", 2);
@@ -931,6 +973,18 @@ void EncodingTargetX64::get_inst_candidates(
         handle_immrepl("SBB64ri", 2);
         handle_memrepl("SBB64rm", 2);
         handle_default("SBB64rr");
+    } else if (Name == "SBB8mr") {
+        handle_immrepl("SBB8mi", 5, 0);
+        handle_default("SBB8mr", 0);
+    } else if (Name == "SBB16mr") {
+        handle_immrepl("SBB16mi", 5, 0);
+        handle_default("SBB16mr", 0);
+    } else if (Name == "SBB32mr") {
+        handle_immrepl("SBB32mi", 5, 0);
+        handle_default("SBB32mr", 0);
+    } else if (Name == "SBB64mr") {
+        handle_immrepl("SBB64mi", 5, 0);
+        handle_default("SBB64mr", 0);
     } else if (Name == "CMP8rr") {
         handle_immrepl("CMP8ri", 1);
         handle_memrepl("CMP8rm", 1);
@@ -969,6 +1023,18 @@ void EncodingTargetX64::get_inst_candidates(
         handle_immrepl("OR64ri", 2);
         handle_memrepl("OR64rm", 2);
         handle_default("OR64rr");
+    } else if (Name == "OR8mr") {
+        handle_immrepl("OR8mi", 5, 0);
+        handle_default("OR8mr", 0);
+    } else if (Name == "OR16mr") {
+        handle_immrepl("OR16mi", 5, 0);
+        handle_default("OR16mr", 0);
+    } else if (Name == "OR32mr") {
+        handle_immrepl("OR32mi", 5, 0);
+        handle_default("OR32mr", 0);
+    } else if (Name == "OR64mr") {
+        handle_immrepl("OR64mi", 5, 0);
+        handle_default("OR64mr", 0);
     } else if (Name == "OR8ri") {
         handle_default("OR8ri");
     } else if (Name == "OR16ri") {
@@ -985,6 +1051,22 @@ void EncodingTargetX64::get_inst_candidates(
         handle_immrepl("XOR64ri", 2);
         handle_memrepl("XOR64rm", 2);
         handle_default("XOR64rr");
+    } else if (Name == "XOR8mr") {
+        handle_immrepl("XOR8mi", 5, 0);
+        handle_default("XOR8mr", 0);
+    } else if (Name == "XOR16mr") {
+        handle_immrepl("XOR16mi", 5, 0);
+        handle_default("XOR16mr", 0);
+    } else if (Name == "XOR32mr") {
+        handle_immrepl("XOR32mi", 5, 0);
+        handle_default("XOR32mr", 0);
+    } else if (Name == "XOR64mr") {
+        handle_immrepl("XOR64mi", 5, 0);
+        handle_default("XOR64mr", 0);
+    } else if (Name == "XOR8ri") {
+        handle_default("XOR8ri");
+    } else if (Name == "XOR16ri") {
+        handle_default("XOR16ri");
     } else if (Name == "XOR32ri") {
         handle_default("XOR32ri");
     } else if (Name == "XOR64ri32") {
@@ -1005,6 +1087,18 @@ void EncodingTargetX64::get_inst_candidates(
         handle_immrepl("AND64ri", 2);
         handle_memrepl("AND64rm", 2);
         handle_default("AND64rr");
+    } else if (Name == "AND8mr") {
+        handle_immrepl("AND8mi", 5, 0);
+        handle_default("AND8mr", 0);
+    } else if (Name == "AND16mr") {
+        handle_immrepl("AND16mi", 5, 0);
+        handle_default("AND16mr", 0);
+    } else if (Name == "AND32mr") {
+        handle_immrepl("AND32mi", 5, 0);
+        handle_default("AND32mr", 0);
+    } else if (Name == "AND64mr") {
+        handle_immrepl("AND64mi", 5, 0);
+        handle_default("AND64mr", 0);
     } else if (Name == "AND32ri") {
         handle_default("AND32ri");
     } else if (Name == "AND64ri32") {
@@ -1049,6 +1143,15 @@ void EncodingTargetX64::get_inst_candidates(
         handle_default("BSR32rr");
     } else if (Name == "BSR64rr") {
         handle_default("BSR64rr");
+    } else if (Name == "BT16rr") {
+        // TODO(ts): need check for imm8
+        handle_default("BT16rr");
+    } else if (Name == "BT32rr") {
+        // TODO(ts): need check for imm8
+        handle_default("BT32rr");
+    } else if (Name == "BT64rr") {
+        // TODO(ts): need check for imm8
+        handle_default("BT64rr");
     } else if (Name == "MUL8r") {
         handle_memrepl("MUL8m", 0);
         handle_default("MUL8r");
@@ -1097,6 +1200,10 @@ void EncodingTargetX64::get_inst_candidates(
     } else if (Name == "IDIV64r") {
         handle_memrepl("IDIV64m", 0);
         handle_default("IDIV64r");
+    } else if (Name == "NEG8r") {
+        handle_default("NEG8r");
+    } else if (Name == "NEG16r") {
+        handle_default("NEG16r");
     } else if (Name == "NEG32r") {
         handle_default("NEG32r");
     } else if (Name == "NEG64r") {
@@ -1109,6 +1216,10 @@ void EncodingTargetX64::get_inst_candidates(
         handle_default("NOT32r");
     } else if (Name == "NOT64r") {
         handle_default("NOT64r");
+    } else if (Name == "BSWAP32r") {
+        handle_default("BSWAP32r");
+    } else if (Name == "BSWAP64r") {
+        handle_default("BSWAP64r");
     } else if (Name == "CWD") {
         handle_default("CWD");
     } else if (Name == "CDQ") {
@@ -1128,6 +1239,14 @@ void EncodingTargetX64::get_inst_candidates(
         handle_xchg_mem("XCHG32mr", 2);
     } else if (Name == "XCHG64rm") {
         handle_xchg_mem("XCHG64mr", 2);
+    } else if (Name == "LCMPXCHG8") {
+        handle_default("LOCK_CMPXCHG8mr", 0);
+    } else if (Name == "LCMPXCHG16") {
+        handle_default("LOCK_CMPXCHG16mr", 0);
+    } else if (Name == "LCMPXCHG32") {
+        handle_default("LOCK_CMPXCHG32mr", 0);
+    } else if (Name == "LCMPXCHG64") {
+        handle_default("LOCK_CMPXCHG64mr", 0);
     } else if (Name == "LXADD8") {
         handle_xchg_mem("LOCK_XADD8mr", 2);
     } else if (Name == "LXADD16") {
