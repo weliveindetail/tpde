@@ -33,6 +33,130 @@ void EncodingTargetX64::get_inst_candidates(
     const auto handle_immrepl = [&](std::string_view mnem,
                                     unsigned         replop_idx,
                                     int              memop_start = -1) {
+        if (memop_start >= 0 && mi.getOperand(memop_start).getReg().isValid()
+            && mi.getOperand(memop_start + 3).isImm()) {
+            bool has_idx = mi.getOperand(memop_start + 2).getReg().isValid();
+            unsigned sc = has_idx ? mi.getOperand(memop_start + 1).getImm() : 0;
+            std::string_view idx  = has_idx ? "FE_AX" : "FE_NOREG";
+            auto             off  = mi.getOperand(memop_start + 3).getImm();
+            auto             cond = std::format(
+                "encodeable_with(FE_MEM(FE_NOREG, {}, {}, {}))", sc, idx, off);
+
+            candidates.emplace_back(
+                MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext()"},
+                MICandidate::Cond{(unsigned)memop_start, cond},
+                [has_idx, mnem, memop_start, replop_idx](
+                    std::string                        &buf,
+                    const llvm::MachineInstr           &mi,
+                    llvm::SmallVectorImpl<std::string> &ops) {
+                    std::format_to(
+                        std::back_inserter(buf), "        ASMD({}", mnem);
+                    unsigned reg_idx = 0;
+                    for (unsigned i = 0, n = mi.getNumExplicitOperands();
+                         i != n;
+                         i++) {
+                        const auto &op = mi.getOperand(i);
+                        if (i == (unsigned)memop_start) {
+                            if (has_idx) { // Need to replace index register
+                                std::format_to(std::back_inserter(buf),
+                                               ", FE_MEM({}.base, "
+                                               "{}.scale, {}, {}.off)",
+                                               ops[reg_idx],
+                                               ops[reg_idx],
+                                               ops[reg_idx + 1],
+                                               ops[reg_idx]);
+                            } else {
+                                std::format_to(std::back_inserter(buf),
+                                               ", {}",
+                                               ops[reg_idx]);
+                            }
+                            reg_idx += 3;
+                            i       += 4;
+                        } else if (i == replop_idx) {
+                            assert(op.isReg());
+                            std::format_to(std::back_inserter(buf),
+                                           ", {}",
+                                           ops[reg_idx++]);
+                        } else if (op.isReg()) {
+                            if (op.isTied() && op.isUse()) {
+                                continue;
+                            }
+                            std::format_to(std::back_inserter(buf),
+                                           ", {}",
+                                           ops[reg_idx++]);
+                        } else if (op.isImm()) {
+                            if (mnem.starts_with("CMOV")
+                                || mnem.starts_with("SET")) {
+                                continue;
+                            }
+                            std::format_to(std::back_inserter(buf),
+                                           ", {:#x}",
+                                           op.getImm());
+                        }
+                    }
+                    std::format_to(std::back_inserter(buf), ");\n");
+                });
+        }
+        // TODO: better code, less copy-paste, all cases, etc.
+        // Difficult, because at condition time, we don't know the operands.
+        if (memop_start >= 0
+            && mi.getOperand(memop_start + 0).getReg().isValid()
+            && mi.getOperand(memop_start + 2).getReg().isValid()
+            && mi.getOperand(memop_start + 1).getImm() == 1
+            && mi.getOperand(memop_start + 3).isImm()) {
+            auto off  = mi.getOperand(memop_start + 3).getImm();
+            auto cond = std::format(
+                "encodeable_with(FE_MEM(FE_AX, 0, FE_NOREG, {}))", off);
+
+            candidates.emplace_back(
+                MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext()"},
+                MICandidate::Cond{(unsigned)memop_start + 2, cond},
+                [mnem, memop_start, replop_idx](
+                    std::string                        &buf,
+                    const llvm::MachineInstr           &mi,
+                    llvm::SmallVectorImpl<std::string> &ops) {
+                    std::format_to(
+                        std::back_inserter(buf), "        ASMD({}", mnem);
+                    unsigned reg_idx = 0;
+                    for (unsigned i = 0, n = mi.getNumExplicitOperands();
+                         i != n;
+                         i++) {
+                        const auto &op = mi.getOperand(i);
+                        if (i == (unsigned)memop_start) {
+                            std::format_to(
+                                std::back_inserter(buf),
+                                ", FE_MEM({}, {}.scale, {}.idx, {}.off)",
+                                ops[reg_idx],
+                                ops[reg_idx + 1],
+                                ops[reg_idx + 1],
+                                ops[reg_idx + 1]);
+                            reg_idx += 3;
+                            i       += 4;
+                        } else if (i == replop_idx) {
+                            assert(op.isReg());
+                            std::format_to(std::back_inserter(buf),
+                                           ", {}",
+                                           ops[reg_idx++]);
+                        } else if (op.isReg()) {
+                            if (op.isTied() && op.isUse()) {
+                                continue;
+                            }
+                            std::format_to(std::back_inserter(buf),
+                                           ", {}",
+                                           ops[reg_idx++]);
+                        } else if (op.isImm()) {
+                            if (mnem.starts_with("CMOV")
+                                || mnem.starts_with("SET")) {
+                                continue;
+                            }
+                            std::format_to(std::back_inserter(buf),
+                                           ", {:#x}",
+                                           op.getImm());
+                        }
+                    }
+                    std::format_to(std::back_inserter(buf), ");\n");
+                });
+        }
         candidates.emplace_back(
             replop_idx,
             "encodeable_as_imm32_sext()",
@@ -179,13 +303,13 @@ void EncodingTargetX64::get_inst_candidates(
                         const auto &op = mi.getOperand(i);
                         if (i == (unsigned)memop_start) {
                             if (has_idx) { // Need to replace index register
-                                std::format_to(
-                                    std::back_inserter(buf),
-                                    ", FE_MEM({}.base, {}.scale, {}, {}.off)",
-                                    ops[reg_idx],
-                                    ops[reg_idx],
-                                    ops[reg_idx + 1],
-                                    ops[reg_idx]);
+                                std::format_to(std::back_inserter(buf),
+                                               ", FE_MEM({}.base, "
+                                               "{}.scale, {}, {}.off)",
+                                               ops[reg_idx],
+                                               ops[reg_idx],
+                                               ops[reg_idx + 1],
+                                               ops[reg_idx]);
                             } else {
                                 std::format_to(std::back_inserter(buf),
                                                ", {}",
