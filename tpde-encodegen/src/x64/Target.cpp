@@ -457,16 +457,16 @@ void EncodingTargetX64::get_inst_candidates(
     } else if (Name == "VMOVAPSZmr") {
         handle_default("VMOVAPS512mr", 0);
 
-    } else if (Name == "CMPSSrr") {
+    } else if (Name == "CMPSSrri") {
         handle_memrepl("SSE_CMPSSrmi", 2);
         handle_default("SSE_CMPSSrri");
-    } else if (Name == "CMPSDrr") {
+    } else if (Name == "CMPSDrri") {
         handle_memrepl("SSE_CMPSDrmi", 2);
         handle_default("SSE_CMPSDrri");
-    } else if (Name == "CMPPSrr") {
+    } else if (Name == "CMPPSrri") {
         handle_memrepl("SSE_CMPPSrmi", 2);
         handle_default("SSE_CMPPSrri");
-    } else if (Name == "CMPPDrr") {
+    } else if (Name == "CMPPDrri") {
         handle_memrepl("SSE_CMPPDrmi", 2);
         handle_default("SSE_CMPPDrri");
     } else if (Name == "ADDSSrr") {
