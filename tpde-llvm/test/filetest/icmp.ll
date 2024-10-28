@@ -1745,14 +1745,16 @@ define void @icmp_ugt_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x60
+; X64:    mov rax, rcx
 ; X64:    cmp rdx, rdi
-; X64:    sbb rcx, rsi
+; X64:    sbb rax, rsi
 ; X64:    mov edx, 0x0
 ; X64:    setb dl
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = icmp ugt i128 %0, %1
     ret void
@@ -1764,16 +1766,15 @@ define void @icmp_uge_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x60
+; X64:    mov rax, rsi
 ; X64:    cmp rdi, rdx
-; X64:    sbb rsi, rcx
+; X64:    sbb rax, rcx
 ; X64:    mov edi, 0x0
 ; X64:    setae dil
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = icmp uge i128 %0, %1
     ret void
@@ -1785,16 +1786,15 @@ define void @icmp_ult_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x60
+; X64:    mov rax, rsi
 ; X64:    cmp rdi, rdx
-; X64:    sbb rsi, rcx
+; X64:    sbb rax, rcx
 ; X64:    mov edi, 0x0
 ; X64:    setb dil
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = icmp ult i128 %0, %1
     ret void
@@ -1806,14 +1806,16 @@ define void @icmp_ule_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x60
+; X64:    mov rax, rcx
 ; X64:    cmp rdx, rdi
-; X64:    sbb rcx, rsi
+; X64:    sbb rax, rsi
 ; X64:    mov edx, 0x0
 ; X64:    setae dl
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = icmp ule i128 %0, %1
     ret void
@@ -1825,14 +1827,16 @@ define void @icmp_sgt_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x60
+; X64:    mov rax, rcx
 ; X64:    cmp rdx, rdi
-; X64:    sbb rcx, rsi
+; X64:    sbb rax, rsi
 ; X64:    mov edx, 0x0
 ; X64:    setl dl
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = icmp sgt i128 %0, %1
     ret void
@@ -1844,16 +1848,15 @@ define void @icmp_sge_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x60
+; X64:    mov rax, rsi
 ; X64:    cmp rdi, rdx
-; X64:    sbb rsi, rcx
+; X64:    sbb rax, rcx
 ; X64:    mov edi, 0x0
 ; X64:    setge dil
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = icmp sge i128 %0, %1
     ret void
@@ -1865,16 +1868,15 @@ define void @icmp_slt_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x60
+; X64:    mov rax, rsi
 ; X64:    cmp rdi, rdx
-; X64:    sbb rsi, rcx
+; X64:    sbb rax, rcx
 ; X64:    mov edi, 0x0
 ; X64:    setl dil
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %2 = icmp slt i128 %0, %1
     ret void
@@ -1886,14 +1888,16 @@ define void @icmp_sle_i128_i128(i128 %0, i128 %1) {
 ; X64:    mov rbp, rsp
 ; X64:    nop word ptr [rax + rax]
 ; X64:    sub rsp, 0x60
+; X64:    mov rax, rcx
 ; X64:    cmp rdx, rdi
-; X64:    sbb rcx, rsi
+; X64:    sbb rax, rsi
 ; X64:    mov edx, 0x0
 ; X64:    setge dl
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+; X64:    <unknown>
   entry:
     %2 = icmp sle i128 %0, %1
     ret void

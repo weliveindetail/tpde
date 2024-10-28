@@ -19,12 +19,10 @@ define void @cttz_i8(i8 %0) {
 ; X64:    sub rsp, 0x30
 ; X64:    or edi, 0x100
 ; X64:    bsf eax, edi
-; X64:    movzx eax, al
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %1 = call i8 @llvm.cttz.i8(i8 %0, i1 0)
     ret void
@@ -57,12 +55,10 @@ define void @cttz_i16(i16 %0) {
 ; X64:    sub rsp, 0x30
 ; X64:    or edi, 0x10000
 ; X64:    bsf eax, edi
-; X64:    movzx eax, ax
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    add byte ptr [rbp + 0x48], dl
   entry:
     %1 = call i16 @llvm.cttz.i16(i16 %0, i1 0)
     ret void
@@ -244,14 +240,13 @@ define void @cttz_i16_no_salvage(i16 %0) {
 ; X64:    mov eax, edi
 ; X64:    or eax, 0x10000
 ; X64:    bsf ecx, eax
-; X64:    movzx ecx, cx
 ; X64:    or edi, 0x10000
 ; X64:    bsf eax, edi
-; X64:    movzx eax, ax
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+; X64:    add byte ptr [rax], al
 ; X64:    <unknown>
   entry:
 
