@@ -1366,6 +1366,93 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
     // In most cases, we expect the number of PHIs to be small but we want to
     // stay reasonably efficient even with larger numbers of PHIs
 
+    struct ScratchWrapper {
+        CompilerBase *self;
+        AsmReg        cur_reg      = AsmReg::make_invalid();
+        bool          backed_up    = false;
+        bool          was_modified = false;
+        u8            part;
+        ValLocalIdx   local_idx;
+
+        ScratchWrapper(CompilerBase *self) : self{self} {}
+
+        ~ScratchWrapper() { reset(); }
+
+        void reset() {
+            if (cur_reg.invalid()) {
+                return;
+            }
+
+            self->register_file.unmark_fixed(cur_reg);
+            self->register_file.unmark_used(cur_reg);
+
+            if (backed_up) {
+                // restore the register state
+                // TODO(ts): do we actually need the reload?
+                auto *assignment = self->val_assignment(local_idx);
+                // check if the value was free'd, then we dont need to restore
+                // it
+                if (assignment) {
+                    auto ap = AssignmentPartRef{assignment, part};
+                    if (!ap.variable_ref()) {
+                        // TODO(ts): assert that this always happens?
+                        self->derived()->load_from_stack(
+                            cur_reg, ap.frame_off(), ap.part_size());
+                    }
+                    ap.set_full_reg_id(cur_reg.id());
+                    ap.set_register_valid(true);
+                    ap.set_modified(was_modified);
+                    self->register_file.mark_used(cur_reg, local_idx, part);
+                }
+                backed_up = false;
+            }
+            cur_reg = AsmReg::make_invalid();
+        }
+
+        AsmReg alloc_from_bank(u32 bank) {
+            if (cur_reg.valid()
+                && self->register_file.reg_bank(cur_reg) == bank) {
+                return cur_reg;
+            }
+            if (cur_reg.valid()) {
+                reset();
+            }
+
+            // TODO(ts): try to first find a non callee-saved/clobbered
+            // register...
+            auto &reg_file = self->register_file;
+            auto  reg      = reg_file.find_first_free_excluding(bank, 0);
+            if (reg.invalid()) {
+                // TODO(ts): use clock here?
+                reg = reg_file.find_first_nonfixed_excluding(bank, 0);
+                if (reg.invalid()) {
+                    TPDE_LOG_ERR("ran out of registers for scratch registers");
+                    assert(0);
+                    exit(1);
+                }
+
+                backed_up = true;
+                local_idx = reg_file.reg_local_idx(reg);
+                part      = reg_file.reg_part(reg);
+                AssignmentPartRef ap{self->val_assignment(local_idx), part};
+                was_modified = ap.modified();
+                // TODO(ts): this does not spill for variable refs
+                ap.spill_if_needed(self);
+                ap.set_register_valid(false);
+                reg_file.unmark_used(reg);
+            }
+
+            reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
+            reg_file.mark_clobbered(reg);
+            reg_file.mark_fixed(reg);
+            cur_reg = reg;
+            return reg;
+        }
+
+        ScratchWrapper &operator=(const ScratchWrapper &) = delete;
+        ScratchWrapper &operator=(ScratchWrapper &&)      = delete;
+    };
+
     IRBlockRef target_ref = analyzer.block_ref(target);
     IRBlockRef cur_ref    = analyzer.block_ref(cur_block_idx);
 
@@ -1384,12 +1471,13 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
         return;
     }
 
-    const auto move_to_phi = [this](IRValueRef phi, IRValueRef incoming_val) {
+    ScratchWrapper scratch{this};
+    const auto     move_to_phi = [this, &scratch](IRValueRef phi,
+                                              IRValueRef incoming_val) {
         // TODO(ts): if phi==incoming_val, we should be able to elide the move
         // even if the phi is in a fixed register, no?
 
-        u32        part_count = derived()->val_part_count(incoming_val);
-        ScratchReg scratch(this);
+        u32 part_count = derived()->val_part_count(incoming_val);
         for (u32 i = 0; i < part_count; ++i) {
             // TODO(ts): just have this outside the loop and change the part
             // index? :P
@@ -1398,7 +1486,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
 
             AsmReg reg{};
             if (val_ref.is_const) {
-                derived()->materialize_constant(val_ref, scratch);
+                derived()->materialize_constant(
+                    val_ref, scratch.alloc_from_bank(val_ref.bank()));
                 reg = scratch.cur_reg;
                 assert(reg.valid());
             } else if (val_ref.assignment().register_valid()
@@ -1490,19 +1579,18 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
         }
     }
 
-    u32        handled_count      = 0;
-    u32        cur_tmp_part_count = 0;
-    u32        cur_tmp_slot       = 0;
-    u32        cur_tmp_slot_size  = 0;
-    IRValueRef cur_tmp_val        = Adaptor::INVALID_VALUE_REF;
-    ScratchReg tmp_reg1{this}, tmp_reg2{this};
+    u32            handled_count      = 0;
+    u32            cur_tmp_part_count = 0;
+    u32            cur_tmp_slot       = 0;
+    u32            cur_tmp_slot_size  = 0;
+    IRValueRef     cur_tmp_val        = Adaptor::INVALID_VALUE_REF;
+    ScratchWrapper tmp_reg1{this}, tmp_reg2{this};
 
     const auto move_from_tmp_phi = [&](IRValueRef target_phi) {
         // ref-count the source val
         auto inc_ref = val_ref(cur_tmp_val, 0);
         inc_ref.reset();
 
-        ScratchReg scratch(this);
         if (cur_tmp_part_count <= 2) {
             auto phi_ref = val_ref(target_phi, 0);
             auto ap      = phi_ref.assignment();
