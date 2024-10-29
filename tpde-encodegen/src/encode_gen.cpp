@@ -122,10 +122,10 @@ bool handle_terminator(std::string        &buf,
                        llvm::MachineInstr *inst);
 
 static void materialize_aliased_regs(GenerationState &state,
-                              std::string     &buf,
-                              unsigned         indent,
-                              unsigned         break_reg,
-                              unsigned         reg_size);
+                                     std::string     &buf,
+                                     unsigned         indent,
+                                     unsigned         break_reg,
+                                     unsigned         reg_size);
 
 bool const_to_bytes(const llvm::DataLayout &dl,
                     const llvm::Constant   *constant,
@@ -618,7 +618,7 @@ bool generate_inst(std::string        &buf,
             }
             auto reg = state.target->reg_id_from_mc_reg(op.getReg());
             for (const auto &use : inst->explicit_uses()) {
-                if (!use.isReg()
+                if (!use.isReg() || !use.getReg().isValid()
                     || state.target->reg_should_be_ignored(use.getReg())) {
                     continue;
                 }
@@ -681,8 +681,9 @@ bool generate_inst(std::string        &buf,
                 continue;
             }
 
-            assert(!use.isTied()
-                   || (!use.isImplicit() && "implicit tied use not implemented"));
+            assert(
+                !use.isTied()
+                || (!use.isImplicit() && "implicit tied use not implemented"));
 
             auto orig_reg_id = state.target->reg_id_from_mc_reg(use.getReg());
 
@@ -779,12 +780,16 @@ bool generate_inst(std::string        &buf,
                     const auto op_bank =
                         state.target->reg_bank(resolved_reg_id);
                     for (auto &[allocated, def] : defs_allocated) {
-                        if (allocated || def_is_tied(*def)) {
+                        if (allocated) {
+                            continue;
+                        }
+                        const auto def_reg_id =
+                            state.target->reg_id_from_mc_reg(def->getReg());
+
+                        if (def_reg_id != orig_reg_id && def_is_tied(*def)) {
                             continue;
                         }
 
-                        const auto def_reg_id =
-                            state.target->reg_id_from_mc_reg(def->getReg());
                         const auto def_bank =
                             state.target->reg_bank(def_reg_id);
 
@@ -2090,7 +2095,6 @@ bool handle_terminator(std::string        &buf,
         if (inst->isUnconditionalBranch()) {
             jump_code = "jmp";
         } else {
-
             // just assume the first immediate is the condition code
             for (const auto &op : inst->explicit_uses()) {
                 if (!op.isImm()) {

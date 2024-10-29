@@ -8303,7 +8303,7 @@ template <typename Adaptor,
     // Handling register di
     // di is mapped to operand param_0, materializing it
     param_0.try_salvage_or_materialize(this, scratch_di, 0, 4);
-    derived()->generate_raw_jump(CompilerX64::Jump::je, block2_label);
+    derived()->generate_raw_jump(Derived::Jump::je, block2_label);
 
 
     // Starting encoding of block 1
@@ -8436,7 +8436,7 @@ template <typename Adaptor,
     // Handling register di
     // di is mapped to operand param_0, materializing it
     param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
-    derived()->generate_raw_jump(CompilerX64::Jump::je, block2_label);
+    derived()->generate_raw_jump(Derived::Jump::je, block2_label);
 
 
     // Starting encoding of block 1
@@ -9121,7 +9121,7 @@ template <typename Adaptor,
     // Handling register di
     // di is mapped to operand param_0, materializing it
     param_0.try_salvage_or_materialize(this, scratch_di, 0, 4);
-    derived()->generate_raw_jump(CompilerX64::Jump::je, block2_label);
+    derived()->generate_raw_jump(Derived::Jump::je, block2_label);
 
 
     // Starting encoding of block 1
@@ -9267,7 +9267,7 @@ template <typename Adaptor,
     // Handling register di
     // di is mapped to operand param_0, materializing it
     param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
-    derived()->generate_raw_jump(CompilerX64::Jump::je, block2_label);
+    derived()->generate_raw_jump(Derived::Jump::je, block2_label);
 
 
     // Starting encoding of block 1
@@ -15888,7 +15888,7 @@ template <typename Adaptor,
     // Handling register di
     // di is mapped to operand param_0, materializing it
     param_0.try_salvage_or_materialize(this, scratch_di, 0, 8);
-    derived()->generate_raw_jump(CompilerX64::Jump::js, block1_label);
+    derived()->generate_raw_jump(Derived::Jump::js, block1_label);
 
 
     // Starting encoding of block 2
@@ -19248,7 +19248,7 @@ template <typename Adaptor,
     // xmm0 is mapped to operand param_1, materializing it
     param_1.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
     // Resetting the state of di as it is unused for the rest of the function
-    derived()->generate_raw_jump(CompilerX64::Jump::je, block2_label);
+    derived()->generate_raw_jump(Derived::Jump::je, block2_label);
 
 
     // Starting encoding of block 1
@@ -19374,7 +19374,7 @@ template <typename Adaptor,
     // xmm0 is mapped to operand param_1, materializing it
     param_1.try_salvage_or_materialize(this, scratch_xmm0, 1, 16);
     // Resetting the state of di as it is unused for the rest of the function
-    derived()->generate_raw_jump(CompilerX64::Jump::je, block2_label);
+    derived()->generate_raw_jump(Derived::Jump::je, block2_label);
 
 
     // Starting encoding of block 1
