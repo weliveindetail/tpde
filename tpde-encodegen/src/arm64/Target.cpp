@@ -77,19 +77,32 @@ void EncodingTargetArm64::get_inst_candidates(
                             std::back_inserter(buf), ", {}", ops[reg_idx++]);
                     }
                 } else if (op.isImm()) {
-                    if (mnem.starts_with("CCMP") || mnem.starts_with("FCCMP") ||
-                        mnem.starts_with("CS") || mnem.starts_with("FCSEL")) {
-                        std::array<std::string_view, 16> ccs = {
-                            "DA_EQ", "DA_NE", "DA_HS", "DA_LO",
-                            "DA_MI", "DA_PL", "DA_VS", "DA_VC",
-                            "DA_HI", "DA_LS", "DA_GE", "DA_LT",
-                            "DA_GT", "DA_LE", "DA_AL", "DA_NV" };
+                    if (mnem.starts_with("CCMP") || mnem.starts_with("FCCMP")
+                        || mnem.starts_with("CS")
+                        || mnem.starts_with("FCSEL")) {
+                        std::array<std::string_view, 16> ccs = {"DA_EQ",
+                                                                "DA_NE",
+                                                                "DA_HS",
+                                                                "DA_LO",
+                                                                "DA_MI",
+                                                                "DA_PL",
+                                                                "DA_VS",
+                                                                "DA_VC",
+                                                                "DA_HI",
+                                                                "DA_LS",
+                                                                "DA_GE",
+                                                                "DA_LT",
+                                                                "DA_GT",
+                                                                "DA_LE",
+                                                                "DA_AL",
+                                                                "DA_NV"};
                         std::format_to(
                             std::back_inserter(buf), ", {}", ccs[op.getImm()]);
-                    } else if (op.getOperandNo() == 0 &&
-                               mnem.starts_with("PRFM")) {
-                        std::format_to(
-                            std::back_inserter(buf), ", (Da64PrfOp){}", op.getImm());
+                    } else if (op.getOperandNo() == 0
+                               && mnem.starts_with("PRFM")) {
+                        std::format_to(std::back_inserter(buf),
+                                       ", (Da64PrfOp){}",
+                                       op.getImm());
                     } else {
                         std::format_to(
                             std::back_inserter(buf), ", {:#x}", op.getImm());
@@ -129,6 +142,36 @@ void EncodingTargetArm64::get_inst_candidates(
                 }
             }
             std::format_to(std::back_inserter(buf), "{});\n", extra_ops);
+        });
+    };
+    // atomic memory operations (LDADD) have their source and dest operands
+    // swapped
+    const auto handle_atomic_mem_op = [&](std::string_view mnem) {
+        candidates.emplace_back([mnem](
+                                    std::string                        &buf,
+                                    const llvm::MachineInstr           &mi,
+                                    llvm::SmallVectorImpl<std::string> &ops) {
+            const auto &tri = *mi.getMF()->getRegInfo().getTargetRegisterInfo();
+            std::format_to(std::back_inserter(buf), "        ASMD({}", mnem);
+            assert(mi.getNumExplicitOperands() == 3);
+            constexpr std::array<unsigned, 3> op_order = {1, 0, 2};
+            for (unsigned i : op_order) {
+                const auto &op = mi.getOperand(i);
+                if (op.isReg()) {
+                    if (op.isTied() && op.isUse()) {
+                        assert(0);
+                    }
+                    llvm::StringRef name = tri.getName(op.getReg());
+                    if (name == "WZR" || name == "XZR") { // zero register
+                        buf += ", DA_ZR";
+                    } else {
+                        std::format_to(std::back_inserter(buf), ", {}", ops[i]);
+                    }
+                } else {
+                    assert(false);
+                }
+            }
+            std::format_to(std::back_inserter(buf), ");\n");
         });
     };
 
@@ -891,261 +934,261 @@ void EncodingTargetArm64::get_inst_candidates(
 
         // Good that Arm no describes their architecture as "RISC".
     } else if (Name == "LDADDB") {
-        handle_default("LDADDB");
+        handle_atomic_mem_op("LDADDB");
     } else if (Name == "LDADDH") {
-        handle_default("LDADDH");
+        handle_atomic_mem_op("LDADDH");
     } else if (Name == "LDADDW") {
-        handle_default("LDADDw");
+        handle_atomic_mem_op("LDADDw");
     } else if (Name == "LDADDX") {
-        handle_default("LDADDx");
+        handle_atomic_mem_op("LDADDx");
     } else if (Name == "LDADDAB") {
-        handle_default("LDADDAB");
+        handle_atomic_mem_op("LDADDAB");
     } else if (Name == "LDADDAH") {
-        handle_default("LDADDAH");
+        handle_atomic_mem_op("LDADDAH");
     } else if (Name == "LDADDAW") {
-        handle_default("LDADDAw");
+        handle_atomic_mem_op("LDADDAw");
     } else if (Name == "LDADDAX") {
-        handle_default("LDADDAx");
+        handle_atomic_mem_op("LDADDAx");
     } else if (Name == "LDADDLB") {
-        handle_default("LDADDLB");
+        handle_atomic_mem_op("LDADDLB");
     } else if (Name == "LDADDLH") {
-        handle_default("LDADDLH");
+        handle_atomic_mem_op("LDADDLH");
     } else if (Name == "LDADDLW") {
-        handle_default("LDADDLw");
+        handle_atomic_mem_op("LDADDLw");
     } else if (Name == "LDADDLX") {
-        handle_default("LDADDLx");
+        handle_atomic_mem_op("LDADDLx");
     } else if (Name == "LDADDALB") {
-        handle_default("LDADDALB");
+        handle_atomic_mem_op("LDADDALB");
     } else if (Name == "LDADDALH") {
-        handle_default("LDADDALH");
+        handle_atomic_mem_op("LDADDALH");
     } else if (Name == "LDADDALW") {
-        handle_default("LDADDALw");
+        handle_atomic_mem_op("LDADDALw");
     } else if (Name == "LDADDALX") {
-        handle_default("LDADDALx");
+        handle_atomic_mem_op("LDADDALx");
     } else if (Name == "LDCLRB") {
-        handle_default("LDCLRB");
+        handle_atomic_mem_op("LDCLRB");
     } else if (Name == "LDCLRH") {
-        handle_default("LDCLRH");
+        handle_atomic_mem_op("LDCLRH");
     } else if (Name == "LDCLRW") {
-        handle_default("LDCLRw");
+        handle_atomic_mem_op("LDCLRw");
     } else if (Name == "LDCLRX") {
-        handle_default("LDCLRx");
+        handle_atomic_mem_op("LDCLRx");
     } else if (Name == "LDCLRAB") {
-        handle_default("LDCLRAB");
+        handle_atomic_mem_op("LDCLRAB");
     } else if (Name == "LDCLRAH") {
-        handle_default("LDCLRAH");
+        handle_atomic_mem_op("LDCLRAH");
     } else if (Name == "LDCLRAW") {
-        handle_default("LDCLRAw");
+        handle_atomic_mem_op("LDCLRAw");
     } else if (Name == "LDCLRAX") {
-        handle_default("LDCLRAx");
+        handle_atomic_mem_op("LDCLRAx");
     } else if (Name == "LDCLRLB") {
-        handle_default("LDCLRLB");
+        handle_atomic_mem_op("LDCLRLB");
     } else if (Name == "LDCLRLH") {
-        handle_default("LDCLRLH");
+        handle_atomic_mem_op("LDCLRLH");
     } else if (Name == "LDCLRLW") {
-        handle_default("LDCLRLw");
+        handle_atomic_mem_op("LDCLRLw");
     } else if (Name == "LDCLRLX") {
-        handle_default("LDCLRLx");
+        handle_atomic_mem_op("LDCLRLx");
     } else if (Name == "LDCLRALB") {
-        handle_default("LDCLRALB");
+        handle_atomic_mem_op("LDCLRALB");
     } else if (Name == "LDCLRALH") {
-        handle_default("LDCLRALH");
+        handle_atomic_mem_op("LDCLRALH");
     } else if (Name == "LDCLRALW") {
-        handle_default("LDCLRALw");
+        handle_atomic_mem_op("LDCLRALw");
     } else if (Name == "LDCLRALX") {
-        handle_default("LDCLRALx");
+        handle_atomic_mem_op("LDCLRALx");
     } else if (Name == "LDEORB") {
-        handle_default("LDEORB");
+        handle_atomic_mem_op("LDEORB");
     } else if (Name == "LDEORH") {
-        handle_default("LDEORH");
+        handle_atomic_mem_op("LDEORH");
     } else if (Name == "LDEORW") {
-        handle_default("LDEORw");
+        handle_atomic_mem_op("LDEORw");
     } else if (Name == "LDEORX") {
-        handle_default("LDEORx");
+        handle_atomic_mem_op("LDEORx");
     } else if (Name == "LDEORAB") {
-        handle_default("LDEORAB");
+        handle_atomic_mem_op("LDEORAB");
     } else if (Name == "LDEORAH") {
-        handle_default("LDEORAH");
+        handle_atomic_mem_op("LDEORAH");
     } else if (Name == "LDEORAW") {
-        handle_default("LDEORAw");
+        handle_atomic_mem_op("LDEORAw");
     } else if (Name == "LDEORAX") {
-        handle_default("LDEORAx");
+        handle_atomic_mem_op("LDEORAx");
     } else if (Name == "LDEORLB") {
-        handle_default("LDEORLB");
+        handle_atomic_mem_op("LDEORLB");
     } else if (Name == "LDEORLH") {
-        handle_default("LDEORLH");
+        handle_atomic_mem_op("LDEORLH");
     } else if (Name == "LDEORLW") {
-        handle_default("LDEORLw");
+        handle_atomic_mem_op("LDEORLw");
     } else if (Name == "LDEORLX") {
-        handle_default("LDEORLx");
+        handle_atomic_mem_op("LDEORLx");
     } else if (Name == "LDEORALB") {
-        handle_default("LDEORALB");
+        handle_atomic_mem_op("LDEORALB");
     } else if (Name == "LDEORALH") {
-        handle_default("LDEORALH");
+        handle_atomic_mem_op("LDEORALH");
     } else if (Name == "LDEORALW") {
-        handle_default("LDEORALw");
+        handle_atomic_mem_op("LDEORALw");
     } else if (Name == "LDEORALX") {
-        handle_default("LDEORALx");
+        handle_atomic_mem_op("LDEORALx");
     } else if (Name == "LDSETB") {
-        handle_default("LDSETB");
+        handle_atomic_mem_op("LDSETB");
     } else if (Name == "LDSETH") {
-        handle_default("LDSETH");
+        handle_atomic_mem_op("LDSETH");
     } else if (Name == "LDSETW") {
-        handle_default("LDSETw");
+        handle_atomic_mem_op("LDSETw");
     } else if (Name == "LDSETX") {
-        handle_default("LDSETx");
+        handle_atomic_mem_op("LDSETx");
     } else if (Name == "LDSETAB") {
-        handle_default("LDSETAB");
+        handle_atomic_mem_op("LDSETAB");
     } else if (Name == "LDSETAH") {
-        handle_default("LDSETAH");
+        handle_atomic_mem_op("LDSETAH");
     } else if (Name == "LDSETAW") {
-        handle_default("LDSETAw");
+        handle_atomic_mem_op("LDSETAw");
     } else if (Name == "LDSETAX") {
-        handle_default("LDSETAx");
+        handle_atomic_mem_op("LDSETAx");
     } else if (Name == "LDSETLB") {
-        handle_default("LDSETLB");
+        handle_atomic_mem_op("LDSETLB");
     } else if (Name == "LDSETLH") {
-        handle_default("LDSETLH");
+        handle_atomic_mem_op("LDSETLH");
     } else if (Name == "LDSETLW") {
-        handle_default("LDSETLw");
+        handle_atomic_mem_op("LDSETLw");
     } else if (Name == "LDSETLX") {
-        handle_default("LDSETLx");
+        handle_atomic_mem_op("LDSETLx");
     } else if (Name == "LDSETALB") {
-        handle_default("LDSETALB");
+        handle_atomic_mem_op("LDSETALB");
     } else if (Name == "LDSETALH") {
-        handle_default("LDSETALH");
+        handle_atomic_mem_op("LDSETALH");
     } else if (Name == "LDSETALW") {
-        handle_default("LDSETALw");
+        handle_atomic_mem_op("LDSETALw");
     } else if (Name == "LDSETALX") {
-        handle_default("LDSETALx");
+        handle_atomic_mem_op("LDSETALx");
     } else if (Name == "LDSMAXB") {
-        handle_default("LDSMAXB");
+        handle_atomic_mem_op("LDSMAXB");
     } else if (Name == "LDSMAXH") {
-        handle_default("LDSMAXH");
+        handle_atomic_mem_op("LDSMAXH");
     } else if (Name == "LDSMAXW") {
-        handle_default("LDSMAXw");
+        handle_atomic_mem_op("LDSMAXw");
     } else if (Name == "LDSMAXX") {
-        handle_default("LDSMAXx");
+        handle_atomic_mem_op("LDSMAXx");
     } else if (Name == "LDSMAXAB") {
-        handle_default("LDSMAXAB");
+        handle_atomic_mem_op("LDSMAXAB");
     } else if (Name == "LDSMAXAH") {
-        handle_default("LDSMAXAH");
+        handle_atomic_mem_op("LDSMAXAH");
     } else if (Name == "LDSMAXAW") {
-        handle_default("LDSMAXAw");
+        handle_atomic_mem_op("LDSMAXAw");
     } else if (Name == "LDSMAXAX") {
-        handle_default("LDSMAXAx");
+        handle_atomic_mem_op("LDSMAXAx");
     } else if (Name == "LDSMAXLB") {
-        handle_default("LDSMAXLB");
+        handle_atomic_mem_op("LDSMAXLB");
     } else if (Name == "LDSMAXLH") {
-        handle_default("LDSMAXLH");
+        handle_atomic_mem_op("LDSMAXLH");
     } else if (Name == "LDSMAXLW") {
-        handle_default("LDSMAXLw");
+        handle_atomic_mem_op("LDSMAXLw");
     } else if (Name == "LDSMAXLX") {
-        handle_default("LDSMAXLx");
+        handle_atomic_mem_op("LDSMAXLx");
     } else if (Name == "LDSMAXALB") {
-        handle_default("LDSMAXALB");
+        handle_atomic_mem_op("LDSMAXALB");
     } else if (Name == "LDSMAXALH") {
-        handle_default("LDSMAXALH");
+        handle_atomic_mem_op("LDSMAXALH");
     } else if (Name == "LDSMAXALW") {
-        handle_default("LDSMAXALw");
+        handle_atomic_mem_op("LDSMAXALw");
     } else if (Name == "LDSMAXALX") {
-        handle_default("LDSMAXALx");
+        handle_atomic_mem_op("LDSMAXALx");
     } else if (Name == "LDSMINB") {
-        handle_default("LDSMINB");
+        handle_atomic_mem_op("LDSMINB");
     } else if (Name == "LDSMINH") {
-        handle_default("LDSMINH");
+        handle_atomic_mem_op("LDSMINH");
     } else if (Name == "LDSMINW") {
-        handle_default("LDSMINw");
+        handle_atomic_mem_op("LDSMINw");
     } else if (Name == "LDSMINX") {
-        handle_default("LDSMINx");
+        handle_atomic_mem_op("LDSMINx");
     } else if (Name == "LDSMINAB") {
-        handle_default("LDSMINAB");
+        handle_atomic_mem_op("LDSMINAB");
     } else if (Name == "LDSMINAH") {
-        handle_default("LDSMINAH");
+        handle_atomic_mem_op("LDSMINAH");
     } else if (Name == "LDSMINAW") {
-        handle_default("LDSMINAw");
+        handle_atomic_mem_op("LDSMINAw");
     } else if (Name == "LDSMINAX") {
-        handle_default("LDSMINAx");
+        handle_atomic_mem_op("LDSMINAx");
     } else if (Name == "LDSMINLB") {
-        handle_default("LDSMINLB");
+        handle_atomic_mem_op("LDSMINLB");
     } else if (Name == "LDSMINLH") {
-        handle_default("LDSMINLH");
+        handle_atomic_mem_op("LDSMINLH");
     } else if (Name == "LDSMINLW") {
-        handle_default("LDSMINLw");
+        handle_atomic_mem_op("LDSMINLw");
     } else if (Name == "LDSMINLX") {
-        handle_default("LDSMINLx");
+        handle_atomic_mem_op("LDSMINLx");
     } else if (Name == "LDSMINALB") {
-        handle_default("LDSMINALB");
+        handle_atomic_mem_op("LDSMINALB");
     } else if (Name == "LDSMINALH") {
-        handle_default("LDSMINALH");
+        handle_atomic_mem_op("LDSMINALH");
     } else if (Name == "LDSMINALW") {
-        handle_default("LDSMINALw");
+        handle_atomic_mem_op("LDSMINALw");
     } else if (Name == "LDSMINALX") {
-        handle_default("LDSMINALx");
+        handle_atomic_mem_op("LDSMINALx");
     } else if (Name == "LDUMAXB") {
-        handle_default("LDUMAXB");
+        handle_atomic_mem_op("LDUMAXB");
     } else if (Name == "LDUMAXH") {
-        handle_default("LDUMAXH");
+        handle_atomic_mem_op("LDUMAXH");
     } else if (Name == "LDUMAXW") {
-        handle_default("LDUMAXw");
+        handle_atomic_mem_op("LDUMAXw");
     } else if (Name == "LDUMAXX") {
-        handle_default("LDUMAXx");
+        handle_atomic_mem_op("LDUMAXx");
     } else if (Name == "LDUMAXAB") {
-        handle_default("LDUMAXAB");
+        handle_atomic_mem_op("LDUMAXAB");
     } else if (Name == "LDUMAXAH") {
-        handle_default("LDUMAXAH");
+        handle_atomic_mem_op("LDUMAXAH");
     } else if (Name == "LDUMAXAW") {
-        handle_default("LDUMAXAw");
+        handle_atomic_mem_op("LDUMAXAw");
     } else if (Name == "LDUMAXAX") {
-        handle_default("LDUMAXAx");
+        handle_atomic_mem_op("LDUMAXAx");
     } else if (Name == "LDUMAXLB") {
-        handle_default("LDUMAXLB");
+        handle_atomic_mem_op("LDUMAXLB");
     } else if (Name == "LDUMAXLH") {
-        handle_default("LDUMAXLH");
+        handle_atomic_mem_op("LDUMAXLH");
     } else if (Name == "LDUMAXLW") {
-        handle_default("LDUMAXLw");
+        handle_atomic_mem_op("LDUMAXLw");
     } else if (Name == "LDUMAXLX") {
-        handle_default("LDUMAXLx");
+        handle_atomic_mem_op("LDUMAXLx");
     } else if (Name == "LDUMAXALB") {
-        handle_default("LDUMAXALB");
+        handle_atomic_mem_op("LDUMAXALB");
     } else if (Name == "LDUMAXALH") {
-        handle_default("LDUMAXALH");
+        handle_atomic_mem_op("LDUMAXALH");
     } else if (Name == "LDUMAXALW") {
-        handle_default("LDUMAXALw");
+        handle_atomic_mem_op("LDUMAXALw");
     } else if (Name == "LDUMAXALX") {
-        handle_default("LDUMAXALx");
+        handle_atomic_mem_op("LDUMAXALx");
     } else if (Name == "LDUMINB") {
-        handle_default("LDUMINB");
+        handle_atomic_mem_op("LDUMINB");
     } else if (Name == "LDUMINH") {
-        handle_default("LDUMINH");
+        handle_atomic_mem_op("LDUMINH");
     } else if (Name == "LDUMINW") {
-        handle_default("LDUMINw");
+        handle_atomic_mem_op("LDUMINw");
     } else if (Name == "LDUMINX") {
-        handle_default("LDUMINx");
+        handle_atomic_mem_op("LDUMINx");
     } else if (Name == "LDUMINAB") {
-        handle_default("LDUMINAB");
+        handle_atomic_mem_op("LDUMINAB");
     } else if (Name == "LDUMINAH") {
-        handle_default("LDUMINAH");
+        handle_atomic_mem_op("LDUMINAH");
     } else if (Name == "LDUMINAW") {
-        handle_default("LDUMINAw");
+        handle_atomic_mem_op("LDUMINAw");
     } else if (Name == "LDUMINAX") {
-        handle_default("LDUMINAx");
+        handle_atomic_mem_op("LDUMINAx");
     } else if (Name == "LDUMINLB") {
-        handle_default("LDUMINLB");
+        handle_atomic_mem_op("LDUMINLB");
     } else if (Name == "LDUMINLH") {
-        handle_default("LDUMINLH");
+        handle_atomic_mem_op("LDUMINLH");
     } else if (Name == "LDUMINLW") {
-        handle_default("LDUMINLw");
+        handle_atomic_mem_op("LDUMINLw");
     } else if (Name == "LDUMINLX") {
-        handle_default("LDUMINLx");
+        handle_atomic_mem_op("LDUMINLx");
     } else if (Name == "LDUMINALB") {
-        handle_default("LDUMINALB");
+        handle_atomic_mem_op("LDUMINALB");
     } else if (Name == "LDUMINALH") {
-        handle_default("LDUMINALH");
+        handle_atomic_mem_op("LDUMINALH");
     } else if (Name == "LDUMINALW") {
-        handle_default("LDUMINALw");
+        handle_atomic_mem_op("LDUMINALw");
     } else if (Name == "LDUMINALX") {
-        handle_default("LDUMINALx");
+        handle_atomic_mem_op("LDUMINALx");
 
     } else if (Name == "LDARB") {
         handle_default("LDARB");
