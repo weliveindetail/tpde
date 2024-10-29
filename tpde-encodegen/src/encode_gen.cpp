@@ -596,6 +596,40 @@ bool generate_inst(std::string        &buf,
             exit(1);
         };
 
+        // for architectures that generally don't tie-def their operands
+        // we still need to handle the case where we have an instruction like
+        // add x0, x0, x1
+        // and prevent x1 from trying to salvage into x0 because it is not
+        // allocated
+        //
+        // TODO(ts): I think it should be fine to handle the use of x0 as
+        // non-tied and allow an AsmOperand reg to be used instead
+        const auto def_is_tied = [inst,
+                                  &state](const llvm::MachineOperand &op) {
+            if (op.isTied()) {
+                return true;
+            }
+            if (!op.isReg()) {
+                return false;
+            }
+
+            if (state.target->reg_should_be_ignored(op.getReg())) {
+                return false;
+            }
+            auto reg = state.target->reg_id_from_mc_reg(op.getReg());
+            for (const auto &use : inst->explicit_uses()) {
+                if (!use.isReg()
+                    || state.target->reg_should_be_ignored(use.getReg())) {
+                    continue;
+                }
+                auto use_reg = state.target->reg_id_from_mc_reg(use.getReg());
+                if (reg == use_reg) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         const auto inst_id = state.cur_inst_id;
 
         std::vector<unsigned> implicit_ops_handled{};
@@ -731,6 +765,8 @@ bool generate_inst(std::string        &buf,
 
             if (!use.isTied()) {
                 if (reg_info.ty == ValueInfo::SCRATCHREG) {
+                    // TODO(ts): if this reg is also used as a def-reg
+                    // should we mark it as allocated here?
                     use_ops.push_back(std::format(
                         "scratch_{}.cur_reg",
                         state.target->reg_name_lower(resolved_reg_id)));
@@ -743,7 +779,7 @@ bool generate_inst(std::string        &buf,
                     const auto op_bank =
                         state.target->reg_bank(resolved_reg_id);
                     for (auto &[allocated, def] : defs_allocated) {
-                        if (allocated) {
+                        if (allocated || def_is_tied(*def)) {
                             continue;
                         }
 
