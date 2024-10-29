@@ -302,7 +302,7 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "ADDWri") {
         unsigned imm   = mi.getOperand(2).getImm();
         unsigned shift = mi.getOperand(3).getImm();
-        handle_noimm("ADDwi", std::format(", {}", imm << (shift & 0x3f)));
+        handle_noimm("ADDwi", std::format(", {}", imm << (shift & 0x1f)));
     } else if (Name == "ADDXri") {
         unsigned imm   = mi.getOperand(2).getImm();
         unsigned shift = mi.getOperand(3).getImm();
@@ -310,7 +310,7 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "ADDSWri") {
         unsigned imm   = mi.getOperand(2).getImm();
         unsigned shift = mi.getOperand(3).getImm();
-        handle_noimm("ADDSwi", std::format(", {}", imm << (shift & 0x3f)));
+        handle_noimm("ADDSwi", std::format(", {}", imm << (shift & 0x1f)));
     } else if (Name == "ADDSXri") {
         unsigned imm   = mi.getOperand(2).getImm();
         unsigned shift = mi.getOperand(3).getImm();
@@ -318,7 +318,7 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "SUBWri") {
         unsigned imm   = mi.getOperand(2).getImm();
         unsigned shift = mi.getOperand(3).getImm();
-        handle_noimm("SUBwi", std::format(", {}", imm << (shift & 0x3f)));
+        handle_noimm("SUBwi", std::format(", {}", imm << (shift & 0x1f)));
     } else if (Name == "SUBXri") {
         unsigned imm   = mi.getOperand(2).getImm();
         unsigned shift = mi.getOperand(3).getImm();
@@ -326,7 +326,7 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "SUBSWri") {
         unsigned imm   = mi.getOperand(2).getImm();
         unsigned shift = mi.getOperand(3).getImm();
-        handle_noimm("SUBSwi", std::format(", {}", imm << (shift & 0x3f)));
+        handle_noimm("SUBSwi", std::format(", {}", imm << (shift & 0x1f)));
     } else if (Name == "SUBSXri") {
         unsigned imm   = mi.getOperand(2).getImm();
         unsigned shift = mi.getOperand(3).getImm();
@@ -337,7 +337,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "ADDw_lsl", "ADDw_lsr", "ADDw_asr"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ADDXrs") {
         // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -351,7 +351,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "ADDSw_lsl", "ADDSw_lsr", "ADDSw_asr"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ADDSXrs") {
         // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -365,7 +365,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "SUBw_lsl", "SUBw_lsr", "SUBw_asr"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "SUBXrs") {
         // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -379,7 +379,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "SUBSw_lsl", "SUBSw_lsr", "SUBSw_asr"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "SUBSXrs") {
         // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -399,7 +399,7 @@ void EncodingTargetArm64::get_inst_candidates(
                                               "ADDw_sxtw",
                                               "ADDw_sxtx"};
         unsigned                        imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
     } else if (Name == "ADDXrx") {
         // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -412,7 +412,7 @@ void EncodingTargetArm64::get_inst_candidates(
                                               "ADDx_sxtw",
                                               "ADDx_sxtx"};
         unsigned                        imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
     } else if (Name == "ADDSWrx") {
         // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -425,7 +425,7 @@ void EncodingTargetArm64::get_inst_candidates(
                                               "ADDSw_sxtw",
                                               "ADDSw_sxtx"};
         unsigned                        imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
     } else if (Name == "ADDSXrx") {
         // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -438,7 +438,7 @@ void EncodingTargetArm64::get_inst_candidates(
                                               "ADDSx_sxtw",
                                               "ADDSx_sxtx"};
         unsigned                        imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
     } else if (Name == "SUBWrx") {
         // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -451,7 +451,7 @@ void EncodingTargetArm64::get_inst_candidates(
                                               "SUBw_sxtw",
                                               "SUBw_sxtx"};
         unsigned                        imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
     } else if (Name == "SUBXrx") {
         // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -464,7 +464,7 @@ void EncodingTargetArm64::get_inst_candidates(
                                               "SUBx_sxtw",
                                               "SUBx_sxtx"};
         unsigned                        imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
     } else if (Name == "SUBSWrx") {
         // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -477,7 +477,7 @@ void EncodingTargetArm64::get_inst_candidates(
                                               "SUBSw_sxtw",
                                               "SUBSw_sxtx"};
         unsigned                        imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
     } else if (Name == "SUBSXrx") {
         // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -490,7 +490,7 @@ void EncodingTargetArm64::get_inst_candidates(
                                               "SUBSx_sxtw",
                                               "SUBSx_sxtx"};
         unsigned                        imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
     } else if (Name == "ADCWr") {
         handle_default("ADCw");
     } else if (Name == "ADCXr") {
@@ -597,7 +597,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "ANDw_lsl", "ANDw_lsr", "ANDw_asr", "ANDw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ANDXrs") {
         // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -611,7 +611,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "ORRw_lsl", "ORRw_lsr", "ORRw_asr", "ORRw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ORRXrs") {
         // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -625,7 +625,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "EORw_lsl", "EORw_lsr", "EORw_asr", "EORw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "EORXrs") {
         // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -639,7 +639,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "ANDSw_lsl", "ANDSw_lsr", "ANDSw_asr", "ANDSw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ANDSXrs") {
         // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -653,7 +653,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "BICw_lsl", "BICw_lsr", "BICw_asr", "BICw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "BICXrs") {
         // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -667,7 +667,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "ORNw_lsl", "ORNw_lsr", "ORNw_asr", "ORNw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ORNXrs") {
         // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -681,7 +681,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "EONw_lsl", "EONw_lsr", "EONw_asr", "EONw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "EONXrs") {
         // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
@@ -695,7 +695,7 @@ void EncodingTargetArm64::get_inst_candidates(
         std::array<std::string_view, 4> mnems{
             "BICSw_lsl", "BICSw_lsr", "BICSw_asr", "BICSw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
-        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+        handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "BICSXrs") {
         // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
