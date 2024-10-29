@@ -1689,10 +1689,12 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
         }
 
         this->assembler.text_ensure_space(5 * 4);
-        this->assembler.text_write_ptr += de64_MOVconst(
-            reinterpret_cast<u32 *>(this->assembler.text_write_ptr),
-            dst,
-            const_u64);
+        this->assembler.text_write_ptr +=
+            sizeof(u32)
+            * de64_MOVconst(
+                reinterpret_cast<u32 *>(this->assembler.text_write_ptr),
+                dst,
+                const_u64);
         return;
     }
 
@@ -1702,10 +1704,12 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
             ScratchReg scratch{derived()};
             const auto tmp = scratch.alloc_gp();
             this->assembler.text_ensure_space(5 * 4);
-            this->assembler.text_write_ptr += de64_MOVconst(
-                reinterpret_cast<u32 *>(this->assembler.text_write_ptr),
-                tmp,
-                (u32)const_u64);
+            this->assembler.text_write_ptr +=
+                sizeof(u32)
+                * de64_MOVconst(
+                    reinterpret_cast<u32 *>(this->assembler.text_write_ptr),
+                    tmp,
+                    (u32)const_u64);
             ASMNC(FMOVsw, dst, tmp);
         }
         return;
@@ -1716,10 +1720,12 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
             ScratchReg scratch{derived()};
             const auto tmp = scratch.alloc_gp();
             this->assembler.text_ensure_space(5 * 4);
-            this->assembler.text_write_ptr += de64_MOVconst(
-                reinterpret_cast<u32 *>(this->assembler.text_write_ptr),
-                tmp,
-                const_u64);
+            this->assembler.text_write_ptr +=
+                sizeof(u32)
+                * de64_MOVconst(
+                    reinterpret_cast<u32 *>(this->assembler.text_write_ptr),
+                    tmp,
+                    const_u64);
             ASMNC(FMOVdx, dst, tmp);
         }
         return;
@@ -2146,7 +2152,7 @@ template <IRAdaptor Adaptor,
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_set(
     Jump jmp, AsmReg dst) noexcept {
     this->assembler.text_ensure_space(4);
-    switch (jmp) {
+    switch (jmp.kind) {
     case Jump::Jeq: ASMNC(CSETw, dst, DA_EQ); break;
     case Jump::Jne: ASMNC(CSETw, dst, DA_NE); break;
     case Jump::Jcs: ASMNC(CSETw, dst, DA_CS); break;

@@ -51,8 +51,9 @@ constexpr u8 DW_EH_PE_indirect = 0x80;
 constexpr u8 DW_EH_PE_sdata4   = 0x0b;
 constexpr u8 DW_EH_PE_omit     = 0xff;
 
-constexpr u8 DW_CFA_def_cfa = 0x0c;
-constexpr u8 DW_CFA_offset  = 0x80;
+constexpr u8 DW_CFA_offset_extended = 0x05;
+constexpr u8 DW_CFA_def_cfa         = 0x0c;
+constexpr u8 DW_CFA_offset          = 0x80;
 
 constexpr u8 DWARF_CFI_PRIMARY_OPCODE_MASK = 0xc0;
 

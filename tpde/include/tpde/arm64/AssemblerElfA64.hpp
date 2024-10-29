@@ -141,7 +141,11 @@ inline void AssemblerElfA64::end_func(const u64 saved_regs,
         }
 
         // cfa_offset reg, cur_off (reg = CFA - cur_off)
-        eh_write_inst(dwarf::DW_CFA_offset, reg_id, cur_off);
+        if ((reg_id & dwarf::DWARF_CFI_PRIMARY_OPCODE_MASK) == 0) {
+            eh_write_inst(dwarf::DW_CFA_offset, reg_id, cur_off);
+        } else {
+            eh_write_inst(dwarf::DW_CFA_offset_extended, reg_id, cur_off);
+        }
         // hardcodes register saves of 8 bytes
         cur_off -= 8;
     }
