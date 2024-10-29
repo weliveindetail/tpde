@@ -900,37 +900,37 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "CASALX") {
         handle_default("CASALx");
     } else if (Name == "SWPB") {
-        handle_default("SWPB");
+        handle_atomic_mem_op("SWPB");
     } else if (Name == "SWPH") {
-        handle_default("SWPH");
+        handle_atomic_mem_op("SWPH");
     } else if (Name == "SWPW") {
-        handle_default("SWPw");
+        handle_atomic_mem_op("SWPw");
     } else if (Name == "SWPX") {
-        handle_default("SWPx");
+        handle_atomic_mem_op("SWPx");
     } else if (Name == "SWPAB") {
-        handle_default("SWPAB");
+        handle_atomic_mem_op("SWPAB");
     } else if (Name == "SWPAH") {
-        handle_default("SWPAH");
+        handle_atomic_mem_op("SWPAH");
     } else if (Name == "SWPAW") {
-        handle_default("SWPAw");
+        handle_atomic_mem_op("SWPAw");
     } else if (Name == "SWPAX") {
-        handle_default("SWPAx");
+        handle_atomic_mem_op("SWPAx");
     } else if (Name == "SWPLB") {
-        handle_default("SWPLB");
+        handle_atomic_mem_op("SWPLB");
     } else if (Name == "SWPLH") {
-        handle_default("SWPLH");
+        handle_atomic_mem_op("SWPLH");
     } else if (Name == "SWPLW") {
-        handle_default("SWPLw");
+        handle_atomic_mem_op("SWPLw");
     } else if (Name == "SWPLX") {
-        handle_default("SWPLx");
+        handle_atomic_mem_op("SWPLx");
     } else if (Name == "SWPALB") {
-        handle_default("SWPALB");
+        handle_atomic_mem_op("SWPALB");
     } else if (Name == "SWPALH") {
-        handle_default("SWPALH");
+        handle_atomic_mem_op("SWPALH");
     } else if (Name == "SWPALW") {
-        handle_default("SWPALw");
+        handle_atomic_mem_op("SWPALw");
     } else if (Name == "SWPALX") {
-        handle_default("SWPALx");
+        handle_atomic_mem_op("SWPALx");
 
         // Good that Arm no describes their architecture as "RISC".
     } else if (Name == "LDADDB") {
