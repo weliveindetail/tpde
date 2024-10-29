@@ -31,10 +31,10 @@ add_executable(tpde::tpde_encodegen ALIAS tpde_encodegen)
 #------------------------------------------------------------------------------
 
 # hopscotch-map (disable warnings)
-target_include_directories(tpde_llvm SYSTEM PRIVATE ../deps/hopscotch-map/include)
+target_include_directories(tpde_encodegen SYSTEM PRIVATE ../deps/hopscotch-map/include)
 
 # general deps directory (for args)
-target_include_directories(tpde_llvm PRIVATE ../deps/)
+target_include_directories(tpde_encodegen PRIVATE ../deps/)
 
 # Configure LLVM
 set(TPDE_LINK_LLVM_STATIC FALSE CACHE BOOL "Should LLVM be linked statically?")
@@ -42,7 +42,7 @@ if (TPDE_ASSERTS)
     set(LLVM_ENABLE_ASSERTIONS "ON")
 endif ()
 
-find_package(LLVM 19 REQUIRED CONFIG)
+find_package(LLVM 19.1.2 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 if (TPDE_LINK_LLVM_STATIC)

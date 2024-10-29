@@ -29,7 +29,7 @@ static constexpr inline char ENCODER_TEMPLATE_BEGIN[] =
 
 #include <variant>
 
-#include "base.hpp"
+#include "tpde/base.hpp"
 #include "tpde/arm64/CompilerA64.hpp"
 
 // Helper macros for assembling in the compiler
@@ -489,13 +489,13 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
 
             AsmReg val = this->as_reg(compiler);
             if (size <= 4) {
-                ASMD(MOVw, dst_scratch.cur_reg, val);
+                ASMC(compiler->derived(), MOVw, dst_scratch.cur_reg, val);
             } else {
-                ASMD(MOVx, dst_scratch.cur_reg, val);
+                ASMC(compiler->derived(), MOVx, dst_scratch.cur_reg, val);
             }
         } else {
             AsmReg val = this->as_reg(compiler);
-            ASMD(MOV8b, dst_scratch.cur_reg, val);
+            ASMC(compiler->derived(), MOV8b, dst_scratch.cur_reg, val);
         }
     }
 }

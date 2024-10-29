@@ -250,6 +250,15 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "STPXi") {
         // TODO: Handle expr with base+off, merge offsets
         handle_default("STPx");
+    } else if (Name == "STLRB") {
+        // TODO: Handle expr with base+off, merge offsets
+        handle_default("STLRB");
+    } else if (Name == "LDRSBWui") {
+        // TODO: Handle expr with base+off, merge offsets
+        handle_default("LDRSBwu");
+    } else if (Name == "LDRSHWui") {
+        // TODO: Handle expr with base+off, merge offsets
+        handle_default("LDRSHwu");
     } else if (Name == "UBFMWri") {
         // TODO: fold zero-extend with load
         handle_default("UBFMw");
@@ -570,6 +579,10 @@ void EncodingTargetArm64::get_inst_candidates(
         handle_default("RBITw");
     } else if (Name == "RBITXr") {
         handle_default("RBITx");
+    } else if (Name == "REVWr") {
+        handle_default("REV32w");
+    } else if (Name == "REVXr") {
+        handle_default("REV64x");
     } else if (Name == "CLZWr") {
         handle_default("CLZw");
     } else if (Name == "CLZXr") {

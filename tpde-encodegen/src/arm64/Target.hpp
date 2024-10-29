@@ -97,6 +97,31 @@ struct EncodingTargetArm64 : EncodingTarget {
     }
 
     bool inst_should_be_skipped(llvm::MachineInstr &) override { return false; }
+
+    std::string_view jump_code(unsigned imm) override {
+        // from llvm/lib/Target/AArch64/Utils/AArch64BaseInfo.h
+        std::array<const char *, 16> cond_codes = {"Jeq",
+                                                   "Jne",
+                                                   "Jhs",
+                                                   "Jlo",
+                                                   "Jmi",
+                                                   "Jpl",
+                                                   "Jvs",
+                                                   "Jvc",
+                                                   "Jhi",
+                                                   "Jls",
+                                                   "Jge",
+                                                   "Jlt",
+                                                   "Jgt",
+                                                   "Jle",
+                                                   "Jal",
+                                                   "Jal"};
+	if (imm >= cond_codes.size()) {
+            assert(0);
+            return {};
+        }
+        return cond_codes[imm];
+    }
 };
 
 } // namespace tpde_encgen::arm64

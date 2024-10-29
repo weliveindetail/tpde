@@ -168,6 +168,30 @@ struct EncodingTargetX64 : EncodingTarget {
         }
         return false;
     }
+
+    std::string_view jump_code(unsigned imm) override {
+        std::array<const char *, 16> cond_codes = {"jo",
+                                                   "jno",
+                                                   "jb",
+                                                   "jae",
+                                                   "je",
+                                                   "jne",
+                                                   "jbe",
+                                                   "ja",
+                                                   "js",
+                                                   "jns",
+                                                   "jp",
+                                                   "jnp",
+                                                   "jl",
+                                                   "jge",
+                                                   "jle",
+                                                   "jg"};
+	if (imm >= cond_codes.size()) {
+            assert(0);
+            return {};
+        }
+        return cond_codes[imm];
+    }
 };
 
 } // namespace tpde_encgen::x64

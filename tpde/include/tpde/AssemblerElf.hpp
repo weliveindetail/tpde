@@ -15,16 +15,27 @@
 #include "util/SmallVector.hpp"
 #include "util/misc.hpp"
 
-#if defined(__x86_64__) && defined(__unix__)
-    #include <fadec-enc2.h>
+#if defined(__unix__)
     #include <sys/mman.h>
+    #ifdef __x86_64__
+        #include <fadec-enc2.h>
+    #endif
+    #ifdef __aarch64__
+        #include <disarm64.h>
+    #endif
 
 extern "C" void __register_frame(void *);
 extern "C" void __deregister_frame(void *);
 
 namespace tpde {
+    #ifdef __x86_64__
 constexpr size_t PAGE_SIZE = 4096;
-}
+    #elif defined(__aarch64__)
+// TODO(ts): I think on arm64 we need to ask the kernel for the current page
+// size
+constexpr size_t PAGE_SIZE = 16384;
+    #endif
+} // namespace tpde
 #else
     #error "unsupported architecture/os combo"
 #endif
@@ -1796,6 +1807,9 @@ bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
 
 #ifdef __x86_64__
     constexpr size_t PLT_ENTRY_SIZE = 16;
+#elif defined(__aarch64__)
+    // TODO
+    constexpr size_t PLT_ENTRY_SIZE = 5 * 4;
 #endif
 
     const u32 plt_size = num_plt_entries * PLT_ENTRY_SIZE;
@@ -1971,6 +1985,18 @@ bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
                 *reinterpret_cast<i32 *>(r_addr) =
                     reinterpret_cast<i64>(got_entry_ptr) + reloc.r_addend
                     - reinterpret_cast<u64>(r_addr);
+                break;
+            }
+#elif defined(__aarch64__)
+            case R_AARCH64_PREL32: {
+                auto P = reinterpret_cast<uintptr_t>(r_addr);
+                auto val =
+                    reinterpret_cast<uintptr_t>(s_addr) + reloc.r_addend - P;
+                if (val >= 0xFFFF'FFFF && val <= 0xFFFF'FFFF'8000'0000) {
+                    assert(0);
+                    return false;
+                }
+                *reinterpret_cast<u32 *>(r_addr) = val;
                 break;
             }
 #endif

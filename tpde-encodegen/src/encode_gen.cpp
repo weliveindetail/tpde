@@ -121,7 +121,7 @@ bool handle_terminator(std::string        &buf,
                        GenerationState    &state,
                        llvm::MachineInstr *inst);
 
-void materialize_aliased_regs(GenerationState &state,
+static void materialize_aliased_regs(GenerationState &state,
                               std::string     &buf,
                               unsigned         indent,
                               unsigned         break_reg,
@@ -648,7 +648,7 @@ bool generate_inst(std::string        &buf,
             }
 
             assert(!use.isTied()
-                   || !use.isImplicit() && "implicit tied use not implemented");
+                   || (!use.isImplicit() && "implicit tied use not implemented"));
 
             auto orig_reg_id = state.target->reg_id_from_mc_reg(use.getReg());
 
@@ -2051,35 +2051,17 @@ bool handle_terminator(std::string        &buf,
             return false;
         }
 
-        // TODO(ts): arch-specific
         if (inst->isUnconditionalBranch()) {
             jump_code = "jmp";
         } else {
-            std::array<const char *, 16> cond_codes = {"jo",
-                                                       "jno",
-                                                       "jb",
-                                                       "jae",
-                                                       "je",
-                                                       "jne",
-                                                       "jbe",
-                                                       "ja",
-                                                       "js",
-                                                       "jns",
-                                                       "jp",
-                                                       "jnp",
-                                                       "jl",
-                                                       "jge",
-                                                       "jle",
-                                                       "jg"};
 
             // just assume the first immediate is the condition code
             for (const auto &op : inst->explicit_uses()) {
                 if (!op.isImm()) {
                     continue;
                 }
-                assert(op.getImm() >= 0
-                       && op.getImm() < (int64_t)cond_codes.size());
-                jump_code = cond_codes[op.getImm()];
+                assert(op.getImm() >= 0);
+                jump_code = state.target->jump_code(op.getImm());
             }
 
             if (jump_code.empty()) {
@@ -2110,7 +2092,7 @@ bool handle_terminator(std::string        &buf,
 
         state.fmt_line(buf,
                        4,
-                       "derived()->generate_raw_jump(CompilerX64::Jump::{}, "
+                       "derived()->generate_raw_jump(Derived::Jump::{}, "
                        "block{}_label);",
                        jump_code,
                        target->getNumber());

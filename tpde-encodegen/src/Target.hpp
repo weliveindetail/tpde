@@ -87,6 +87,7 @@ struct EncodingTarget {
                                            std::string_view src,
                                            unsigned         size)            = 0;
     virtual bool inst_should_be_skipped(llvm::MachineInstr &inst)    = 0;
+    virtual std::string_view jump_code(unsigned imm) = 0;
 };
 
 } // namespace tpde_encgen
