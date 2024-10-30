@@ -1106,47 +1106,51 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef         inst_idx,
                                       llvm::Function    *fn) noexcept {
     const auto intrin_id = fn->getIntrinsicID();
     switch (intrin_id) {
-#if 0
     case llvm::Intrinsic::vastart: {
         auto list_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
         ScratchReg scratch1{this}, scratch2{this};
         auto       list_reg = this->val_as_reg(list_ref, scratch1);
         auto       tmp_reg  = scratch1.alloc_gp();
 
-        u64 combined_off = (((static_cast<u64>(vec_arg_count) * 16) + 48) << 32)
-                           | (static_cast<u64>(scalar_arg_count) * 8);
-        ASM(MOV64ri, tmp_reg, combined_off);
-        ASM(MOV64mr, FE_MEM(list_reg, 0, FE_NOREG, 0), tmp_reg);
+        // next stack param
+        ASM(ADDxi, tmp_reg, DA_GP(29), var_arg_stack_off);
+        ASM(STRxu, tmp_reg, list_reg, 0);
+        // gr_top = end of GP arg reg save area
+        ASM(ADDxi, tmp_reg, DA_GP(29), reg_save_frame_off + 64);
+        ASM(STRxu, tmp_reg, list_reg, 8);
+        // vr_top = end of VR arg reg save area
+        if (reg_save_frame_off + 64 + 128 == 0) {
+            ASM(STRxu, DA_GP(29), list_reg, 16);
+        } else {
+            ASM(ADDxi, tmp_reg, DA_GP(29), reg_save_frame_off + 64 + 128);
+            ASM(STRxu, tmp_reg, list_reg, 16);
+        }
 
-        assert(-static_cast<i32>(reg_save_frame_off) < 0);
-        ASM(LEA64rm,
-            tmp_reg,
-            FE_MEM(FE_BP, 0, FE_NOREG, -(i32)reg_save_frame_off));
-        ASM(MOV64mr, FE_MEM(list_reg, 0, FE_NOREG, 16), tmp_reg);
-
-        ASM(LEA64rm,
-            tmp_reg,
-            FE_MEM(FE_BP, 0, FE_NOREG, (i32)var_arg_stack_off));
-        ASM(MOV64mr, FE_MEM(list_reg, 0, FE_NOREG, 8), tmp_reg);
+        uint32_t gr_offs = ~(0 - ((8 - scalar_arg_count) * 8));
+        uint32_t vr_offs = ~(0 - ((8 - vec_arg_count) * 16));
+        assert(gr_offs <= 0xFFFF);
+        assert(vr_offs <= 0xFFFF);
+        ASM(MOVNw, tmp_reg, gr_offs);
+        ASM(STRwu, tmp_reg, list_reg, 24);
+        ASM(MOVNw, tmp_reg, vr_offs);
+        ASM(STRwu, tmp_reg, list_reg, 28);
         return true;
     }
     case llvm::Intrinsic::vacopy: {
         auto dst_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
         auto src_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
 
-        ScratchReg scratch1{this}, scratch2{this}, scratch3{this};
+        ScratchReg scratch1{this}, scratch2{this};
+        ScratchReg scratch3{this}, scratch4{this};
         const auto src_reg = this->val_as_reg(src_ref, scratch1);
         const auto dst_reg = this->val_as_reg(dst_ref, scratch2);
 
-        const auto tmp_reg = scratch3.alloc_from_bank(1);
-        ASM(SSE_MOVDQUrm, tmp_reg, FE_MEM(src_reg, 0, FE_NOREG, 0));
-        ASM(SSE_MOVDQUmr, FE_MEM(dst_reg, 0, FE_NOREG, 0), tmp_reg);
-
-        ASM(SSE_MOVQrm, tmp_reg, FE_MEM(src_reg, 0, FE_NOREG, 16));
-        ASM(SSE_MOVQmr, FE_MEM(dst_reg, 0, FE_NOREG, 16), tmp_reg);
+        const auto tmp_reg1 = scratch3.alloc_from_bank(1);
+        const auto tmp_reg2 = scratch4.alloc_from_bank(1);
+        ASM(LDPq, tmp_reg1, tmp_reg2, src_reg, 0);
+        ASM(STPq, tmp_reg1, tmp_reg2, dst_reg, 0);
         return true;
     }
-#endif
     case llvm::Intrinsic::stacksave: {
         auto res_ref = this->result_ref_eager(inst_idx, 0);
         ASM(MOV_SPx, res_ref.cur_reg(), DA_SP);
