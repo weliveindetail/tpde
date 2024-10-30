@@ -471,11 +471,11 @@ void LLVMCompilerArm64::load_address_of_var_reference(
     const auto &info = variable_refs[ap.assignment->var_ref_custom_idx];
     if (info.alloca) {
         // default handling from CompilerA64
-        assert(-static_cast<i32>(ap.assignment->frame_off) < 0);
+        assert(-static_cast<i32>(info.alloca_frame_off) < 0);
         // per-default, variable references are only used by
         // allocas
-        if (!ASMIF(ADDxi, dst, DA_GP(29), ap.assignment->frame_off)) {
-            materialize_constant(ap.assignment->frame_off, 0, 4, dst);
+        if (!ASMIF(ADDxi, dst, DA_GP(29), info.alloca_frame_off)) {
+            materialize_constant(info.alloca_frame_off, 0, 4, dst);
             ASM(ADDx_uxtw, dst, DA_GP(29), dst, 0);
         }
     } else {

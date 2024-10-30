@@ -3232,9 +3232,8 @@ define ptr @gep_zai32_varoff_one_i64(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
 ; X64:    add byte ptr [rax], al
-; X64:    <unknown>
+; X64:    add byte ptr [rbp + 0x48], dl
 ;
 ; ARM64-LABEL: gep_zai32_varoff_one_i64>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -3257,6 +3256,46 @@ define ptr @gep_zai32_varoff_one_i64(ptr %0, i64 %1) {
   entry:
     %2 = getelementptr inbounds [0 x i32], ptr %0, i64 %1, i32 1
     ret ptr %2
+}
+
+define dso_local ptr @gep_array(ptr noundef %0) #0 {
+; X64-LABEL: gep_array>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x110
+; X64:    lea rax, [rbp - 0x100]
+; X64:    add rsp, 0x110
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rax], al
+; X64:    <unknown>
+;
+; ARM64-LABEL: gep_array>:
+; ARM64:    sub sp, sp, #0x180
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    add x0, x29, #0xb0
+; ARM64:    mov x1, x0
+; ARM64:    mov x0, x1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0x180
+; ARM64:    ret
+; ARM64:     ...
+  %dummy = alloca i64, align 8
+  %array = alloca [201 x i8], align 1
+  %gep = getelementptr inbounds [201 x i8], ptr %array, i64 0, i64 0
+  ret ptr %gep
 }
 
 
