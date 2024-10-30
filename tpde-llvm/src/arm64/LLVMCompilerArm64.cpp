@@ -482,18 +482,23 @@ void LLVMCompilerArm64::load_address_of_var_reference(
         const auto sym = global_sym(
             llvm::cast<llvm::GlobalValue>(adaptor->values[info.val].val));
         assert(sym != Assembler::INVALID_SYM_REF);
-        this->assembler.reloc_text(
-            sym, R_AARCH64_ADR_PREL_PG_HI21, this->assembler.text_cur_off(), 0);
-        ASM(ADRP, dst, 0, 0);
         if (!info.local) {
             // mov the ptr from the GOT
+            this->assembler.reloc_text(
+                sym, R_AARCH64_ADR_GOT_PAGE, this->assembler.text_cur_off(), 0);
+            ASM(ADRP, dst, 0, 0);
             this->assembler.reloc_text(sym,
-                                       R_AARCH64_LDST64_ABS_LO12_NC,
+                                       R_AARCH64_LD64_GOT_LO12_NC,
                                        this->assembler.text_cur_off(),
                                        0);
             ASM(LDRxu, dst, dst, 0);
         } else {
             // emit lea with relocation
+            this->assembler.reloc_text(sym,
+                                       R_AARCH64_ADR_PREL_PG_HI21,
+                                       this->assembler.text_cur_off(),
+                                       0);
+            ASM(ADRP, dst, 0, 0);
             this->assembler.reloc_text(sym,
                                        R_AARCH64_ADD_ABS_LO12_NC,
                                        this->assembler.text_cur_off(),
