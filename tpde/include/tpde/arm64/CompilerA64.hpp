@@ -642,7 +642,7 @@ void CallingConv::handle_func_args(
         typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ScratchReg;
 
     u32 scalar_reg_count = 0, vec_reg_count = 0;
-    i32 frame_off = 16;
+    i32 frame_off = 0;
 
     const auto gp_regs  = arg_regs_gp();
     const auto vec_regs = arg_regs_vec();
@@ -700,8 +700,10 @@ void CallingConv::handle_func_args(
                 // 128 bit integers are always passed in even positions
                 ++scalar_reg_count;
             }
-            if (scalar_reg_count + 1 >= gp_regs.size()) {
-                // 128 bit integers are either completely passed in registers
+        }
+        if (part_count > 1) {
+            if (scalar_reg_count + part_count - 1 >= gp_regs.size()) {
+                // multipart values are either completely passed in registers
                 // or not at all
                 scalar_reg_count = gp_regs.size();
             }
@@ -848,8 +850,10 @@ u32 CallingConv::calculate_call_stack_space(
                 // 128 bit ints are only passed starting at even registers
                 ++gp_reg_count;
             }
+        }
 
-            if (gp_reg_count + 1 >= gp_regs.size()) {
+        if (part_count > 1) {
+            if (gp_reg_count + part_count - 1 >= gp_regs.size()) {
                 gp_reg_count = gp_regs.size();
             }
         }
@@ -956,8 +960,10 @@ u32 CallingConv::handle_call_args(
                 // 128 bit ints are only passed starting in even registers
                 ++gp_reg_count;
             }
+        }
 
-            if (gp_reg_count + 1 >= gp_regs.size()) {
+        if (part_count > 1) {
+            if (gp_reg_count + part_count - 1 >= gp_regs.size()) {
                 gp_reg_count = gp_regs.size();
             }
         }
@@ -1510,8 +1516,8 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_reg(
     assert(-static_cast<i32>(frame_off) < 0);
     if (reg.id() <= AsmReg::R30) {
         switch (size) {
-        case 1: ASMNC(STRbu, reg, addr_base, off); break;
-        case 2: ASMNC(STRhu, reg, addr_base, off); break;
+        case 1: ASMNC(STRBu, reg, addr_base, off); break;
+        case 2: ASMNC(STRHu, reg, addr_base, off); break;
         case 4: ASMNC(STRwu, reg, addr_base, off); break;
         case 8: ASMNC(STRxu, reg, addr_base, off); break;
         default: assert(0); __builtin_unreachable();
