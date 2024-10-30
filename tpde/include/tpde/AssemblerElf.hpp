@@ -1809,8 +1809,7 @@ bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
 #ifdef __x86_64__
     constexpr size_t PLT_ENTRY_SIZE = 16;
 #elif defined(__aarch64__)
-    // TODO
-    constexpr size_t PLT_ENTRY_SIZE = 5 * 4;
+    constexpr size_t PLT_ENTRY_SIZE = 16;
 #endif
 
     const u32 plt_size = num_plt_entries * PLT_ENTRY_SIZE;
@@ -1998,6 +1997,42 @@ bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
                     return false;
                 }
                 *reinterpret_cast<u32 *>(r_addr) = val;
+                break;
+            }
+            case R_AARCH64_CALL26: {
+                auto P   = reinterpret_cast<u64>(r_addr);
+                i64  off = reinterpret_cast<i64>(s_addr) + reloc.r_addend - P;
+                if ((off << 2) == ((off << 38) >> 36)) {
+                    *reinterpret_cast<u32 *>(r_addr) = de64_BL(off >> 2);
+                    break;
+                }
+
+                // need to create a PLT entry
+                auto idx = AssemblerElf::sym_idx(sym);
+                if (!AssemblerElf::sym_is_local(sym)) {
+                    idx += local_sym_count;
+                }
+                auto &plt_off  = plt_or_got_offs[idx];
+                u32  *code_ptr = nullptr;
+                if (plt_off != 0) {
+                    code_ptr = reinterpret_cast<u32 *>(mapped_addr + plt_off);
+                } else {
+                    plt_off = cur_plt_off;
+                    code_ptr =
+                        reinterpret_cast<u32 *>(mapped_addr + cur_plt_off);
+
+                    cur_plt_off += 16;
+
+                    *code_ptr++ = de64_LDRx_pcrel(DA_GP(16), 8 / 4);
+                    *code_ptr++ = de64_BR(DA_GP(16));
+                    *reinterpret_cast<u64 *>(code_ptr) =
+                        reinterpret_cast<u64>(s_addr);
+                }
+
+                off = reinterpret_cast<i64>(code_ptr) + reloc.r_addend
+                      - reinterpret_cast<u64>(r_addr);
+                assert((off << 2) == ((off << 38) >> 36));
+                *reinterpret_cast<u32 *>(r_addr) = de64_BL((off << 38) >> 38);
                 break;
             }
 #endif
