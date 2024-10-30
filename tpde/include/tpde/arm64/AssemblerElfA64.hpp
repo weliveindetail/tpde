@@ -441,7 +441,7 @@ inline void AssemblerElfA64::reloc_data_pc32(const SymRef target,
 inline void AssemblerElfA64::reloc_eh_frame_pc32(const SymRef target,
                                                  const u32    off,
                                                  const i32    addend) noexcept {
-    reloc_sec(sec_eh_frame, target, R_X86_64_PC32, off, addend);
+    reloc_sec(sec_eh_frame, target, R_AARCH64_PREL32, off, addend);
 }
 
 inline void AssemblerElfA64::reloc_except_table_pc32(
