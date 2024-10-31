@@ -16,12 +16,11 @@ define void @dyn_alloca_const() {
 ; X64:    sub rsp, 0x10
 ; X64:    and rsp, -0x10
 ; X64:    mov rax, rsp
+; X64:    mov qword ptr [rax], rax
 ; X64:    mov rsp, rbp
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
 ;
 ; ARM64-LABEL: dyn_alloca_const>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -37,6 +36,8 @@ define void @dyn_alloca_const() {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    sub sp, sp, #0x10
+; ARM64:    mov x0, sp
+; ARM64:    str x0, [x0]
 ; ARM64:    mov sp, x29
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
@@ -45,7 +46,8 @@ define void @dyn_alloca_const() {
 entry:
     br label %bb1
 bb1:
-    %0 = alloca i32
+    %0 = alloca ptr
+    store ptr %0, ptr %0
     ret void
 }
 
@@ -79,6 +81,9 @@ define void @dyn_alloca_const_align_32() {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    sub sp, sp, #0x10
+; ARM64:    mov x0, sp
+; ARM64:    and sp, x0, #0xffffffffffffffe0
+; ARM64:    mov x0, sp
 ; ARM64:    mov sp, x29
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
@@ -91,6 +96,51 @@ bb1:
     ret void
 }
 
+define void @dyn_alloca_const_align_32_ptr() {
+; X64-LABEL: dyn_alloca_const_align_32_ptr>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x30
+; X64:    sub rsp, 0x10
+; X64:    and rsp, -0x20
+; X64:    mov rax, rsp
+; X64:    mov qword ptr [rax], rax
+; X64:    mov rsp, rbp
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+;
+; ARM64-LABEL: dyn_alloca_const_align_32_ptr>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sub sp, sp, #0x10
+; ARM64:    mov x0, sp
+; ARM64:    and sp, x0, #0xffffffffffffffe0
+; ARM64:    mov x0, sp
+; ARM64:    str x0, [x0]
+; ARM64:    mov sp, x29
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+entry:
+    br label %bb1
+bb1:
+    %0 = alloca ptr, align 32
+    store ptr %0, ptr %0
+    ret void
+}
 
 define void @dyn_alloca_dyn_i8_cnt_i64(i64 %0) {
 ; X64-LABEL: dyn_alloca_dyn_i8_cnt_i64>:

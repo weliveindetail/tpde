@@ -565,6 +565,17 @@ bool LLVMCompilerArm64::compile_alloca(IRValueRef         inst_idx,
             }
             ASM(SUBxi, DA_SP, DA_SP, size_val & 0xfff);
         }
+
+        if (auto align = alloca->getAlign().value(); align >= 16) {
+            // TODO(ae): we could avoid one move here
+            align = ~(align - 1);
+            ASM(MOV_SPx, res_ref.cur_reg(), DA_SP);
+            ASM(ANDxi, DA_SP, res_ref.cur_reg(), align);
+        }
+
+        ASM(MOV_SPx, res_ref.cur_reg(), DA_SP);
+
+        this->set_value(res_ref, res_ref.cur_reg());
         return true;
     }
 
