@@ -507,8 +507,8 @@ struct LLVMAdaptor {
     }
 
     bool cur_arg_is_sret(const u32 idx) const noexcept {
-        return cur_func->hasParamAttribute(idx,
-                                           llvm::Attribute::AttrKind::StructRet);
+        return cur_func->hasParamAttribute(
+            idx, llvm::Attribute::AttrKind::StructRet);
     }
 #if 0
     std::string valNameDbg(IRValue idx) {

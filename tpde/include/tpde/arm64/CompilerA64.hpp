@@ -282,8 +282,7 @@ struct CallingConv {
         }
     }
 
-    [[nodiscard]] constexpr std::optional<AsmReg>
-        sret_reg() const noexcept {
+    [[nodiscard]] constexpr std::optional<AsmReg> sret_reg() const noexcept {
         switch (ty) {
         case SYSV_CC: return AsmReg::R8;
         }
@@ -668,7 +667,8 @@ void CallingConv::handle_func_args(
             return stack_off_scratch.cur_reg;
         }
 
-        const auto reg                   = stack_off_scratch.alloc_gp();
+        const auto reg =
+            stack_off_scratch.alloc_from_bank_excluding(0, arg_regs_mask());
         compiler->func_arg_stack_add_off = compiler->assembler.text_cur_off();
         compiler->func_arg_stack_add_reg = reg;
         ASMC(compiler, ADDxi, reg, DA_SP, 0);
@@ -693,8 +693,8 @@ void CallingConv::handle_func_args(
             ScratchReg ptr_scratch{compiler};
             auto       arg_ref = compiler->result_ref_lazy(arg, 0);
             // TODO: multiple arguments?
-            const auto res_reg = ptr_scratch.alloc_specific(AsmReg::R11);
-                // ptr_scratch.alloc_from_bank_excluding(0, arg_regs_mask());
+            const auto res_reg =
+                ptr_scratch.alloc_from_bank_excluding(0, arg_regs_mask());
             ASMC(compiler, ADDxi, res_reg, stack_reg, frame_off);
             compiler->set_value(arg_ref, ptr_scratch);
 
@@ -707,7 +707,7 @@ void CallingConv::handle_func_args(
         if (compiler->adaptor->cur_arg_is_sret(arg_idx)) {
             if (auto target_reg = sret_reg(); target_reg) {
                 assert(part_count == 1 && "sret must be single-part");
-                auto       arg_ref = compiler->result_ref_lazy(arg, 0);
+                auto arg_ref = compiler->result_ref_lazy(arg, 0);
                 compiler->set_value(arg_ref, *target_reg);
                 ++arg_idx;
                 continue;
@@ -969,12 +969,13 @@ u32 CallingConv::handle_call_args(
             }
 
             stack_off += util::align_up(arg.byval_size, 8);
+            ptr_ref.unlock();
             continue;
         }
 
         if (arg.flag == CallArg::Flag::sret) {
             if (auto target_reg = sret_reg(); target_reg) {
-                auto ptr_ref = compiler->val_ref(arg.value, 0);
+                auto       ptr_ref = compiler->val_ref(arg.value, 0);
                 ScratchReg scratch(compiler);
                 scratch.alloc_specific(
                     ptr_ref.reload_into_specific(compiler, *target_reg));

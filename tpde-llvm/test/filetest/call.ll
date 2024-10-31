@@ -490,6 +490,29 @@ define i32 @fn_i32_byval_ptr_i32_i32(ptr byval(%struct.ptr_i32) align 8 %0, i32 
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: fn_i32_byval_ptr_i32_i32>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    add x8, sp, #0xc0
+; ARM64:    add x9, x8, #0x0
+; ARM64:    add x9, x9, #0x8
+; ARM64:    ldr w9, [x9]
+; ARM64:    add w0, w0, w9
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %addr = getelementptr %struct.ptr_i32, ptr %0, i64 0, i32 1
   %val = load i32, ptr %addr
@@ -518,6 +541,33 @@ define i32 @call_byval(i32 %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: call_byval>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    sub sp, sp, #0x10
+; ARM64:    add x1, x29, #0xa0
+; ARM64:    ldr x2, [x1]
+; ARM64:    str x2, [sp]
+; ARM64:    ldr x2, [x1, #0x8]
+; ARM64:    str x2, [sp, #0x8]
+; ARM64:    bl 0x558 <call_byval+0x48>
+; ARM64:     R_AARCH64_CALL26 fn_i32_byval_ptr_i32_i32
+; ARM64:    add sp, sp, #0x10
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %val = alloca %struct.ptr_i32, align 8
   %1 = call i32 @fn_i32_byval_ptr_i32_i32(ptr byval(%struct.ptr_i32) align 8 %val, i32 %0)
@@ -609,7 +659,7 @@ define void @call_sret() {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    add x8, x29, #0xa0
-; ARM64:    bl 0x554 <call_sret+0x34>
+; ARM64:    bl 0x654 <call_sret+0x34>
 ; ARM64:     R_AARCH64_CALL26 call_sret_tgt
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
