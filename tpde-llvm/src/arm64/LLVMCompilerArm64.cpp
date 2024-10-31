@@ -1116,7 +1116,7 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef         inst_idx,
         auto       tmp_reg  = scratch1.alloc_gp();
 
         // next stack param
-        ASM(ADDxi, tmp_reg, DA_GP(29), var_arg_stack_off);
+        ASM(LDRxu, tmp_reg, DA_GP(29), reg_save_frame_off + 192);
         ASM(STRxu, tmp_reg, list_reg, 0);
         // gr_top = end of GP arg reg save area
         ASM(ADDxi, tmp_reg, DA_GP(29), reg_save_frame_off + 64);

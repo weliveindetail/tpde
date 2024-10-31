@@ -827,7 +827,20 @@ void CallingConv::handle_func_args(
     compiler->fixed_assignment_nonallocatable_mask &= ~arg_regs_mask();
     compiler->scalar_arg_count                      = scalar_reg_count;
     compiler->vec_arg_count                         = vec_reg_count;
+    // TODO(ae): this is unused right now
     compiler->var_arg_stack_off                     = frame_off;
+    // Hack: we don't know the frame size, so for a va_start(), we cannot easily
+    // compute the offset from the frame pointer. But we have a stack_reg here,
+    // so use it for var args.
+    if (compiler->adaptor->cur_is_vararg()) {
+        const auto stack_reg = stack_off_reg();
+        ASMC(compiler, ADDxi, stack_reg, stack_reg, frame_off);
+        ASMC(compiler,
+             STRxu,
+             stack_reg,
+             DA_GP(29),
+             compiler->reg_save_frame_off + 192);
+    }
 }
 
 template <typename Adaptor,
@@ -1451,7 +1464,10 @@ u32 CompilerA64<Adaptor, Derived, BaseTy, Config>::
     u32               reserved_size =
         util::align_up(call_conv.callee_saved_regs().size() * 8, 16) + 16;
     if (this->adaptor->cur_is_vararg()) {
-        reserved_size += 192;
+        // varargs size: 8 GP regs (64), 8 vector regs (128) = 192
+        // We add 8 bytes top ptr, because we don't know the frame size while
+        // compiling, and 8 bytes padding for alignment.
+        reserved_size += 192 + 16;
     }
     return reserved_size;
 }
