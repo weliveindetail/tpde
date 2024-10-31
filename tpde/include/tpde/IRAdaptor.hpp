@@ -204,6 +204,9 @@ concept IRAdaptor = requires(T a) {
     /// The alignment of a byval argument
     { a.cur_arg_byval_align(ARG(u32)) } -> std::same_as<u32>;
 
+    /// Is the argument specified by the given index actually a returned struct?
+    { a.cur_arg_is_sret(ARG(u32)) } -> std::convertible_to<bool>;
+
     // TODO(ts): func sret
 
     /// Provides an iterator of static allocas

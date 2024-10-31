@@ -4,6 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel --section=.text --section=.rodata - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 
 declare void @fn_void_void();
@@ -33,6 +34,26 @@ define void @call_void_void() {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: call_void_void>:
+; ARM64:    sub sp, sp, #0xa0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    bl 0x30 <call_void_void+0x30>
+; ARM64:     R_AARCH64_CALL26 fn_void_void
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xa0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   call void @fn_void_void()
   ret void
@@ -52,6 +73,29 @@ define i32 @call_i32_void() {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: call_i32_void>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    bl 0xa0 <call_i32_void+0x30>
+; ARM64:     R_AARCH64_CALL26 fn_i32_void
+; ARM64:    mov x1, #0xa // =10
+; ARM64:    add w1, w1, w0
+; ARM64:    mov w0, w1
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %0 = call i32 @fn_i32_void()
   %1 = add i32 %0, 10
@@ -78,6 +122,32 @@ define i128 @call_i128_void() {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: call_i128_void>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    bl 0x110 <call_i128_void+0x30>
+; ARM64:     R_AARCH64_CALL26 fn_i128_void
+; ARM64:    mov x2, #0xa // =10
+; ARM64:    adds x2, x2, x0
+; ARM64:    mov w3, #0x0 // =0
+; ARM64:    adc x3, x3, x1
+; ARM64:    mov x0, x2
+; ARM64:    mov x1, x3
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %0 = call i128 @fn_i128_void()
   %1 = add i128 %0, 10
@@ -103,6 +173,32 @@ define i32 @call_i128_void_ret_i32(i32 %0) {
 ; X64:    ret
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: call_i128_void_ret_i32>:
+; ARM64:    sub sp, sp, #0xd0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    str w0, [x29, #0xa0]
+; ARM64:    bl 0x194 <call_i128_void_ret_i32+0x34>
+; ARM64:     R_AARCH64_CALL26 fn_i128_void
+; ARM64:    mov x2, #0xa // =10
+; ARM64:    adds x2, x2, x0
+; ARM64:    mov w3, #0x0 // =0
+; ARM64:    adc x3, x3, x1
+; ARM64:    ldr w0, [x29, #0xa0]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xd0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = call i128 @fn_i128_void()
   %2 = add i128 %1, 10
@@ -126,6 +222,29 @@ define i32 @call_void_i32(i32 %0, i32 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: call_void_i32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    str w0, [x29, #0xa0]
+; ARM64:    mov w0, w1
+; ARM64:    bl 0x218 <call_void_i32+0x38>
+; ARM64:     R_AARCH64_CALL26 fn_void_i32
+; ARM64:    ldr w0, [x29, #0xa0]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   call void @fn_void_i32(i32 %1)
   ret i32 %0
@@ -146,6 +265,26 @@ define void @call_void_i32_mismatch(i32 %0, i32 %1) {
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rax], al
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: call_void_i32_mismatch>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    bl 0x280 <call_void_i32_mismatch+0x30>
+; ARM64:     R_AARCH64_CALL26 fn_void_i32
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   call void (i32, i32) @fn_void_i32(i32 %0, i32 %1)
   ret void
@@ -168,6 +307,29 @@ define i32 @call_i32_i32_i32(i32 %0, i32 %1) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rbp + 0x48], dl
+;
+; ARM64-LABEL: call_i32_i32_i32>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    str w0, [x29, #0xa0]
+; ARM64:    mov w0, w1
+; ARM64:    ldr w1, [x29, #0xa0]
+; ARM64:    bl 0x2fc <call_i32_i32_i32+0x3c>
+; ARM64:     R_AARCH64_CALL26 fn_i32_i32_i32
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call i32 @fn_i32_i32_i32(i32 %1, i32 %0)
   ret i32 %2
@@ -196,6 +358,32 @@ define i32 @call_i32_i32_i128_i128_i128(i32 %0, i128 %1) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
+;
+; ARM64-LABEL: call_i32_i32_i128_i128_i128>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    str x2, [x29, #0xb0]
+; ARM64:    str x3, [x29, #0xb8]
+; ARM64:    ldr x4, [x29, #0xb0]
+; ARM64:    ldr x5, [x29, #0xb8]
+; ARM64:    ldr x6, [x29, #0xb0]
+; ARM64:    ldr x7, [x29, #0xb8]
+; ARM64:    bl 0x378 <call_i32_i32_i128_i128_i128+0x48>
+; ARM64:     R_AARCH64_CALL26 fn_i32_i32_i128_i128_i128
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %2 = call i32 @fn_i32_i32_i128_i128_i128(i32 %0, i128 %1, i128 %1, i128 %1)
   ret i32 %2
@@ -219,6 +407,27 @@ define i32 @call_i32_vararg(ptr %0, i32 %1, i128 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
+;
+; ARM64-LABEL: call_i32_vararg>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov w4, w1
+; ARM64:    bl 0x3e4 <call_i32_vararg+0x34>
+; ARM64:     R_AARCH64_CALL26 fn_var_arg
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
 entry:
     %3 = call i32 (ptr, ...) @fn_var_arg(ptr %0, i128 %2, i32 %1)
     ret i32 %3
@@ -238,6 +447,28 @@ define i32 @call_indirect(ptr %0) {
 ; X64:    ret
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: call_indirect>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    str x0, [x29, #0xa0]
+; ARM64:    mov x0, #0xa // =10
+; ARM64:    ldr x9, [x29, #0xa0]
+; ARM64:    blr x9
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
 entry:
   %1 = call i32 (i32) %0 (i32 10)
   ret i32 %1
@@ -286,11 +517,107 @@ define i32 @call_byval(i32 %0) {
 ; X64:    pop rbp
 ; X64:    ret
 ; X64:     ...
-; X64:    <unknown>
+; X64:    add byte ptr [rbp + 0x48], dl
 entry:
   %val = alloca %struct.ptr_i32, align 8
   %1 = call i32 @fn_i32_byval_ptr_i32_i32(ptr byval(%struct.ptr_i32) align 8 %val, i32 %0)
   ret i32 %1
+}
+
+%struct.3i64 = type { [3 x i64] }
+
+define void @call_sret_tgt(ptr sret(%struct.3i64) align 8) {
+; X64-LABEL: call_sret_tgt>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x40
+; X64:    mov rax, rdi
+; X64:    mov qword ptr [rax], 0x1
+; X64:    lea rax, [rdi + 0x8]
+; X64:    mov qword ptr [rax], 0x2
+; X64:    lea rdi, [rdi + 0x10]
+; X64:    mov qword ptr [rdi], 0x3
+; X64:    add rsp, 0x40
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    add byte ptr [rax], al
+;
+; ARM64-LABEL: call_sret_tgt>:
+; ARM64:    sub sp, sp, #0xb0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    mov x0, x8
+; ARM64:    mov x1, #0x1 // =1
+; ARM64:    str x1, [x0]
+; ARM64:    add x0, x8, #0x8
+; ARM64:    mov x1, #0x2 // =2
+; ARM64:    str x1, [x0]
+; ARM64:    add x8, x8, #0x10
+; ARM64:    mov x0, #0x3 // =3
+; ARM64:    str x0, [x8]
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xb0
+; ARM64:    ret
+; ARM64:     ...
+  %gep1 = getelementptr inbounds %struct.3i64, ptr %0, i64 0, i32 0, i32 0
+  store i64 1, ptr %gep1
+  %gep2 = getelementptr inbounds %struct.3i64, ptr %0, i64 0, i32 0, i32 1
+  store i64 2, ptr %gep2
+  %gep3 = getelementptr inbounds %struct.3i64, ptr %0, i64 0, i32 0, i32 2
+  store i64 3, ptr %gep3
+  ret void
+}
+
+define void @call_sret() {
+; X64-LABEL: call_sret>:
+; X64:    push rbp
+; X64:    mov rbp, rsp
+; X64:    nop word ptr [rax + rax]
+; X64:    sub rsp, 0x50
+; X64:    lea rdi, [rbp - 0x50]
+; X64:  <L0>:
+; X64:    call <L0>
+; X64:     R_X86_64_PLT32 call_sret_tgt-0x4
+; X64:    add rsp, 0x50
+; X64:    pop rbp
+; X64:    ret
+; X64:     ...
+; X64:    <unknown>
+;
+; ARM64-LABEL: call_sret>:
+; ARM64:    sub sp, sp, #0xc0
+; ARM64:    stp x29, x30, [sp]
+; ARM64:    mov x29, sp
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    nop
+; ARM64:    add x8, x29, #0xa0
+; ARM64:    bl 0x554 <call_sret+0x34>
+; ARM64:     R_AARCH64_CALL26 call_sret_tgt
+; ARM64:    ldp x29, x30, [sp]
+; ARM64:    add sp, sp, #0xc0
+; ARM64:    ret
+; ARM64:     ...
+  %1 = alloca %struct.3i64, align 8
+  call void @call_sret_tgt(ptr sret(%struct.3i64) align 8 %1)
+  ret void
 }
 
 ;; NOTE: These prefixes are unused and the list is autogenerated. Do not add tests below this line:

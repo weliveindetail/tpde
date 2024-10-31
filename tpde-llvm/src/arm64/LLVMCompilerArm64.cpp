@@ -689,6 +689,8 @@ bool LLVMCompilerArm64::compile_call_inner(
             byval_align = call->getParamAlign(i).valueOrOne().value();
             byval_size  = this->adaptor->mod.getDataLayout().getTypeAllocSize(
                 call->getParamByValType(i));
+        } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::StructRet)) {
+            flag = CallArg::Flag::sret;
         }
         assert(!call->paramHasAttr(i, llvm::Attribute::AttrKind::InAlloca));
         assert(!call->paramHasAttr(i, llvm::Attribute::AttrKind::Preallocated));

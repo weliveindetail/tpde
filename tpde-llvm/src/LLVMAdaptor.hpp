@@ -505,6 +505,11 @@ struct LLVMAdaptor {
         return mod.getDataLayout().getTypeAllocSize(
             cur_func->getParamByValType(idx));
     }
+
+    bool cur_arg_is_sret(const u32 idx) const noexcept {
+        return cur_func->hasParamAttribute(idx,
+                                           llvm::Attribute::AttrKind::StructRet);
+    }
 #if 0
     std::string valNameDbg(IRValue idx) {
         std::string out;

@@ -282,6 +282,13 @@ struct CallingConv {
         }
     }
 
+    [[nodiscard]] constexpr std::optional<AsmReg>
+        sret_reg() const noexcept {
+        switch (ty) {
+        case SYSV_CC: return AsmReg::R8;
+        }
+    }
+
     template <typename Adaptor,
               typename Derived,
               template <typename, typename, typename>
@@ -589,7 +596,8 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
             none,
             zext,
             sext,
-            byval
+            byval,
+            sret,
         };
 
         explicit CallArg(IRValueRef value,
@@ -684,8 +692,9 @@ void CallingConv::handle_func_args(
             // could allocate one of the argument registers
             ScratchReg ptr_scratch{compiler};
             auto       arg_ref = compiler->result_ref_lazy(arg, 0);
-            const auto res_reg =
-                ptr_scratch.alloc_from_bank_excluding(0, arg_regs_mask());
+            // TODO: multiple arguments?
+            const auto res_reg = ptr_scratch.alloc_specific(AsmReg::R11);
+                // ptr_scratch.alloc_from_bank_excluding(0, arg_regs_mask());
             ASMC(compiler, ADDxi, res_reg, stack_reg, frame_off);
             compiler->set_value(arg_ref, ptr_scratch);
 
@@ -695,6 +704,16 @@ void CallingConv::handle_func_args(
         }
 
         const u32 part_count = compiler->derived()->val_part_count(arg);
+        if (compiler->adaptor->cur_arg_is_sret(arg_idx)) {
+            if (auto target_reg = sret_reg(); target_reg) {
+                assert(part_count == 1 && "sret must be single-part");
+                auto       arg_ref = compiler->result_ref_lazy(arg, 0);
+                compiler->set_value(arg_ref, *target_reg);
+                ++arg_idx;
+                continue;
+            }
+        }
+
         if (compiler->derived()->arg_is_int128(arg)) {
             if (scalar_reg_count & 1) {
                 // 128 bit integers are always passed in even positions
@@ -951,6 +970,16 @@ u32 CallingConv::handle_call_args(
 
             stack_off += util::align_up(arg.byval_size, 8);
             continue;
+        }
+
+        if (arg.flag == CallArg::Flag::sret) {
+            if (auto target_reg = sret_reg(); target_reg) {
+                auto ptr_ref = compiler->val_ref(arg.value, 0);
+                ScratchReg scratch(compiler);
+                scratch.alloc_specific(
+                    ptr_ref.reload_into_specific(compiler, *target_reg));
+                continue;
+            }
         }
 
         const u32 part_count = compiler->derived()->val_part_count(arg.value);

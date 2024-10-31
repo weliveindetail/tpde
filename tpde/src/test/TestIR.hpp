@@ -266,6 +266,8 @@ struct TestIRAdaptor {
 
     [[nodiscard]] static u32 cur_arg_byval_size(u32) noexcept { return 0; }
 
+    [[nodiscard]] static bool cur_arg_is_sret(u32) noexcept { return false; }
+
     [[nodiscard]] auto cur_static_allocas() const noexcept {
         struct Range {
             const TestIR *self;
