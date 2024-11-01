@@ -112,6 +112,10 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     SymRef sym_powidf2 = Assembler::INVALID_SYM_REF;
     SymRef sym_trunc   = Assembler::INVALID_SYM_REF;
     SymRef sym_truncf  = Assembler::INVALID_SYM_REF;
+    SymRef sym_trunctfsf2  = Assembler::INVALID_SYM_REF;
+    SymRef sym_trunctfdf2  = Assembler::INVALID_SYM_REF;
+    SymRef sym_extendsftf2 = Assembler::INVALID_SYM_REF;
+    SymRef sym_extenddftf2 = Assembler::INVALID_SYM_REF;
 
     LLVMCompilerBase(LLVMAdaptor *adaptor, const bool generate_obj)
         : Base{adaptor, generate_obj} {
@@ -175,9 +179,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
                                    llvm::Instruction *,
                                    FloatBinaryOp op) noexcept;
     bool   compile_fneg(IRValueRef, llvm::Instruction *) noexcept;
-    bool   compile_float_ext_trunc(IRValueRef,
-                                   llvm::Instruction *,
-                                   bool trunc) noexcept;
+    bool   compile_float_ext_trunc(IRValueRef, llvm::Instruction *) noexcept;
     bool   compile_float_to_int(IRValueRef,
                                 llvm::Instruction *,
                                 bool sign) noexcept;
@@ -1047,9 +1049,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
         return compile_float_binary_op(val_idx, i, FloatBinaryOp::rem);
     case llvm::Instruction::FNeg: return compile_fneg(val_idx, i);
     case llvm::Instruction::FPExt:
-        return compile_float_ext_trunc(val_idx, i, false);
-    case llvm::Instruction::FPTrunc:
-        return compile_float_ext_trunc(val_idx, i, true);
+    case llvm::Instruction::FPTrunc: return compile_float_ext_trunc(val_idx, i);
     case llvm::Instruction::FPToSI:
         return compile_float_to_int(val_idx, i, true);
     case llvm::Instruction::FPToUI:
@@ -2049,30 +2049,40 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fneg(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
-    IRValueRef inst_idx, llvm::Instruction *inst, const bool trunc) noexcept {
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
     auto *src_val = inst->getOperand(0);
     auto *src_ty  = src_val->getType();
-
-    assert(src_ty->isFloatTy() || src_ty->isDoubleTy());
-
-    const auto src_double = src_ty->isDoubleTy();
-    (void)src_double;
-    const auto dst_double = inst->getType()->isDoubleTy();
-    (void)dst_double;
-
-    auto src_ref = this->val_ref(llvm_val_idx(src_val), 0);
+    auto *dst_ty  = inst->getType();
 
     auto       res_ref = this->result_ref_lazy(inst_idx, 0);
+
     ScratchReg res_scratch{derived()};
-    if (trunc) {
-        assert(src_double && !dst_double);
+    SymRef     sym = Assembler::INVALID_SYM_REF;
+    if (src_ty->isDoubleTy() && dst_ty->isFloatTy()) {
+        auto src_ref = this->val_ref(llvm_val_idx(src_val), 0);
         derived()->encode_f64tof32(std::move(src_ref), res_scratch);
-    } else {
-        assert(!src_double && dst_double);
+    } else if (src_ty->isFP128Ty() && dst_ty->isFloatTy()) {
+        sym = get_or_create_sym_ref(sym_trunctfsf2, "__trunctfsf2");
+    } else if (src_ty->isFP128Ty() && dst_ty->isDoubleTy()) {
+        sym = get_or_create_sym_ref(sym_trunctfdf2, "__trunctfdf2");
+    } else if (src_ty->isFloatTy() && dst_ty->isDoubleTy()) {
+        auto src_ref = this->val_ref(llvm_val_idx(src_val), 0);
         derived()->encode_f32tof64(std::move(src_ref), res_scratch);
+    } else if (src_ty->isFloatTy() && dst_ty->isFP128Ty()) {
+        sym = get_or_create_sym_ref(sym_extendsftf2, "__extendsftf2");
+    } else if (src_ty->isDoubleTy() && dst_ty->isFP128Ty()) {
+        sym = get_or_create_sym_ref(sym_extenddftf2, "__extenddftf2");
     }
 
-    this->set_value(res_ref, res_scratch);
+    if (res_scratch.cur_reg.valid()) {
+        this->set_value(res_ref, res_scratch);
+    } else if (sym != Assembler::INVALID_SYM_REF) {
+        IRValueRef src_ref = llvm_val_idx(src_val);
+        derived()->create_helper_call({&src_ref, 1}, {&res_ref, 1}, sym);
+    } else {
+        return false;
+    }
+
     return true;
 }
 
