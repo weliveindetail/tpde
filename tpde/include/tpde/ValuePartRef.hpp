@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <array>
+#include <cstring>
+#include <span>
+
 namespace tpde {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -54,6 +58,12 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     ValuePartRef(u64 const_u64, u32 bank, u32 size) noexcept : state { .c = ConstantData { .const_u64 = const_u64, .bank = bank, .size = size } }, is_const(true) {
         assert(size <= 8);
         assert(bank < Config::NUM_BANKS);
+    }
+
+    ValuePartRef(std::span<const u8> data, u32 bank) noexcept : state { .c = ConstantData { .const_data{}, .bank = bank, .size = static_cast<u32>(data.size()) } }, is_const(true) {
+        assert(data.size() <= state.c.const_data.size());
+        assert(bank < Config::NUM_BANKS);
+        std::memcpy(state.c.const_data.data(), data.data(), data.size());
     }
 
     explicit ValuePartRef(const ValuePartRef &) = delete;

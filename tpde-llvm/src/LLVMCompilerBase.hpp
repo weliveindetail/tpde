@@ -317,6 +317,12 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
                     const_fp->getValue().bitcastToAPInt().getZExtValue(),
                     Config::FP_BANK,
                     8);
+            case v128: {
+                llvm::APInt data = const_fp->getValue().bitcastToAPInt();
+                auto raw_data = reinterpret_cast<const u8 *>(data.getRawData());
+                auto num_bytes = sizeof(uint64_t) * data.getNumWords();
+                return ValuePartRef({raw_data, num_bytes}, Config::FP_BANK);
+            }
                 // TODO(ts): support the rest
             default: assert(0); exit(1);
             }

@@ -1789,6 +1789,37 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     }
 
     // TODO(ts): have some facility to use a constant pool
+    if (size == 16) {
+        // TODO(ae): safe access...
+        const auto high_u64 = reinterpret_cast<const u64 *>(data.data())[1];
+        if (const_u64 == high_u64 && ASMIF(MOVI2d, dst, const_u64)) {
+            return;
+        }
+        if (high_u64 == 0 && ASMIF(MOVId, dst, const_u64)) {
+            return;
+        }
+
+        ScratchReg scratch{derived()};
+        const auto tmp = scratch.alloc_gp();
+
+        auto sym = this->assembler.sym_def_data("",
+                                                data,
+                                                16,
+                                                /*read_only=*/true,
+                                                /*relocaatable=*/false,
+                                                /*local=*/true,
+                                                /*weak=*/false);
+        this->assembler.reloc_text(
+            sym, R_AARCH64_ADR_PREL_PG_HI21, this->assembler.text_cur_off(), 0);
+        ASM(ADRP, tmp, 0, 0);
+        this->assembler.reloc_text(sym,
+                                   R_AARCH64_LDST128_ABS_LO12_NC,
+                                   this->assembler.text_cur_off(),
+                                   0);
+        ASM(LDRqu, dst, tmp, 0);
+        return;
+    }
+
     assert(0);
     exit(1);
 }
