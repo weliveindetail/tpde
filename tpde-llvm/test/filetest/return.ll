@@ -1477,8 +1477,7 @@ define %struct.ptr_i32 @ret_ptr_i32(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldr x1, [x0]
-; ARM64:    add x3, x0, #0x8
-; ARM64:    ldr w2, [x3]
+; ARM64:    ldr w2, [x0, #0x8]
 ; ARM64:    mov x0, x1
 ; ARM64:    mov w1, w2
 ; ARM64:    ldp x29, x30, [sp]
@@ -1518,8 +1517,7 @@ define %struct.i32_ptr @ret_i32_ptr(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldr w1, [x0]
-; ARM64:    add x3, x0, #0x8
-; ARM64:    ldr x2, [x3]
+; ARM64:    ldr x2, [x0, #0x8]
 ; ARM64:    mov w0, w1
 ; ARM64:    mov x1, x2
 ; ARM64:    ldp x29, x30, [sp]
@@ -1560,8 +1558,7 @@ define %struct.f32_ptr @ret_f32_ptr(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldr s0, [x0]
-; ARM64:    add x2, x0, #0x8
-; ARM64:    ldr x1, [x2]
+; ARM64:    ldr x1, [x0, #0x8]
 ; ARM64:    mov x0, x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0

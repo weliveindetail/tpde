@@ -193,6 +193,8 @@ struct EncodeCompiler {
             return std::get<ValuePartRef>(state);
         }
 
+        std::optional<std::pair<AsmReg, u64>> encodeable_with_mem_uoff12(EncodeCompiler *compiler, u64 off, unsigned shift) noexcept;
+
         AsmReg as_reg(EncodeCompiler *compiler) noexcept;
         bool   try_salvage(ScratchReg &, u8 bank) noexcept;
         AsmReg as_reg_try_salvage(EncodeCompiler *, ScratchReg &, u8 bank) noexcept;
@@ -499,6 +501,57 @@ struct EncodeCompiler {
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // clang-format on
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>
+std::optional<std::pair<typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg, u64>> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
+    encodeable_with_mem_uoff12(EncodeCompiler<Adaptor, Derived, BaseTy, Config> *compiler, u64 off, unsigned shift) noexcept {
+    Expr *expr = std::get_if<Expr>(&state);
+    if (!expr || !expr->has_base()) {
+        return std::nullopt;
+    }
+
+    u64 res_off = expr->disp + off;
+    if (res_off >= (u64{0x1000} << shift) || (res_off & ((1 << shift) - 1))) {
+        return std::nullopt;
+    }
+    if (res_off == 0 && expr->has_index()) {
+        // In this case, try index encoding.
+        return std::nullopt;
+    }
+
+    if (!expr->has_index()) {
+        return std::make_pair(expr->base_reg(), res_off);
+    }
+    if ((expr->scale & (expr->scale - 1)) != 0) {
+        return std::nullopt;
+    }
+
+    ScratchReg scratch{compiler->derived()};
+    AsmReg base_reg = expr->base_reg();
+    AsmReg index_reg = expr->index_reg();
+    if (std::holds_alternative<ScratchReg>(expr->base)) {
+        scratch = std::move(std::get<ScratchReg>(expr->base));
+    } else if (std::holds_alternative<ScratchReg>(expr->index)) {
+        scratch = std::move(std::get<ScratchReg>(expr->index));
+    } else {
+        (void)scratch.alloc_gp();
+    }
+    const auto scale_shift = __builtin_ctzl(expr->scale);
+    AsmReg dst = scratch.cur_reg;
+    ASMC(compiler->derived(), ADDx_lsl, dst, base_reg, index_reg, scale_shift);
+    if (expr->disp != 0) {
+        expr->base = std::move(scratch);
+        expr->index = AsmReg::make_invalid();
+        expr->scale = 0;
+    } else {
+        state = std::move(scratch);
+    }
+
+    return std::make_pair(dst, res_off);
+}
 
 template <typename Adaptor,
           typename Derived,
@@ -596,6 +649,8 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
         AsmReg dst = scratch.cur_reg;
         if (ASMIFC(compiler->derived(), ADDxi, dst, base_reg, expr->disp)) {
             expr->disp = 0;
+        } else {
+            ASMC(compiler->derived(), MOVx, dst, base_reg);
         }
     } else {
         assert(0);
@@ -924,14 +979,26 @@ template <typename Adaptor,
 
 
     // renamable $w0 = LDRBBui killed renamable $x0, 0 :: (load (s8) from %ir.0, !tbaa !4)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 0);
+    if (cond0) {
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(LDRBu, scratch_x0.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x0, 0);
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
         ASMD(LDRBu, scratch_x0.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x0 is marked as alive
@@ -965,14 +1032,26 @@ template <typename Adaptor,
 
 
     // renamable $w0 = LDRHHui killed renamable $x0, 0 :: (load (s16) from %ir.0, !tbaa !7)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 1);
+    if (cond0) {
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(LDRHu, scratch_x0.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x0, 0);
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
         ASMD(LDRHu, scratch_x0.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x0 is marked as alive
@@ -1006,14 +1085,26 @@ template <typename Adaptor,
 
 
     // renamable $w0 = LDRWui killed renamable $x0, 0 :: (load (s32) from %ir.0, !tbaa !9)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 2);
+    if (cond0) {
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(LDRwu, scratch_x0.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x0, 0);
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
         ASMD(LDRwu, scratch_x0.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x0 is marked as alive
@@ -1047,14 +1138,26 @@ template <typename Adaptor,
 
 
     // renamable $x0 = LDRXui killed renamable $x0, 0 :: (load (s64) from %ir.0, !tbaa !11)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(LDRxu, scratch_x0.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x0, 0);
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
         ASMD(LDRxu, scratch_x0.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x0 is marked as alive
@@ -1092,26 +1195,50 @@ template <typename Adaptor,
 
 
     // renamable $w8 = LDRBBui renamable $x0, 2 :: (load (s8) from %ir.0 + 2)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x2, 0);
+    if (cond0) {
+        // def x8 has not been allocated yet
+        scratch_x8.alloc_from_bank(0);
+        ASMD(LDRBu, scratch_x8.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
         ASMD(LDRBu, scratch_x8.cur_reg, op1, 0x2);
+        break;
     }
     }
+    } while (false);
     // result x8 is marked as alive
 
 
     // renamable $w9 = LDRHHui killed renamable $x0, 0 :: (load (s16) from %ir.0, align 1)
+    do {
+    {
+    auto cond1 = param_0.encodeable_with_mem_uoff12(this, 0x0, 1);
+    if (cond1) {
+        // def x9 has not been allocated yet
+        scratch_x9.alloc_from_bank(0);
+        ASMD(LDRHu, scratch_x9.cur_reg, (*cond1).first, (*cond1).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x9, 0);
         // def x9 has not been allocated yet
         scratch_x9.alloc_from_bank(0);
         ASMD(LDRHu, scratch_x9.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x9 is marked as alive
@@ -1164,27 +1291,51 @@ template <typename Adaptor,
 
 
     // renamable $w8 = LDRBBui renamable $x0, 4, implicit-def $x8 :: (load (s8) from %ir.0 + 4)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x4, 0);
+    if (cond0) {
+        // def x8 has not been allocated yet
+        scratch_x8.alloc_from_bank(0);
+        ASMD(LDRBu, scratch_x8.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
         ASMD(LDRBu, scratch_x8.cur_reg, op1, 0x4);
+        break;
     }
     }
+    } while (false);
     // result x8 is marked as alive
     // result x8 is marked as alive
 
 
     // renamable $w9 = LDRWui killed renamable $x0, 0, implicit-def $x9 :: (load (s32) from %ir.0, align 1)
+    do {
+    {
+    auto cond1 = param_0.encodeable_with_mem_uoff12(this, 0x0, 2);
+    if (cond1) {
+        // def x9 has not been allocated yet
+        scratch_x9.alloc_from_bank(0);
+        ASMD(LDRwu, scratch_x9.cur_reg, (*cond1).first, (*cond1).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x9, 0);
         // def x9 has not been allocated yet
         scratch_x9.alloc_from_bank(0);
         ASMD(LDRwu, scratch_x9.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x9 is marked as alive
@@ -1238,27 +1389,51 @@ template <typename Adaptor,
 
 
     // renamable $w8 = LDRHHui renamable $x0, 2, implicit-def $x8 :: (load (s16) from %ir.0 + 4, align 1)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x2, 1);
+    if (cond0) {
+        // def x8 has not been allocated yet
+        scratch_x8.alloc_from_bank(0);
+        ASMD(LDRHu, scratch_x8.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
         ASMD(LDRHu, scratch_x8.cur_reg, op1, 0x2);
+        break;
     }
     }
+    } while (false);
     // result x8 is marked as alive
     // result x8 is marked as alive
 
 
     // renamable $w9 = LDRWui killed renamable $x0, 0, implicit-def $x9 :: (load (s32) from %ir.0, align 1)
+    do {
+    {
+    auto cond1 = param_0.encodeable_with_mem_uoff12(this, 0x0, 2);
+    if (cond1) {
+        // def x9 has not been allocated yet
+        scratch_x9.alloc_from_bank(0);
+        ASMD(LDRwu, scratch_x9.cur_reg, (*cond1).first, (*cond1).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x9, 0);
         // def x9 has not been allocated yet
         scratch_x9.alloc_from_bank(0);
         ASMD(LDRwu, scratch_x9.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x9 is marked as alive
@@ -1314,26 +1489,50 @@ template <typename Adaptor,
 
 
     // renamable $w8 = LDRBBui renamable $x0, 6 :: (load (s8) from %ir.0 + 6)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x6, 0);
+    if (cond0) {
+        // def x8 has not been allocated yet
+        scratch_x8.alloc_from_bank(0);
+        ASMD(LDRBu, scratch_x8.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // def x8 has not been allocated yet
         scratch_x8.alloc_from_bank(0);
         ASMD(LDRBu, scratch_x8.cur_reg, op1, 0x6);
+        break;
     }
     }
+    } while (false);
     // result x8 is marked as alive
 
 
     // renamable $w9 = LDRHHui renamable $x0, 2 :: (load (s16) from %ir.0 + 4, align 1)
+    do {
+    {
+    auto cond1 = param_0.encodeable_with_mem_uoff12(this, 0x2, 1);
+    if (cond1) {
+        // def x9 has not been allocated yet
+        scratch_x9.alloc_from_bank(0);
+        ASMD(LDRHu, scratch_x9.cur_reg, (*cond1).first, (*cond1).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // def x9 has not been allocated yet
         scratch_x9.alloc_from_bank(0);
         ASMD(LDRHu, scratch_x9.cur_reg, op1, 0x2);
+        break;
     }
     }
+    } while (false);
     // result x9 is marked as alive
 
 
@@ -1354,14 +1553,26 @@ template <typename Adaptor,
 
 
     // renamable $w9 = LDRWui killed renamable $x0, 0, implicit-def $x9 :: (load (s32) from %ir.0, align 1)
+    do {
+    {
+    auto cond2 = param_0.encodeable_with_mem_uoff12(this, 0x0, 2);
+    if (cond2) {
+        // def x9 has not been allocated yet
+        scratch_x9.alloc_from_bank(0);
+        ASMD(LDRwu, scratch_x9.cur_reg, (*cond2).first, (*cond2).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x9, 0);
         // def x9 has not been allocated yet
         scratch_x9.alloc_from_bank(0);
         ASMD(LDRwu, scratch_x9.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x9 is marked as alive
@@ -1474,14 +1685,26 @@ template <typename Adaptor,
 
 
     // renamable $s0 = LDRSui killed renamable $x0, 0 :: (load (s32) from %ir.0, !tbaa !19)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 2);
+    if (cond0) {
+        // def v0 has not been allocated yet
+        scratch_v0.alloc_from_bank(1);
+        ASMD(LDRsu, scratch_v0.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // def v0 has not been allocated yet
         scratch_v0.alloc_from_bank(1);
         ASMD(LDRsu, scratch_v0.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result v0 is marked as alive
@@ -1516,14 +1739,26 @@ template <typename Adaptor,
 
 
     // renamable $d0 = LDRDui killed renamable $x0, 0 :: (load (s64) from %ir.0, !tbaa !21)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        // def v0 has not been allocated yet
+        scratch_v0.alloc_from_bank(1);
+        ASMD(LDRdu, scratch_v0.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // def v0 has not been allocated yet
         scratch_v0.alloc_from_bank(1);
         ASMD(LDRdu, scratch_v0.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result v0 is marked as alive
@@ -1558,14 +1793,26 @@ template <typename Adaptor,
 
 
     // renamable $q0 = LDRQui killed renamable $x0, 0 :: (load (s128) from %ir.0, !tbaa !4)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 4);
+    if (cond0) {
+        // def v0 has not been allocated yet
+        scratch_v0.alloc_from_bank(1);
+        ASMD(LDRqu, scratch_v0.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         // def v0 has not been allocated yet
         scratch_v0.alloc_from_bank(1);
         ASMD(LDRqu, scratch_v0.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result v0 is marked as alive
@@ -1601,13 +1848,24 @@ template <typename Adaptor,
 
 
     // STRBBui killed renamable $w1, killed renamable $x0, 0 :: (store (s8) into %ir.0, !tbaa !4)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 0);
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(STRBu, op0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         ASMD(STRBu, op0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x1 is killed and marked as dead
     param_1.reset();
     // argument x0 is killed and marked as dead
@@ -1642,13 +1900,24 @@ template <typename Adaptor,
 
 
     // STRHHui killed renamable $w1, killed renamable $x0, 0 :: (store (s16) into %ir.0, !tbaa !7)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 1);
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(STRHu, op0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         ASMD(STRHu, op0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x1 is killed and marked as dead
     param_1.reset();
     // argument x0 is killed and marked as dead
@@ -1683,13 +1952,24 @@ template <typename Adaptor,
 
 
     // STRWui killed renamable $w1, killed renamable $x0, 0 :: (store (s32) into %ir.0, !tbaa !9)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 2);
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(STRwu, op0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         ASMD(STRwu, op0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x1 is killed and marked as dead
     param_1.reset();
     // argument x0 is killed and marked as dead
@@ -1724,13 +2004,24 @@ template <typename Adaptor,
 
 
     // STRXui killed renamable $x1, killed renamable $x0, 0 :: (store (s64) into %ir.0, !tbaa !11)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(STRxu, op0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         ASMD(STRxu, op0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x1 is killed and marked as dead
     param_1.reset();
     // argument x0 is killed and marked as dead
@@ -1780,28 +2071,52 @@ template <typename Adaptor,
 
 
     // STRHHui killed renamable $w1, renamable $x0, 0, implicit killed $x1 :: (store (s16) into %ir.0, align 1)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 1);
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(STRHu, op0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
         ASMD(STRHu, op0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x1 is killed and marked as dead
     param_1.reset();
     // argument x1 is killed and marked as dead
 
 
     // STRBBui killed renamable $w8, killed renamable $x0, 2, implicit killed $x8 :: (store (s8) into %ir.0 + 2)
+    do {
+    {
+    auto cond1 = param_0.encodeable_with_mem_uoff12(this, 0x2, 0);
+    if (cond1) {
+        AsmReg op0 = scratch_x8.cur_reg;
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(STRBu, op0, (*cond1).first, (*cond1).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = scratch_x8.cur_reg;
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
         ASMD(STRBu, op0, op1, 0x2);
+        break;
     }
     }
+    } while (false);
     // argument x8 is killed and marked as dead
     // argument x0 is killed and marked as dead
     param_0.reset();
@@ -1851,28 +2166,52 @@ template <typename Adaptor,
 
 
     // STRWui killed renamable $w1, renamable $x0, 0, implicit killed $x1 :: (store (s32) into %ir.0, align 1)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 2);
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(STRwu, op0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
         ASMD(STRwu, op0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x1 is killed and marked as dead
     param_1.reset();
     // argument x1 is killed and marked as dead
 
 
     // STRBBui killed renamable $w8, killed renamable $x0, 4, implicit killed $x8 :: (store (s8) into %ir.0 + 4)
+    do {
+    {
+    auto cond1 = param_0.encodeable_with_mem_uoff12(this, 0x4, 0);
+    if (cond1) {
+        AsmReg op0 = scratch_x8.cur_reg;
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(STRBu, op0, (*cond1).first, (*cond1).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = scratch_x8.cur_reg;
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
         ASMD(STRBu, op0, op1, 0x4);
+        break;
     }
     }
+    } while (false);
     // argument x8 is killed and marked as dead
     // argument x0 is killed and marked as dead
     param_0.reset();
@@ -1922,28 +2261,52 @@ template <typename Adaptor,
 
 
     // STRWui killed renamable $w1, renamable $x0, 0, implicit killed $x1 :: (store (s32) into %ir.0, align 1)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 2);
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(STRwu, op0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
         ASMD(STRwu, op0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x1 is killed and marked as dead
     param_1.reset();
     // argument x1 is killed and marked as dead
 
 
     // STRHHui killed renamable $w8, killed renamable $x0, 2, implicit killed $x8 :: (store (s16) into %ir.0 + 4, align 1)
+    do {
+    {
+    auto cond1 = param_0.encodeable_with_mem_uoff12(this, 0x2, 1);
+    if (cond1) {
+        AsmReg op0 = scratch_x8.cur_reg;
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(STRHu, op0, (*cond1).first, (*cond1).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = scratch_x8.cur_reg;
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
         ASMD(STRHu, op0, op1, 0x2);
+        break;
     }
     }
+    } while (false);
     // argument x8 is killed and marked as dead
     // argument x0 is killed and marked as dead
     param_0.reset();
@@ -2008,39 +2371,74 @@ template <typename Adaptor,
 
 
     // STRWui killed renamable $w1, renamable $x0, 0 :: (store (s32) into %ir.0, align 1)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 2);
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(STRwu, op0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         ASMD(STRwu, op0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x1 is killed and marked as dead
     param_1.reset();
 
 
     // STRBBui killed renamable $w8, renamable $x0, 6, implicit killed $x8 :: (store (s8) into %ir.0 + 6)
+    do {
+    {
+    auto cond1 = param_0.encodeable_with_mem_uoff12(this, 0x6, 0);
+    if (cond1) {
+        AsmReg op0 = scratch_x8.cur_reg;
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(STRBu, op0, (*cond1).first, (*cond1).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = scratch_x8.cur_reg;
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
         ASMD(STRBu, op0, op1, 0x6);
+        break;
     }
     }
+    } while (false);
     // argument x8 is killed and marked as dead
     // argument x8 is killed and marked as dead
 
 
     // STRHHui killed renamable $w9, killed renamable $x0, 2, implicit killed $x9 :: (store (s16) into %ir.0 + 4, align 1)
+    do {
+    {
+    auto cond2 = param_0.encodeable_with_mem_uoff12(this, 0x2, 1);
+    if (cond2) {
+        AsmReg op0 = scratch_x9.cur_reg;
+        // operand exceeds NumImplicitUses, ignore
+        ASMD(STRHu, op0, (*cond2).first, (*cond2).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = scratch_x9.cur_reg;
         AsmReg op1 = param_0.as_reg(this);
         // operand exceeds NumImplicitUses, ignore
         ASMD(STRHu, op0, op1, 0x2);
+        break;
     }
     }
+    } while (false);
     // argument x9 is killed and marked as dead
     // argument x0 is killed and marked as dead
     param_0.reset();
@@ -2121,13 +2519,24 @@ template <typename Adaptor,
 
 
     // STRSui killed renamable $s0, killed renamable $x0, 0 :: (store (s32) into %ir.0, !tbaa !19)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 2);
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(STRsu, op0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         ASMD(STRsu, op0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument v0 is killed and marked as dead
     param_1.reset();
     // argument x0 is killed and marked as dead
@@ -2162,13 +2571,24 @@ template <typename Adaptor,
 
 
     // STRDui killed renamable $d0, killed renamable $x0, 0 :: (store (s64) into %ir.0, !tbaa !21)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(STRdu, op0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         ASMD(STRdu, op0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument v0 is killed and marked as dead
     param_1.reset();
     // argument x0 is killed and marked as dead
@@ -2203,13 +2623,24 @@ template <typename Adaptor,
 
 
     // STRQui killed renamable $q0, killed renamable $x0, 0 :: (store (s128) into %ir.0, !tbaa !4)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 4);
+    if (cond0) {
+        AsmReg op0 = param_1.as_reg(this);
+        ASMD(STRqu, op0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op0 = param_1.as_reg(this);
         AsmReg op1 = param_0.as_reg(this);
         ASMD(STRqu, op0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument v0 is killed and marked as dead
     param_1.reset();
     // argument x0 is killed and marked as dead
@@ -11565,14 +11996,26 @@ template <typename Adaptor,
 
 
     // renamable $w0 = LDRBBui killed renamable $x0, 0 :: (load monotonic (s8) from %ir.0)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 0);
+    if (cond0) {
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(LDRBu, scratch_x0.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x0, 0);
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
         ASMD(LDRBu, scratch_x0.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x0 is marked as alive
@@ -11606,14 +12049,26 @@ template <typename Adaptor,
 
 
     // renamable $w0 = LDRHHui killed renamable $x0, 0 :: (load monotonic (s16) from %ir.0)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 1);
+    if (cond0) {
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(LDRHu, scratch_x0.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x0, 0);
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
         ASMD(LDRHu, scratch_x0.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x0 is marked as alive
@@ -11647,14 +12102,26 @@ template <typename Adaptor,
 
 
     // renamable $w0 = LDRWui killed renamable $x0, 0 :: (load monotonic (s32) from %ir.0)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 2);
+    if (cond0) {
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(LDRwu, scratch_x0.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x0, 0);
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
         ASMD(LDRwu, scratch_x0.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x0 is marked as alive
@@ -11688,14 +12155,26 @@ template <typename Adaptor,
 
 
     // renamable $x0 = LDRXui killed renamable $x0, 0 :: (load monotonic (s64) from %ir.0)
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        // def x0 has not been allocated yet
+        scratch_x0.alloc_from_bank(0);
+        ASMD(LDRxu, scratch_x0.cur_reg, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg_try_salvage(this, scratch_x0, 0);
         // def x0 has not been allocated yet
         scratch_x0.alloc_from_bank(0);
         ASMD(LDRxu, scratch_x0.cur_reg, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
     // result x0 is marked as alive
@@ -17241,12 +17720,22 @@ template <typename Adaptor,
 
 
     // PRFMui 1, killed renamable $x0, 0
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        ASMD(PRFMu, (Da64PrfOp)1, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         ASMD(PRFMu, (Da64PrfOp)1, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
 
@@ -17277,12 +17766,22 @@ template <typename Adaptor,
 
 
     // PRFMui 4, killed renamable $x0, 0
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        ASMD(PRFMu, (Da64PrfOp)4, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         ASMD(PRFMu, (Da64PrfOp)4, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
 
@@ -17313,12 +17812,22 @@ template <typename Adaptor,
 
 
     // PRFMui 2, killed renamable $x0, 0
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        ASMD(PRFMu, (Da64PrfOp)2, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         ASMD(PRFMu, (Da64PrfOp)2, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
 
@@ -17349,12 +17858,22 @@ template <typename Adaptor,
 
 
     // PRFMui 0, killed renamable $x0, 0
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        ASMD(PRFMu, (Da64PrfOp)0, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         ASMD(PRFMu, (Da64PrfOp)0, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
 
@@ -17385,12 +17904,22 @@ template <typename Adaptor,
 
 
     // PRFMui 17, killed renamable $x0, 0
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        ASMD(PRFMu, (Da64PrfOp)17, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         ASMD(PRFMu, (Da64PrfOp)17, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
 
@@ -17421,12 +17950,22 @@ template <typename Adaptor,
 
 
     // PRFMui 20, killed renamable $x0, 0
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        ASMD(PRFMu, (Da64PrfOp)20, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         ASMD(PRFMu, (Da64PrfOp)20, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
 
@@ -17457,12 +17996,22 @@ template <typename Adaptor,
 
 
     // PRFMui 18, killed renamable $x0, 0
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        ASMD(PRFMu, (Da64PrfOp)18, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         ASMD(PRFMu, (Da64PrfOp)18, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
 
@@ -17493,12 +18042,22 @@ template <typename Adaptor,
 
 
     // PRFMui 16, killed renamable $x0, 0
+    do {
+    {
+    auto cond0 = param_0.encodeable_with_mem_uoff12(this, 0x0, 3);
+    if (cond0) {
+        ASMD(PRFMu, (Da64PrfOp)16, (*cond0).first, (*cond0).second);
+        break;
+    }
+    }
     {
     if (1) {
         AsmReg op1 = param_0.as_reg(this);
         ASMD(PRFMu, (Da64PrfOp)16, op1, 0x0);
+        break;
     }
     }
+    } while (false);
     // argument x0 is killed and marked as dead
     param_0.reset();
 

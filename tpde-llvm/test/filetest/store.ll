@@ -228,8 +228,7 @@ define void @store_i32_alloca(i32 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    add x1, x29, #0xa0
-; ARM64:    str w0, [x1]
+; ARM64:    str w0, [x29, #0xa0]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -344,8 +343,7 @@ define void @store_i64_alloca(i64 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    add x1, x29, #0xa0
-; ARM64:    str x0, [x1]
+; ARM64:    str x0, [x29, #0xa0]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -743,8 +741,7 @@ define void @store_float_alloca(float %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    add x0, x29, #0xa0
-; ARM64:    str s0, [x0]
+; ARM64:    str s0, [x29, #0xa0]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -942,9 +939,8 @@ define void @store_i24_alloca(i24 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ubfx x1, x0, #16, #16
-; ARM64:    add x2, x29, #0xa0
-; ARM64:    strh w0, [x2]
-; ARM64:    strb w1, [x2, #0x2]
+; ARM64:    strh w0, [x29, #0xa0]
+; ARM64:    strb w1, [x29, #0xa2]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -1152,9 +1148,8 @@ define void @store_i48_alloca(i48 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    lsr x1, x0, #32
-; ARM64:    add x2, x29, #0xa0
-; ARM64:    str w0, [x2]
-; ARM64:    strh w1, [x2, #0x2]
+; ARM64:    str w0, [x29, #0xa0]
+; ARM64:    strh w1, [x29, #0xa2]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -1393,8 +1388,7 @@ define void @store_struct_i8_i1(ptr %a, %struct.i8_i1 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    strb w1, [x0]
-; ARM64:    add x3, x0, #0x1
-; ARM64:    strb w2, [x3]
+; ARM64:    strb w2, [x0, #0x1]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -1432,8 +1426,7 @@ define void @store_struct_i8_i8(ptr %a, %struct.i8_i8 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    strb w1, [x0]
-; ARM64:    add x3, x0, #0x1
-; ARM64:    strb w2, [x3]
+; ARM64:    strb w2, [x0, #0x1]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -1471,8 +1464,7 @@ define void @store_struct_i8_i16(ptr %a, %struct.i8_i16 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    strb w1, [x0]
-; ARM64:    add x3, x0, #0x2
-; ARM64:    strh w2, [x3]
+; ARM64:    strh w2, [x0, #0x2]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -1510,8 +1502,7 @@ define void @store_struct_i8_i32(ptr %a, %struct.i8_i32 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    strb w1, [x0]
-; ARM64:    add x3, x0, #0x4
-; ARM64:    str w2, [x3]
+; ARM64:    str w2, [x0, #0x4]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -1549,8 +1540,7 @@ define void @store_struct_i8_i64(ptr %a, %struct.i8_i64 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    strb w1, [x0]
-; ARM64:    add x3, x0, #0x8
-; ARM64:    str x2, [x3]
+; ARM64:    str x2, [x0, #0x8]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
 ; ARM64:    ret
@@ -1589,8 +1579,7 @@ define void @store_struct_i1_i32(ptr %a, %struct.i1_i32 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    strb w1, [x0]
-; ARM64:    add x3, x0, #0x4
-; ARM64:    str w2, [x3]
+; ARM64:    str w2, [x0, #0x4]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -1628,8 +1617,7 @@ define void @store_struct_i16_i32(ptr %a, %struct.i16_i32 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    strh w1, [x0]
-; ARM64:    add x3, x0, #0x4
-; ARM64:    str w2, [x3]
+; ARM64:    str w2, [x0, #0x4]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -1668,8 +1656,7 @@ define void @store_struct_i32_i32(ptr %a, %struct.i32_i32 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    str w1, [x0]
-; ARM64:    add x3, x0, #0x4
-; ARM64:    str w2, [x3]
+; ARM64:    str w2, [x0, #0x4]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -1707,8 +1694,7 @@ define void @store_struct_i64_i32(ptr %a, %struct.i64_i32 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    str x1, [x0]
-; ARM64:    add x3, x0, #0x8
-; ARM64:    str w2, [x3]
+; ARM64:    str w2, [x0, #0x8]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
 ; ARM64:    ret
@@ -1746,8 +1732,7 @@ define void @store_struct_ptr_i32(ptr %a, %struct.ptr_i32 %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    str x1, [x0]
-; ARM64:    add x3, x0, #0x8
-; ARM64:    str w2, [x3]
+; ARM64:    str w2, [x0, #0x8]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
 ; ARM64:    ret
@@ -1785,8 +1770,7 @@ define void @store_struct_i32_ptr(ptr %a, %struct.i32_ptr %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    str w1, [x0]
-; ARM64:    add x3, x0, #0x8
-; ARM64:    str x2, [x3]
+; ARM64:    str x2, [x0, #0x8]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
 ; ARM64:    ret
@@ -1823,8 +1807,7 @@ define void @store_struct_f32_ptr(ptr %a, %struct.f32_ptr %b) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    str s0, [x0]
-; ARM64:    add x2, x0, #0x8
-; ARM64:    str x1, [x2]
+; ARM64:    str x1, [x0, #0x8]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
 ; ARM64:    ret
@@ -1868,11 +1851,9 @@ define void @store_struct_i128_i1(ptr %a) {
 ; ARM64:    nop
 ; ARM64:    ldp x1, x2, [x0]
 ; ARM64:    mov x3, x1
-; ARM64:    add x4, x0, #0x10
-; ARM64:    ldrb w1, [x4]
+; ARM64:    ldrb w1, [x0, #0x10]
 ; ARM64:    stp x3, x2, [x0]
-; ARM64:    add x4, x0, #0x10
-; ARM64:    strb w1, [x4]
+; ARM64:    strb w1, [x0, #0x10]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xd0
 ; ARM64:    ret
@@ -1918,16 +1899,11 @@ define void @store_struct_i32_i32_i32_i32_i32_i32(ptr %a, %struct.i32_i32_i32_i3
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    str w1, [x0]
-; ARM64:    add x7, x0, #0x4
-; ARM64:    str w2, [x7]
-; ARM64:    add x7, x0, #0x8
-; ARM64:    str w3, [x7]
-; ARM64:    add x7, x0, #0xc
-; ARM64:    str w4, [x7]
-; ARM64:    add x7, x0, #0x10
-; ARM64:    str w5, [x7]
-; ARM64:    add x7, x0, #0x14
-; ARM64:    str w6, [x7]
+; ARM64:    str w2, [x0, #0x4]
+; ARM64:    str w3, [x0, #0x8]
+; ARM64:    str w4, [x0, #0xc]
+; ARM64:    str w5, [x0, #0x10]
+; ARM64:    str w6, [x0, #0x14]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xd0
 ; ARM64:    ret

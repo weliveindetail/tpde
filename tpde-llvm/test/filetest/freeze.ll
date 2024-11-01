@@ -265,11 +265,9 @@ define void @freeze_i128_i1(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    ldp x1, x2, [x0]
 ; ARM64:    mov x3, x1
-; ARM64:    add x4, x0, #0x10
-; ARM64:    ldrb w1, [x4]
+; ARM64:    ldrb w1, [x0, #0x10]
 ; ARM64:    stp x3, x2, [x0]
-; ARM64:    add x4, x0, #0x10
-; ARM64:    strb w1, [x4]
+; ARM64:    strb w1, [x0, #0x10]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xf0
 ; ARM64:    ret
@@ -320,14 +318,12 @@ define void @freeze_i128_i1_no_salvage(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    ldp x1, x2, [x0]
 ; ARM64:    mov x3, x1
-; ARM64:    add x4, x0, #0x10
-; ARM64:    ldrb w1, [x4]
+; ARM64:    ldrb w1, [x0, #0x10]
 ; ARM64:    mov x4, x3
 ; ARM64:    mov x5, x2
 ; ARM64:    mov w6, w1
 ; ARM64:    stp x4, x5, [x0]
-; ARM64:    add x1, x0, #0x10
-; ARM64:    strb w6, [x1]
+; ARM64:    strb w6, [x0, #0x10]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0x110
 ; ARM64:    ret

@@ -208,6 +208,8 @@ struct EncodeCompiler {
             return std::get<ValuePartRef>(state);
         }
 
+        std::optional<std::pair<AsmReg, u64>> encodeable_with_mem_uoff12(EncodeCompiler *compiler, u64 off, unsigned shift) noexcept;
+
         AsmReg as_reg(EncodeCompiler *compiler) noexcept;
         bool   try_salvage(ScratchReg &, u8 bank) noexcept;
         AsmReg as_reg_try_salvage(EncodeCompiler *, ScratchReg &, u8 bank) noexcept;
@@ -266,6 +268,57 @@ static constexpr inline char ENCODER_IMPL_TEMPLATE_BEGIN[] = R"(
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // clang-format on
+template <typename Adaptor,
+          typename Derived,
+          template <typename, typename, typename>
+          class BaseTy,
+          typename Config>
+std::optional<std::pair<typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg, u64>> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
+    encodeable_with_mem_uoff12(EncodeCompiler<Adaptor, Derived, BaseTy, Config> *compiler, u64 off, unsigned shift) noexcept {
+    Expr *expr = std::get_if<Expr>(&state);
+    if (!expr || !expr->has_base()) {
+        return std::nullopt;
+    }
+
+    u64 res_off = expr->disp + off;
+    if (res_off >= (u64{0x1000} << shift) || (res_off & ((1 << shift) - 1))) {
+        return std::nullopt;
+    }
+    if (res_off == 0 && expr->has_index()) {
+        // In this case, try index encoding.
+        return std::nullopt;
+    }
+
+    if (!expr->has_index()) {
+        return std::make_pair(expr->base_reg(), res_off);
+    }
+    if ((expr->scale & (expr->scale - 1)) != 0) {
+        return std::nullopt;
+    }
+
+    ScratchReg scratch{compiler->derived()};
+    AsmReg base_reg = expr->base_reg();
+    AsmReg index_reg = expr->index_reg();
+    if (std::holds_alternative<ScratchReg>(expr->base)) {
+        scratch = std::move(std::get<ScratchReg>(expr->base));
+    } else if (std::holds_alternative<ScratchReg>(expr->index)) {
+        scratch = std::move(std::get<ScratchReg>(expr->index));
+    } else {
+        (void)scratch.alloc_gp();
+    }
+    const auto scale_shift = __builtin_ctzl(expr->scale);
+    AsmReg dst = scratch.cur_reg;
+    ASMC(compiler->derived(), ADDx_lsl, dst, base_reg, index_reg, scale_shift);
+    if (expr->disp != 0) {
+        expr->base = std::move(scratch);
+        expr->index = AsmReg::make_invalid();
+        expr->scale = 0;
+    } else {
+        state = std::move(scratch);
+    }
+
+    return std::make_pair(dst, res_off);
+}
 
 template <typename Adaptor,
           typename Derived,
@@ -363,6 +416,8 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
         AsmReg dst = scratch.cur_reg;
         if (ASMIFC(compiler->derived(), ADDxi, dst, base_reg, expr->disp)) {
             expr->disp = 0;
+        } else {
+            ASMC(compiler->derived(), MOVx, dst, base_reg);
         }
     } else {
         assert(0);

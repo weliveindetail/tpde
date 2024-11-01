@@ -54,6 +54,40 @@ void EncodingTargetArm64::get_inst_candidates(
         return wmask;
     };
 
+    const auto handle_mem_imm = [&](std::string_view mnem,
+                                    std::string_view mnemu,
+                                    unsigned         shift) {
+        auto cond1 = std::format("encodeable_with_mem_uoff12(this, {:#x}, {})",
+                                 mi.getOperand(2).getImm(),
+                                 shift);
+        candidates.emplace_back(
+            1,
+            cond1,
+            [mnem](std::string                        &buf,
+                   const llvm::MachineInstr           &mi,
+                   llvm::SmallVectorImpl<std::string> &ops) {
+                const auto &tri =
+                    *mi.getMF()->getRegInfo().getTargetRegisterInfo();
+                std::string val_reg = "";
+                unsigned    op_idx  = 0;
+                if (mi.getOperand(0).isImm()) {
+                    val_reg =
+                        std::format("(Da64PrfOp){}", mi.getOperand(0).getImm());
+                } else {
+                    llvm::StringRef name =
+                        tri.getName(mi.getOperand(0).getReg());
+                    bool is_zero = name == "WZR" || name == "XZR";
+                    val_reg      = is_zero ? "DA_ZR" : ops[op_idx++];
+                }
+                std::format_to(std::back_inserter(buf),
+                               "        ASMD({}, {}, {}.first, {}.second);\n",
+                               mnem,
+                               val_reg,
+                               ops[op_idx],
+                               ops[op_idx]);
+            });
+        (void)mnemu;
+    };
     const auto handle_default = [&](std::string_view mnem,
                                     std::string      extra_ops = "") {
         candidates.emplace_back([mnem, extra_ops](
@@ -206,79 +240,79 @@ void EncodingTargetArm64::get_inst_candidates(
         handle_noimm("MOVNx_shift",
                      std::format(", {:#x}, {}", imm, shift / 16));
     } else if (Name == "LDRBBui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("LDRBu", "LDURB", 0);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("LDRBu");
     } else if (Name == "LDRHHui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("LDRHu", "LDURH", 1);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("LDRHu");
     } else if (Name == "LDRWui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("LDRwu", "LDURw", 2);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("LDRwu");
     } else if (Name == "LDRXui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("LDRxu", "LDURx", 3);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("LDRxu");
     } else if (Name == "PRFMui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("PRFMu", "PRFUMu", 3);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("PRFMu");
     } else if (Name == "LDRBui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("LDRbu", "LDURb", 0);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("LDRbu");
     } else if (Name == "LDRHui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("LDRhu", "LDURh", 1);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("LDRhu");
     } else if (Name == "LDRSui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("LDRsu", "LDURs", 2);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("LDRsu");
     } else if (Name == "LDRDui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("LDRdu", "LDURd", 3);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("LDRdu");
     } else if (Name == "LDRQui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("LDRqu", "LDURq", 4);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("LDRqu");
     } else if (Name == "STRBBui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("STRBu", "STURB", 0);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("STRBu");
     } else if (Name == "STRHHui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("STRHu", "STURH", 1);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("STRHu");
     } else if (Name == "STRWui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("STRwu", "STURw", 2);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("STRwu");
     } else if (Name == "STRXui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("STRxu", "STURx", 3);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("STRxu");
     } else if (Name == "STRBui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("STRbu", "STURB", 0);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("STRbu");
     } else if (Name == "STRHui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("STRhu", "STURh", 1);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("STRhu");
     } else if (Name == "STRSui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("STRsu", "STURs", 2);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("STRsu");
     } else if (Name == "STRDui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("STRdu", "STURd", 3);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("STRdu");
     } else if (Name == "STRQui") {
-        // TODO: Handle expr with base+off, merge offsets
+        handle_mem_imm("STRqu", "STURq", 4);
         // TODO: If offset is zero, handle expr with base+index
         handle_default("STRqu");
     } else if (Name == "LDPWi") {
@@ -297,9 +331,11 @@ void EncodingTargetArm64::get_inst_candidates(
         // TODO: Handle expr with base+off, merge offsets
         handle_default("STLRB");
     } else if (Name == "LDRSBWui") {
+        handle_mem_imm("LDRSBwu", "LDURSBw", 0);
         // TODO: Handle expr with base+off, merge offsets
         handle_default("LDRSBwu");
     } else if (Name == "LDRSHWui") {
+        handle_mem_imm("LDRSHwu", "LDURSHw", 1);
         // TODO: Handle expr with base+off, merge offsets
         handle_default("LDRSHwu");
     } else if (Name == "UBFMWri") {

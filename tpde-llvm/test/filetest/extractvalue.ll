@@ -39,8 +39,7 @@ define i8 @extract_i8_i32_0(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldrb w1, [x0]
-; ARM64:    add x3, x0, #0x4
-; ARM64:    ldr w2, [x3]
+; ARM64:    ldr w2, [x0, #0x4]
 ; ARM64:    mov w0, w1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
@@ -80,8 +79,7 @@ define i32 @extract_i8_i32_1(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldrb w1, [x0]
-; ARM64:    add x3, x0, #0x4
-; ARM64:    ldr w2, [x3]
+; ARM64:    ldr w2, [x0, #0x4]
 ; ARM64:    mov w0, w2
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
@@ -126,12 +124,10 @@ define i8 @extract_i8_i32_0_no_salvage(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldrb w1, [x0]
-; ARM64:    add x3, x0, #0x4
-; ARM64:    ldr w2, [x3]
+; ARM64:    ldr w2, [x0, #0x4]
 ; ARM64:    mov w3, w1
 ; ARM64:    strb w1, [x0]
-; ARM64:    add x4, x0, #0x4
-; ARM64:    str w2, [x4]
+; ARM64:    str w2, [x0, #0x4]
 ; ARM64:    mov w0, w3
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
@@ -177,12 +173,10 @@ define i32 @extract_i8_i32_1_no_salvage(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldrb w1, [x0]
-; ARM64:    add x3, x0, #0x4
-; ARM64:    ldr w2, [x3]
+; ARM64:    ldr w2, [x0, #0x4]
 ; ARM64:    mov w3, w2
 ; ARM64:    strb w1, [x0]
-; ARM64:    add x4, x0, #0x4
-; ARM64:    str w2, [x4]
+; ARM64:    str w2, [x0, #0x4]
 ; ARM64:    mov w0, w3
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
@@ -224,8 +218,7 @@ define ptr @extract_ptr_i32_0(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldr x1, [x0]
-; ARM64:    add x3, x0, #0x8
-; ARM64:    ldr w2, [x3]
+; ARM64:    ldr w2, [x0, #0x8]
 ; ARM64:    mov x0, x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
@@ -265,8 +258,7 @@ define i32 @extract_ptr_i32_1(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldr x1, [x0]
-; ARM64:    add x3, x0, #0x8
-; ARM64:    ldr w2, [x3]
+; ARM64:    ldr w2, [x0, #0x8]
 ; ARM64:    mov w0, w2
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xd0
@@ -309,12 +301,10 @@ define ptr @extract_ptr_i32_0_no_salvage(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldr x1, [x0]
-; ARM64:    add x3, x0, #0x8
-; ARM64:    ldr w2, [x3]
+; ARM64:    ldr w2, [x0, #0x8]
 ; ARM64:    mov x3, x1
 ; ARM64:    str x1, [x0]
-; ARM64:    add x4, x0, #0x8
-; ARM64:    str w2, [x4]
+; ARM64:    str w2, [x0, #0x8]
 ; ARM64:    mov x0, x3
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
@@ -359,12 +349,10 @@ define i32 @extract_ptr_i32_1_no_salvage(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldr x1, [x0]
-; ARM64:    add x3, x0, #0x8
-; ARM64:    ldr w2, [x3]
+; ARM64:    ldr w2, [x0, #0x8]
 ; ARM64:    mov w3, w2
 ; ARM64:    str x1, [x0]
-; ARM64:    add x4, x0, #0x8
-; ARM64:    str w2, [x4]
+; ARM64:    str w2, [x0, #0x8]
 ; ARM64:    mov w0, w3
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xd0
@@ -405,8 +393,7 @@ define float @extract_f32_ptr_0(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldr s0, [x0]
-; ARM64:    add x2, x0, #0x8
-; ARM64:    ldr x1, [x2]
+; ARM64:    ldr x1, [x0, #0x8]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xd0
 ; ARM64:    ret
@@ -444,8 +431,7 @@ define ptr @extract_f32_ptr_1(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldr s0, [x0]
-; ARM64:    add x2, x0, #0x8
-; ARM64:    ldr x1, [x2]
+; ARM64:    ldr x1, [x0, #0x8]
 ; ARM64:    mov x0, x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
@@ -488,12 +474,10 @@ define float @extract_f32_ptr_0_no_salvage(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldr s0, [x0]
-; ARM64:    add x2, x0, #0x8
-; ARM64:    ldr x1, [x2]
+; ARM64:    ldr x1, [x0, #0x8]
 ; ARM64:    mov v1.16b, v0.16b
 ; ARM64:    str s0, [x0]
-; ARM64:    add x2, x0, #0x8
-; ARM64:    str x1, [x2]
+; ARM64:    str x1, [x0, #0x8]
 ; ARM64:    mov v0.16b, v1.16b
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xd0
@@ -538,12 +522,10 @@ define ptr @extract_f32_ptr_1_no_salvage(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    ldr s0, [x0]
-; ARM64:    add x2, x0, #0x8
-; ARM64:    ldr x1, [x2]
+; ARM64:    ldr x1, [x0, #0x8]
 ; ARM64:    mov x2, x1
 ; ARM64:    str s0, [x0]
-; ARM64:    add x3, x0, #0x8
-; ARM64:    str x1, [x3]
+; ARM64:    str x1, [x0, #0x8]
 ; ARM64:    mov x0, x2
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
@@ -587,8 +569,7 @@ define i128 @extract_i128_i1_0(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    ldp x1, x2, [x0]
 ; ARM64:    mov x3, x1
-; ARM64:    add x4, x0, #0x10
-; ARM64:    ldrb w1, [x4]
+; ARM64:    ldrb w1, [x0, #0x10]
 ; ARM64:    mov x0, x3
 ; ARM64:    mov x1, x2
 ; ARM64:    ldp x29, x30, [sp]
@@ -632,8 +613,7 @@ define i1 @extract_i128_i1_1(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    ldp x1, x2, [x0]
 ; ARM64:    mov x3, x1
-; ARM64:    add x4, x0, #0x10
-; ARM64:    ldrb w1, [x4]
+; ARM64:    ldrb w1, [x0, #0x10]
 ; ARM64:    mov w0, w1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xe0
@@ -684,13 +664,11 @@ define i128 @extract_i128_i1_0_no_salvage(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    ldp x1, x2, [x0]
 ; ARM64:    mov x3, x1
-; ARM64:    add x4, x0, #0x10
-; ARM64:    ldrb w1, [x4]
+; ARM64:    ldrb w1, [x0, #0x10]
 ; ARM64:    mov x4, x2
 ; ARM64:    mov x5, x3
 ; ARM64:    stp x3, x2, [x0]
-; ARM64:    add x6, x0, #0x10
-; ARM64:    strb w1, [x6]
+; ARM64:    strb w1, [x0, #0x10]
 ; ARM64:    mov x0, x5
 ; ARM64:    mov x1, x4
 ; ARM64:    ldp x29, x30, [sp]
@@ -741,12 +719,10 @@ define i1 @extract_i128_i1_1_no_salvage(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    ldp x1, x2, [x0]
 ; ARM64:    mov x3, x1
-; ARM64:    add x4, x0, #0x10
-; ARM64:    ldrb w1, [x4]
+; ARM64:    ldrb w1, [x0, #0x10]
 ; ARM64:    mov w4, w1
 ; ARM64:    stp x3, x2, [x0]
-; ARM64:    add x5, x0, #0x10
-; ARM64:    strb w1, [x5]
+; ARM64:    strb w1, [x0, #0x10]
 ; ARM64:    mov w0, w4
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xe0
