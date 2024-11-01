@@ -82,9 +82,9 @@ define ptr @load_func_ptr() {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    adrp x1, 0x0 <load_basic_int>
-; ARM64:     R_AARCH64_ADR_PREL_PG_HI21 func_ptr
+; ARM64:     R_AARCH64_ADR_GOT_PAGE func_ptr
 ; ARM64:    ldr x1, [x1]
-; ARM64:     R_AARCH64_LDST64_ABS_LO12_NC func_ptr
+; ARM64:     R_AARCH64_LD64_GOT_LO12_NC func_ptr
 ; ARM64:    ldr x0, [x1]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
@@ -122,9 +122,9 @@ define void @store_global_ptr(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    adrp x1, 0x0 <load_basic_int>
-; ARM64:     R_AARCH64_ADR_PREL_PG_HI21 global_ptr
+; ARM64:     R_AARCH64_ADR_GOT_PAGE global_ptr
 ; ARM64:    ldr x1, [x1]
-; ARM64:     R_AARCH64_LDST64_ABS_LO12_NC global_ptr
+; ARM64:     R_AARCH64_LD64_GOT_LO12_NC global_ptr
 ; ARM64:    str x0, [x1]
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
@@ -202,9 +202,9 @@ define ptr @get_func1() {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    adrp x0, 0x0 <load_basic_int>
-; ARM64:     R_AARCH64_ADR_PREL_PG_HI21 func_ptr
+; ARM64:     R_AARCH64_ADR_GOT_PAGE func_ptr
 ; ARM64:    ldr x0, [x0]
-; ARM64:     R_AARCH64_LDST64_ABS_LO12_NC func_ptr
+; ARM64:     R_AARCH64_LD64_GOT_LO12_NC func_ptr
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xa0
 ; ARM64:    ret
@@ -242,9 +242,9 @@ define ptr @get_func2() {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    adrp x0, 0x0 <load_basic_int>
-; ARM64:     R_AARCH64_ADR_PREL_PG_HI21 some_func
+; ARM64:     R_AARCH64_ADR_GOT_PAGE some_func
 ; ARM64:    ldr x0, [x0]
-; ARM64:     R_AARCH64_LDST64_ABS_LO12_NC some_func
+; ARM64:     R_AARCH64_LD64_GOT_LO12_NC some_func
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xa0
 ; ARM64:    ret
