@@ -34,8 +34,7 @@ define void @sub_i8_1(i8 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1 // =1
-; ARM64:    sub w0, w0, w1
+; ARM64:    sub w0, w0, #0x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -71,8 +70,7 @@ define void @sub_i8_1_invert(i8 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0xff // =255
-; ARM64:    sub w0, w0, w1
+; ARM64:    sub w0, w0, #0xff
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -145,8 +143,7 @@ define void @sub_i16_1(i16 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1 // =1
-; ARM64:    sub w0, w0, w1
+; ARM64:    sub w0, w0, #0x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -219,8 +216,7 @@ define void @sub_i16_1000(i16 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1000 // =4096
-; ARM64:    sub w0, w0, w1
+; ARM64:    sub w0, w0, #0x1, lsl #12 // =0x1000
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -367,8 +363,7 @@ define void @sub_i32_1(i32 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1 // =1
-; ARM64:    sub w0, w0, w1
+; ARM64:    sub w0, w0, #0x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -443,8 +438,7 @@ define void @sub_i32_1000(i32 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1000 // =4096
-; ARM64:    sub w0, w0, w1
+; ARM64:    sub w0, w0, #0x1, lsl #12 // =0x1000
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -593,8 +587,7 @@ define void @sub_i64_1(i64 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1 // =1
-; ARM64:    sub x0, x0, x1
+; ARM64:    sub x0, x0, #0x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -631,8 +624,7 @@ define void @sub_i64_invert(i64 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #-0x1 // =-1
-; ARM64:    sub x0, x0, x1
+; ARM64:    add x0, x0, #0x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -668,8 +660,7 @@ define void @sub_i64_1000(i64 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1000 // =4096
-; ARM64:    sub x0, x0, x1
+; ARM64:    sub x0, x0, #0x1, lsl #12 // =0x1000
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -743,8 +734,7 @@ define void @sub_i64_FFFFFFFFFFFFFFFF(i64 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #-0x1 // =-1
-; ARM64:    sub x0, x0, x1
+; ARM64:    add x0, x0, #0x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -819,8 +809,7 @@ define void @sub_i37_1(i37 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1 // =1
-; ARM64:    sub x0, x0, x1
+; ARM64:    sub x0, x0, #0x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -1007,8 +996,7 @@ define void @sub_i128_1(i128 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x3, #0x1 // =1
-; ARM64:    subs x2, x0, x3
+; ARM64:    subs x2, x0, #0x1
 ; ARM64:    mov w3, #0x0 // =0
 ; ARM64:    sbc x1, x1, x3
 ; ARM64:    ldp x29, x30, [sp]
@@ -1049,8 +1037,7 @@ define void @sub_i128_invert(i128 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x3, #-0x1 // =-1
-; ARM64:    subs x2, x0, x3
+; ARM64:    adds x2, x0, #0x1
 ; ARM64:    mov x3, #-0x1 // =-1
 ; ARM64:    sbc x1, x1, x3
 ; ARM64:    ldp x29, x30, [sp]
@@ -1209,8 +1196,7 @@ define void @sub_i64_salvage_imm(i64 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1 // =1
-; ARM64:    sub x0, x0, x1
+; ARM64:    sub x0, x0, #0x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -1287,8 +1273,7 @@ define void @sub_i128_salvage_imm(i128 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x3, #0x1 // =1
-; ARM64:    subs x2, x0, x3
+; ARM64:    subs x2, x0, #0x1
 ; ARM64:    mov w3, #0x0 // =0
 ; ARM64:    sbc x1, x1, x3
 ; ARM64:    ldp x29, x30, [sp]
@@ -1364,8 +1349,7 @@ define void @sub_i64_no_salvage_imm(i64 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x2, #0x1 // =1
-; ARM64:    sub x1, x0, x2
+; ARM64:    sub x1, x0, #0x1
 ; ARM64:    sub x0, x0, x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
@@ -1442,8 +1426,7 @@ define void @sub_i37_no_salvage_imm(i37 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x2, #0x3 // =3
-; ARM64:    sub x1, x0, x2
+; ARM64:    sub x1, x0, #0x3
 ; ARM64:    sub x0, x0, x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
@@ -1526,8 +1509,7 @@ define void @sub_i128_no_salvage_imm(i128 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x3, #0x1 // =1
-; ARM64:    subs x2, x0, x3
+; ARM64:    subs x2, x0, #0x1
 ; ARM64:    mov w4, #0x0 // =0
 ; ARM64:    sbc x3, x1, x4
 ; ARM64:    subs x4, x0, x2

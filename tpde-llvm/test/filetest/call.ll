@@ -89,9 +89,7 @@ define i32 @call_i32_void() {
 ; ARM64:    nop
 ; ARM64:    bl 0xa0 <call_i32_void+0x30>
 ; ARM64:     R_AARCH64_CALL26 fn_i32_void
-; ARM64:    mov x1, #0xa // =10
-; ARM64:    add w1, w1, w0
-; ARM64:    mov w0, w1
+; ARM64:    add w0, w0, #0xa
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -138,8 +136,7 @@ define i128 @call_i128_void() {
 ; ARM64:    nop
 ; ARM64:    bl 0x110 <call_i128_void+0x30>
 ; ARM64:     R_AARCH64_CALL26 fn_i128_void
-; ARM64:    mov x2, #0xa // =10
-; ARM64:    adds x2, x2, x0
+; ARM64:    adds x2, x0, #0xa
 ; ARM64:    mov w3, #0x0 // =0
 ; ARM64:    adc x3, x3, x1
 ; ARM64:    mov x0, x2
@@ -190,8 +187,7 @@ define i32 @call_i128_void_ret_i32(i32 %0) {
 ; ARM64:    str w0, [x29, #0xa0]
 ; ARM64:    bl 0x194 <call_i128_void_ret_i32+0x34>
 ; ARM64:     R_AARCH64_CALL26 fn_i128_void
-; ARM64:    mov x2, #0xa // =10
-; ARM64:    adds x2, x2, x0
+; ARM64:    adds x2, x0, #0xa
 ; ARM64:    mov w3, #0x0 // =0
 ; ARM64:    adc x3, x3, x1
 ; ARM64:    ldr w0, [x29, #0xa0]

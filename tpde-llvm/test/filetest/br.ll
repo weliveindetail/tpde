@@ -96,8 +96,8 @@ define i64 @condbr0(i64 %0, i1 %1) {
 ; ARM64:    add sp, sp, #0xc0
 ; ARM64:    ret
 ; ARM64:     ...
-; ARM64:    mov x0, #0xa // =10
-; ARM64:    add x0, x0, x19
+; ARM64:    add x19, x19, #0xa
+; ARM64:    mov x0, x19
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    ldr x19, [sp, #0x10]
 ; ARM64:    add sp, sp, #0xc0
@@ -151,9 +151,8 @@ define i64 @condbr1(i64 %0, i1 %1) {
 ; ARM64:    nop
 ; ARM64:    mov x19, x0
 ; ARM64:    tst w1, #0x1
-; ARM64:    b.ne 0x194 <condbr1+0x74>
-; ARM64:    mov x0, #0xa // =10
-; ARM64:    add x0, x0, x19
+; ARM64:    b.ne 0x190 <condbr1+0x70>
+; ARM64:    add x0, x19, #0xa
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    ldr x19, [sp, #0x10]
 ; ARM64:    add sp, sp, #0xc0

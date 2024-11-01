@@ -115,6 +115,62 @@ void EncodingTargetArm64::get_inst_candidates(
                 std::format_to(std::back_inserter(buf), ");\n");
             });
     };
+    const auto handle_arith_imm = [&](std::string_view mnem) {
+        auto cond = std::format("encodeable_as_immarith()");
+        candidates.emplace_back(
+            2,
+            cond,
+            [mnem](std::string                        &buf,
+                   const llvm::MachineInstr           &mi,
+                   llvm::SmallVectorImpl<std::string> &ops) {
+                const auto &tri =
+                    *mi.getMF()->getRegInfo().getTargetRegisterInfo();
+                unsigned op_idx = 0;
+
+                llvm::StringRef  name1 = tri.getName(mi.getOperand(0).getReg());
+                bool             is_zero1 = name1 == "WZR" || name1 == "XZR";
+                std::string_view dst = is_zero1 ? "DA_ZR"sv : ops[op_idx++];
+
+                llvm::StringRef  name2 = tri.getName(mi.getOperand(1).getReg());
+                bool             is_zero2 = name2 == "WZR" || name2 == "XZR";
+                std::string_view src = is_zero2 ? "DA_ZR"sv : ops[op_idx++];
+
+                std::format_to(std::back_inserter(buf),
+                               "        ASMD({}, {}, {}, {});",
+                               mnem,
+                               dst,
+                               src,
+                               ops[op_idx]);
+            });
+        if (!mnem.starts_with("ADD")) {
+            return;
+        }
+        candidates.emplace_back(
+            1,
+            cond,
+            [mnem](std::string                        &buf,
+                   const llvm::MachineInstr           &mi,
+                   llvm::SmallVectorImpl<std::string> &ops) {
+                const auto &tri =
+                    *mi.getMF()->getRegInfo().getTargetRegisterInfo();
+                unsigned op_idx = 0;
+
+                llvm::StringRef  name1 = tri.getName(mi.getOperand(0).getReg());
+                bool             is_zero1 = name1 == "WZR" || name1 == "XZR";
+                std::string_view dst = is_zero1 ? "DA_ZR"sv : ops[op_idx++];
+
+                llvm::StringRef  name2 = tri.getName(mi.getOperand(2).getReg());
+                bool             is_zero2 = name2 == "WZR" || name2 == "XZR";
+                std::string_view src = is_zero2 ? "DA_ZR"sv : ops[op_idx++];
+
+                std::format_to(std::back_inserter(buf),
+                               "        ASMD({}, {}, {}, {});",
+                               mnem,
+                               dst,
+                               ops[op_idx],
+                               src);
+            });
+    };
     const auto handle_default = [&](std::string_view mnem,
                                     std::string      extra_ops = "") {
         candidates.emplace_back([mnem, extra_ops](
@@ -438,60 +494,76 @@ void EncodingTargetArm64::get_inst_candidates(
         unsigned shift = mi.getOperand(3).getImm();
         handle_noimm("SUBSxi", std::format(", {}", imm << (shift & 0x3f)));
     } else if (Name == "ADDWrs") {
-        // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ADDw_lsl", "ADDw_lsr", "ADDw_asr"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_arith_imm("ADDwi");
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ADDXrs") {
-        // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ADDx_lsl", "ADDx_lsr", "ADDx_asr"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_arith_imm("ADDxi");
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
     } else if (Name == "ADDSWrs") {
-        // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ADDSw_lsl", "ADDSw_lsr", "ADDSw_asr"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_arith_imm("ADDSwi");
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ADDSXrs") {
-        // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ADDSx_lsl", "ADDSx_lsr", "ADDSx_asr"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_arith_imm("ADDSxi");
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
     } else if (Name == "SUBWrs") {
-        // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "SUBw_lsl", "SUBw_lsr", "SUBw_asr"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_arith_imm("SUBwi");
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "SUBXrs") {
-        // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "SUBx_lsl", "SUBx_lsr", "SUBx_asr"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_arith_imm("SUBxi");
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
     } else if (Name == "SUBSWrs") {
-        // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "SUBSw_lsl", "SUBSw_lsr", "SUBSw_asr"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_arith_imm("SUBSwi");
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "SUBSXrs") {
-        // TODO: Handle arithmetic immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "SUBSx_lsl", "SUBSx_lsr", "SUBSx_asr"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_arith_imm("SUBSxi");
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
     } else if (Name == "ADDWrx") {
         // TODO: Handle arithmetic immediates

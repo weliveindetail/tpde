@@ -214,6 +214,16 @@ struct EncodeCompiler {
             }
             return std::nullopt;
         }
+        std::optional<u64> encodeable_as_immarith() const noexcept {
+            if (is_imm() && imm().size <= 8) {
+                u64 val = imm().const_u64;
+                val     = static_cast<i64>(val) < 0 ? -val : val;
+                if ((val & 0xfff) == val || (val & 0xff'f000) == val) {
+                    return imm().const_u64;
+                }
+            }
+            return std::nullopt;
+        }
         std::optional<std::pair<AsmReg, u64>> encodeable_with_mem_uoff12(EncodeCompiler *compiler, u64 off, unsigned shift) noexcept;
 
         AsmReg as_reg(EncodeCompiler *compiler) noexcept;
