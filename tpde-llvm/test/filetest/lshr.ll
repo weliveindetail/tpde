@@ -34,8 +34,7 @@ define void @lshr_i8_3(i8 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    and w0, w0, #0xff
-; ARM64:    mov x1, #0x3 // =3
-; ARM64:    lsr w0, w0, w1
+; ARM64:    lsr w0, w0, #3
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -114,8 +113,7 @@ define void @lshr_i16_3(i16 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    and w0, w0, #0xffff
-; ARM64:    mov x1, #0x3 // =3
-; ARM64:    lsr w0, w0, w1
+; ARM64:    lsr w0, w0, #3
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -192,8 +190,7 @@ define void @lshr_i32_3(i32 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x3 // =3
-; ARM64:    lsr w0, w0, w1
+; ARM64:    lsr w0, w0, #3
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -268,8 +265,7 @@ define void @lshr_i64_3(i64 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x3 // =3
-; ARM64:    lsr x0, x0, x1
+; ARM64:    lsr x0, x0, #3
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -347,8 +343,7 @@ define void @lshr_i37_3(i37 %0) {
 ; ARM64:    nop
 ; ARM64:    mov x1, #0x1fffffffff // =137438953471
 ; ARM64:    and x1, x1, x0
-; ARM64:    mov x0, #0x3 // =3
-; ARM64:    lsr x1, x1, x0
+; ARM64:    lsr x1, x1, #3
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -386,8 +381,7 @@ define void @lshr_i21_3(i21 %0) {
 ; ARM64:    nop
 ; ARM64:    mov x1, #0x1fffff // =2097151
 ; ARM64:    and w1, w1, w0
-; ARM64:    mov x0, #0x3 // =3
-; ARM64:    lsr w1, w1, w0
+; ARM64:    lsr w1, w1, #3
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
 ; ARM64:    ret
@@ -569,8 +563,7 @@ define i128 @lshr_i128_74(i128 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x3, #0xa // =10
-; ARM64:    lsr x2, x1, x3
+; ARM64:    lsr x2, x1, #10
 ; ARM64:    mov x3, xzr
 ; ARM64:    mov x0, x2
 ; ARM64:    mov x1, x3
@@ -667,8 +660,7 @@ define void @lshr_i64_no_salvage_imm(i64 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x2, #0x3 // =3
-; ARM64:    lsr x1, x0, x2
+; ARM64:    lsr x1, x0, #3
 ; ARM64:    lsr x0, x0, x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xc0
@@ -761,8 +753,7 @@ define void @lshr_i37_no_salvage_imm(i37 %0) {
 ; ARM64:    nop
 ; ARM64:    mov x1, #0x1fffffffff // =137438953471
 ; ARM64:    and x1, x1, x0
-; ARM64:    mov x2, #0x3 // =3
-; ARM64:    lsr x1, x1, x2
+; ARM64:    lsr x1, x1, #3
 ; ARM64:    mov x2, #0x1fffffffff // =137438953471
 ; ARM64:    and x2, x2, x0
 ; ARM64:    mov x0, #0x1fffffffff // =137438953471

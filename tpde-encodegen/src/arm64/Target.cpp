@@ -88,6 +88,33 @@ void EncodingTargetArm64::get_inst_candidates(
             });
         (void)mnemu;
     };
+    const auto handle_shift_imm = [&](std::string_view mnem) {
+        auto cond = std::format("encodeable_as_imm()");
+        candidates.emplace_back(
+            2,
+            cond,
+            [mnem](std::string                        &buf,
+                   const llvm::MachineInstr           &mi,
+                   llvm::SmallVectorImpl<std::string> &ops) {
+                const auto &tri =
+                    *mi.getMF()->getRegInfo().getTargetRegisterInfo();
+                std::format_to(
+                    std::back_inserter(buf), "        ASMD({}", mnem);
+                unsigned reg_idx = 0;
+                for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n;
+                     i++) {
+                    const auto     &op   = mi.getOperand(i);
+                    llvm::StringRef name = tri.getName(op.getReg());
+                    if (name == "WZR" || name == "XZR") { // zero register
+                        buf += ", DA_ZR";
+                    } else {
+                        std::format_to(
+                            std::back_inserter(buf), ", {}", ops[reg_idx++]);
+                    }
+                }
+                std::format_to(std::back_inserter(buf), ");\n");
+            });
+    };
     const auto handle_default = [&](std::string_view mnem,
                                     std::string      extra_ops = "") {
         candidates.emplace_back([mnem, extra_ops](
@@ -355,28 +382,28 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "BFMXri") {
         handle_default("BFMx");
     } else if (Name == "LSLVWr") {
-        // TODO: handle shift immediate
+        handle_shift_imm("LSLwi");
         handle_default("LSLVw");
     } else if (Name == "LSLVXr") {
-        // TODO: handle shift immediate
+        handle_shift_imm("LSLxi");
         handle_default("LSLVx");
     } else if (Name == "LSRVWr") {
-        // TODO: handle shift immediate
+        handle_shift_imm("LSRwi");
         handle_default("LSRVw");
     } else if (Name == "LSRVXr") {
-        // TODO: handle shift immediate
+        handle_shift_imm("LSRxi");
         handle_default("LSRVx");
     } else if (Name == "ASRVWr") {
-        // TODO: handle shift immediate
+        handle_shift_imm("ASRwi");
         handle_default("ASRVw");
     } else if (Name == "ASRVXr") {
-        // TODO: handle shift immediate
+        handle_shift_imm("ASRxi");
         handle_default("ASRVx");
     } else if (Name == "RORVWr") {
-        // TODO: handle shift immediate
+        handle_shift_imm("RORwi");
         handle_default("RORVw");
     } else if (Name == "RORVXr") {
-        // TODO: handle shift immediate
+        handle_shift_imm("RORxi");
         handle_default("RORVx");
     } else if (Name == "ADDWri") {
         unsigned imm   = mi.getOperand(2).getImm();

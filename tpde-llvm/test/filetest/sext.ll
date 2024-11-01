@@ -454,9 +454,8 @@ define i32 @sext_i21_to_i32(i21 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0xb // =11
-; ARM64:    lsl w0, w0, w1
-; ARM64:    asr w1, w0, w1
+; ARM64:    lsl w0, w0, #11
+; ARM64:    asr w1, w0, #11
 ; ARM64:    mov w0, w1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
@@ -496,9 +495,8 @@ define i37 @sext_i21_to_i37(i21 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x2b // =43
-; ARM64:    lsl x0, x0, x1
-; ARM64:    asr x1, x0, x1
+; ARM64:    lsl x0, x0, #43
+; ARM64:    asr x1, x0, #43
 ; ARM64:    mov x0, x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
@@ -538,9 +536,8 @@ define i64 @sext_i21_to_i64(i21 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x2b // =43
-; ARM64:    lsl x0, x0, x1
-; ARM64:    asr x1, x0, x1
+; ARM64:    lsl x0, x0, #43
+; ARM64:    asr x1, x0, #43
 ; ARM64:    mov x0, x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
@@ -581,9 +578,8 @@ define i128 @sext_i21_to_i128(i21 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x2b // =43
-; ARM64:    lsl x0, x0, x1
-; ARM64:    asr x1, x0, x1
+; ARM64:    lsl x0, x0, #43
+; ARM64:    asr x1, x0, #43
 ; ARM64:    asr x0, x1, #63
 ; ARM64:    str x0, [x29, #0xb8]
 ; ARM64:    mov x0, x1
@@ -745,9 +741,8 @@ define i64 @sext_i37_to_i64(i37 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1b // =27
-; ARM64:    lsl x0, x0, x1
-; ARM64:    asr x1, x0, x1
+; ARM64:    lsl x0, x0, #27
+; ARM64:    asr x1, x0, #27
 ; ARM64:    mov x0, x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
@@ -788,9 +783,8 @@ define i128 @sext_i37_to_i128(i37 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1b // =27
-; ARM64:    lsl x0, x0, x1
-; ARM64:    asr x1, x0, x1
+; ARM64:    lsl x0, x0, #27
+; ARM64:    asr x1, x0, #27
 ; ARM64:    asr x0, x1, #63
 ; ARM64:    str x0, [x29, #0xb8]
 ; ARM64:    mov x0, x1

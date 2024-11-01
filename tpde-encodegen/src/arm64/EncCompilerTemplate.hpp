@@ -200,7 +200,7 @@ struct EncodeCompiler {
             return std::holds_alternative<Immediate>(state);
         }
 
-        [[nodiscard]] Immediate &imm() noexcept {
+        [[nodiscard]] const Immediate &imm() const noexcept {
             return std::get<Immediate>(state);
         }
 
@@ -208,6 +208,12 @@ struct EncodeCompiler {
             return std::get<ValuePartRef>(state);
         }
 
+        std::optional<u64> encodeable_as_imm() const noexcept {
+            if (is_imm() && imm().size <= 8) {
+                return imm().const_u64;
+            }
+            return std::nullopt;
+        }
         std::optional<std::pair<AsmReg, u64>> encodeable_with_mem_uoff12(EncodeCompiler *compiler, u64 off, unsigned shift) noexcept;
 
         AsmReg as_reg(EncodeCompiler *compiler) noexcept;

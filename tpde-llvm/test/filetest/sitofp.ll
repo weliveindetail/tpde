@@ -107,9 +107,8 @@ define float @i21tof32(i21 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0xb // =11
-; ARM64:    lsl w0, w0, w1
-; ARM64:    asr w1, w0, w1
+; ARM64:    lsl w0, w0, #11
+; ARM64:    asr w1, w0, #11
 ; ARM64:    scvtf s0, w1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
@@ -185,9 +184,8 @@ define float @i37tof32(i37 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1b // =27
-; ARM64:    lsl x0, x0, x1
-; ARM64:    asr x1, x0, x1
+; ARM64:    lsl x0, x0, #27
+; ARM64:    asr x1, x0, #27
 ; ARM64:    scvtf s0, x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
@@ -337,9 +335,8 @@ define double @i21tof64(i21 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0xb // =11
-; ARM64:    lsl w0, w0, w1
-; ARM64:    asr w1, w0, w1
+; ARM64:    lsl w0, w0, #11
+; ARM64:    asr w1, w0, #11
 ; ARM64:    scvtf d0, w1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0
@@ -415,9 +412,8 @@ define double @i37tof64(i37 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1b // =27
-; ARM64:    lsl x0, x0, x1
-; ARM64:    asr x1, x0, x1
+; ARM64:    lsl x0, x0, #27
+; ARM64:    asr x1, x0, #27
 ; ARM64:    scvtf d0, x1
 ; ARM64:    ldp x29, x30, [sp]
 ; ARM64:    add sp, sp, #0xb0

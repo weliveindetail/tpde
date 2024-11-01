@@ -124,9 +124,8 @@ define i17 @absi17(i17 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0xf // =15
-; ARM64:    lsl w0, w0, w1
-; ARM64:    asr w1, w0, w1
+; ARM64:    lsl w0, w0, #15
+; ARM64:    asr w1, w0, #15
 ; ARM64:    cmp w1, #0x0
 ; ARM64:    cneg w1, w1, mi
 ; ARM64:    mov w0, w1
@@ -207,9 +206,8 @@ define i37 @absi37(i37 %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
-; ARM64:    mov x1, #0x1b // =27
-; ARM64:    lsl x0, x0, x1
-; ARM64:    asr x1, x0, x1
+; ARM64:    lsl x0, x0, #27
+; ARM64:    asr x1, x0, #27
 ; ARM64:    cmp x1, #0x0
 ; ARM64:    cneg x1, x1, mi
 ; ARM64:    mov x0, x1
