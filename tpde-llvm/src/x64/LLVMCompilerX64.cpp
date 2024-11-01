@@ -102,6 +102,7 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                             std::variant<SymRef, ValuePartRef> &,
                             bool) noexcept;
     bool compile_icmp(IRValueRef, llvm::Instruction *, InstRange) noexcept;
+    void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
     AsmOperand::Expr resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
     void addr_to_reg(AsmOperand::Expr &&addr, ScratchReg &result) noexcept;
@@ -985,6 +986,25 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef         inst_idx,
         try_fuse_compare(std::move(std::get<ScratchReg>(lhs_op.state)));
     }
     return true;
+}
+
+void LLVMCompilerX64::compile_i32_cmp_zero(
+    AsmReg reg, llvm::CmpInst::Predicate pred) noexcept {
+    ASM(TEST64rr, reg, reg);
+    switch (pred) {
+    case llvm::CmpInst::ICMP_EQ: ASM(SETZ8r, reg); break;
+    case llvm::CmpInst::ICMP_NE: ASM(SETNZ8r, reg); break;
+    case llvm::CmpInst::ICMP_SGT: ASM(SETG8r, reg); break;
+    case llvm::CmpInst::ICMP_SGE: ASM(SETGE8r, reg); break;
+    case llvm::CmpInst::ICMP_SLT: ASM(SETL8r, reg); break;
+    case llvm::CmpInst::ICMP_SLE: ASM(SETLE8r, reg); break;
+    case llvm::CmpInst::ICMP_UGT: ASM(SETA8r, reg); break;
+    case llvm::CmpInst::ICMP_UGE: ASM(SETNC8r, reg); break;
+    case llvm::CmpInst::ICMP_ULT: ASM(SETC8r, reg); break;
+    case llvm::CmpInst::ICMP_ULE: ASM(SETBE8r, reg); break;
+    default: assert(0);
+    }
+    ASM(MOVZXr32r8, reg, reg);
 }
 
 tpde_encodegen::EncodeCompiler<LLVMAdaptor,

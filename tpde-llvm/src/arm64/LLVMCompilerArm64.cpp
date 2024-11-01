@@ -102,6 +102,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                             std::variant<SymRef, ValuePartRef> &,
                             bool) noexcept;
     bool compile_icmp(IRValueRef, llvm::Instruction *, InstRange) noexcept;
+    void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
     AsmOperand::Expr resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
     void addr_to_reg(AsmOperand::Expr &&addr, ScratchReg &result) noexcept;
@@ -935,6 +936,26 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef         inst_idx,
         try_fuse_compare(std::move(std::get<ScratchReg>(lhs_op.state)));
     }
     return true;
+}
+
+void LLVMCompilerArm64::compile_i32_cmp_zero(
+    AsmReg reg, llvm::CmpInst::Predicate pred) noexcept {
+    Da64Cond cond;
+    switch (pred) {
+    case llvm::CmpInst::ICMP_EQ: cond = DA_EQ; break;
+    case llvm::CmpInst::ICMP_NE: cond = DA_NE; break;
+    case llvm::CmpInst::ICMP_SGT: cond = DA_GT; break;
+    case llvm::CmpInst::ICMP_SGE: cond = DA_GE; break;
+    case llvm::CmpInst::ICMP_SLT: cond = DA_LT; break;
+    case llvm::CmpInst::ICMP_SLE: cond = DA_LE; break;
+    case llvm::CmpInst::ICMP_UGT: cond = DA_HI; break;
+    case llvm::CmpInst::ICMP_UGE: cond = DA_HS; break;
+    case llvm::CmpInst::ICMP_ULT: cond = DA_LO; break;
+    case llvm::CmpInst::ICMP_ULE: cond = DA_LS; break;
+    default: assert(0);
+    }
+    ASM(CMPxi, reg, 0);
+    ASM(CSETw, reg, cond);
 }
 
 tpde_encodegen::EncodeCompiler<LLVMAdaptor,

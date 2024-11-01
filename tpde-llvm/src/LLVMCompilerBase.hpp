@@ -116,6 +116,13 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     SymRef sym_trunctfdf2  = Assembler::INVALID_SYM_REF;
     SymRef sym_extendsftf2 = Assembler::INVALID_SYM_REF;
     SymRef sym_extenddftf2 = Assembler::INVALID_SYM_REF;
+    SymRef sym_eqtf2       = Assembler::INVALID_SYM_REF;
+    SymRef sym_netf2       = Assembler::INVALID_SYM_REF;
+    SymRef sym_gttf2       = Assembler::INVALID_SYM_REF;
+    SymRef sym_getf2       = Assembler::INVALID_SYM_REF;
+    SymRef sym_lttf2       = Assembler::INVALID_SYM_REF;
+    SymRef sym_letf2       = Assembler::INVALID_SYM_REF;
+    SymRef sym_unordtf2    = Assembler::INVALID_SYM_REF;
 
     LLVMCompilerBase(LLVMAdaptor *adaptor, const bool generate_obj)
         : Base{adaptor, generate_obj} {
@@ -3024,9 +3031,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
     using AsmOperand = typename Derived::AsmOperand;
 
     auto *cmp    = llvm::cast<llvm::FCmpInst>(inst);
-    auto *cmp_ty = cmp->getOperand(0)->getType();
-    assert(cmp_ty->isFloatTy() || cmp_ty->isDoubleTy());
-    const auto is_double = cmp_ty->isDoubleTy();
+    auto      *cmp_ty    = cmp->getOperand(0)->getType();
     const auto pred      = cmp->getPredicate();
 
     if (pred == llvm::CmpInst::FCMP_FALSE || pred == llvm::CmpInst::FCMP_TRUE) {
@@ -3037,6 +3042,91 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
         this->set_value(res_ref, res_ref.cur_reg());
         return true;
     }
+
+    if (cmp_ty->isFP128Ty()) {
+        SymRef                   sym = Assembler::INVALID_SYM_REF;
+        llvm::CmpInst::Predicate cmp_pred;
+        switch (pred) {
+        case llvm::CmpInst::FCMP_OEQ:
+            sym      = get_or_create_sym_ref(sym_eqtf2, "__eqtf2");
+            cmp_pred = llvm::CmpInst::ICMP_EQ;
+            break;
+        case llvm::CmpInst::FCMP_UNE:
+            sym      = get_or_create_sym_ref(sym_netf2, "__netf2");
+            cmp_pred = llvm::CmpInst::ICMP_NE;
+            break;
+        case llvm::CmpInst::FCMP_OGT:
+            sym      = get_or_create_sym_ref(sym_gttf2, "__gttf2");
+            cmp_pred = llvm::CmpInst::ICMP_SGT;
+            break;
+        case llvm::CmpInst::FCMP_ULE:
+            sym      = get_or_create_sym_ref(sym_gttf2, "__gttf2");
+            cmp_pred = llvm::CmpInst::ICMP_SLE;
+            break;
+        case llvm::CmpInst::FCMP_OGE:
+            sym      = get_or_create_sym_ref(sym_getf2, "__getf2");
+            cmp_pred = llvm::CmpInst::ICMP_SGE;
+            break;
+        case llvm::CmpInst::FCMP_ULT:
+            sym      = get_or_create_sym_ref(sym_getf2, "__getf2");
+            cmp_pred = llvm::CmpInst::ICMP_SLT;
+            break;
+        case llvm::CmpInst::FCMP_OLT:
+            sym      = get_or_create_sym_ref(sym_lttf2, "__lttf2");
+            cmp_pred = llvm::CmpInst::ICMP_SLT;
+            break;
+        case llvm::CmpInst::FCMP_UGE:
+            sym      = get_or_create_sym_ref(sym_lttf2, "__lttf2");
+            cmp_pred = llvm::CmpInst::ICMP_SGE;
+            break;
+        case llvm::CmpInst::FCMP_OLE:
+            sym      = get_or_create_sym_ref(sym_letf2, "__letf2");
+            cmp_pred = llvm::CmpInst::ICMP_SLE;
+            break;
+        case llvm::CmpInst::FCMP_UGT:
+            sym      = get_or_create_sym_ref(sym_letf2, "__letf2");
+            cmp_pred = llvm::CmpInst::ICMP_SGT;
+            break;
+        case llvm::CmpInst::FCMP_ORD:
+            sym      = get_or_create_sym_ref(sym_unordtf2, "__unordtf2");
+            cmp_pred = llvm::CmpInst::ICMP_EQ;
+            break;
+        case llvm::CmpInst::FCMP_UNO:
+            sym      = get_or_create_sym_ref(sym_unordtf2, "__unordtf2");
+            cmp_pred = llvm::CmpInst::ICMP_NE;
+            break;
+        case llvm::CmpInst::FCMP_ONE:
+        case llvm::CmpInst::FCMP_UEQ:
+            // TODO: implement fp128 fcmp one/ueq
+            // ONE __unordtf2 == 0 && __eqtf2 != 0
+            // UEQ __unordtf2 != 0 || __eqtf2 == 0
+            return false;
+        default: assert(0 && "unexpected fcmp predicate");
+        }
+
+        IRValueRef                lhs = llvm_val_idx(cmp->getOperand(0));
+        IRValueRef                rhs = llvm_val_idx(cmp->getOperand(1));
+        std::array<IRValueRef, 2> args{lhs, rhs};
+
+        ValuePartRef res_ref = this->result_ref_lazy(inst_idx, 0);
+        derived()->create_helper_call(args, {&res_ref, 1}, sym);
+
+        ValuePartRef res_ref2 = this->val_ref(inst_idx, 0);
+        res_ref2.inc_ref_count();
+        auto dst_reg = res_ref2.cur_reg();
+        // Stupid hack to do the actual comparison.
+        // TODO: do a proper comparison here.
+        derived()->compile_i32_cmp_zero(dst_reg, cmp_pred);
+        this->set_value(res_ref2, dst_reg);
+
+        return true;
+    }
+
+    if (!cmp_ty->isFloatTy() && !cmp_ty->isDoubleTy()) {
+        return false;
+    }
+
+    const auto is_double = cmp_ty->isDoubleTy();
 
     using EncodeFnTy = bool (Derived::*)(AsmOperand, AsmOperand, ScratchReg &);
     using Pred       = llvm::CmpInst::Predicate;
