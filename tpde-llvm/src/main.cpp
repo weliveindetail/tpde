@@ -1,22 +1,19 @@
 // SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
 //
 // SPDX-License-Identifier: LicenseRef-Proprietary
-#include <llvm/AsmParser/Parser.h>
-#include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
 
 #include "arm64/LLVMCompilerArm64.hpp"
 #include "x64/LLVMCompilerX64.hpp"
 
-#include <format>
 #include <fstream>
 #include <iostream>
 #include <memory>
-#include <stdio.h>
 
 #include "tpde/base.hpp"
 
@@ -40,9 +37,6 @@ int main(int argc, char *argv[]) {
                               "print_liveness",
                               "Print the liveness information",
                               {"print-liveness"});
-
-    args::Flag input_is_bitcode(
-        parser, "bitcode", "Is the input LLVM-Bitcode?", {"bitcode"});
 
     args::ValueFlag<std::string> target(parser,
                                         "target",
@@ -91,58 +85,13 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-    std::unique_ptr<llvm::MemoryBuffer> bitcode_buf;
-    if (ir_path) {
-        auto bitcode = llvm::MemoryBuffer::getFile(ir_path.Get());
-        if (!bitcode) {
-            std::cerr << std::format("Failed to read bitcode file: '{}'\n",
-                                     bitcode.getError().message());
-            return 1;
-        }
+    llvm::LLVMContext  context;
+    llvm::SMDiagnostic diag{};
 
-        bitcode_buf.swap(bitcode.get());
-    } else {
-        auto bitcode = llvm::MemoryBuffer::getSTDIN();
-        if (!bitcode) {
-            std::cerr << std::format("Failed to read bitcode file: '{}'\n",
-                                     bitcode.getError().message());
-            return 1;
-        }
-
-        bitcode_buf.swap(bitcode.get());
-    }
-
-    auto context = std::make_unique<llvm::LLVMContext>();
-    auto mod     = std::unique_ptr<llvm::Module>();
-
-    if (input_is_bitcode) {
-        if (auto E =
-                llvm::parseBitcodeFile(*bitcode_buf, *context).moveInto(mod)) {
-            std::cerr << std::format("Failed to parse bitcode: '{}'\n",
-                                     llvm::toString(std::move(E)));
-            return 1;
-        }
-    } else {
-        auto diag = llvm::SMDiagnostic{};
-        mod       = llvm::parseAssembly(*bitcode_buf, diag, *context);
-        if (!mod) {
-            std::string              buf;
-            llvm::raw_string_ostream os{buf};
-
-            diag.print(nullptr, os);
-            std::cerr << "Failed to parse IR:\n";
-            std::cerr << buf << '\n';
-            return 1;
-        }
-
-        {
-            std::string              buf;
-            llvm::raw_string_ostream os{buf};
-            if (llvm::verifyModule(*mod, &os)) {
-                std::cerr << "Invalid LLVM module supplied:\n" << buf << '\n';
-                return 1;
-            }
-        }
+    auto mod = llvm::parseIRFile(ir_path.Get(), diag, context);
+    if (!mod) {
+        diag.print(argv[0], llvm::errs());
+        return 1;
     }
 
     if (print_ir) {
@@ -164,13 +113,13 @@ int main(int argc, char *argv[]) {
         compile_fn = tpde_llvm::arm64::compile_llvm;
 #endif
     } else {
-        std::cerr << "Unknown architecture, assuming x86_64\n";
+        std::cerr << "Unknown architecture\n";
         return 1;
     }
 
     std::vector<uint8_t> buf;
     if (!compile_fn(*mod, buf, print_liveness)) {
-        std::cerr << std::format("Failed to compile\n");
+        std::cerr << "Failed to compile\n";
         return 1;
     }
 
