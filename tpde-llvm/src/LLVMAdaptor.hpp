@@ -334,11 +334,10 @@ struct LLVMAdaptor {
 #ifdef TPDE_LOGGING
     [[nodiscard]] std::string
         block_fmt_ref(const IRBlockRef block) const noexcept {
-    #ifndef NDEBUG
-        return blocks[block].block->getNameOrAsOperand();
-    #else
-        return std::string{"Name unavailable in non-debug builds"};
-    #endif
+        std::string              buf;
+        llvm::raw_string_ostream os{buf};
+        blocks[block].block->printAsOperand(os);
+        return buf;
     }
 
     [[nodiscard]] std::string
