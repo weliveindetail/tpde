@@ -17,7 +17,7 @@ define i1 @trunc_i64_i1(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: trunc_i64_i1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -51,7 +51,7 @@ define i8 @trunc_i64_i8(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: trunc_i64_i8>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -85,7 +85,7 @@ define i16 @trunc_i64_i16(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: trunc_i64_i16>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -119,7 +119,7 @@ define i32 @trunc_i64_i32(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: trunc_i64_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -153,10 +153,7 @@ define i37 @trunc_i64_i37(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: trunc_i64_i37>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -190,10 +187,7 @@ define i64 @trunc_i128_i64(i128 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: trunc_i128_i64>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -228,6 +222,8 @@ define i1 @trunc_i64_i37_no_salvage(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    <unknown>
 ;

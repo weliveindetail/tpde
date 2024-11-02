@@ -26,9 +26,8 @@ define i8 @absi8(i8 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: absi8>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -68,6 +67,8 @@ define i16 @absi16(i16 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: absi16>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -108,8 +109,7 @@ define i17 @absi17(i17 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: absi17>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -150,8 +150,8 @@ define i32 @absi32(i32 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: absi32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -191,7 +191,7 @@ define i37 @absi37(i37 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: absi37>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -232,6 +232,8 @@ define i64 @absi64(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ;
 ; ARM64-LABEL: absi64>:

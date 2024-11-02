@@ -382,7 +382,7 @@ inline void
     AssemblerElfA64::emit_jump_table(const Label            table,
                                      const std::span<Label> labels) noexcept {
     text_ensure_space(4 + 4 * labels.size());
-    text_align_4();
+    text_align(4);
     label_place(table);
     const auto table_off = text_cur_off();
     for (u32 i = 0; i < labels.size(); i++) {

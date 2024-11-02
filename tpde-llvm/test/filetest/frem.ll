@@ -20,7 +20,7 @@ define float @frem_f32_1(float %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: frem_f32_1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -61,7 +61,7 @@ define float @frem_f32_5_32(float %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: frem_f32_5_32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -102,9 +102,7 @@ define float @frem_f32_f32(float %0, float %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: frem_f32_f32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -144,9 +142,7 @@ define double @frem_f64_1(double %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: frem_f64_1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -187,9 +183,7 @@ define double @frem_f64_5_32(double %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: frem_f64_5_32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -232,9 +226,7 @@ define double @frem_f64_f64(double %0, double %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: frem_f64_f64>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -281,8 +273,8 @@ define float @frem_f32_no_salvage_imm(float %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: frem_f32_no_salvage_imm>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -335,7 +327,7 @@ define float @frem_f32_no_salvage_reg(float %0, float %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: frem_f32_no_salvage_reg>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -389,8 +381,7 @@ define double @frem_f64_no_salvage_imm(double %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: frem_f64_no_salvage_imm>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -443,6 +434,8 @@ define double @frem_f64_no_salvage_reg(double %0, double %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ;
 ; ARM64-LABEL: frem_f64_no_salvage_reg>:

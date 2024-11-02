@@ -31,6 +31,8 @@ define i8 @umul_i8_0(i8 %0, i8 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: umul_i8_0>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -76,8 +78,8 @@ define i1 @umul_i8_1(i8 %0, i8 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: umul_i8_1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -122,6 +124,8 @@ define i16 @umul_i16_0(i16 %0, i16 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: umul_i16_0>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -167,8 +171,8 @@ define i1 @umul_i16_1(i16 %0, i16 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: umul_i16_1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -213,7 +217,8 @@ define i32 @umul_i32_0(i32 %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: umul_i32_0>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -257,9 +262,8 @@ define i1 @umul_i32_1(i32 %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: umul_i32_1>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -302,9 +306,8 @@ define i64 @umul_i64_0(i64 %0, i64 %1) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: umul_i64_0>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -347,8 +350,7 @@ define i1 @umul_i64_1(i64 %0, i64 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: umul_i64_1>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -393,6 +395,8 @@ define i8 @smul_i8_0(i8 %0, i8 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: smul_i8_0>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -438,8 +442,8 @@ define i1 @smul_i8_1(i8 %0, i8 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: smul_i8_1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -484,9 +488,8 @@ define i16 @smul_i16_0(i16 %0, i16 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: smul_i16_0>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -530,7 +533,8 @@ define i1 @smul_i16_1(i16 %0, i16 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: smul_i16_1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -575,6 +579,8 @@ define i32 @smul_i32_0(i32 %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: smul_i32_0>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -616,7 +622,8 @@ define i1 @smul_i32_1(i32 %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: smul_i32_1>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -659,8 +666,8 @@ define i64 @smul_i64_0(i64 %0, i64 %1) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: smul_i64_0>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -703,6 +710,8 @@ define i1 @smul_i64_1(i64 %0, i64 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    <unknown>
 ;

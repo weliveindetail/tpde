@@ -23,8 +23,6 @@ define i8 @srem_i8_1(i8 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: srem_i8_1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -71,8 +69,6 @@ define i8 @srem_i8_-1(i8 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: srem_i8_-1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -119,8 +115,6 @@ define i8 @srem_i8_28(i8 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: srem_i8_28>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -165,9 +159,7 @@ define i8 @srem_i8_i8(i8 %0, i8 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: srem_i8_i8>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -213,8 +205,6 @@ define i8 @srem_i8_32(i8 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: srem_i8_32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -261,9 +251,7 @@ define i16 @srem_i16_1(i16 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: srem_i16_1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -310,9 +298,7 @@ define i16 @srem_i16_-1(i16 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: srem_i16_-1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -359,9 +345,7 @@ define i16 @srem_i16_28(i16 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: srem_i16_28>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -408,9 +392,7 @@ define i16 @srem_i16_32(i16 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: srem_i16_32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -455,8 +437,7 @@ define i16 @srem_i16_i16(i16 %0, i16 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: srem_i16_i16>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -499,8 +480,8 @@ define i32 @srem_i32_1(i32 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: srem_i32_1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -542,8 +523,8 @@ define i32 @srem_i32_-1(i32 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: srem_i32_-1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -585,8 +566,8 @@ define i32 @srem_i32_28(i32 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: srem_i32_28>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -628,8 +609,8 @@ define i32 @srem_i32_32(i32 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: srem_i32_32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -670,8 +651,8 @@ define i32 @srem_i32_i32(i32 %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: srem_i32_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -712,7 +693,7 @@ define i64 @srem_i64_1(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: srem_i64_1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -754,7 +735,7 @@ define i64 @srem_i64_-1(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: srem_i64_-1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -796,7 +777,7 @@ define i64 @srem_i64_28(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: srem_i64_28>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -838,7 +819,7 @@ define i64 @srem_i64_32(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: srem_i64_32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -879,9 +860,8 @@ define i64 @srem_i64_i64(i64 %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: srem_i64_i64>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -923,9 +903,7 @@ define i8 @srem_i8_salvage(i8 %0, i8 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: srem_i8_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -969,8 +947,7 @@ define i16 @srem_i16_salvage(i16 %0, i16 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: srem_i16_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1012,8 +989,8 @@ define i32 @srem_i32_salvage(i32 %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: srem_i32_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1053,9 +1030,8 @@ define i64 @srem_i64_salvage(i64 %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: srem_i64_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1104,8 +1080,7 @@ define i8 @srem_i8_no_salvage(i8 %0, i8 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: srem_i8_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1161,7 +1136,7 @@ define i16 @srem_i16_no_salvage(i16 %0, i16 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: srem_i16_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1212,8 +1187,7 @@ define i32 @srem_i32_no_salvage(i32 %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: srem_i32_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1260,6 +1234,8 @@ define i64 @srem_i64_no_salvage(i64 %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ;

@@ -31,9 +31,7 @@ define void @call_void_void() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: call_void_void>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -72,7 +70,8 @@ define i32 @call_i32_void() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: call_i32_void>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -116,10 +115,7 @@ define i128 @call_i128_void() {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: call_i128_void>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -168,8 +164,6 @@ define i32 @call_i128_void_ret_i32(i32 %0) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: call_i128_void_ret_i32>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -216,8 +210,7 @@ define i32 @call_void_i32(i32 %0, i32 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: call_void_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -258,9 +251,7 @@ define void @call_void_i32_mismatch(i32 %0, i32 %1) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: call_void_i32_mismatch>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -301,8 +292,7 @@ define i32 @call_i32_i32_i32(i32 %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: call_i32_i32_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -353,7 +343,7 @@ define i32 @call_i32_i32_i128_i128_i128(i32 %0, i128 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: call_i32_i32_i128_i128_i128>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -403,6 +393,8 @@ define i32 @call_i32_vararg(ptr %0, i32 %1, i128 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: call_i32_vararg>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -441,8 +433,8 @@ define i32 @call_indirect(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: call_indirect>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -484,8 +476,7 @@ define i32 @fn_i32_byval_ptr_i32_i32(ptr byval(%struct.ptr_i32) align 8 %0, i32 
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: fn_i32_byval_ptr_i32_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -535,8 +526,7 @@ define i32 @call_byval(i32 %0) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: call_byval>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -587,8 +577,7 @@ define void @call_sret_tgt(ptr sret(%struct.3i64) align 8) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: call_sret_tgt>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -638,6 +627,8 @@ define void @call_sret() {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    <unknown>
 ;

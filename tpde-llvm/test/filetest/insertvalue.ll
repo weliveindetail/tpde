@@ -24,8 +24,8 @@ define void @insert_i8_i32_0(ptr %0, i8 %1) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: insert_i8_i32_0>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -68,9 +68,8 @@ define void @insert_i8_i32_1(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: insert_i8_i32_1>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -116,10 +115,7 @@ define void @insert_i8_i32_0_nosalvage(ptr %0, i8 %1) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: insert_i8_i32_0_nosalvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -169,7 +165,7 @@ define void @insert_i8_i32_1_nosalvage(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: insert_i8_i32_1_nosalvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -217,8 +213,8 @@ define void @insert_ptr_i32_0(ptr %0, ptr %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: insert_ptr_i32_0>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -261,8 +257,8 @@ define void @insert_ptr_i32_1(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: insert_ptr_i32_1>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -308,9 +304,7 @@ define void @insert_ptr_i32_0_nosalvage(ptr %0, ptr %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: insert_ptr_i32_0_nosalvage>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -356,9 +350,8 @@ define void @insert_ptr_i32_poison(ptr %0, ptr %1, i32 %2) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: insert_ptr_i32_poison>:
 ; ARM64:    sub sp, sp, #0xe0
@@ -401,8 +394,7 @@ define ptr @insert_ptr_i32_poison_nosalvage(ptr %0, ptr %1, i32 %2) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: insert_ptr_i32_poison_nosalvage>:
 ; ARM64:    sub sp, sp, #0xe0
@@ -447,9 +439,7 @@ define i32 @insert_ptr_i32_poison_nosalvage1(ptr %0, ptr %1, i32 %2) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: insert_ptr_i32_poison_nosalvage1>:
 ; ARM64:    sub sp, sp, #0xe0
@@ -496,9 +486,7 @@ define void @insert_ptr_i32_1_nosalvage(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: insert_ptr_i32_1_nosalvage>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -546,8 +534,7 @@ define void @insert_f32_ptr_0(ptr %0, float %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: insert_f32_ptr_0>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -590,8 +577,7 @@ define void @insert_f32_ptr_1(ptr %0, ptr %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: insert_f32_ptr_1>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -637,9 +623,8 @@ define void @insert_f32_ptr_0_nosalvage(ptr %0, float %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: insert_f32_ptr_0_nosalvage>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -689,8 +674,8 @@ define void @insert_f32_ptr_1_nosalvage(ptr %0, ptr %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: insert_f32_ptr_1_nosalvage>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -742,9 +727,6 @@ define void @insert_i128_i1_0(ptr %0, i128 %1) {
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
 ;
 ; ARM64-LABEL: insert_i128_i1_0>:
 ; ARM64:    sub sp, sp, #0x100
@@ -790,8 +772,8 @@ define void @insert_i128_i1_1(ptr %0, i1 %1) {
 ; X64:    add rsp, 0x80
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: insert_i128_i1_1>:
 ; ARM64:    sub sp, sp, #0xf0
@@ -843,10 +825,7 @@ define void @insert_i128_i1_0_nosalvage(ptr %0, i128 %1) {
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: insert_i128_i1_0_nosalvage>:
 ; ARM64:    sub sp, sp, #0x100
@@ -903,6 +882,8 @@ define void @insert_i128_i1_1_nosalvage(ptr %0, i1 %1) {
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ; X64:     ...
 ;
 ; ARM64-LABEL: insert_i128_i1_1_nosalvage>:

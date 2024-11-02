@@ -16,7 +16,7 @@ define i8 @ret_i8(i8 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i8>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -50,8 +50,6 @@ define signext i8 @ret_i8_sext(i8 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: ret_i8_sext>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -86,9 +84,7 @@ define zeroext i8 @ret_i8_zext(i8 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i8_zext>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -122,9 +118,7 @@ define i8 @ret_i8_const() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i8_const>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -158,9 +152,7 @@ define zeroext i8 @ret_i8_const_zext() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i8_const_zext>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -195,7 +187,8 @@ define signext i8 @ret_i8_const_sext() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i8_const_sext>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -231,7 +224,7 @@ define i16 @ret_i16(i16 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i16>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -265,8 +258,6 @@ define signext i16 @ret_i16_sext(i16 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: ret_i16_sext>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -301,9 +292,7 @@ define zeroext i16 @ret_i16_zext(i16 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i16_zext>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -337,9 +326,7 @@ define i16 @ret_i16_const() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i16_const>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -373,9 +360,7 @@ define i16 @ret_i16_const2() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i16_const2>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -409,9 +394,7 @@ define zeroext i16 @ret_i16_const_zext() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i16_const_zext>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -446,7 +429,8 @@ define signext i16 @ret_i16_const_sext() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i16_const_sext>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -482,7 +466,7 @@ define i32 @ret_i32(i32 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -516,9 +500,7 @@ define signext i32 @ret_i32_sext(i32 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i32_sext>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -553,9 +535,7 @@ define zeroext i32 @ret_i32_zext(i32 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i32_zext>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -589,9 +569,7 @@ define i32 @ret_i32_const() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i32_const>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -626,9 +604,7 @@ define i32 @ret_i32_const2() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i32_const2>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -663,10 +639,7 @@ define i64 @ret_i64(i64 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -699,8 +672,8 @@ define i64 @ret_i64_const() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_i64_const>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -734,6 +707,8 @@ define i64 @ret_i64_const2() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i64_const2>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -770,8 +745,8 @@ define i64 @ret_i64_const3() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_i64_const3>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -805,6 +780,8 @@ define i64 @ret_i64_const4() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i64_const4>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -840,8 +817,6 @@ define i128 @ret_i128(i128 %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: ret_i128>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -875,8 +850,8 @@ define i128 @ret_i128_const1() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i128_const1>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -912,7 +887,7 @@ define i128 @ret_i128_const2() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_i128_const2>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -949,8 +924,8 @@ define zeroext i24 @ret_i24_zext(i24 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_i24_zext>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -984,9 +959,7 @@ define zeroext i24 @ret_i24_const_zext() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i24_const_zext>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -1022,7 +995,8 @@ define signext i24 @ret_i24_sext(i24 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_i24_sext>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1058,9 +1032,8 @@ define signext i24 @ret_i24_const_sext() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i24_const_sext>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -1098,8 +1071,7 @@ define zeroext i41 @ret_i41_zext(i41 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_i41_zext>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1133,6 +1105,8 @@ define zeroext i41 @ret_i41_const_zext() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i41_const_zext>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -1168,9 +1142,8 @@ define signext i41 @ret_i41_sext(i41 %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_i41_sext>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1206,7 +1179,7 @@ define signext i41 @ret_i41_const_sext() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i41_const_sext>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -1241,8 +1214,7 @@ define float @ret_f32(float %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_f32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1276,7 +1248,8 @@ define float @ret_f32_const() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_f32_const>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -1309,8 +1282,7 @@ define double @ret_f64(double %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_f64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1344,9 +1316,7 @@ define double @ret_f64_const() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_f64_const>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -1381,9 +1351,7 @@ define float @ret_f32_2(float %b, float %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_f32_2>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1417,9 +1385,7 @@ define double @ret_f64_2(double %b, double %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: ret_f64_2>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1461,7 +1427,8 @@ define %struct.ptr_i32 @ret_ptr_i32(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_ptr_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1501,7 +1468,8 @@ define %struct.i32_ptr @ret_i32_ptr(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i32_ptr>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1541,6 +1509,8 @@ define %struct.f32_ptr @ret_f32_ptr(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ;

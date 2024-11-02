@@ -20,9 +20,8 @@ define void @cmpxchg_mono_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cmpxchg_mono_mono>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -65,9 +64,8 @@ define void @cmpxchg_acq_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cmpxchg_acq_mono>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -109,9 +107,8 @@ define void @cmpxchg_acq_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cmpxchg_acq_acq>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -154,9 +151,8 @@ define void @cmpxchg_rel_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cmpxchg_rel_mono>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -198,9 +194,8 @@ define void @cmpxchg_rel_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cmpxchg_rel_acq>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -243,9 +238,8 @@ define void @cmpxchg_acqrel_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cmpxchg_acqrel_mono>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -287,9 +281,8 @@ define void @cmpxchg_acqrel_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cmpxchg_acqrel_acq>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -332,9 +325,8 @@ define void @cmpxchg_seqcst_mono(ptr %0, i64 %1, i64 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cmpxchg_seqcst_mono>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -376,9 +368,8 @@ define void @cmpxchg_seqcst_acq(ptr %0, i64 %1, i64 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cmpxchg_seqcst_acq>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -420,6 +411,8 @@ define void @cmpxchg_seqcst_seqcst(ptr %0, i64 %1, i64 %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    <unknown>

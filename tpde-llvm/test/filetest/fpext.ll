@@ -16,9 +16,7 @@ define double @fpext_f32tof64(float %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: fpext_f32tof64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -55,9 +53,7 @@ define fp128 @fpext_f32tof128(float %in) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: fpext_f32tof128>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -94,6 +90,8 @@ define fp128 @fpext_f64tof128(double %in) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    <unknown>
 ;

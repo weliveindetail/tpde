@@ -16,9 +16,7 @@ define float @fptrunc_f64tof32(double %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: fptrunc_f64tof32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -55,9 +53,7 @@ define float @fptrunc_f128tof32(fp128 %in) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: fptrunc_f128tof32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -94,6 +90,8 @@ define double @fptrunc_f128tof64(fp128 %in) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    <unknown>
 ;

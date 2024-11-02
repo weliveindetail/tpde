@@ -20,10 +20,7 @@ define void @store_i8(ptr %a, i8 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_i8>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -58,10 +55,7 @@ define void @store_i8_const(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_i8_const>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -98,10 +92,7 @@ define void @store_i16(ptr %a, i16 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_i16>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -136,9 +127,7 @@ define void @store_i16_const(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: store_i16_const>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -175,7 +164,7 @@ define void @store_i32(ptr %a, i32 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -210,10 +199,7 @@ define void @store_i32_alloca(i32 %b) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_i32_alloca>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -249,8 +235,6 @@ define void @store_i32_const(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: store_i32_const>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -288,10 +272,7 @@ define void @store_i64(ptr %a, i64 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_i64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -326,9 +307,7 @@ define void @store_i64_alloca(i64 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: store_i64_alloca>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -364,8 +343,8 @@ define void @store_i64_const1(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: store_i64_const1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -403,8 +382,7 @@ define void @store_i64_const2(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: store_i64_const2>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -441,8 +419,8 @@ define void @store_i64_const3(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: store_i64_const3>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -480,8 +458,8 @@ define void @store_i128(ptr %a, i128 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: store_i128>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -517,7 +495,8 @@ define void @store_i128_alloca(i128 %b) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: store_i128_alloca>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -557,9 +536,8 @@ define void @store_i128_const1(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: store_i128_const1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -605,9 +583,8 @@ define void @store_i128_const2(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: store_i128_const2>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -647,9 +624,7 @@ define void @store_i128_const3(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_i128_const3>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -687,9 +662,7 @@ define void @store_f32(ptr %a, float %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: store_f32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -724,9 +697,7 @@ define void @store_float_alloca(float %b) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: store_float_alloca>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -764,8 +735,7 @@ define void @store_f32_const(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: store_f32_const>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -802,9 +772,7 @@ define void @store_f64(ptr %a, double %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: store_f64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -841,10 +809,7 @@ define void @store_f64_const(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_f64_const>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -883,6 +848,8 @@ define void @store_i24(ptr %a, i24 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_i24>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -921,9 +888,8 @@ define void @store_i24_alloca(i24 %b) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: store_i24_alloca>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -964,8 +930,7 @@ define void @store_i24_const(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: store_i24_const>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1007,6 +972,8 @@ define void @store_i40(ptr %a, i40 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_i40>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1046,10 +1013,7 @@ define void @store_i40_const(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_i40_const>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1092,6 +1056,8 @@ define void @store_i48(ptr %a, i48 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_i48>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1130,9 +1096,8 @@ define void @store_i48_alloca(i48 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: store_i48_alloca>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1173,9 +1138,7 @@ define void @store_i48_const(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: store_i48_const>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1221,9 +1184,7 @@ define void @store_i56(ptr %a, i56 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: store_i56>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1268,7 +1229,7 @@ define void @store_i56_const(ptr %a) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: store_i56_const>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1312,10 +1273,7 @@ define void @store_4f(ptr %a, <4 x float> %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_4f>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1371,8 +1329,6 @@ define void @store_struct_i8_i1(ptr %a, %struct.i8_i1 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: store_struct_i8_i1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1409,8 +1365,6 @@ define void @store_struct_i8_i8(ptr %a, %struct.i8_i8 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: store_struct_i8_i8>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1447,8 +1401,8 @@ define void @store_struct_i8_i16(ptr %a, %struct.i8_i16 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: store_struct_i8_i16>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1485,8 +1439,6 @@ define void @store_struct_i8_i32(ptr %a, %struct.i8_i32 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: store_struct_i8_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1523,8 +1475,8 @@ define void @store_struct_i8_i64(ptr %a, %struct.i8_i64 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: store_struct_i8_i64>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1562,8 +1514,6 @@ define void @store_struct_i1_i32(ptr %a, %struct.i1_i32 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: store_struct_i1_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1600,8 +1550,6 @@ define void @store_struct_i16_i32(ptr %a, %struct.i16_i32 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: store_struct_i16_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1638,9 +1586,7 @@ define void @store_struct_i32_i32(ptr %a, %struct.i32_i32 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: store_struct_i32_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1677,8 +1623,6 @@ define void @store_struct_i64_i32(ptr %a, %struct.i64_i32 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: store_struct_i64_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1715,8 +1659,6 @@ define void @store_struct_ptr_i32(ptr %a, %struct.ptr_i32 %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: store_struct_ptr_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1753,8 +1695,6 @@ define void @store_struct_i32_ptr(ptr %a, %struct.i32_ptr %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: store_struct_i32_ptr>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1791,7 +1731,8 @@ define void @store_struct_f32_ptr(ptr %a, %struct.f32_ptr %b) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: store_struct_f32_ptr>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1832,9 +1773,7 @@ define void @store_struct_i128_i1(ptr %a) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: store_struct_i128_i1>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -1882,6 +1821,8 @@ define void @store_struct_i32_i32_i32_i32_i32_i32(ptr %a, %struct.i32_i32_i32_i3
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ;

@@ -26,7 +26,8 @@ define i32 @load_basic_int() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_basic_int>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -67,6 +68,8 @@ define ptr @load_func_ptr() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_func_ptr>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -107,6 +110,8 @@ define void @store_global_ptr(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: store_global_ptr>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -146,8 +151,8 @@ define ptr @get_global() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: get_global>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -185,8 +190,8 @@ define ptr @get_func1() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: get_func1>:
 ; ARM64:    sub sp, sp, #0xa0
@@ -224,6 +229,8 @@ define ptr @get_func2() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    <unknown>

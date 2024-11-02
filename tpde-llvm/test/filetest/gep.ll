@@ -19,10 +19,7 @@ define ptr @gep_ptr_no_idx(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_ptr_no_idx>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -58,10 +55,7 @@ define ptr @gep_ptr_zero(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_ptr_zero>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -98,8 +92,6 @@ define ptr @gep_ptr_zero_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: gep_ptr_zero_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -137,10 +129,7 @@ define ptr @gep_i16_zero(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_i16_zero>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -177,8 +166,6 @@ define ptr @gep_i16_zero_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: gep_i16_zero_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -216,10 +203,7 @@ define ptr @gep_sti_zero(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_sti_zero>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -256,8 +240,6 @@ define ptr @gep_sti_zero_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: gep_sti_zero_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -298,8 +280,8 @@ define ptr @gep_ptr_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_ptr_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -336,9 +318,8 @@ define ptr @gep_ptr_one_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_ptr_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -376,8 +357,8 @@ define ptr @gep_i16_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_i16_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -414,9 +395,8 @@ define ptr @gep_i16_one_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_i16_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -454,8 +434,8 @@ define ptr @gep_sti_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_sti_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -492,9 +472,8 @@ define ptr @gep_sti_one_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_sti_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -532,8 +511,8 @@ define ptr @gep_sti_zero_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_sti_zero_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -570,9 +549,8 @@ define ptr @gep_sti_zero_one_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_sti_zero_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -610,8 +588,8 @@ define ptr @gep_sti_one_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_sti_one_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -648,9 +626,8 @@ define ptr @gep_sti_one_one_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_sti_one_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -690,8 +667,8 @@ define ptr @gep_ptr_neg_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_ptr_neg_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -728,9 +705,8 @@ define ptr @gep_ptr_neg_one_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_ptr_neg_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -768,8 +744,8 @@ define ptr @gep_i16_neg_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_i16_neg_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -806,9 +782,8 @@ define ptr @gep_i16_neg_one_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_i16_neg_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -846,8 +821,8 @@ define ptr @gep_sti_neg_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_sti_neg_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -884,9 +859,8 @@ define ptr @gep_sti_neg_one_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_sti_neg_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -924,8 +898,8 @@ define ptr @gep_sti_neg_one_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_sti_neg_one_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -962,9 +936,8 @@ define ptr @gep_sti_neg_one_one_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_sti_neg_one_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1004,6 +977,8 @@ define ptr @gep_i16_ffff(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_i16_ffff>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1018,6 +993,7 @@ define ptr @gep_i16_ffff(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
+; ARM64:    mov x0, x0
 ; ARM64:    mov x1, #0x1fffe // =131070
 ; ARM64:    add x0, x0, x1
 ; ARM64:    ldp x29, x30, [sp]
@@ -1041,8 +1017,7 @@ define ptr @gep_i16_ffff_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_i16_ffff_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1057,8 +1032,10 @@ define ptr @gep_i16_ffff_no_salvage(ptr %0) {
 ; ARM64:    nop
 ; ARM64:    nop
 ; ARM64:    nop
+; ARM64:    mov x1, x0
 ; ARM64:    mov x2, #0x1fffe // =131070
 ; ARM64:    add x1, x1, x2
+; ARM64:    mov x0, x0
 ; ARM64:    mov x1, #0x1fffe // =131070
 ; ARM64:    add x0, x0, x1
 ; ARM64:    ldp x29, x30, [sp]
@@ -1085,6 +1062,8 @@ define ptr @gep_i8_varoff_i32(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_i8_varoff_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1124,8 +1103,7 @@ define ptr @gep_i8_varoff_i32_no_salvage(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_i8_varoff_i32_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1166,6 +1144,8 @@ define ptr @gep_i16_varoff_i32(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_i16_varoff_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1205,8 +1185,7 @@ define ptr @gep_i16_varoff_i32_no_salvage(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_i16_varoff_i32_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1247,6 +1226,8 @@ define ptr @gep_i32_varoff_i32(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_i32_varoff_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1284,6 +1265,8 @@ define ptr @gep_i64_varoff_i32(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_i64_varoff_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1321,6 +1304,8 @@ define ptr @gep_sti_varoff_i32_zero(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_sti_varoff_i32_zero>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1359,7 +1344,7 @@ define ptr @gep_i128_varoff_i32(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_i128_varoff_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1398,8 +1383,8 @@ define ptr @gep_i8_varoff_i64(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_i8_varoff_i64>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1436,9 +1421,8 @@ define ptr @gep_i8_varoff_i64_no_salvage(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_i8_varoff_i64_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1476,8 +1460,8 @@ define ptr @gep_i64_varoff_i64(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_i64_varoff_i64>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1514,9 +1498,8 @@ define ptr @gep_i64_varoff_i64_no_salvage(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_i64_varoff_i64_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1554,8 +1537,8 @@ define ptr @gep_sti_varoff_i64_zero(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_sti_varoff_i64_zero>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1592,9 +1575,8 @@ define ptr @gep_i2048_varoff_i64(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_i2048_varoff_i64>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1632,9 +1614,8 @@ define ptr @gep_i8_varoff_i8(ptr %0, i8 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_i8_varoff_i8>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1674,10 +1655,7 @@ define ptr @gep_i8_varoff_i8_no_salvage(ptr %0, i8 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_i8_varoff_i8_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1718,9 +1696,8 @@ define ptr @gep_i32_varoff_i8(ptr %0, i8 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_i32_varoff_i8>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1759,9 +1736,7 @@ define ptr @gep_stf_varoff_i8_zero(ptr %0, i8 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_i8_zero>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1801,9 +1776,8 @@ define ptr @gep_i8_varoff_i16(ptr %0, i16 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_i8_varoff_i16>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1841,9 +1815,8 @@ define ptr @gep_i32_varoff_i16(ptr %0, i16 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_i32_varoff_i16>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1882,9 +1855,7 @@ define ptr @gep_stf_varoff_i16_zero(ptr %0, i16 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_i16_zero>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1925,7 +1896,7 @@ define ptr @gep_i512_varoff_i32(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_i512_varoff_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1964,7 +1935,7 @@ define ptr @gep_stf_varoff_i32_zero(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_i32_zero>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2003,7 +1974,8 @@ define ptr @gep_stf_varoff_i64_zero(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_i64_zero>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2044,8 +2016,7 @@ define ptr @gep_stf_varoff_i8_one(ptr %0, i8 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_i8_one>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2087,8 +2058,7 @@ define ptr @gep_stf_varoff_i16_one(ptr %0, i16 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_i16_one>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2130,9 +2100,7 @@ define ptr @gep_stf_varoff_i32_one(ptr %0, i32 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_i32_one>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2172,7 +2140,8 @@ define ptr @gep_stf_varoff_i64_one(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_i64_one>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2211,10 +2180,7 @@ define ptr @gep_ptr_no_idx_fuse_zero(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_ptr_no_idx_fuse_zero>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2251,10 +2217,7 @@ define ptr @gep_ptr_zero_fuse_no_idx(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_ptr_zero_fuse_no_idx>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2291,10 +2254,7 @@ define ptr @gep_ptr_zero_fuse_zero(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_ptr_zero_fuse_zero>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2332,8 +2292,8 @@ define ptr @gep_ptr_one_fuse_zero(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_ptr_one_fuse_zero>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2370,8 +2330,8 @@ define ptr @gep_ptr_zero_fuse_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_ptr_zero_fuse_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2410,10 +2370,7 @@ define ptr @gep_stf_zero_fuse_zero(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_stf_zero_fuse_zero>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2451,8 +2408,8 @@ define ptr @gep_stf_one_fuse_zero(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_stf_one_fuse_zero>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2489,8 +2446,8 @@ define ptr @gep_stf_zero_fuse_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_stf_zero_fuse_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2529,8 +2486,8 @@ define ptr @gep_stf_one_zero_fuse_zero(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_stf_one_zero_fuse_zero>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2569,9 +2526,8 @@ define ptr @gep_stf_one_zero_fuse_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_stf_one_zero_fuse_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2612,10 +2568,7 @@ define ptr @gep_stf_one_zero_fuse_one_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_stf_one_zero_fuse_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2657,8 +2610,8 @@ define ptr @gep_stf_one_one_fuse_zero(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_stf_one_one_fuse_zero>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2697,9 +2650,8 @@ define ptr @gep_stf_one_one_fuse_one(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_stf_one_one_fuse_one>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2740,10 +2692,7 @@ define ptr @gep_stf_one_one_fuse_one_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_stf_one_one_fuse_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2787,8 +2736,8 @@ define ptr @gep_ptr_varoff_fuse_zero(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_ptr_varoff_fuse_zero>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2827,9 +2776,8 @@ define ptr @gep_ptr_varoff_fuse_one(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_ptr_varoff_fuse_one>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2867,7 +2815,8 @@ define ptr @gep_stf_varoff_fuse_zero(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_fuse_zero>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2906,7 +2855,8 @@ define ptr @gep_stf_varoff_zero_fuse_zero(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_zero_fuse_zero>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2947,8 +2897,8 @@ define ptr @gep_stf_varoff_zero_fuse_one(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: gep_stf_varoff_zero_fuse_one>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -2992,7 +2942,8 @@ define ptr @gep_stf_varoff_zero_fuse_one_no_salvage(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_zero_fuse_one_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -3040,10 +2991,7 @@ define ptr @gep_zai32_zero_zero_i64(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_zai32_zero_zero_i64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -3080,8 +3028,8 @@ define ptr @gep_zai32_zero_one_i64(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_zai32_zero_one_i64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -3116,10 +3064,7 @@ define ptr @gep_zai32_one_zero_i64(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_zai32_one_zero_i64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -3156,8 +3101,8 @@ define ptr @gep_zai32_one_one_i64(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_zai32_one_one_i64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -3192,10 +3137,7 @@ define ptr @gep_zai32_varoff_zero_i64(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_zai32_varoff_zero_i64>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -3232,8 +3174,8 @@ define ptr @gep_zai32_varoff_one_i64(ptr %0, i64 %1) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_zai32_varoff_one_i64>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -3268,6 +3210,7 @@ define dso_local ptr @gep_array(ptr noundef %0) #0 {
 ; X64:    add rsp, 0x110
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    <unknown>

@@ -18,10 +18,7 @@ define void @prefetch_read_local0_inst(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_read_local0_inst>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -56,10 +53,7 @@ define void @prefetch_read_local1_inst(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_read_local1_inst>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -94,10 +88,7 @@ define void @prefetch_read_local2_inst(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_read_local2_inst>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -132,10 +123,7 @@ define void @prefetch_read_local3_inst(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_read_local3_inst>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -170,10 +158,7 @@ define void @prefetch_write_local0_inst(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_write_local0_inst>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -208,10 +193,7 @@ define void @prefetch_write_local1_inst(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_write_local1_inst>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -246,10 +228,7 @@ define void @prefetch_write_local2_inst(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_write_local2_inst>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -284,10 +263,7 @@ define void @prefetch_write_local3_inst(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_write_local3_inst>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -324,10 +300,7 @@ define void @prefetch_read_local0_data(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_read_local0_data>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -362,10 +335,7 @@ define void @prefetch_read_local1_data(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_read_local1_data>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -400,10 +370,7 @@ define void @prefetch_read_local2_data(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_read_local2_data>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -438,10 +405,7 @@ define void @prefetch_read_local3_data(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_read_local3_data>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -477,10 +441,7 @@ define void @prefetch_write_local0_data(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_write_local0_data>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -515,10 +476,7 @@ define void @prefetch_write_local1_data(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_write_local1_data>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -553,10 +511,7 @@ define void @prefetch_write_local2_data(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: prefetch_write_local2_data>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -591,6 +546,8 @@ define void @prefetch_write_local3_data(ptr %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    <unknown>

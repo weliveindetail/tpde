@@ -19,8 +19,8 @@ define i64 @br_simple1(i64 %0) {
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: br_simple1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -63,6 +63,8 @@ define i64 @condbr0(i64 %0, i1 %1) {
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ; X64:  <L0>:
 ; X64:    lea rbx, [rbx + 0xa]
 ; X64:    mov rax, rbx
@@ -70,9 +72,8 @@ define i64 @condbr0(i64 %0, i1 %1) {
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: condbr0>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -127,12 +128,16 @@ define i64 @condbr1(i64 %0, i1 %1) {
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ; X64:  <L0>:
 ; X64:    mov rax, rbx
 ; X64:    add rsp, 0x38
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ;

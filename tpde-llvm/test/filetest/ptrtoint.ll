@@ -17,10 +17,7 @@ define i64 @ptrtoint_i64(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ptrtoint_i64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -55,8 +52,6 @@ define i64 @ptrtoint_i64_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: ptrtoint_i64_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -92,7 +87,7 @@ define i32 @ptrtoint_i32(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ptrtoint_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -127,6 +122,8 @@ define i32 @ptrtoint_i32_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ;

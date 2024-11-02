@@ -1222,6 +1222,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     auto *text_data     = this->assembler.sec_text.data.data();
     u32   first_ret_off = func_ret_offs[0];
     u32   ret_size      = 0;
+    u32   epilogue_size = 7 + 1 + 1 + func_reg_restore_alloc; // add + pop + ret
+    u32   func_end_ret_off = this->assembler.text_cur_off() - epilogue_size;
     {
         write_ptr            = text_data + first_ret_off;
         const auto ret_start = write_ptr;
@@ -1247,19 +1249,24 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
         write_ptr += fe64_POPr(write_ptr, 0, FE_BP);
         write_ptr += fe64_RET(write_ptr, 0);
         ret_size   = write_ptr - ret_start;
+        assert(ret_size <= epilogue_size && "function epilogue too long");
 
-#if defined(TPDE_ASSERTS) || defined(TPDE_TESTING)
-        // write CCs in TPDE_TEST/ASSERT mode for better disassembly
-        const u32 epilogue_size =
-            7 + 1 + 1 + func_reg_restore_alloc; // add + pop + ret
-        std::memset(write_ptr, 0xCC, epilogue_size - ret_size);
-        ret_size = epilogue_size;
-#endif
+        // write NOP for better disassembly
+        if (epilogue_size > ret_size) {
+            fe64_NOP(write_ptr, epilogue_size - ret_size);
+            if (first_ret_off == func_end_ret_off) {
+                this->assembler.text_write_ptr -= epilogue_size - ret_size;
+            }
+        }
     }
 
     for (u32 i = 1; i < func_ret_offs.size(); ++i) {
-        std::memcpy(
-            text_data + func_ret_offs[i], text_data + first_ret_off, ret_size);
+        std::memcpy(text_data + func_ret_offs[i],
+                    text_data + first_ret_off,
+                    epilogue_size);
+        if (func_ret_offs[i] == func_end_ret_off) {
+            this->assembler.text_write_ptr -= epilogue_size - ret_size;
+        }
     }
 }
 

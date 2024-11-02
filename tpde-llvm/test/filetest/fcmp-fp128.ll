@@ -16,9 +16,7 @@ define i1 @fcmp_f128_false(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: fcmp_f128_false>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -52,9 +50,7 @@ define i1 @fcmp_f128_true(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: fcmp_f128_true>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -93,7 +89,7 @@ define i1 @fcmp_f128_oge(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fcmp_f128_oge>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -135,7 +131,7 @@ define i1 @fcmp_f128_ord(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fcmp_f128_ord>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -177,7 +173,7 @@ define i1 @fcmp_f128_oeq(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fcmp_f128_oeq>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -219,7 +215,7 @@ define i1 @fcmp_f128_ogt(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fcmp_f128_ogt>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -261,7 +257,7 @@ define i1 @fcmp_f128_olt(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fcmp_f128_olt>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -303,7 +299,7 @@ define i1 @fcmp_f128_ole(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fcmp_f128_ole>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -345,7 +341,7 @@ define i1 @fcmp_f128_uno(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fcmp_f128_uno>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -387,7 +383,7 @@ define i1 @fcmp_f128_ugt(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fcmp_f128_ugt>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -429,7 +425,7 @@ define i1 @fcmp_f128_uge(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fcmp_f128_uge>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -471,7 +467,7 @@ define i1 @fcmp_f128_ult(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fcmp_f128_ult>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -513,7 +509,7 @@ define i1 @fcmp_f128_ule(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fcmp_f128_ule>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -555,6 +551,8 @@ define i1 @fcmp_f128_une(fp128 %0, fp128 %1) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ;
 ; ARM64-LABEL: fcmp_f128_une>:

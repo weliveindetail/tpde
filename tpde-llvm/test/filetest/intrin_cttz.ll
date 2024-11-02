@@ -23,8 +23,8 @@ define void @cttz_i8(i8 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cttz_i8>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -61,10 +61,7 @@ define void @cttz_i8_zero_poison(i8 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: cttz_i8_zero_poison>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -102,8 +99,8 @@ define void @cttz_i16(i16 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cttz_i16>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -140,10 +137,7 @@ define void @cttz_i16_zero_poison(i16 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: cttz_i16_zero_poison>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -185,9 +179,7 @@ define void @cttz_i32(i32 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: cttz_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -223,10 +215,7 @@ define void @cttz_i32_zero_poison(i32 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: cttz_i32_zero_poison>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -268,8 +257,8 @@ define void @cttz_i64(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: cttz_i64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -305,9 +294,7 @@ define void @cttz_i64_zero_poison(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: cttz_i64_zero_poison>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -357,8 +344,8 @@ define void @cttz_i32_no_salvage(i32 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: cttz_i32_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -411,8 +398,7 @@ define void @cttz_i64_no_salvage(i64 %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: cttz_i64_no_salvage>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -457,6 +443,8 @@ define void @cttz_i16_no_salvage(i16 %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    <unknown>
 ;

@@ -20,7 +20,8 @@ define float @fmuladdf32(float %0, float %1, float %2) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: fmuladdf32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -56,6 +57,8 @@ define double @fmuladdf64(double %0, double %1, double %2) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ;

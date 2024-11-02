@@ -22,8 +22,6 @@ define i8 @extract_i8_i32_0(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: extract_i8_i32_0>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -63,7 +61,8 @@ define i32 @extract_i8_i32_1(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: extract_i8_i32_1>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -106,9 +105,7 @@ define i8 @extract_i8_i32_0_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: extract_i8_i32_0_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -155,9 +152,7 @@ define i32 @extract_i8_i32_1_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: extract_i8_i32_1_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -201,8 +196,6 @@ define ptr @extract_ptr_i32_0(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: extract_ptr_i32_0>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -242,7 +235,8 @@ define i32 @extract_ptr_i32_1(ptr %0) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: extract_ptr_i32_1>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -285,7 +279,7 @@ define ptr @extract_ptr_i32_0_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: extract_ptr_i32_0_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -332,8 +326,7 @@ define i32 @extract_ptr_i32_1_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: extract_ptr_i32_1_no_salvage>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -377,7 +370,8 @@ define float @extract_f32_ptr_0(ptr %0) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: extract_f32_ptr_0>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -415,7 +409,8 @@ define ptr @extract_f32_ptr_1(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: extract_f32_ptr_1>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -458,7 +453,8 @@ define float @extract_f32_ptr_0_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: extract_f32_ptr_0_no_salvage>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -505,8 +501,6 @@ define ptr @extract_f32_ptr_1_no_salvage(ptr %0) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: extract_f32_ptr_1_no_salvage>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -552,7 +546,7 @@ define i128 @extract_i128_i1_0(ptr %0) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: extract_i128_i1_0>:
 ; ARM64:    sub sp, sp, #0xe0
@@ -595,8 +589,7 @@ define i1 @extract_i128_i1_1(ptr %0) {
 ; X64:    add rsp, 0x60
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: extract_i128_i1_1>:
 ; ARM64:    sub sp, sp, #0xe0
@@ -646,8 +639,7 @@ define i128 @extract_i128_i1_0_no_salvage(ptr %0) {
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: extract_i128_i1_0_no_salvage>:
 ; ARM64:    sub sp, sp, #0xe0
@@ -701,6 +693,8 @@ define i1 @extract_i128_i1_1_no_salvage(ptr %0) {
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ; X64:     ...
 ; X64:    <unknown>
 ;

@@ -318,11 +318,10 @@ struct AssemblerElf {
                             u32    align,
                             u32   *off = nullptr) noexcept;
 
-    /// Align the text write pointer to 16 bytes
-    void text_align_16() noexcept;
+    /// Align the text write pointer
+    void text_align(u64 align) noexcept { derived()->text_align_impl(align); }
 
-    /// Align the text write pointer to 4 bytes
-    void text_align_4() noexcept;
+    void text_align_impl(u64 align) noexcept;
 
     /// \returns The current used space in the text section
     [[nodiscard]] u32 text_cur_off() const noexcept;
@@ -412,7 +411,7 @@ void AssemblerElf<Derived>::start_func(
     const SymRef func, const SymRef personality_func_addr) noexcept {
     cur_func = func;
 
-    text_align_16();
+    text_align(16);
     auto *elf_sym     = sym_ptr(func);
     elf_sym->st_value = text_cur_off();
     cur_func_off      = text_cur_off();
@@ -904,17 +903,10 @@ void AssemblerElf<Derived>::sym_def_predef_bss(const SymRef sym_ref,
 }
 
 template <typename Derived>
-void AssemblerElf<Derived>::text_align_16() noexcept {
-    text_ensure_space(16);
+void AssemblerElf<Derived>::text_align_impl(u64 align) noexcept {
+    text_ensure_space(align);
     text_write_ptr = reinterpret_cast<u8 *>(
-        util::align_up(reinterpret_cast<uintptr_t>(text_write_ptr), 16));
-}
-
-template <typename Derived>
-void AssemblerElf<Derived>::text_align_4() noexcept {
-    text_ensure_space(4);
-    text_write_ptr = reinterpret_cast<u8 *>(
-        util::align_up(reinterpret_cast<uintptr_t>(text_write_ptr), 4));
+        util::align_up(reinterpret_cast<uintptr_t>(text_write_ptr), align));
 }
 
 template <typename Derived>

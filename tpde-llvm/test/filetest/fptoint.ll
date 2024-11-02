@@ -16,9 +16,7 @@ define i32 @f32toi32(float %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: f32toi32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -53,9 +51,7 @@ define i32 @f32tou32(float %0) {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: f32tou32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -90,9 +86,7 @@ define i64 @f32toi64(float %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: f32toi64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -135,7 +129,7 @@ define i64 @f32tou64(float %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: f32tou64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -171,9 +165,7 @@ define i32 @f64toi32(double %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: f64toi32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -208,9 +200,7 @@ define i32 @f64tou32(double %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: f64tou32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -245,9 +235,7 @@ define i64 @f64toi64(double %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: f64toi64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -290,6 +278,8 @@ define i64 @f64tou64(double %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ;
 ; ARM64-LABEL: f64tou64>:

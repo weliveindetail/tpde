@@ -66,6 +66,8 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
 
     void emit_jump_table(Label table, std::span<Label> labels) noexcept;
 
+    void text_align_impl(u64 align) noexcept;
+
     // relocs
     void reloc_text_plt32(SymRef, u32 text_imm32_off) noexcept;
     void reloc_text_pc32(SymRef sym, u32 text_imm32_off, i32 addend) noexcept;
@@ -217,7 +219,7 @@ inline void
     AssemblerElfX64::emit_jump_table(const Label            table,
                                      const std::span<Label> labels) noexcept {
     text_ensure_space(4 + 4 * labels.size());
-    text_align_4();
+    text_align(4);
     label_place(table);
     const auto table_off = text_cur_off();
     for (u32 i = 0; i < labels.size(); i++) {
@@ -232,6 +234,15 @@ inline void
             *reinterpret_cast<i32 *>(text_write_ptr) = diff;
         }
         text_write_ptr += 4;
+    }
+}
+
+inline void AssemblerElfX64::text_align_impl(u64 align) noexcept {
+    u32 old_off = text_cur_off();
+    Base::text_align_impl(align);
+    // Pad text section with NOPs.
+    if (u32 cur_off = text_cur_off(); cur_off > old_off) {
+        fe64_NOP(text_write_ptr - (cur_off - old_off), cur_off - old_off);
     }
 }
 

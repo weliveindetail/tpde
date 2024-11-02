@@ -22,9 +22,7 @@ define i8 @load_i8(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: load_i8>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -61,7 +59,8 @@ define i8 @load_i8_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_i8_alt>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -100,9 +99,7 @@ define i16 @load_i16(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: load_i16>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -139,7 +136,8 @@ define i16 @load_i16_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_i16_alt>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -181,7 +179,7 @@ define i24 @load_i24(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_i24>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -223,9 +221,7 @@ define i24 @load_i24_alloca() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_i24_alloca>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -272,6 +268,8 @@ define i24 @load_i24_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_i24_alt>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -315,9 +313,7 @@ define i32 @load_i32(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: load_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -352,10 +348,7 @@ define i32 @load_i32_alloca() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_i32_alloca>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -393,8 +386,6 @@ define i32 @load_i32_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_i32_alt>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -433,7 +424,8 @@ define i32 @load_i32_grep(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_i32_grep>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -478,8 +470,7 @@ define i40 @load_i40(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_i40>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -525,8 +516,7 @@ define i40 @load_i40_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_i40_alt>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -573,8 +563,7 @@ define i48 @load_i48(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_i48>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -620,8 +609,7 @@ define i48 @load_i48_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_i48_alt>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -670,8 +658,6 @@ define i56 @load_i56(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_i56>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -716,8 +702,8 @@ define i56 @load_i56_alloca() {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_i56_alloca>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -771,8 +757,8 @@ define i56 @load_i56_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: load_i56_alt>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -819,8 +805,6 @@ define i64 @load_i64(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_i64>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -855,9 +839,7 @@ define i64 @load_i64_alloca() {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: load_i64_alloca>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -895,7 +877,8 @@ define i64 @load_i64_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_i64_alt>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -935,6 +918,8 @@ define i128 @load_i128(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_i128>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -973,9 +958,8 @@ define i128 @load_i128_alloca() {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: load_i128_alloca>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1019,8 +1003,7 @@ define i128 @load_i128_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_i128_alt>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1061,9 +1044,7 @@ define float @load_float(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: load_float>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1098,9 +1079,7 @@ define float @load_float_alloca() {
 ; X64:    add rsp, 0x30
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: load_float_alloca>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1137,7 +1116,8 @@ define float @load_float_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_float_alt>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1175,9 +1155,7 @@ define double @load_double(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
+; X64:    nop
 ;
 ; ARM64-LABEL: load_double>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1213,7 +1191,8 @@ define double @load_double_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_double_alt>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1251,10 +1230,7 @@ define <4 x float> @load_4f(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_4f>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1290,8 +1266,6 @@ define <4 x float> @load_4f_alt(ptr %a) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_4f_alt>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1349,8 +1323,8 @@ define void @load_struct_i8_i1(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_struct_i8_i1>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1395,8 +1369,8 @@ define void @load_struct_i8_i8(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_struct_i8_i8>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1441,8 +1415,8 @@ define void @load_struct_i8_i16(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_struct_i8_i16>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1487,8 +1461,6 @@ define void @load_struct_i8_i32(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_struct_i8_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1533,8 +1505,8 @@ define void @load_struct_i8_i64(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_struct_i8_i64>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1579,8 +1551,6 @@ define void @load_struct_i1_i32(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_struct_i1_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1625,8 +1595,6 @@ define void @load_struct_i16_i32(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_struct_i16_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1671,9 +1639,7 @@ define void @load_struct_i32_i32(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop
 ;
 ; ARM64-LABEL: load_struct_i32_i32>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -1718,8 +1684,6 @@ define void @load_struct_i64_i32(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_struct_i64_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1764,8 +1728,6 @@ define void @load_struct_ptr_i32(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_struct_ptr_i32>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1810,8 +1772,6 @@ define void @load_struct_i32_ptr(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_struct_i32_ptr>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1856,7 +1816,8 @@ define void @load_struct_f32_ptr(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_struct_f32_ptr>:
 ; ARM64:    sub sp, sp, #0xc0
@@ -1902,9 +1863,8 @@ define void @load_struct_i128_i1(ptr %0) {
 ; X64:    add rsp, 0x50
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop
 ;
 ; ARM64-LABEL: load_struct_i128_i1>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -1956,7 +1916,7 @@ define void @load_struct_i32_i32_i32_i32_i32_i32(ptr %0) {
 ; X64:    pop rbx
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_struct_i32_i32_i32_i32_i32_i32>:
 ; ARM64:    sub sp, sp, #0xd0
@@ -1998,8 +1958,8 @@ define void @load_atomic_i8_monotonic(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_atomic_i8_monotonic>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2035,8 +1995,6 @@ define void @load_atomic_i16_monotonic(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_atomic_i16_monotonic>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2071,7 +2029,7 @@ define void @load_atomic_i32_monotonic(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_atomic_i32_monotonic>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2106,10 +2064,7 @@ define void @load_atomic_i64_monotonic(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_atomic_i64_monotonic>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2146,8 +2101,8 @@ define void @load_atomic_i8_acquire(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_atomic_i8_acquire>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2183,8 +2138,6 @@ define void @load_atomic_i16_acquire(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_atomic_i16_acquire>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2219,7 +2172,7 @@ define void @load_atomic_i32_acquire(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_atomic_i32_acquire>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2254,10 +2207,7 @@ define void @load_atomic_i64_acquire(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_atomic_i64_acquire>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2294,8 +2244,8 @@ define void @load_atomic_i8_seq_cst(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rbp + 0x48], dl
+; X64:    nop word ptr [rax + rax]
+; X64:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: load_atomic_i8_seq_cst>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2331,8 +2281,6 @@ define void @load_atomic_i16_seq_cst(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:    add byte ptr [rax], al
-; X64:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: load_atomic_i16_seq_cst>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2367,7 +2315,7 @@ define void @load_atomic_i32_seq_cst(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
-; X64:     ...
+; X64:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_atomic_i32_seq_cst>:
 ; ARM64:    sub sp, sp, #0xb0
@@ -2402,6 +2350,8 @@ define void @load_atomic_i64_seq_cst(ptr %0) {
 ; X64:    add rsp, 0x40
 ; X64:    pop rbp
 ; X64:    ret
+; X64:    nop word ptr [rax + rax]
+; X64:    nop dword ptr [rax]
 ; X64:     ...
 ; X64:    add byte ptr [rax], al
 ; X64:    <unknown>
