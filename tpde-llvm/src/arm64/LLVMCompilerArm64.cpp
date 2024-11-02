@@ -940,7 +940,7 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef         inst_idx,
 
 void LLVMCompilerArm64::compile_i32_cmp_zero(
     AsmReg reg, llvm::CmpInst::Predicate pred) noexcept {
-    Da64Cond cond;
+    Da64Cond cond = DA_AL;
     switch (pred) {
     case llvm::CmpInst::ICMP_EQ: cond = DA_EQ; break;
     case llvm::CmpInst::ICMP_NE: cond = DA_NE; break;

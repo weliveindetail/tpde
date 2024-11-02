@@ -3045,7 +3045,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
 
     if (cmp_ty->isFP128Ty()) {
         SymRef                   sym = Assembler::INVALID_SYM_REF;
-        llvm::CmpInst::Predicate cmp_pred;
+        llvm::CmpInst::Predicate cmp_pred = llvm::CmpInst::ICMP_EQ;
         switch (pred) {
         case llvm::CmpInst::FCMP_OEQ:
             sym      = get_or_create_sym_ref(sym_eqtf2, "__eqtf2");
