@@ -331,7 +331,6 @@ struct LLVMAdaptor {
         blocks[block].aux.aux2 = aux;
     }
 
-#ifdef TPDE_LOGGING
     [[nodiscard]] std::string
         block_fmt_ref(const IRBlockRef block) const noexcept {
         std::string              buf;
@@ -347,7 +346,6 @@ struct LLVMAdaptor {
         values[value].val->print(os);
         return buf;
     }
-#endif
 
 
     [[nodiscard]] static u32 val_local_idx(const IRValueRef value) noexcept {

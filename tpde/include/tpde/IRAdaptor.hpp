@@ -6,6 +6,7 @@
 #include "CompilerConfig.hpp"
 #include "base.hpp"
 #include <concepts>
+#include <format>
 #include <string_view>
 
 #ifdef ARG
@@ -16,12 +17,10 @@
 
 namespace tpde {
 
-#ifdef TPDE_LOGGING
 template <typename T>
 concept CanBeFormatted = requires(T a) {
-    { spdlog::trace("{}", a) };
+    { std::format("{}", a) };
 };
-#endif
 
 template <bool B>
 concept IsFalse = (B == false);
@@ -273,11 +272,9 @@ concept IRAdaptor = requires(T a) {
     /// Set the block info
     { a.block_set_info2(ARG(typename T::IRBlockRef), ARG(u32)) };
 
-#ifdef TPDE_LOGGING
     /// If logging is enabled, we want to be able to print blocks and want to
     /// give the adaptor the opportunity to dictate how that is done
     { a.block_fmt_ref(ARG(typename T::IRBlockRef)) } -> CanBeFormatted;
-#endif
 
 
     // information about values
@@ -340,11 +337,9 @@ concept IRAdaptor = requires(T a) {
         a.val_alloca_align(ARG(typename T::IRValueRef))
     } -> std::convertible_to<u32>;
 
-#ifdef TPDE_LOGGING
     /// If logging is enabled, we want to be able to print values and want to
     /// give the adaptor the opportunity to dictate how that is done
     { a.value_fmt_ref(ARG(typename T::IRValueRef)) } -> CanBeFormatted;
-#endif
 
 
     // compilation lifecycle
