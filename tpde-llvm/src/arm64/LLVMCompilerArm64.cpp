@@ -86,6 +86,8 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
     void load_address_of_var_reference(AsmReg            dst,
                                        AssignmentPartRef ap) noexcept;
 
+    void ext_int(
+        AsmReg dst, AsmReg src, bool sign, unsigned from, unsigned to) noexcept;
     ScratchReg
         ext_int(AsmOperand op, bool sign, unsigned from, unsigned to) noexcept;
 
@@ -512,14 +514,10 @@ void LLVMCompilerArm64::load_address_of_var_reference(
     }
 }
 
-LLVMCompilerArm64::ScratchReg LLVMCompilerArm64::ext_int(AsmOperand op,
-                                                         bool       sign,
-                                                         unsigned   from,
-                                                         unsigned to) noexcept {
+void LLVMCompilerArm64::ext_int(
+    AsmReg dst, AsmReg src, bool sign, unsigned from, unsigned to) noexcept {
     assert(from < to && to <= 64);
-    ScratchReg scratch{this};
-    AsmReg     src = op.as_reg_try_salvage(this, scratch, 0);
-    AsmReg     dst = scratch.alloc_from_bank(0);
+    (void)to;
     if (sign) {
         if (to <= 32) {
             ASM(SBFXw, dst, src, 0, from);
@@ -533,6 +531,15 @@ LLVMCompilerArm64::ScratchReg LLVMCompilerArm64::ext_int(AsmOperand op,
             ASM(UBFXx, dst, src, 0, from);
         }
     }
+}
+
+LLVMCompilerArm64::ScratchReg LLVMCompilerArm64::ext_int(AsmOperand op,
+                                                         bool       sign,
+                                                         unsigned   from,
+                                                         unsigned to) noexcept {
+    ScratchReg scratch{this};
+    AsmReg     src = op.as_reg_try_salvage(this, scratch, 0);
+    ext_int(scratch.alloc_from_bank(0), src, sign, from, to);
     return scratch;
 }
 
