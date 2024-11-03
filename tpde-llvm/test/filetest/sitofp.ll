@@ -110,9 +110,8 @@ define float @i21tof32(i21 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    lsl w0, w0, #11
-; ARM64-NEXT:    asr w1, w0, #11
-; ARM64-NEXT:    scvtf s0, w1
+; ARM64-NEXT:    sbfx w0, w0, #0, #21
+; ARM64-NEXT:    scvtf s0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -184,9 +183,8 @@ define float @i37tof32(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    lsl x0, x0, #27
-; ARM64-NEXT:    asr x1, x0, #27
-; ARM64-NEXT:    scvtf s0, x1
+; ARM64-NEXT:    sbfx x0, x0, #0, #37
+; ARM64-NEXT:    scvtf s0, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -336,9 +334,8 @@ define double @i21tof64(i21 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    lsl w0, w0, #11
-; ARM64-NEXT:    asr w1, w0, #11
-; ARM64-NEXT:    scvtf d0, w1
+; ARM64-NEXT:    sbfx w0, w0, #0, #21
+; ARM64-NEXT:    scvtf d0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -410,9 +407,8 @@ define double @i37tof64(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    lsl x0, x0, #27
-; ARM64-NEXT:    asr x1, x0, #27
-; ARM64-NEXT:    scvtf d0, x1
+; ARM64-NEXT:    sbfx x0, x0, #0, #37
+; ARM64-NEXT:    scvtf d0, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret

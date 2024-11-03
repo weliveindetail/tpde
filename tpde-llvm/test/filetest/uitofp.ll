@@ -13,12 +13,13 @@ define float @i8tof32(i8 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movzx edi, dil
-; X64-NEXT:    cvtsi2ss xmm0, edi
+; X64-NEXT:    mov edi, edi
+; X64-NEXT:    cvtsi2ss xmm0, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: i8tof32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -33,7 +34,7 @@ define float @i8tof32(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    ucvtf s0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -51,12 +52,13 @@ define float @i16tof32(i16 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movzx edi, di
-; X64-NEXT:    cvtsi2ss xmm0, edi
+; X64-NEXT:    mov edi, edi
+; X64-NEXT:    cvtsi2ss xmm0, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: i16tof32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -71,7 +73,7 @@ define float @i16tof32(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    ucvtf s0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -109,9 +111,8 @@ define float @i21tof32(i21 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1fffff // =2097151
-; ARM64-NEXT:    and w1, w1, w0
-; ARM64-NEXT:    ucvtf s0, w1
+; ARM64-NEXT:    ubfx w0, w0, #0, #21
+; ARM64-NEXT:    ucvtf s0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -196,9 +197,8 @@ define float @i37tof32(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1fffffffff // =137438953471
-; ARM64-NEXT:    and x1, x1, x0
-; ARM64-NEXT:    ucvtf s0, x1
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    ucvtf s0, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -263,12 +263,13 @@ define double @i8tof64(i8 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movzx edi, dil
-; X64-NEXT:    cvtsi2sd xmm0, edi
+; X64-NEXT:    mov edi, edi
+; X64-NEXT:    cvtsi2sd xmm0, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: i8tof64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -283,7 +284,7 @@ define double @i8tof64(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    ucvtf d0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -301,12 +302,13 @@ define double @i16tof64(i16 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movzx edi, di
-; X64-NEXT:    cvtsi2sd xmm0, edi
+; X64-NEXT:    mov edi, edi
+; X64-NEXT:    cvtsi2sd xmm0, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: i16tof64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -321,7 +323,7 @@ define double @i16tof64(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    ucvtf d0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -359,9 +361,8 @@ define double @i21tof64(i21 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1fffff // =2097151
-; ARM64-NEXT:    and w1, w1, w0
-; ARM64-NEXT:    ucvtf d0, w1
+; ARM64-NEXT:    ubfx w0, w0, #0, #21
+; ARM64-NEXT:    ucvtf d0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -443,9 +444,8 @@ define double @i37tof64(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1fffffffff // =137438953471
-; ARM64-NEXT:    and x1, x1, x0
-; ARM64-NEXT:    ucvtf d0, x1
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    ucvtf d0, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret

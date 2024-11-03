@@ -2111,18 +2111,12 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
     IRValueRef inst_idx, llvm::Instruction *inst, const bool sign) noexcept {
     using AsmOperand = typename Derived::AsmOperand;
-    using EncodeImm  = typename Derived::EncodeImm;
 
-    auto *src_val = inst->getOperand(0);
-    auto *src_ty  = src_val->getType();
-    assert(src_ty->isIntegerTy());
-
+    auto *src_val   = inst->getOperand(0);
     auto *dst_ty = inst->getType();
-    assert(dst_ty->isFloatTy() || dst_ty->isDoubleTy());
+    auto  bit_width = src_val->getType()->getIntegerBitWidth();
 
-    auto bit_width = src_ty->getIntegerBitWidth();
-    if (bit_width > 64) {
-        assert(0);
+    if (bit_width > 64 || !(dst_ty->isFloatTy() || dst_ty->isDoubleTy())) {
         return false;
     }
 
@@ -2132,90 +2126,37 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
     auto       res_ref     = this->result_ref_lazy(inst_idx, 0);
     auto       res_scratch = ScratchReg{derived()};
 
-    if (bit_width != 8 && bit_width != 16 && bit_width != 32
-        && bit_width != 64) {
-        ScratchReg scratch{derived()};
-        auto       res = false;
-        if (bit_width <= 32) {
-            if (sign) {
-                res = derived()->encode_sext_arbitrary_to_32(
-                    std::move(src_op), EncodeImm{32 - bit_width}, scratch);
-            } else {
-                res =
-                    derived()->encode_landi32(std::move(src_op),
-                                              EncodeImm{(1u << bit_width) - 1},
-                                              scratch);
-            }
-            bit_width = 32;
-        } else {
-            if (sign) {
-                res = derived()->encode_sext_arbitrary_to_64(
-                    std::move(src_op), EncodeImm{64 - bit_width}, scratch);
-            } else {
-                u64 mask = (1ull << bit_width) - 1;
-                res      = derived()->encode_landi64(
-                    std::move(src_op), EncodeImm{mask}, scratch);
-            }
-            bit_width = 64;
-        }
-        if (!res) {
-            return false;
-        }
-        src_op = std::move(scratch);
+    if (bit_width != 32 && bit_width != 64) {
+        unsigned ext = tpde::util::align_up(bit_width, 32);
+        src_op = derived()->ext_int(std::move(src_op), sign, bit_width, ext);
     }
 
     if (sign) {
-        if (bit_width == 64) {
+        if (bit_width > 32) {
             if (dst_double) {
                 derived()->encode_i64tof64(std::move(src_op), res_scratch);
             } else {
                 derived()->encode_i64tof32(std::move(src_op), res_scratch);
             }
-        } else if (bit_width == 32) {
+        } else {
             if (dst_double) {
                 derived()->encode_i32tof64(std::move(src_op), res_scratch);
             } else {
                 derived()->encode_i32tof32(std::move(src_op), res_scratch);
             }
-        } else if (bit_width == 16) {
-            if (dst_double) {
-                derived()->encode_i16tof64(std::move(src_op), res_scratch);
-            } else {
-                derived()->encode_i16tof32(std::move(src_op), res_scratch);
-            }
-        } else {
-            assert(bit_width == 8);
-            if (dst_double) {
-                derived()->encode_i8tof64(std::move(src_op), res_scratch);
-            } else {
-                derived()->encode_i8tof32(std::move(src_op), res_scratch);
-            }
         }
     } else {
-        if (bit_width == 64) {
+        if (bit_width > 32) {
             if (dst_double) {
                 derived()->encode_u64tof64(std::move(src_op), res_scratch);
             } else {
                 derived()->encode_u64tof32(std::move(src_op), res_scratch);
             }
-        } else if (bit_width == 32) {
+        } else {
             if (dst_double) {
                 derived()->encode_u32tof64(std::move(src_op), res_scratch);
             } else {
                 derived()->encode_u32tof32(std::move(src_op), res_scratch);
-            }
-        } else if (bit_width == 16) {
-            if (dst_double) {
-                derived()->encode_u16tof64(std::move(src_op), res_scratch);
-            } else {
-                derived()->encode_u16tof32(std::move(src_op), res_scratch);
-            }
-        } else {
-            assert(bit_width == 8);
-            if (dst_double) {
-                derived()->encode_u8tof64(std::move(src_op), res_scratch);
-            } else {
-                derived()->encode_u8tof32(std::move(src_op), res_scratch);
             }
         }
     }
