@@ -86,6 +86,9 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
     void load_address_of_var_reference(AsmReg            dst,
                                        AssignmentPartRef ap) noexcept;
 
+    ScratchReg
+        ext_int(AsmOperand op, bool sign, unsigned from, unsigned to) noexcept;
+
     void create_frem_calls(IRValueRef     lhs,
                            IRValueRef     rhs,
                            ValuePartRef &&res,
@@ -530,6 +533,62 @@ void LLVMCompilerX64::load_address_of_var_reference(
                 sym, this->assembler.text_cur_off() - 4, -4);
         }
     }
+}
+
+LLVMCompilerX64::ScratchReg LLVMCompilerX64::ext_int(AsmOperand op,
+                                                     bool       sign,
+                                                     unsigned   from,
+                                                     unsigned   to) noexcept {
+    assert(from < to && to <= 64);
+    ScratchReg scratch{this};
+    AsmReg     src = op.as_reg_try_salvage(this, scratch, 0);
+    AsmReg     dst = scratch.alloc_from_bank(0);
+    if (!sign) {
+        switch (from) {
+        case 8: ASM(MOVZXr32r8, dst, src); break;
+        case 16: ASM(MOVZXr32r16, dst, src); break;
+        case 32: ASM(MOV32rr, dst, src); break;
+        default:
+            if (from < 32) {
+                if (dst != src) {
+                    ASM(MOV32rr, dst, src);
+                }
+                ASM(AND32ri, dst, (uint32_t{1} << from) - 1);
+            } else if (dst != src) {
+                ASM(MOV64ri, dst, (uint64_t{1} << from) - 1);
+                ASM(AND64rr, dst, src);
+            } else {
+                ScratchReg tmp{this};
+                AsmReg     tmp_reg = tmp.alloc_from_bank(0);
+                ASM(MOV64ri, tmp_reg, (uint64_t{1} << from) - 1);
+                ASM(AND64rr, dst, tmp_reg);
+            }
+        }
+    } else if (to <= 32) {
+        switch (from) {
+        case 8: ASM(MOVSXr32r8, dst, src); break;
+        case 16: ASM(MOVSXr32r16, dst, src); break;
+        default:
+            if (dst != src) {
+                ASM(MOV32rr, dst, src);
+            }
+            ASM(SHL32ri, dst, 32 - from);
+            ASM(SAR32ri, dst, 32 - from);
+        }
+    } else {
+        switch (from) {
+        case 8: ASM(MOVSXr64r8, dst, src); break;
+        case 16: ASM(MOVSXr64r16, dst, src); break;
+        case 32: ASM(MOVSXr64r32, dst, src); break;
+        default:
+            if (dst != src) {
+                ASM(MOV64rr, dst, src);
+            }
+            ASM(SHL64ri, dst, 64 - from);
+            ASM(SAR64ri, dst, 64 - from);
+        }
+    }
+    return scratch;
 }
 
 void LLVMCompilerX64::create_frem_calls(const IRValueRef lhs,

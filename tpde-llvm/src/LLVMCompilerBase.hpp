@@ -1869,9 +1869,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
              }
     };
 
-    const auto is_64          = int_width > 32;
-    const auto is_exact_width = int_width == 32 || int_width == 64;
-
     auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
     auto rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
 
@@ -1889,7 +1886,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     const auto rhs_const = rhs.is_const;
     auto       lhs_op    = AsmOperand{std::move(lhs)};
     auto       rhs_op    = AsmOperand{std::move(rhs)};
-    if (!is_exact_width
+
+    unsigned ext_width = tpde::util::align_up(int_width, 32);
+    if (ext_width != int_width
         && (op == IntBinaryOp::udiv || op == IntBinaryOp::sdiv
             || op == IntBinaryOp::urem || op == IntBinaryOp::srem
             || op == IntBinaryOp::shl || op == IntBinaryOp::shr
@@ -1898,83 +1897,26 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
             || op == IntBinaryOp::ashr) {
             // need to sign-extend lhs
             // TODO(ts): if lhs is constant, sign-extend as constant
-            ScratchReg tmp{derived()};
-            if (int_width == 8) {
-                derived()->encode_sext_8_to_32(std::move(lhs_op), tmp);
-            } else if (int_width == 16) {
-                derived()->encode_sext_16_to_32(std::move(lhs_op), tmp);
-            } else if (int_width < 32) {
-                derived()->encode_sext_arbitrary_to_32(
-                    std::move(lhs_op), EncodeImm{32u - int_width}, tmp);
-            } else {
-                derived()->encode_sext_arbitrary_to_64(
-                    std::move(lhs_op), EncodeImm{64u - int_width}, tmp);
-            }
-            lhs_op = std::move(tmp);
-        } else if (op == IntBinaryOp::udiv || op == IntBinaryOp::urem
-                   || op == IntBinaryOp::shr) {
+            lhs_op = derived()->ext_int(
+                std::move(lhs_op), true, int_width, ext_width);
+        } else if ((op == IntBinaryOp::udiv || op == IntBinaryOp::urem
+                    || op == IntBinaryOp::shr)
+                   && !lhs_const) {
             // need to zero-extend lhs (if it is not an immediate)
-            if (!lhs_const) {
-                ScratchReg tmp{derived()};
-                u64        mask = (1ull << int_width) - 1;
-                if (int_width == 8) {
-                    derived()->encode_zext_8_to_32(std::move(lhs_op), tmp);
-                } else if (int_width == 16) {
-                    derived()->encode_zext_16_to_32(std::move(lhs_op), tmp);
-                } else if (int_width <= 32) {
-                    derived()->encode_landi32(
-                        std::move(lhs_op),
-                        ValuePartRef{mask, Config::GP_BANK, 4},
-                        tmp);
-                } else {
-                    derived()->encode_landi64(
-                        std::move(lhs_op),
-                        ValuePartRef{mask, Config::GP_BANK, 8},
-                        tmp);
-                }
-                lhs_op = std::move(tmp);
-            }
+            lhs_op = derived()->ext_int(
+                std::move(lhs_op), false, int_width, ext_width);
         }
 
         if (op == IntBinaryOp::sdiv || op == IntBinaryOp::srem) {
             // need to sign-extend rhs
             // TODO(ts): if rhs is constant, sign-extend as constant
-            ScratchReg tmp{derived()};
-            if (int_width == 8) {
-                derived()->encode_sext_8_to_32(std::move(rhs_op), tmp);
-            } else if (int_width == 16) {
-                derived()->encode_sext_16_to_32(std::move(rhs_op), tmp);
-            } else if (int_width < 32) {
-                derived()->encode_sext_arbitrary_to_32(
-                    std::move(lhs_op), EncodeImm{32u - int_width}, tmp);
-            } else {
-                derived()->encode_sext_arbitrary_to_64(
-                    std::move(lhs_op), EncodeImm{64u - int_width}, tmp);
-            }
-            rhs_op = std::move(tmp);
-        } else {
+            rhs_op = derived()->ext_int(
+                std::move(rhs_op), true, int_width, ext_width);
+        } else if (!rhs_const) {
             // need to zero-extend rhs (if it is not an immediate since then
             // this is guaranteed by LLVM)
-            if (!rhs_const) {
-                ScratchReg tmp{derived()};
-                u64        mask = (1ull << int_width) - 1;
-                if (int_width == 8) {
-                    derived()->encode_zext_8_to_32(std::move(rhs_op), tmp);
-                } else if (int_width == 16) {
-                    derived()->encode_zext_16_to_32(std::move(rhs_op), tmp);
-                } else if (int_width <= 32) {
-                    derived()->encode_landi32(
-                        std::move(rhs_op),
-                        ValuePartRef{mask, Config::GP_BANK, 4},
-                        tmp);
-                } else {
-                    derived()->encode_landi64(
-                        std::move(rhs_op),
-                        ValuePartRef{mask, Config::GP_BANK, 8},
-                        tmp);
-                }
-                rhs_op = std::move(tmp);
-            }
+            rhs_op = derived()->ext_int(
+                std::move(rhs_op), false, int_width, ext_width);
         }
     }
 
@@ -1982,7 +1924,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
     auto res_scratch = ScratchReg{derived()};
 
-    (derived()->*(encode_ptrs[static_cast<u32>(op)][is_64 ? 1 : 0]))(
+    (derived()->*(encode_ptrs[static_cast<u32>(op)][ext_width / 32 - 1]))(
         std::move(lhs_op), std::move(rhs_op), res_scratch);
 
     this->set_value(res, res_scratch);
@@ -2300,78 +2242,19 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_trunc(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
     IRValueRef inst_idx, llvm::Instruction *inst, bool sign) noexcept {
-    using EncodeImm = typename Derived::EncodeImm;
-
     auto *src_val = inst->getOperand(0);
-    auto *src_ty  = src_val->getType();
-    assert(src_ty->isIntegerTy());
-    const auto src_width = src_ty->getIntegerBitWidth();
 
-    auto *dst_ty = inst->getType();
-    assert(dst_ty->isIntegerTy());
-    const auto dst_width = dst_ty->getIntegerBitWidth();
+    unsigned src_width = src_val->getType()->getIntegerBitWidth();
+    unsigned dst_width = inst->getType()->getIntegerBitWidth();
     assert(dst_width >= src_width);
 
-    auto       src_ref = this->val_ref(llvm_val_idx(src_val), 0);
-    ScratchReg res_scratch{derived()};
+    auto src_ref = this->val_ref(llvm_val_idx(src_val), 0);
 
-    if (src_width == 8) {
-        if (sign) {
-            if (dst_width <= 32) {
-                derived()->encode_sext_8_to_32(std::move(src_ref), res_scratch);
-            } else {
-                derived()->encode_sext_8_to_64(std::move(src_ref), res_scratch);
-            }
-        } else {
-            // works because both on ARM and x64 zext to 32 zeroes the upper
-            // bits
-            derived()->encode_zext_8_to_32(std::move(src_ref), res_scratch);
-        }
-    } else if (src_width == 16) {
-        if (sign) {
-            if (dst_width <= 32) {
-                derived()->encode_sext_16_to_32(std::move(src_ref),
-                                                res_scratch);
-            } else {
-                derived()->encode_sext_16_to_64(std::move(src_ref),
-                                                res_scratch);
-            }
-        } else {
-            // works because both on ARM and x64 zext to 32 zeroes the upper
-            // bits
-            derived()->encode_zext_16_to_32(std::move(src_ref), res_scratch);
-        }
-    } else if (src_width != 32 && src_width != 64) {
-        if (sign) {
-            if (dst_width <= 32) {
-                derived()->encode_sext_arbitrary_to_32(
-                    std::move(src_ref),
-                    EncodeImm{32u - src_width},
-                    res_scratch);
-            } else {
-                derived()->encode_sext_arbitrary_to_64(
-                    std::move(src_ref),
-                    EncodeImm{64u - src_width},
-                    res_scratch);
-            }
-        } else {
-            u64 mask = (1ull << src_width) - 1;
-            if (src_width <= 32) {
-                // works because both on ARM and x64 zext to 32 zeroes the upper
-                // bits
-                derived()->encode_landi32(
-                    std::move(src_ref), EncodeImm{mask}, res_scratch);
-            } else {
-                derived()->encode_landi64(
-                    std::move(src_ref), EncodeImm{mask}, res_scratch);
-            }
-        }
-    } else if (src_width == 32) {
-        if (sign) {
-            derived()->encode_sext_32_to_64(std::move(src_ref), res_scratch);
-        } else {
-            derived()->encode_zext_32_to_64(std::move(src_ref), res_scratch);
-        }
+    ScratchReg res_scratch{derived()};
+    if (src_width < 64) {
+        unsigned ext_width = dst_width <= 64 ? dst_width : 64;
+        res_scratch =
+            derived()->ext_int(std::move(src_ref), sign, src_width, ext_width);
     } else {
         assert(src_width == 64);
         if (src_ref.can_salvage()) {
@@ -3616,7 +3499,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     llvm::Instruction *inst,
     llvm::Function    *intrin) noexcept {
     using AsmOperand     = typename Derived::AsmOperand;
-    using EncodeImm      = typename Derived::EncodeImm;
     const auto intrin_id = intrin->getIntrinsicID();
 
     switch (intrin_id) {
@@ -3782,24 +3664,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         }
 
         auto op = AsmOperand{this->val_ref(llvm_val_idx(val), 0)};
-        if (width < 32) {
-            ScratchReg res{derived()};
-            if (width == 8) {
-                derived()->encode_sext_8_to_32(std::move(op), res);
-            } else if (width == 16) {
-                derived()->encode_sext_16_to_32(std::move(op), res);
-            } else {
-                const u32 shift = 32 - width;
-                derived()->encode_sext_arbitrary_to_32(
-                    std::move(op), EncodeImm{shift}, res);
-            }
-            op = std::move(res);
-        } else if (width != 32 && width < 64) {
-            ScratchReg res{derived()};
-            const u32  shift = 64 - width;
-            derived()->encode_sext_arbitrary_to_64(
-                std::move(op), EncodeImm{shift}, res);
-            op = std::move(res);
+        if (width != 32 && width != 64) {
+            unsigned dst_width = tpde::util::align_up(width, 32);
+            op = derived()->ext_int(std::move(op), true, width, dst_width);
         }
 
         ScratchReg res{derived()};

@@ -86,6 +86,9 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
     void load_address_of_var_reference(AsmReg            dst,
                                        AssignmentPartRef ap) noexcept;
 
+    ScratchReg
+        ext_int(AsmOperand op, bool sign, unsigned from, unsigned to) noexcept;
+
     void create_frem_calls(IRValueRef     lhs,
                            IRValueRef     rhs,
                            ValuePartRef &&res,
@@ -509,6 +512,30 @@ void LLVMCompilerArm64::load_address_of_var_reference(
     }
 }
 
+LLVMCompilerArm64::ScratchReg LLVMCompilerArm64::ext_int(AsmOperand op,
+                                                         bool       sign,
+                                                         unsigned   from,
+                                                         unsigned to) noexcept {
+    assert(from < to && to <= 64);
+    ScratchReg scratch{this};
+    AsmReg     src = op.as_reg_try_salvage(this, scratch, 0);
+    AsmReg     dst = scratch.alloc_from_bank(0);
+    if (sign) {
+        if (to <= 32) {
+            ASM(SBFXw, dst, src, 0, from);
+        } else {
+            ASM(SBFXx, dst, src, 0, from);
+        }
+    } else {
+        if (to <= 32) {
+            ASM(UBFXw, dst, src, 0, from);
+        } else {
+            ASM(UBFXx, dst, src, 0, from);
+        }
+    }
+    return scratch;
+}
+
 void LLVMCompilerArm64::create_frem_calls(const IRValueRef lhs,
                                           const IRValueRef rhs,
                                           ValuePartRef   &&res_val,
@@ -864,38 +891,11 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef         inst_idx,
     AsmOperand rhs_op = std::move(rhs);
 
     if (int_width != 32 && int_width != 64) {
-        // TODO: try_salvage
-        AsmReg lhs_reg = lhs_op.as_reg(this);
-        AsmReg lhs_tmp = scratch1.alloc_from_bank(0);
-        if (is_signed) {
-            if (int_width < 32) {
-                ASM(SBFXw, lhs_tmp, lhs_reg, 0, int_width);
-            } else {
-                ASM(SBFXx, lhs_tmp, lhs_reg, 0, int_width);
-            }
-        } else {
-            ASM(UBFXx, lhs_tmp, lhs_reg, 0, int_width);
-        }
-        lhs_op = std::move(scratch1);
+        unsigned ext_bits = tpde::util::align_up(int_width, 32);
+        lhs_op = ext_int(std::move(lhs_op), is_signed, int_width, ext_bits);
 
         if (!rhs_op.is_imm()) {
-            // TODO: try_salvage
-            AsmReg rhs_reg = lhs_op.as_reg(this);
-            AsmReg rhs_tmp = scratch2.alloc_from_bank(0);
-            if (is_signed) {
-                if (int_width < 32) {
-                    ASM(SBFXw, rhs_tmp, rhs_reg, 0, int_width);
-                } else {
-                    ASM(SBFXx, rhs_tmp, rhs_reg, 0, int_width);
-                }
-            } else {
-                if (int_width < 32) {
-                    ASM(UBFXw, rhs_tmp, rhs_reg, 0, int_width);
-                } else {
-                    ASM(UBFXx, rhs_tmp, rhs_reg, 0, int_width);
-                }
-            }
-            rhs_op = std::move(scratch2);
+            rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
         }
     }
 

@@ -69,7 +69,7 @@ define void @shl_i8_i8(i8 %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w1, w1, #0xff
+; ARM64-NEXT:    uxtb w1, w1
 ; ARM64-NEXT:    lsl w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -143,7 +143,7 @@ define void @shl_i16_i16(i16 %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w1, w1, #0xffff
+; ARM64-NEXT:    uxth w1, w1
 ; ARM64-NEXT:    lsl w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -359,9 +359,8 @@ define void @shl_i21_i21(i21 %0, i21 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x2, #0x1fffff // =2097151
-; ARM64-NEXT:    and w2, w2, w1
-; ARM64-NEXT:    lsl w0, w0, w2
+; ARM64-NEXT:    ubfx w1, w1, #0, #21
+; ARM64-NEXT:    lsl w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -434,9 +433,8 @@ define void @shl_i37_i37(i37 %0, i37 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x2, #0x1fffffffff // =137438953471
-; ARM64-NEXT:    and x2, x2, x1
-; ARM64-NEXT:    lsl x0, x0, x2
+; ARM64-NEXT:    ubfx x1, x1, #0, #37
+; ARM64-NEXT:    lsl x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -703,9 +701,8 @@ define void @shl_i37_no_salvage_imm(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsl x1, x0, #3
-; ARM64-NEXT:    mov x2, #0x1fffffffff // =137438953471
-; ARM64-NEXT:    and x2, x2, x1
-; ARM64-NEXT:    lsl x0, x0, x2
+; ARM64-NEXT:    ubfx x1, x1, #0, #37
+; ARM64-NEXT:    lsl x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -753,11 +750,9 @@ define void @shl_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x2, #0x1fffffffff // =137438953471
-; ARM64-NEXT:    and x2, x2, x1
-; ARM64-NEXT:    lsl x1, x0, x2
-; ARM64-NEXT:    mov x2, #0x1fffffffff // =137438953471
-; ARM64-NEXT:    and x2, x2, x1
+; ARM64-NEXT:    ubfx x1, x1, #0, #37
+; ARM64-NEXT:    lsl x2, x0, x1
+; ARM64-NEXT:    ubfx x2, x2, #0, #37
 ; ARM64-NEXT:    lsl x0, x0, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0

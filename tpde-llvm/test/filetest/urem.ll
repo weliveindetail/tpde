@@ -36,7 +36,7 @@ define i8 @urem_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    mov x1, #0x1 // =1
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
@@ -80,7 +80,7 @@ define i8 @urem_i8_-1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    mov x1, #0xff // =255
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
@@ -124,7 +124,7 @@ define i8 @urem_i8_28(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    mov x1, #0x1c // =28
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
@@ -168,8 +168,8 @@ define i8 @urem_i8_i8(i8 %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
-; ARM64-NEXT:    and w1, w1, #0xff
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    uxtb w1, w1
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
 ; ARM64-NEXT:    mov w0, w1
@@ -212,7 +212,7 @@ define i8 @urem_i8_32(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    mov x1, #0x20 // =32
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
@@ -256,7 +256,7 @@ define i16 @urem_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    mov x1, #0x1 // =1
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
@@ -300,7 +300,7 @@ define i16 @urem_i16_-1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    mov x1, #0xffff // =65535
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
@@ -344,7 +344,7 @@ define i16 @urem_i16_28(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    mov x1, #0x1c // =28
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
@@ -388,7 +388,7 @@ define i16 @urem_i16_32(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    mov x1, #0x20 // =32
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
@@ -432,8 +432,8 @@ define i16 @urem_i16_i16(i16 %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
-; ARM64-NEXT:    and w1, w1, #0xffff
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    uxth w1, w1
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
 ; ARM64-NEXT:    mov w0, w1
@@ -894,8 +894,8 @@ define i8 @urem_i8_salvage(i8 %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
-; ARM64-NEXT:    and w1, w1, #0xff
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    uxtb w1, w1
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
 ; ARM64-NEXT:    mov w0, w1
@@ -938,8 +938,8 @@ define i16 @urem_i16_salvage(i16 %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
-; ARM64-NEXT:    and w1, w1, #0xffff
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    uxth w1, w1
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
 ; ARM64-NEXT:    mov w0, w1
@@ -1071,12 +1071,12 @@ define i8 @urem_i8_no_salvage(i8 %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w2, w0, #0xff
-; ARM64-NEXT:    and w1, w1, #0xff
+; ARM64-NEXT:    uxtb w2, w0
+; ARM64-NEXT:    uxtb w1, w1
 ; ARM64-NEXT:    udiv w3, w2, w1
 ; ARM64-NEXT:    msub w1, w3, w1, w2
-; ARM64-NEXT:    and w0, w0, #0xff
-; ARM64-NEXT:    and w1, w1, #0xff
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    uxtb w1, w1
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
 ; ARM64-NEXT:    mov w0, w1
@@ -1127,12 +1127,12 @@ define i16 @urem_i16_no_salvage(i16 %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w2, w0, #0xffff
-; ARM64-NEXT:    and w1, w1, #0xffff
+; ARM64-NEXT:    uxth w2, w0
+; ARM64-NEXT:    uxth w1, w1
 ; ARM64-NEXT:    udiv w3, w2, w1
 ; ARM64-NEXT:    msub w1, w3, w1, w2
-; ARM64-NEXT:    and w0, w0, #0xffff
-; ARM64-NEXT:    and w1, w1, #0xffff
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    uxth w1, w1
 ; ARM64-NEXT:    udiv w2, w0, w1
 ; ARM64-NEXT:    msub w1, w2, w1, w0
 ; ARM64-NEXT:    mov w0, w1

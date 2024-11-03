@@ -34,9 +34,9 @@ define void @icmp_eq_i8_0(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #8
-; ARM64-NEXT:    cmp w1, #0x0
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x0
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -74,9 +74,9 @@ define void @icmp_ne_i8_0(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #8
-; ARM64-NEXT:    cmp w1, #0x0
-; ARM64-NEXT:    cset w1, ne
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x0
+; ARM64-NEXT:    cset w0, ne
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -114,9 +114,9 @@ define void @icmp_eq_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #8
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -154,9 +154,9 @@ define void @icmp_eq_i8_-1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #8
-; ARM64-NEXT:    cmp w1, #0xff
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0xff
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -195,10 +195,10 @@ define void @icmp_eq_i8_i8(i8 %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x2, x0, #0, #8
-; ARM64-NEXT:    uxtb w0, w2
-; ARM64-NEXT:    cmp w2, w0
-; ARM64-NEXT:    cset w2, eq
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    uxtb w1, w1
+; ARM64-NEXT:    cmp w0, w1
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -237,10 +237,10 @@ define void @icmp_sgt_i8_i8(i8 %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sxtb w2, w0
-; ARM64-NEXT:    sxtb w0, w2
-; ARM64-NEXT:    cmp w2, w0
-; ARM64-NEXT:    cset w2, gt
+; ARM64-NEXT:    sxtb w0, w0
+; ARM64-NEXT:    sxtb w1, w1
+; ARM64-NEXT:    cmp w0, w1
+; ARM64-NEXT:    cset w0, gt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -278,9 +278,9 @@ define void @icmp_ugt_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #8
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, hi
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, hi
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -318,9 +318,9 @@ define void @icmp_uge_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #8
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, hs
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, hs
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -358,9 +358,9 @@ define void @icmp_ult_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #8
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, lo
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, lo
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -398,9 +398,9 @@ define void @icmp_ule_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #8
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, ls
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, ls
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -438,9 +438,9 @@ define void @icmp_sgt_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sxtb w1, w0
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, gt
+; ARM64-NEXT:    sxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, gt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -478,9 +478,9 @@ define void @icmp_sge_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sxtb w1, w0
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, ge
+; ARM64-NEXT:    sxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, ge
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -518,9 +518,9 @@ define void @icmp_slt_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sxtb w1, w0
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, lt
+; ARM64-NEXT:    sxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, lt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -558,9 +558,9 @@ define void @icmp_sle_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sxtb w1, w0
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, le
+; ARM64-NEXT:    sxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, le
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -599,10 +599,9 @@ define i1 @icmp_sle_i8_-1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sxtb w1, w0
-; ARM64-NEXT:    cmn w1, #0x1
-; ARM64-NEXT:    cset w1, le
-; ARM64-NEXT:    mov w0, w1
+; ARM64-NEXT:    sxtb w0, w0
+; ARM64-NEXT:    cmn w0, #0x1
+; ARM64-NEXT:    cset w0, le
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -642,9 +641,9 @@ define void @icmp_eq_i16_0(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #16
-; ARM64-NEXT:    cmp w1, #0x0
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    cmp w0, #0x0
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -682,9 +681,9 @@ define void @icmp_ne_i16_0(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #16
-; ARM64-NEXT:    cmp w1, #0x0
-; ARM64-NEXT:    cset w1, ne
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    cmp w0, #0x0
+; ARM64-NEXT:    cset w0, ne
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -722,9 +721,9 @@ define void @icmp_eq_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #16
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -762,10 +761,10 @@ define void @icmp_eq_i16_-1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #16
-; ARM64-NEXT:    mov x0, #0xffff // =65535
-; ARM64-NEXT:    cmp w1, w0
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    mov x1, #0xffff // =65535
+; ARM64-NEXT:    cmp w0, w1
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -803,9 +802,9 @@ define void @icmp_eq_i16_f000(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #16
-; ARM64-NEXT:    cmp w1, #0xf, lsl #12 // =0xf000
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    cmp w0, #0xf, lsl #12 // =0xf000
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -844,10 +843,10 @@ define void @icmp_eq_i16_1001(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #16
-; ARM64-NEXT:    mov x0, #0x1001 // =4097
-; ARM64-NEXT:    cmp w1, w0
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    mov x1, #0x1001 // =4097
+; ARM64-NEXT:    cmp w0, w1
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -886,10 +885,10 @@ define void @icmp_eq_i16_i16(i16 %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x2, x0, #0, #16
-; ARM64-NEXT:    uxth w0, w2
-; ARM64-NEXT:    cmp w2, w0
-; ARM64-NEXT:    cset w2, eq
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    uxth w1, w1
+; ARM64-NEXT:    cmp w0, w1
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -928,10 +927,10 @@ define void @icmp_sgt_i16_i16(i16 %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sxth w2, w0
-; ARM64-NEXT:    sxth w0, w2
-; ARM64-NEXT:    cmp w2, w0
-; ARM64-NEXT:    cset w2, gt
+; ARM64-NEXT:    sxth w0, w0
+; ARM64-NEXT:    sxth w1, w1
+; ARM64-NEXT:    cmp w0, w1
+; ARM64-NEXT:    cset w0, gt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -969,9 +968,9 @@ define void @icmp_ugt_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #16
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, hi
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, hi
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -1009,9 +1008,9 @@ define void @icmp_uge_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #16
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, hs
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, hs
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -1049,9 +1048,9 @@ define void @icmp_ult_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #16
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, lo
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, lo
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -1089,9 +1088,9 @@ define void @icmp_ule_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #16
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, ls
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, ls
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -1129,9 +1128,9 @@ define void @icmp_sgt_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sxth w1, w0
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, gt
+; ARM64-NEXT:    sxth w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, gt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -1169,9 +1168,9 @@ define void @icmp_sge_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sxth w1, w0
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, ge
+; ARM64-NEXT:    sxth w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, ge
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -1209,9 +1208,9 @@ define void @icmp_slt_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sxth w1, w0
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, lt
+; ARM64-NEXT:    sxth w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, lt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -1249,9 +1248,9 @@ define void @icmp_sle_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sxth w1, w0
-; ARM64-NEXT:    cmp w1, #0x1
-; ARM64-NEXT:    cset w1, le
+; ARM64-NEXT:    sxth w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    cset w0, le
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2532,9 +2531,9 @@ define void @icmp_eq_i37_0(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0x0
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2574,9 +2573,9 @@ define void @icmp_ne_i37_0(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0x0
-; ARM64-NEXT:    cset w1, ne
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cset w0, ne
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2616,9 +2615,9 @@ define void @icmp_eq_i37_1(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0x1
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0x1
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2658,10 +2657,10 @@ define void @icmp_eq_i37_-1(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #37
-; ARM64-NEXT:    mov x0, #0x1fffffffff // =137438953471
-; ARM64-NEXT:    cmp x1, x0
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    mov x1, #0x1fffffffff // =137438953471
+; ARM64-NEXT:    cmp x0, x1
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2700,9 +2699,9 @@ define void @icmp_eq_i37_f000(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0xf, lsl #12 // =0xf000
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0xf, lsl #12 // =0xf000
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2741,10 +2740,10 @@ define void @icmp_eq_i37_1001(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #37
-; ARM64-NEXT:    mov x0, #0x1001 // =4097
-; ARM64-NEXT:    cmp x1, x0
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    mov x1, #0x1001 // =4097
+; ARM64-NEXT:    cmp x0, x1
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2784,10 +2783,10 @@ define void @icmp_eq_i37_i37(i37 %0, i37 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x2, x0, #0, #37
-; ARM64-NEXT:    ubfx x0, x2, #0, #37
-; ARM64-NEXT:    cmp x2, x0
-; ARM64-NEXT:    cset w2, eq
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    ubfx x1, x1, #0, #37
+; ARM64-NEXT:    cmp x0, x1
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -2829,10 +2828,10 @@ define void @icmp_sgt_i37_i37(i37 %0, i37 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sbfx x2, x0, #0, #37
-; ARM64-NEXT:    sbfx x0, x2, #0, #37
-; ARM64-NEXT:    cmp x2, x0
-; ARM64-NEXT:    cset w2, gt
+; ARM64-NEXT:    sbfx x0, x0, #0, #37
+; ARM64-NEXT:    sbfx x1, x1, #0, #37
+; ARM64-NEXT:    cmp x0, x1
+; ARM64-NEXT:    cset w0, gt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -2872,9 +2871,9 @@ define void @icmp_ugt_i37_1(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0x1
-; ARM64-NEXT:    cset w1, hi
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0x1
+; ARM64-NEXT:    cset w0, hi
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2914,9 +2913,9 @@ define void @icmp_uge_i37_1(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0x1
-; ARM64-NEXT:    cset w1, hs
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0x1
+; ARM64-NEXT:    cset w0, hs
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2956,9 +2955,9 @@ define void @icmp_ult_i37_1(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0x1
-; ARM64-NEXT:    cset w1, lo
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0x1
+; ARM64-NEXT:    cset w0, lo
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2998,9 +2997,9 @@ define void @icmp_ule_i37_1(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0x1
-; ARM64-NEXT:    cset w1, ls
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0x1
+; ARM64-NEXT:    cset w0, ls
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -3039,9 +3038,9 @@ define void @icmp_sgt_i37_1(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sbfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0x1
-; ARM64-NEXT:    cset w1, gt
+; ARM64-NEXT:    sbfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0x1
+; ARM64-NEXT:    cset w0, gt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -3080,9 +3079,9 @@ define void @icmp_sge_i37_1(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sbfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0x1
-; ARM64-NEXT:    cset w1, ge
+; ARM64-NEXT:    sbfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0x1
+; ARM64-NEXT:    cset w0, ge
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -3121,9 +3120,9 @@ define void @icmp_slt_i37_1(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sbfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0x1
-; ARM64-NEXT:    cset w1, lt
+; ARM64-NEXT:    sbfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0x1
+; ARM64-NEXT:    cset w0, lt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -3162,9 +3161,9 @@ define void @icmp_sle_i37_1(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sbfx x1, x0, #0, #37
-; ARM64-NEXT:    cmp x1, #0x1
-; ARM64-NEXT:    cset w1, le
+; ARM64-NEXT:    sbfx x0, x0, #0, #37
+; ARM64-NEXT:    cmp x0, #0x1
+; ARM64-NEXT:    cset w0, le
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret

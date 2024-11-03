@@ -35,7 +35,7 @@ define void @udiv_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    mov x1, #0x1 // =1
 ; ARM64-NEXT:    udiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -76,7 +76,7 @@ define void @udiv_i8_28(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    mov x1, #0x1c // =28
 ; ARM64-NEXT:    udiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -117,8 +117,8 @@ define void @udiv_i8_i8(i8 %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
-; ARM64-NEXT:    and w1, w1, #0xff
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    uxtb w1, w1
 ; ARM64-NEXT:    udiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -158,7 +158,7 @@ define void @udiv_i8_32(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    mov x1, #0x20 // =32
 ; ARM64-NEXT:    udiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -199,7 +199,7 @@ define void @udiv_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    mov x1, #0x1 // =1
 ; ARM64-NEXT:    udiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -240,7 +240,7 @@ define void @udiv_i16_28(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    mov x1, #0x1c // =28
 ; ARM64-NEXT:    udiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -281,7 +281,7 @@ define void @udiv_i16_32(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    mov x1, #0x20 // =32
 ; ARM64-NEXT:    udiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -323,8 +323,8 @@ define void @udiv_i16_i16(i16 %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
-; ARM64-NEXT:    and w1, w1, #0xffff
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    uxth w1, w1
 ; ARM64-NEXT:    udiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -675,8 +675,8 @@ define void @udiv_i8_salvage(i8 %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
-; ARM64-NEXT:    and w1, w1, #0xff
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    uxtb w1, w1
 ; ARM64-NEXT:    udiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -717,8 +717,8 @@ define void @udiv_i16_salvage(i16 %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
-; ARM64-NEXT:    and w1, w1, #0xffff
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    uxth w1, w1
 ; ARM64-NEXT:    udiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -839,11 +839,11 @@ define void @udiv_i8_no_salvage(i8 %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w2, w0, #0xff
-; ARM64-NEXT:    and w1, w1, #0xff
+; ARM64-NEXT:    uxtb w2, w0
+; ARM64-NEXT:    uxtb w1, w1
 ; ARM64-NEXT:    udiv w2, w2, w1
-; ARM64-NEXT:    and w0, w0, #0xff
-; ARM64-NEXT:    and w2, w2, #0xff
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    uxtb w2, w2
 ; ARM64-NEXT:    udiv w0, w0, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -891,11 +891,11 @@ define void @udiv_i16_no_salvage(i16 %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w2, w0, #0xffff
-; ARM64-NEXT:    and w1, w1, #0xffff
+; ARM64-NEXT:    uxth w2, w0
+; ARM64-NEXT:    uxth w1, w1
 ; ARM64-NEXT:    udiv w2, w2, w1
-; ARM64-NEXT:    and w0, w0, #0xffff
-; ARM64-NEXT:    and w2, w2, #0xffff
+; ARM64-NEXT:    uxth w0, w0
+; ARM64-NEXT:    uxth w2, w2
 ; ARM64-NEXT:    udiv w0, w0, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0

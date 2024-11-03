@@ -31,7 +31,7 @@ define i16 @zext_i8_to_i16(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -66,7 +66,7 @@ define i21 @zext_i8_to_i21(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -101,7 +101,7 @@ define i32 @zext_i8_to_i32(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -138,7 +138,7 @@ define i37 @zext_i8_to_i37(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    ubfx x0, x0, #0, #8
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -175,7 +175,7 @@ define i64 @zext_i8_to_i64(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    ubfx x0, x0, #0, #8
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -214,7 +214,7 @@ define i128 @zext_i8_to_i128(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xff
+; ARM64-NEXT:    ubfx x0, x0, #0, #8
 ; ARM64-NEXT:    mov w1, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
@@ -252,7 +252,7 @@ define i21 @zext_i16_to_i21(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -288,7 +288,7 @@ define i32 @zext_i16_to_i32(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -323,7 +323,7 @@ define i37 @zext_i16_to_i37(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    ubfx x0, x0, #0, #16
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -358,7 +358,7 @@ define i64 @zext_i16_to_i64(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    ubfx x0, x0, #0, #16
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -397,7 +397,7 @@ define i128 @zext_i16_to_i128(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and w0, w0, #0xffff
+; ARM64-NEXT:    ubfx x0, x0, #0, #16
 ; ARM64-NEXT:    mov w1, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
@@ -436,9 +436,7 @@ define i32 @zext_i21_to_i32(i21 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1fffff // =2097151
-; ARM64-NEXT:    and w1, w1, w0
-; ARM64-NEXT:    mov w0, w1
+; ARM64-NEXT:    ubfx w0, w0, #0, #21
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -475,9 +473,7 @@ define i37 @zext_i21_to_i37(i21 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1fffff // =2097151
-; ARM64-NEXT:    and w1, w1, w0
-; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    ubfx x0, x0, #0, #21
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -514,9 +510,7 @@ define i64 @zext_i21_to_i64(i21 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1fffff // =2097151
-; ARM64-NEXT:    and w1, w1, w0
-; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    ubfx x0, x0, #0, #21
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -554,12 +548,8 @@ define i128 @zext_i21_to_i128(i21 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1fffff // =2097151
-; ARM64-NEXT:    and w1, w1, w0
-; ARM64-NEXT:    mov w0, #0x0 // =0
-; ARM64-NEXT:    str x0, [x29, #0xb8]
-; ARM64-NEXT:    mov x0, x1
-; ARM64-NEXT:    ldr x1, [x29, #0xb8]
+; ARM64-NEXT:    ubfx x0, x0, #0, #21
+; ARM64-NEXT:    mov w1, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -596,7 +586,7 @@ define i37 @zext_i32_to_i37(i32 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov w0, w0
+; ARM64-NEXT:    ubfx x0, x0, #0, #32
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -632,7 +622,7 @@ define i64 @zext_i32_to_i64(i32 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov w0, w0
+; ARM64-NEXT:    ubfx x0, x0, #0, #32
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -671,7 +661,7 @@ define i128 @zext_i32_to_i128(i32 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov w0, w0
+; ARM64-NEXT:    ubfx x0, x0, #0, #32
 ; ARM64-NEXT:    mov w1, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
@@ -710,9 +700,7 @@ define i64 @zext_i37_to_i64(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1fffffffff // =137438953471
-; ARM64-NEXT:    and x1, x1, x0
-; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -752,12 +740,8 @@ define i128 @zext_i37_to_i128(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1fffffffff // =137438953471
-; ARM64-NEXT:    and x1, x1, x0
-; ARM64-NEXT:    mov w0, #0x0 // =0
-; ARM64-NEXT:    str x0, [x29, #0xb8]
-; ARM64-NEXT:    mov x0, x1
-; ARM64-NEXT:    ldr x1, [x29, #0xb8]
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    mov w1, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
