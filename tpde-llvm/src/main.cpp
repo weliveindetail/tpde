@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
         args::Options::None);
 
     args::Positional<std::string> ir_path(
-        parser, "ir_path", "Path to the input IR file");
+        parser, "ir_path", "Path to the input IR file", "-");
 
     parser.ParseCLI(argc, argv);
     if (parser.GetError() == args::Error::Help) {
