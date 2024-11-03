@@ -47,14 +47,12 @@ define void @shl_i8_i8(i8 %0, i8 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    movzx esi, sil
 ; X64-NEXT:    mov ecx, esi
 ; X64-NEXT:    shl edi, cl
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: shl_i8_i8>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -69,7 +67,6 @@ define void @shl_i8_i8(i8 %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    uxtb w1, w1
 ; ARM64-NEXT:    lsl w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -121,14 +118,12 @@ define void @shl_i16_i16(i16 %0, i16 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    movzx esi, si
 ; X64-NEXT:    mov ecx, esi
 ; X64-NEXT:    shl edi, cl
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: shl_i16_i16>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -143,7 +138,6 @@ define void @shl_i16_i16(i16 %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    uxth w1, w1
 ; ARM64-NEXT:    lsl w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -336,15 +330,13 @@ define void @shl_i21_i21(i21 %0, i21 %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    and esi, 0x1fffff
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    mov ecx, esi
 ; X64-NEXT:    shl edi, cl
-; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: shl_i21_i21>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -359,7 +351,6 @@ define void @shl_i21_i21(i21 %0, i21 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx w1, w1, #0, #21
 ; ARM64-NEXT:    lsl w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -411,17 +402,15 @@ define void @shl_i37_i37(i37 %0, i37 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
-; X64-NEXT:    movabs rax, 0x1fffffffff
-; X64-NEXT:    and rsi, rax
 ; X64-NEXT:    mov ecx, esi
 ; X64-NEXT:    shl rdi, cl
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: shl_i37_i37>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -433,10 +422,9 @@ define void @shl_i37_i37(i37 %0, i37 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x1, #0, #37
 ; ARM64-NEXT:    lsl x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 entry:
@@ -677,18 +665,16 @@ define void @shl_i37_no_salvage_imm(i37 %0) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    shl rax, 0x3
-; X64-NEXT:    movabs rcx, 0x1fffffffff
-; X64-NEXT:    and rax, rcx
 ; X64-NEXT:    mov ecx, eax
 ; X64-NEXT:    shl rdi, cl
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: shl_i37_no_salvage_imm>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -701,10 +687,9 @@ define void @shl_i37_no_salvage_imm(i37 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsl x1, x0, #3
-; ARM64-NEXT:    ubfx x1, x1, #0, #37
 ; ARM64-NEXT:    lsl x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 entry:
@@ -719,13 +704,9 @@ define void @shl_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
-; X64-NEXT:    movabs rax, 0x1fffffffff
-; X64-NEXT:    and rsi, rax
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    mov ecx, esi
 ; X64-NEXT:    shl rax, cl
-; X64-NEXT:    movabs rcx, 0x1fffffffff
-; X64-NEXT:    and rax, rcx
 ; X64-NEXT:    mov ecx, eax
 ; X64-NEXT:    shl rdi, cl
 ; X64-NEXT:    add rsp, 0x40
@@ -734,11 +715,10 @@ define void @shl_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    nop dword ptr [rax]
 ; X64-NEXT:     ...
-; X64-NEXT:    add byte ptr [rax], al
 ; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: shl_i37_no_salvage_reg>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -750,12 +730,10 @@ define void @shl_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x1, #0, #37
 ; ARM64-NEXT:    lsl x2, x0, x1
-; ARM64-NEXT:    ubfx x2, x2, #0, #37
 ; ARM64-NEXT:    lsl x0, x0, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 entry:

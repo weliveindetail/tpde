@@ -1907,12 +1907,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
                 std::move(lhs_op), false, int_width, ext_width);
         }
 
+        // rhs doesn't need extension for shift, if it is larger than the bit
+        // width, the result is poison.
         if (op == IntBinaryOp::sdiv || op == IntBinaryOp::srem) {
             // need to sign-extend rhs
             // TODO(ts): if rhs is constant, sign-extend as constant
             rhs_op = derived()->ext_int(
                 std::move(rhs_op), true, int_width, ext_width);
-        } else if (!rhs_const) {
+        } else if ((op == IntBinaryOp::udiv || op == IntBinaryOp::urem)
+                   && !rhs_const) {
             // need to zero-extend rhs (if it is not an immediate since then
             // this is guaranteed by LLVM)
             rhs_op = derived()->ext_int(
