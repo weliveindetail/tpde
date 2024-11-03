@@ -2259,15 +2259,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ptr_to_int(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_ptr(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
-    using EncodeImm = typename Derived::EncodeImm;
-
     // zero-extend the value
     auto *src_val = inst->getOperand(0);
-    auto *src_ty  = src_val->getType();
-    assert(src_ty->isIntegerTy());
-    const auto bit_width = src_ty->getIntegerBitWidth();
-
-    assert(bit_width <= 64);
+    const auto bit_width = src_val->getType()->getIntegerBitWidth();
 
     auto src_ref = this->val_ref(llvm_val_idx(src_val), 0);
     if (bit_width == 64) {
@@ -2279,32 +2273,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_ptr(
             derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
         }
         this->set_value(res_ref, res_ref.cur_reg());
-
+        return true;
+    } else if (bit_width < 64) {
+        auto res_ref = this->result_ref_lazy(inst_idx, 0);
+        auto res = derived()->ext_int(std::move(src_ref), false, bit_width, 64);
+        this->set_value(res_ref, res);
         return true;
     }
 
-    auto res_ref     = this->result_ref_lazy(inst_idx, 0);
-    auto res_scratch = ScratchReg{derived()};
-
-    if (bit_width == 32) {
-        derived()->encode_zext_32_to_64(std::move(src_ref), res_scratch);
-    } else if (bit_width == 8) {
-        derived()->encode_zext_8_to_32(std::move(src_ref), res_scratch);
-    } else if (bit_width == 16) {
-        derived()->encode_zext_16_to_32(std::move(src_ref), res_scratch);
-    } else if (bit_width < 32) {
-        u64 mask = (1ull << bit_width) - 1;
-        derived()->encode_landi32(
-            std::move(src_ref), EncodeImm{mask}, res_scratch);
-    } else {
-        assert(bit_width > 32 && bit_width < 64);
-        u64 mask = (1ull << bit_width) - 1;
-        derived()->encode_landi64(
-            std::move(src_ref), EncodeImm{mask}, res_scratch);
-    }
-
-    this->set_value(res_ref, res_scratch);
-    return true;
+    return false;
 }
 
 template <typename Adaptor, typename Derived, typename Config>
