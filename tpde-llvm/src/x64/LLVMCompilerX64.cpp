@@ -349,50 +349,19 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
             }
 
             auto *fn = this->adaptor->cur_func;
+            unsigned bit_width = val_ty->getIntegerBitWidth();
+            unsigned ext_width = tpde::util::align_up(bit_width, 32);
+            if (bit_width == ext_width) {
+                break;
+            }
+
             if (!val_ref.is_const
                 && fn->hasRetAttribute(llvm::Attribute::ZExt)) {
-                const auto bit_width = val_ty->getIntegerBitWidth();
                 // TODO(ts): add zext/sext to ValuePartRef
                 // reload/move_into_specific?
-                switch (bit_width) {
-                case 8: ASM(MOVZXr32r8, target_reg, target_reg); break;
-                case 16: ASM(MOVZXr32r16, target_reg, target_reg); break;
-                case 32: ASM(MOV32rr, target_reg, target_reg); break;
-                case 64: break;
-                default: {
-                    if (bit_width <= 32) {
-                        ASM(AND32ri, target_reg, (1ull << bit_width) - 1);
-                    } else {
-                        // TODO(ts): instead generate
-                        // shl target_reg, (64 - bit_width)
-                        // shr target_reg, (64 - bit_width)?
-                        ScratchReg scratch{this};
-                        const auto tmp_reg = scratch.alloc_from_bank_excluding(
-                            0, (1ull << target_reg.id()));
-                        ASM(MOV64ri, tmp_reg, (1ull << bit_width) - 1);
-                        ASM(AND64rr, target_reg, tmp_reg);
-                    }
-                    break;
-                }
-                }
+                ext_int(target_reg, target_reg, false, bit_width, ext_width);
             } else if (fn->hasRetAttribute(llvm::Attribute::SExt)) {
-                const auto bit_width = val_ty->getIntegerBitWidth();
-                switch (bit_width) {
-                case 8: ASM(MOVSXr64r8, target_reg, target_reg); break;
-                case 16: ASM(MOVSXr64r16, target_reg, target_reg); break;
-                case 32: ASM(MOVSXr64r32, target_reg, target_reg); break;
-                case 64: break;
-                default: {
-                    if (bit_width <= 32) {
-                        ASM(SHL32ri, target_reg, 32 - bit_width);
-                        ASM(SAR32ri, target_reg, 32 - bit_width);
-                    } else {
-                        ASM(SHL64ri, target_reg, 64 - bit_width);
-                        ASM(SAR64ri, target_reg, 64 - bit_width);
-                    }
-                    break;
-                }
-                }
+                ext_int(target_reg, target_reg, true, bit_width, ext_width);
             }
             break;
         }
@@ -942,88 +911,20 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef         inst_idx,
         jump = swap_jump(jump);
     }
 
-    ScratchReg scratch1{this}, scratch2{this};
     AsmOperand lhs_op = std::move(lhs);
     AsmOperand rhs_op = std::move(rhs);
 
-    if (int_width == 8) {
-        if (is_signed) {
-            encode_sext_8_to_32(std::move(lhs_op), scratch1);
-        } else {
-            encode_zext_8_to_32(std::move(lhs_op), scratch1);
+    if (int_width != 32 && int_width != 64) {
+        unsigned ext_bits = tpde::util::align_up(int_width, 32);
+        lhs_op = ext_int(std::move(lhs_op), is_signed, int_width, ext_bits);
+        if (!rhs_op.is_imm()) {
+            rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
+        } else if (is_signed) {
+            u64 mask  = (1ull << int_width) - 1;
+            u64 shift = 64 - int_width;
+            rhs_op.imm().const_u64 =
+                ((i64)((rhs_op.imm().const_u64 & mask) << shift)) >> shift;
         }
-        lhs_op = std::move(scratch1);
-    } else if (int_width == 16) {
-        if (is_signed) {
-            encode_sext_16_to_32(std::move(lhs_op), scratch1);
-        } else {
-            encode_zext_16_to_32(std::move(lhs_op), scratch1);
-        }
-        lhs_op = std::move(scratch1);
-    } else if (int_width < 32) {
-        if (is_signed) {
-            const auto shift_amount = 32 - int_width;
-            encode_sext_arbitrary_to_32(
-                std::move(lhs_op), EncodeImm{shift_amount}, scratch1);
-        } else {
-            const u32 mask = (1ull << int_width) - 1;
-            encode_landi32(std::move(lhs_op), EncodeImm{mask}, scratch1);
-        }
-        lhs_op = std::move(scratch1);
-    } else if (int_width != 32 && int_width < 64) {
-        if (is_signed) {
-            const auto shift_amount = 64 - int_width;
-            encode_sext_arbitrary_to_64(
-                std::move(lhs_op), EncodeImm{shift_amount}, scratch1);
-        } else {
-            const u64 mask = (1ull << int_width) - 1;
-            encode_landi64(std::move(lhs_op), EncodeImm{mask}, scratch1);
-        }
-        lhs_op = std::move(scratch1);
-    }
-
-
-    if (!rhs_op.is_imm()) {
-        if (int_width == 8) {
-            if (is_signed) {
-                encode_sext_8_to_32(std::move(rhs_op), scratch2);
-            } else {
-                encode_zext_8_to_32(std::move(rhs_op), scratch2);
-            }
-            rhs_op = std::move(scratch2);
-        } else if (int_width == 16) {
-            if (is_signed) {
-                encode_sext_16_to_32(std::move(rhs_op), scratch2);
-            } else {
-                encode_zext_16_to_32(std::move(rhs_op), scratch2);
-            }
-            rhs_op = std::move(scratch2);
-        } else if (int_width < 32) {
-            if (is_signed) {
-                const auto shift_amount = 32 - int_width;
-                encode_sext_arbitrary_to_32(
-                    std::move(rhs_op), EncodeImm{shift_amount}, scratch2);
-            } else {
-                const u32 mask = (1ull << int_width) - 1;
-                encode_landi32(std::move(rhs_op), EncodeImm{mask}, scratch2);
-            }
-            rhs_op = std::move(scratch2);
-        } else if (int_width != 32 && int_width < 64) {
-            if (is_signed) {
-                const auto shift_amount = 64 - int_width;
-                encode_sext_arbitrary_to_64(
-                    std::move(rhs_op), EncodeImm{shift_amount}, scratch2);
-            } else {
-                const u64 mask = (1ull << int_width) - 1;
-                encode_landi64(std::move(rhs_op), EncodeImm{mask}, scratch2);
-            }
-            rhs_op = std::move(scratch2);
-        }
-    } else if (is_signed && int_width != 64 && int_width != 32) {
-        u64 mask  = (1ull << int_width) - 1;
-        u64 shift = 64 - int_width;
-        rhs_op.imm().const_u64 =
-            ((i64)((rhs_op.imm().const_u64 & mask) << shift)) >> shift;
     }
 
     const auto lhs_reg = lhs_op.as_reg(this);

@@ -46,10 +46,11 @@ define signext i8 @ret_i8_sext(i8 %a) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    movsx rax, al
+; X64-NEXT:    movsx eax, al
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: ret_i8_sext>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -183,12 +184,12 @@ define signext i8 @ret_i8_const_sext() {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov eax, 0xff
-; X64-NEXT:    movsx rax, al
+; X64-NEXT:    movsx eax, al
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_i8_const_sext>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -254,10 +255,11 @@ define signext i16 @ret_i16_sext(i16 %a) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    movsx rax, ax
+; X64-NEXT:    movsx eax, ax
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: ret_i16_sext>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -425,12 +427,12 @@ define signext i16 @ret_i16_const_sext() {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov eax, 0xffff
-; X64-NEXT:    movsx rax, ax
+; X64-NEXT:    movsx eax, ax
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_i16_const_sext>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -496,11 +498,10 @@ define signext i32 @ret_i32_sext(i32 %a) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    movsxd rax, eax
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i32_sext>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -531,11 +532,10 @@ define zeroext i32 @ret_i32_zext(i32 %a) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    mov eax, eax
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: ret_i32_zext>:
 ; ARM64:         sub sp, sp, #0xb0
