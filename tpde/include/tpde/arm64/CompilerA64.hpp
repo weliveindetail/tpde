@@ -719,6 +719,10 @@ void CallingConv::handle_func_args(
                 // 128 bit integers are always passed in even positions
                 ++scalar_reg_count;
             }
+            if (scalar_reg_count + 1 >= gp_regs.size()) {
+                // TODO(ts): also fix on X64, can we do better code?
+                frame_off = util::align_up(frame_off, 16);
+            }
         }
         if (part_count > 1) {
             if (scalar_reg_count + part_count - 1 >= gp_regs.size()) {
@@ -882,6 +886,10 @@ u32 CallingConv::calculate_call_stack_space(
                 // 128 bit ints are only passed starting at even registers
                 ++gp_reg_count;
             }
+            if (gp_reg_count + 1 >= gp_regs.size()) {
+                // TODO(ts): also fix on X64, can we do better code?
+                stack_space = util::align_up(stack_space, 16);
+            }
         }
 
         if (part_count > 1) {
@@ -1002,6 +1010,10 @@ u32 CallingConv::handle_call_args(
             if (gp_reg_count & 1) {
                 // 128 bit ints are only passed starting in even registers
                 ++gp_reg_count;
+            }
+            if (gp_reg_count + 1 >= gp_regs.size()) {
+                // TODO(ts): also fix on X64, can we do better code?
+                stack_off = util::align_up(stack_off, 16);
             }
         }
 
