@@ -536,6 +536,8 @@ void EncodingTargetX64::get_inst_candidates(
         handle_default("MOV32ri");
     } else if (Name == "MOV64ri") {
         handle_default("MOV64ri");
+    } else if (Name == "MOV64ri32") {
+        handle_default("MOV64ri");
     } else if (Name == "MOV8rr") {
         handle_immrepl("MOV8ri", 1);
         handle_memrepl("MOV8rm", 1);
@@ -1188,6 +1190,12 @@ void EncodingTargetX64::get_inst_candidates(
         // TODO: for imm replacment, use rri encoding
         handle_memrepl("IMUL64rm", 2);
         handle_default("IMUL64rr");
+    } else if (Name == "IMUL32rri") {
+        handle_memrepl("IMUL32rmi", 1);
+        handle_default("IMUL32rri");
+    } else if (Name == "IMUL64rri") {
+        handle_memrepl("IMUL64rmi", 1);
+        handle_default("IMUL64rri");
     } else if (Name == "DIV32r") {
         handle_memrepl("DIV32m", 0);
         handle_default("DIV32r");
