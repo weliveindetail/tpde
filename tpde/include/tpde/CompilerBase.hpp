@@ -337,6 +337,10 @@ struct CompilerBase {
 
     bool hook_post_func_sym_init() noexcept { return true; }
 
+    void analysis_start() noexcept {}
+
+    void analysis_end() noexcept {}
+
   protected:
     bool compile_func(IRFuncRef func, u32 func_idx) noexcept;
 
@@ -1773,7 +1777,9 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     analyzer.reset();
 
     adaptor->switch_func(func);
+    derived()->analysis_start();
     analyzer.switch_func(func);
+    derived()->analysis_end();
 
     stack.frame_size = derived()->func_reserved_frame_size();
     for (auto &e : stack.fixed_free_lists) {

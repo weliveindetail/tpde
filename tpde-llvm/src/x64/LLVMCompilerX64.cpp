@@ -70,6 +70,8 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
         return this->adaptor->values[val_idx].type == LLVMBasicValType::i128;
     }
 
+    void finish_func() noexcept;
+
     static u32 basic_ty_part_count(LLVMBasicValType ty) noexcept;
     static u32 basic_ty_part_size(LLVMBasicValType ty) noexcept;
 
@@ -150,6 +152,15 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                                     ScratchReg &res_hi,
                                     ScratchReg &res_of) noexcept;
 };
+
+void LLVMCompilerX64::finish_func() noexcept {
+    Base::finish_func();
+
+    if (llvm::timeTraceProfilerEnabled()) {
+        llvm::timeTraceProfilerEnd(time_entry);
+        time_entry = nullptr;
+    }
+}
 
 u32 LLVMCompilerX64::basic_ty_part_count(const LLVMBasicValType ty) noexcept {
     switch (ty) {
@@ -1272,8 +1283,15 @@ extern bool compile_llvm(llvm::Module         &mod,
         return false;
     }
 
+    llvm::TimeTraceProfilerEntry *time_entry = nullptr;
+    if (llvm::timeTraceProfilerEnabled()) {
+        time_entry = llvm::timeTraceProfilerBegin("TPDE_EmitObj", "");
+    }
     std::vector<u8> data = compiler->assembler.build_object_file();
     out_buf              = std::move(data);
+    if (llvm::timeTraceProfilerEnabled()) {
+        llvm::timeTraceProfilerEnd(time_entry);
+    }
 
     return true;
 }
@@ -1293,8 +1311,15 @@ extern bool compile_llvm(llvm::LLVMContext       &ctx,
         return false;
     }
 
+    llvm::TimeTraceProfilerEntry *time_entry = nullptr;
+    if (llvm::timeTraceProfilerEnabled()) {
+        time_entry = llvm::timeTraceProfilerBegin("TPDE_EmitObj", "");
+    }
     std::vector<u8> data = compiler->assembler.build_object_file();
     out.pwrite(reinterpret_cast<char *>(data.data()), data.size(), 0);
+    if (llvm::timeTraceProfilerEnabled()) {
+        llvm::timeTraceProfilerEnd(time_entry);
+    }
 
     return true;
 }

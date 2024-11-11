@@ -124,6 +124,8 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     SymRef sym_letf2       = Assembler::INVALID_SYM_REF;
     SymRef sym_unordtf2    = Assembler::INVALID_SYM_REF;
 
+    llvm::TimeTraceProfilerEntry *time_entry;
+
     LLVMCompilerBase(LLVMAdaptor *adaptor, const bool generate_obj)
         : Base{adaptor, generate_obj} {
         static_assert(tpde::Compiler<Derived, Config>);
@@ -142,6 +144,9 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     static bool try_force_fixed_assignment(IRValueRef) noexcept {
         return false;
     }
+
+    void analysis_start() noexcept;
+    void analysis_end() noexcept;
 
     std::optional<ValuePartRef> val_ref_special(ValLocalIdx local_idx,
                                                 u32         part) noexcept;
@@ -256,6 +261,21 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
         return false;
     }
 };
+
+template <typename Adaptor, typename Derived, typename Config>
+void LLVMCompilerBase<Adaptor, Derived, Config>::analysis_start() noexcept {
+    if (llvm::timeTraceProfilerEnabled()) {
+        time_entry = llvm::timeTraceProfilerBegin("TPDE_Analysis", "");
+    }
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+void LLVMCompilerBase<Adaptor, Derived, Config>::analysis_end() noexcept {
+    if (llvm::timeTraceProfilerEnabled()) {
+        llvm::timeTraceProfilerEnd(time_entry);
+        time_entry = llvm::timeTraceProfilerBegin("TPDE_CodeGen", "");
+    }
+}
 
 template <typename Adaptor, typename Derived, typename Config>
 std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>

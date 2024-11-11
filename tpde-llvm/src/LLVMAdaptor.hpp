@@ -9,6 +9,7 @@
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Support/TimeProfiler.h>
 
 #include <tsl/hopscotch_map.h>
 
@@ -526,6 +527,13 @@ struct LLVMAdaptor {
         TPDE_LOG_DBG("Compiling func: {}",
                      static_cast<std::string_view>(function->getName()));
 
+        const bool profile_time = llvm::timeTraceProfilerEnabled();
+        llvm::TimeTraceProfilerEntry *time_entry;
+        if (profile_time) {
+            time_entry = llvm::timeTraceProfilerBegin("TPDE_Prepass", "");
+        }
+
+
         // assign local ids
         value_lookup.clear();
         block_lookup.clear();
@@ -686,6 +694,10 @@ struct LLVMAdaptor {
             }
             block_succ_ranges.push_back(
                 std::make_pair(start_idx, block_succ_indices.size()));
+        }
+
+        if (profile_time) {
+            llvm::timeTraceProfilerEnd(time_entry);
         }
     }
 
