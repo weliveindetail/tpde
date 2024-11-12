@@ -57,8 +57,6 @@ define double @fmuladdf64(double %0, double %1, double %2) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ; X64-NEXT:     ...
 ; X64-NEXT:    add byte ptr [rax], al
 ;

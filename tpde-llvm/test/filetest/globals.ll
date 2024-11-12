@@ -229,8 +229,6 @@ define ptr @get_func2() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ; X64-NEXT:     ...
 ; X64-NEXT:    add byte ptr [rax], al
 ; X64-NEXT:    <unknown>

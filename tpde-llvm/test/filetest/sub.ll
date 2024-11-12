@@ -1501,10 +1501,6 @@ define void @sub_i128_no_salvage_reg(i128 %0, i128 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
-; X64-NEXT:     ...
-; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: sub_i128_no_salvage_reg>:
 ; ARM64:         sub sp, sp, #0xd0

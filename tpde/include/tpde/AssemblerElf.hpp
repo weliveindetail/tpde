@@ -953,6 +953,10 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
 
     std::vector<u8> out{};
 
+    // Truncate text section to actually needed size
+    sec_text.data.resize(text_cur_off());
+    text_reserve_end = sec_text.data.data() + sec_text.data.size();
+
     u32 obj_size = sizeof(Elf64_Shdr) + sizeof(Elf64_Shdr) * sec_count();
     obj_size +=
         sizeof(Elf64_Sym) * (local_symbols.size() + global_symbols.size());

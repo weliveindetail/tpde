@@ -650,11 +650,8 @@ define i32 @switch_binsearch(i32 %0) {
 ; X64-NEXT:    3d7: 48 83 c4 30 add rsp, 0x30
 ; X64-NEXT:    3db: 5d pop rbp
 ; X64-NEXT:    3dc: c3 ret
-; X64-NEXT:    3dd: 66 0f 1f 84 00 00 00 00 00 nop word ptr [rax + rax]
-; X64-NEXT:    3e6: 0f 1f 00 nop dword ptr [rax]
-; X64-NEXT:     ...
-; X64-NEXT:    3ffd: 00 00 add byte ptr [rax], al
-; X64-NEXT:    3fff: 00 <unknown>
+; X64-NEXT:    3dd: 00 00 add byte ptr [rax], al
+; X64-NEXT:    3df: 00 <unknown>
 ;
 ; ARM64-LABEL: switch_binsearch>:
 ; ARM64:         sub sp, sp, #0xb0

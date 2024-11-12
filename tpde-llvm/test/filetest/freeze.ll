@@ -287,8 +287,6 @@ define void @freeze_i128_i1_no_salvage(ptr %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
-; X64-NEXT:     ...
 ; X64-NEXT:    add byte ptr [rax], al
 ; X64-NEXT:    <unknown>
 ;

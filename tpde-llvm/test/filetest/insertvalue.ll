@@ -882,9 +882,9 @@ define void @insert_i128_i1_1_nosalvage(ptr %0, i1 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ; X64-NEXT:     ...
+; X64-NEXT:    add byte ptr [rax], al
+; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: insert_i128_i1_1_nosalvage>:
 ; ARM64:         sub sp, sp, #0xf0

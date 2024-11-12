@@ -473,11 +473,7 @@ define i8 @icmp_eq_i32_0_br_no_salvage(i32 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
-; X64-NEXT:     ...
 ; X64-NEXT:    add byte ptr [rax], al
-; X64-NEXT:    <unknown>
   entry:
     %1 = icmp eq i32 %0, 0
     br i1 %1, label %block1, label %block2

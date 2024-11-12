@@ -1548,10 +1548,7 @@ define void @add_i128_no_salvage_reg2(i128 %0, i128 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
-; X64-NEXT:     ...
-; X64-NEXT:    <unknown>
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: add_i128_no_salvage_reg2>:
 ; ARM64:         sub sp, sp, #0xd0

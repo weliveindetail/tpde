@@ -1154,9 +1154,6 @@ define i64 @sdiv_i64_no_salvage(i64 %0, i64 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
-; X64-NEXT:     ...
 ; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: sdiv_i64_no_salvage>:
