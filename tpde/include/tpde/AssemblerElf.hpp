@@ -237,9 +237,8 @@ struct AssemblerElf {
         Mapper() = default;
         ~Mapper();
 
-        bool map(const Derived *,
-                 SymbolResolver *,
-                 std::span<const SymRef> func_syms);
+        bool
+            map(Derived *, SymbolResolver *, std::span<const SymRef> func_syms);
 
         void *get_sym_addr(SymRef sym) {
             auto idx = AssemblerElf::sym_idx(sym);
@@ -951,6 +950,12 @@ template <typename Derived>
 std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     using namespace elf;
 
+    // zero-terminate eh_frame
+    // TODO(ts): this should probably go somewhere else
+    if (!sec_eh_frame.data.empty()) {
+        sec_eh_frame.data.resize(sec_eh_frame.data.size() + 4);
+    }
+
     std::vector<u8> out{};
 
     // Truncate text section to actually needed size
@@ -1417,6 +1422,7 @@ u32 AssemblerElf<Derived>::eh_uleb_len(u64 value) noexcept {
 template <typename Derived>
 void AssemblerElf<Derived>::eh_init_cie(SymRef personality_func_addr) noexcept {
     // write out the initial CIE
+    eh_align_frame();
     auto &data = sec_eh_frame.data;
 
     // CIE layout:
@@ -1439,8 +1445,9 @@ void AssemblerElf<Derived>::eh_init_cie(SymRef personality_func_addr) noexcept {
     //
     // total: 17 bytes or 25 bytes
 
-    auto off       = data.size();
-    eh_cur_cie_off = off;
+    const auto first = data.empty();
+    auto       off   = data.size();
+    eh_cur_cie_off   = off;
 
     data.resize(data.size()
                 + (personality_func_addr == INVALID_SYM_REF ? 17 : 25));
@@ -1506,11 +1513,15 @@ void AssemblerElf<Derived>::eh_init_cie(SymRef personality_func_addr) noexcept {
     *reinterpret_cast<u32 *>(data.data() + off) =
         data.size() - off - sizeof(u32);
 
-    eh_first_fde_off = data.size();
+    if (first) {
+        eh_first_fde_off = data.size();
+    }
 }
 
 template <typename Derived>
 u32 AssemblerElf<Derived>::eh_write_fde_start() noexcept {
+    eh_align_frame();
+
     auto      &data    = sec_eh_frame.data;
     const auto fde_off = data.size();
 
@@ -1777,17 +1788,20 @@ AssemblerElf<Derived>::Mapper<SymbolResolver>::~Mapper() {
 template <typename Derived>
 template <SymbolResolver SymbolResolver>
 bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
-    const Derived          *ad,
-    SymbolResolver         *resolver,
-    std::span<const SymRef> func_syms) {
+    Derived *ad, SymbolResolver *resolver, std::span<const SymRef> func_syms) {
     assert(!mapped_addr);
 
-    const AssemblerElf<Derived> *a =
-        static_cast<const AssemblerElf<Derived> *>(ad);
+    AssemblerElf<Derived> *a = static_cast<AssemblerElf<Derived> *>(ad);
 
     if (!a->sec_fini_array.data.empty() || !a->sec_init_array.data.empty()) {
         assert(0);
         return false;
+    }
+
+    // zero-terminate eh_frame
+    // TODO(ts): this should probably go somewhere else
+    if (!a->sec_eh_frame.data.empty()) {
+        a->sec_eh_frame.data.resize(a->sec_eh_frame.data.size() + 4);
     }
 
     std::vector<u32> plt_or_got_offs{};
