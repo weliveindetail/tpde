@@ -11,7 +11,7 @@
 	branch = master
 [submodule "deps/fadec"]
 	path = deps/fadec
-	url = git@gitlab.db.in.tum.de:tpde/fadec.git
+	url = https://github.com/aengelke/fadec.git
 	branch = master
 [submodule "deps/hopscotch-map"]
 	path = deps/hopscotch-map
@@ -19,5 +19,5 @@
 	branch = master
 [submodule "deps/disarm"]
 	path = deps/disarm
-	url = git@gitlab.db.in.tum.de:tpde/disarm.git
+	url = https://github.com/aengelke/disarm.git
 	branch = master
