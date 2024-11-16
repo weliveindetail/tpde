@@ -252,7 +252,6 @@ bool TestIRCompilerA64::compile_sub(IRValueRef val_idx) noexcept {
 } // namespace
 
 bool test::compile_ir_arm64(TestIR            *ir,
-                            RunTestUntil       run_until,
                             bool               print_rpo,
                             bool               print_layout,
                             bool               print_loops,
@@ -265,7 +264,6 @@ bool test::compile_ir_arm64(TestIR            *ir,
     (void)print_layout;
     (void)print_loops;
     (void)print_liveness;
-    compiler.analyzer.test_run_until          = run_until;
     compiler.analyzer.test_print_rpo          = print_rpo;
 
     if (!compiler.compile()) {

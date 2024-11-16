@@ -8,7 +8,6 @@
 
 namespace tpde::test {
 bool compile_ir_arm64(TestIR *ir,
-                      RunTestUntil,
                       bool               print_rpo,
                       bool               print_block_layout,
                       bool               print_loops,

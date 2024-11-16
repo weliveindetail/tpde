@@ -19,6 +19,15 @@ enum class Arch {
     a64,
 };
 
+enum class RunTestUntil {
+    /// IR-Parsing
+    ir_parsing,
+    /// marks the end of the flags that will only run the analyzer
+    only_analyzer,
+    /// No restriction
+    full,
+};
+
 int main(int argc, char *argv[]) {
     using namespace tpde;
 
@@ -60,8 +69,6 @@ int main(int argc, char *argv[]) {
     std::unordered_map<std::string_view, RunTestUntil> run_map{
         {    "full",          RunTestUntil::full},
         {      "ir",    RunTestUntil::ir_parsing},
-        {     "rpo",           RunTestUntil::rpo},
-        {  "layout",  RunTestUntil::block_layout},
         {"analyzer", RunTestUntil::only_analyzer},
     };
     args::MapFlag<std::string_view, RunTestUntil> run_until(
@@ -173,12 +180,10 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    if (static_cast<u32>(run_until.Get())
-        <= static_cast<u32>(RunTestUntil::only_analyzer)) {
+    if (run_until.Get() == RunTestUntil::only_analyzer) {
         test::TestIRAdaptor adaptor{&ir};
 
         Analyzer<test::TestIRAdaptor> analyzer{&adaptor};
-        analyzer.test_run_until          = run_until.Get();
         analyzer.test_print_rpo          = print_rpo;
 
         for (auto func : adaptor.funcs()) {
@@ -217,7 +222,6 @@ int main(int argc, char *argv[]) {
         test::TestIRAdaptor     adaptor{&ir};
         test::TestIRCompilerX64 compiler{&adaptor, no_fixed_assignments};
 
-        compiler.analyzer.test_run_until          = run_until.Get();
         compiler.analyzer.test_print_rpo          = print_rpo;
 
         if (!compiler.compile()) {
@@ -238,7 +242,6 @@ int main(int argc, char *argv[]) {
     } else {
         assert(arch.Get() == Arch::a64);
         if (!test::compile_ir_arm64(&ir,
-                                    run_until.Get(),
                                     print_rpo,
                                     print_layout,
                                     print_loops,

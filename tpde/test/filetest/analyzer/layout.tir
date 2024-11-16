@@ -2,7 +2,7 @@
 ;
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
-; RUN: %tpde_test --run-until=layout --print-loops --print-layout %s | FileCheck %s --dump-input always
+; RUN: %tpde_test --run-until=analyzer --print-loops --print-layout %s | FileCheck %s --dump-input always
 
 ; CHECK: Block Layout for single
 ; CHECK-NEXT: 0: entry

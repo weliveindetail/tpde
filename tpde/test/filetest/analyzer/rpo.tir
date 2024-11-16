@@ -2,7 +2,7 @@
 ;
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
-; RUN: %tpde_test --run-until=rpo --print-rpo %s | FileCheck %s --dump-input always
+; RUN: %tpde_test --run-until=analyzer --print-rpo %s | FileCheck %s --dump-input always
 
 ; CHECK: RPO for func single
 ; CHECK-NEXT: 0: entry

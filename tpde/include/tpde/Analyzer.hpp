@@ -75,7 +75,6 @@ struct Analyzer {
     util::SmallVector<LivenessInfo, SMALL_VALUE_NUM> liveness = {};
 
 #ifdef TPDE_TESTING
-    RunTestUntil test_run_until          = RunTestUntil::full;
     bool         test_print_rpo          = false;
 #endif
 
@@ -157,14 +156,6 @@ struct Analyzer {
 template <IRAdaptor Adaptor>
 void Analyzer<Adaptor>::switch_func(IRFuncRef func) {
     build_block_layout(func);
-
-#ifdef TPDE_TESTING
-    if (static_cast<u32>(test_run_until)
-        <= static_cast<u32>(RunTestUntil::block_layout)) {
-        return;
-    }
-#endif
-
     compute_liveness();
 }
 
@@ -246,11 +237,6 @@ void Analyzer<Adaptor>::build_block_layout(IRFuncRef func) {
                 "  {}: {}\n", i, adaptor->block_fmt_ref(block_rpo[i]));
         }
         std::cout << "End RPO\n";
-    }
-
-    if (static_cast<u32>(test_run_until)
-        <= static_cast<u32>(RunTestUntil::rpo)) {
-        return;
     }
 #endif
 
