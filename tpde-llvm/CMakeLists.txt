@@ -64,7 +64,7 @@ endif ()
 # set(LLVM_ABI_BREAKING_CHECKS "FORCE_OFF")
 
 if (TPDE_LINK_LLVM_STATIC)
-    llvm_map_components_to_libnames(llvm_libs core irreader irprinter passes support bitreader bitstreamreader)
+    llvm_map_components_to_libnames(llvm_libs core irreader irprinter passes support bitreader bitstreamreader targetparser)
 else ()
     set(llvm_libs LLVM)
 endif ()

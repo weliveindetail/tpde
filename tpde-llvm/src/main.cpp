@@ -7,6 +7,8 @@
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
+#include <llvm/TargetParser/Host.h>
+#include <llvm/TargetParser/Triple.h>
 
 #include "arm64/LLVMCompilerArm64.hpp"
 #include "x64/LLVMCompilerX64.hpp"
@@ -98,22 +100,25 @@ int main(int argc, char *argv[]) {
         mod->print(llvm::outs(), nullptr);
     }
 
+    std::string triple_str = mod->getTargetTriple();
+    if (target) {
+        triple_str = target.Get();
+    } else if (triple_str.empty()) {
+        triple_str = llvm::sys::getDefaultTargetTriple();
+    }
+    llvm::Triple triple(triple_str);
+
     using CompileFn = bool(llvm::Module &, std::vector<uint8_t> &, bool);
     CompileFn *compile_fn;
-    if (!target) {
-        // TODO: extract architecture from module
-        std::cerr << "Unspecified architecture, assuming x86_64\n";
+    switch (triple.getArch()) {
+    case llvm::Triple::x86_64:
         compile_fn = tpde_llvm::x64::compile_llvm;
-#if defined(TPDE_LLVM_X64)
-    } else if (target.Get() == "x86_64") {
-        compile_fn = tpde_llvm::x64::compile_llvm;
-#endif
-#if defined(TPDE_LLVM_ARM64)
-    } else if (target.Get() == "aarch64") {
+        break;
+    case llvm::Triple::aarch64:
         compile_fn = tpde_llvm::arm64::compile_llvm;
-#endif
-    } else {
-        std::cerr << "Unknown architecture\n";
+        break;
+    default:
+        std::cerr << "Unknown architecture: " << triple_str << "\n";
         return 1;
     }
 

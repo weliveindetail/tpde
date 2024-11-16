@@ -3,7 +3,7 @@
 ;
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
-; RUN: tpde_llvm %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+; RUN: tpde_llvm --target=x86_64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
 ; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 define i32 @select_i32_reg(i1 %0, i32 %1, i32 %2) {
