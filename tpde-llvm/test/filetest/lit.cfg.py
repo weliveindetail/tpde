@@ -5,6 +5,8 @@
 import os
 import lit.formats
 
+from lit.llvm import llvm_config
+
 config.name = 'TPDE-LLVM FileTests'
 config.test_format = lit.formats.ShTest(True)
 
@@ -13,9 +15,8 @@ config.suffixes = ['.ll', '.cpp']
 config.test_source_root = os.path.dirname(__file__)
 config.test_exec_root = os.path.join(config.tpde_llvm_bin_dir, 'test/filetest');
 
-config.substitutions.append(('llvm-objdump', os.path.join(config.llvm_tools_dir, 'llvm-objdump')))
-config.substitutions.append(('FileCheck', os.path.join(config.llvm_tools_dir, 'FileCheck')))
-config.substitutions.append(('%clang', os.path.join(config.llvm_tools_dir, 'clang')))
-config.substitutions.append(('tpde_llvm', os.path.join(config.tpde_llvm_bin_dir, 'tpde_llvm')))
+# Tweak the PATH to include the tools dir and TPDE binaries.
+llvm_config.with_environment('PATH', config.llvm_tools_dir, append_path=True)
+llvm_config.with_environment('PATH', config.tpde_llvm_bin_dir, append_path=True)
 
 # TODO(ts): arch config
