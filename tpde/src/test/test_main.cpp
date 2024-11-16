@@ -182,11 +182,17 @@ int main(int argc, char *argv[]) {
         analyzer.test_print_rpo          = print_rpo;
         analyzer.test_print_block_layout = print_layout;
         analyzer.test_print_loops        = print_loops;
-        analyzer.test_print_liveness     = print_liveness;
 
         for (auto func : adaptor.funcs()) {
             adaptor.switch_func(func);
             analyzer.switch_func(func);
+
+            if (print_liveness) {
+                std::cout << "Liveness for " << adaptor.func_link_name(func)
+                          << "\n";
+                analyzer.print_liveness(std::cout);
+                std::cout << "End Liveness\n";
+            }
 
             analyzer.reset();
         }
@@ -203,7 +209,6 @@ int main(int argc, char *argv[]) {
         compiler.analyzer.test_print_rpo          = print_rpo;
         compiler.analyzer.test_print_block_layout = print_layout;
         compiler.analyzer.test_print_loops        = print_loops;
-        compiler.analyzer.test_print_liveness     = print_liveness;
 
         if (!compiler.compile()) {
             TPDE_LOG_ERR("Failed to compile IR");

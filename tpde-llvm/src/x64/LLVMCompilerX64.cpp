@@ -1275,10 +1275,6 @@ extern bool compile_llvm(llvm::Module         &mod,
     auto adaptor  = std::make_unique<LLVMAdaptor>(mod.getContext(), mod);
     auto compiler = std::make_unique<LLVMCompilerX64>(std::move(adaptor));
 
-#ifdef TPDE_TESTING
-    compiler->analyzer.test_print_liveness = print_liveness;
-#endif
-
     if (!compiler->compile()) {
         return false;
     }
@@ -1302,10 +1298,6 @@ extern bool compile_llvm(llvm::LLVMContext       &ctx,
                          [[maybe_unused]] bool    print_liveness) {
     auto adaptor  = std::make_unique<LLVMAdaptor>(ctx, mod);
     auto compiler = std::make_unique<LLVMCompilerX64>(std::move(adaptor));
-
-#ifdef TPDE_TESTING
-    compiler->analyzer.test_print_liveness = print_liveness;
-#endif
 
     if (!compiler->compile()) {
         return false;

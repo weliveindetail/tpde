@@ -262,11 +262,11 @@ bool test::compile_ir_arm64(TestIR            *ir,
     test::TestIRAdaptor adaptor{ir};
     TestIRCompilerA64   compiler{&adaptor, no_fixed_assignments};
 
+    (void)print_liveness;
     compiler.analyzer.test_run_until          = run_until;
     compiler.analyzer.test_print_rpo          = print_rpo;
     compiler.analyzer.test_print_block_layout = print_layout;
     compiler.analyzer.test_print_loops        = print_loops;
-    compiler.analyzer.test_print_liveness     = print_liveness;
 
     if (!compiler.compile()) {
         TPDE_LOG_ERR("Failed to compile IR");

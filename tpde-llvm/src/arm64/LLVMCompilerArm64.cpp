@@ -1315,10 +1315,6 @@ extern bool compile_llvm(llvm::Module         &mod,
     auto adaptor  = std::make_unique<LLVMAdaptor>(mod.getContext(), mod);
     auto compiler = std::make_unique<LLVMCompilerArm64>(std::move(adaptor));
 
-#ifdef TPDE_TESTING
-    compiler->analyzer.test_print_liveness = print_liveness;
-#endif
-
     if (!compiler->compile()) {
         return false;
     }

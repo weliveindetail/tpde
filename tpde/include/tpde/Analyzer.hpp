@@ -79,7 +79,6 @@ struct Analyzer {
     bool         test_print_rpo          = false;
     bool         test_print_block_layout = false;
     bool         test_print_loops        = false;
-    bool         test_print_liveness     = false;
 #endif
 
     explicit Analyzer(Adaptor *adaptor) : adaptor(adaptor) {}
@@ -128,6 +127,8 @@ struct Analyzer {
         return (adaptor->block_info2(block_ref) & 0b11) == 2;
     }
 
+    void print_liveness(std::ostream &os) const;
+
   protected:
     // for use during liveness analysis
     LivenessInfo &liveness_maybe(const IRValueRef val) noexcept;
@@ -165,26 +166,21 @@ void Analyzer<Adaptor>::switch_func(IRFuncRef func) {
 #endif
 
     compute_liveness();
+}
 
-#ifdef TPDE_TESTING
-    if (test_print_liveness) {
-        std::cout << std::format("Liveness for {}\n",
-                                 adaptor->func_link_name(func));
-        for (u32 i = 0; i < liveness.size(); ++i) {
-            const auto &info = liveness[i];
-            std::cout << std::format(
-                "  {}: {} refs, {}->{} ({}->{}), lf: {}\n",
-                i,
-                info.ref_count,
-                static_cast<u32>(info.first),
-                static_cast<u32>(info.last),
-                adaptor->block_fmt_ref(block_ref(info.first)),
-                adaptor->block_fmt_ref(block_ref(info.last)),
-                info.last_full);
-        }
-        std::cout << std::format("End Liveness\n");
+template <IRAdaptor Adaptor>
+void Analyzer<Adaptor>::print_liveness(std::ostream &os) const {
+    for (u32 i = 0; i < liveness.size(); ++i) {
+        const auto &info = liveness[i];
+        os << std::format("  {}: {} refs, {}->{} ({}->{}), lf: {}\n",
+                          i,
+                          info.ref_count,
+                          static_cast<u32>(info.first),
+                          static_cast<u32>(info.last),
+                          adaptor->block_fmt_ref(block_ref(info.first)),
+                          adaptor->block_fmt_ref(block_ref(info.last)),
+                          info.last_full);
     }
-#endif
 }
 
 template <IRAdaptor Adaptor>
