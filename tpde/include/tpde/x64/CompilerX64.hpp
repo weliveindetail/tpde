@@ -1212,10 +1212,9 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
         assert(this->assembler.except_call_site_table.empty());
     }
 
-    // TODO(ts): honor cur_needs_unwind_info
-    this->assembler.end_func(saved_regs);
-
     if (func_ret_offs.empty()) {
+        // TODO(ts): honor cur_needs_unwind_info
+        this->assembler.end_func(saved_regs);
         return;
     }
 
@@ -1268,6 +1267,11 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
             this->assembler.text_write_ptr -= epilogue_size - ret_size;
         }
     }
+
+    // Do end_func at the very end; we shorten the function here again, so only
+    // at this point we know the actual size of the function.
+    // TODO(ts): honor cur_needs_unwind_info
+    this->assembler.end_func(saved_regs);
 }
 
 template <IRAdaptor Adaptor,
