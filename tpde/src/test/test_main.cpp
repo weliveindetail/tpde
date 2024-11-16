@@ -180,11 +180,17 @@ int main(int argc, char *argv[]) {
         Analyzer<test::TestIRAdaptor> analyzer{&adaptor};
         analyzer.test_run_until          = run_until.Get();
         analyzer.test_print_rpo          = print_rpo;
-        analyzer.test_print_block_layout = print_layout;
 
         for (auto func : adaptor.funcs()) {
             adaptor.switch_func(func);
             analyzer.switch_func(func);
+
+            if (print_layout) {
+                std::cout << "Block Layout for " << adaptor.func_link_name(func)
+                          << "\n";
+                analyzer.print_block_layout(std::cout);
+                std::cout << "End Block Layout\n";
+            }
 
             if (print_loops) {
                 std::cout << "Loops for " << adaptor.func_link_name(func)
@@ -213,7 +219,6 @@ int main(int argc, char *argv[]) {
 
         compiler.analyzer.test_run_until          = run_until.Get();
         compiler.analyzer.test_print_rpo          = print_rpo;
-        compiler.analyzer.test_print_block_layout = print_layout;
 
         if (!compiler.compile()) {
             TPDE_LOG_ERR("Failed to compile IR");

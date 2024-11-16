@@ -77,7 +77,6 @@ struct Analyzer {
 #ifdef TPDE_TESTING
     RunTestUntil test_run_until          = RunTestUntil::full;
     bool         test_print_rpo          = false;
-    bool         test_print_block_layout = false;
 #endif
 
     explicit Analyzer(Adaptor *adaptor) : adaptor(adaptor) {}
@@ -126,6 +125,7 @@ struct Analyzer {
         return (adaptor->block_info2(block_ref) & 0b11) == 2;
     }
 
+    void print_block_layout(std::ostream &os) const;
     void print_loops(std::ostream &os) const;
     void print_liveness(std::ostream &os) const;
 
@@ -166,6 +166,14 @@ void Analyzer<Adaptor>::switch_func(IRFuncRef func) {
 #endif
 
     compute_liveness();
+}
+
+template <IRAdaptor Adaptor>
+void Analyzer<Adaptor>::print_block_layout(std::ostream &os) const {
+    for (u32 i = 0; i < block_layout.size(); ++i) {
+        os << std::format(
+            "  {}: {}\n", i, adaptor->block_fmt_ref(block_layout[i]));
+    }
 }
 
 template <IRAdaptor Adaptor>
@@ -256,18 +264,6 @@ void Analyzer<Adaptor>::build_block_layout(IRFuncRef func) {
     loop_heads.mark_set(0);
 
     build_loop_tree_and_block_layout(block_rpo, loop_parent, loop_heads);
-
-#ifdef TPDE_TESTING
-    if (test_print_block_layout) {
-        std::cout << std::format("Block Layout for {}\n",
-                                 adaptor->func_link_name(func));
-        for (u32 i = 0; i < block_layout.size(); ++i) {
-            std::cout << std::format(
-                "  {}: {}\n", i, adaptor->block_fmt_ref(block_layout[i]));
-        }
-        std::cout << "End Block Layout";
-    }
-#endif
 }
 
 template <IRAdaptor Adaptor>
