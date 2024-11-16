@@ -765,9 +765,6 @@ define i128 @zext_i64_to_i128(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    add byte ptr [rax], al
-; X64-NEXT:    add byte ptr [rax], al
-; X64-NEXT:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: zext_i64_to_i128>:
 ; ARM64:         sub sp, sp, #0xc0

@@ -1821,8 +1821,6 @@ define void @store_struct_i32_i32_i32_i32_i32_i32(ptr %a, %struct.i32_i32_i32_i3
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
-; X64-NEXT:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: store_struct_i32_i32_i32_i32_i32_i32>:
 ; ARM64:         sub sp, sp, #0xd0

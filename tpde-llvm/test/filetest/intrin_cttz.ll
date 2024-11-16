@@ -443,8 +443,6 @@ define void @cttz_i16_no_salvage(i16 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
-; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: cttz_i16_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0

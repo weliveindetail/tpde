@@ -551,7 +551,6 @@ define i1 @fcmp_f128_une(fp128 %0, fp128 %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
 ;
 ; ARM64-LABEL: fcmp_f128_une>:
 ; ARM64:         sub sp, sp, #0xd0

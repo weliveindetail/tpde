@@ -719,7 +719,6 @@ define i16 @dyn_alloca_dyn_si3_cnt_i16_no_salvage(i16 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: dyn_alloca_dyn_si3_cnt_i16_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0

@@ -229,9 +229,6 @@ define ptr @get_func2() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
-; X64-NEXT:    add byte ptr [rax], al
-; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: get_func2>:
 ; ARM64:         sub sp, sp, #0xa0

@@ -157,9 +157,6 @@ define <4 x float> @bitcast_i8vec_to_f32vec(<16 x i8> %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    add byte ptr [rax], al
-; X64-NEXT:    add byte ptr [rax], al
-; X64-NEXT:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: bitcast_i8vec_to_f32vec>:
 ; ARM64:         sub sp, sp, #0xc0

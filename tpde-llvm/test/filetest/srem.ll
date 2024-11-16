@@ -1234,8 +1234,6 @@ define i64 @srem_i64_no_salvage(i64 %0, i64 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
-; X64-NEXT:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: srem_i64_no_salvage>:
 ; ARM64:         sub sp, sp, #0xc0

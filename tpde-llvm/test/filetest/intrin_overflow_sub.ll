@@ -853,7 +853,6 @@ define i1 @ssub_i128_1(i128 %0, i128 %1) {
 ; X64-NEXT:    add rsp, 0x80
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: ssub_i128_1>:
 ; ARM64:         sub sp, sp, #0xf0

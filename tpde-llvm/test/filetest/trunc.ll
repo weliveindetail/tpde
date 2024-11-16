@@ -222,7 +222,6 @@ define i1 @trunc_i64_i37_no_salvage(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: trunc_i64_i37_no_salvage>:
 ; ARM64:         sub sp, sp, #0xc0

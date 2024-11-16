@@ -411,9 +411,6 @@ define void @cmpxchg_seqcst_seqcst(ptr %0, i64 %1, i64 %2) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
-; X64-NEXT:    add byte ptr [rax], al
-; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: cmpxchg_seqcst_seqcst>:
 ; ARM64:         sub sp, sp, #0xd0

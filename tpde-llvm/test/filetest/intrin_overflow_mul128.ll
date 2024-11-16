@@ -240,7 +240,6 @@ define i1 @smul_i128_1(i128 %0, i128 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
 entry:
   %2 = call {i128, i1} @llvm.smul.with.overflow.i128(i128 %0, i128 %1)
   %3 = extractvalue {i128, i1} %2, 1

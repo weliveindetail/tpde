@@ -136,8 +136,6 @@ define i64 @condbr1(i64 %0, i1 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
-; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: condbr1>:
 ; ARM64:         sub sp, sp, #0xc0

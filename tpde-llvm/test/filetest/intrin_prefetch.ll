@@ -546,8 +546,6 @@ define void @prefetch_write_local3_data(ptr %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    add byte ptr [rax], al
-; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: prefetch_write_local3_data>:
 ; ARM64:         sub sp, sp, #0xb0

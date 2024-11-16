@@ -13,8 +13,6 @@ define void @test() {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    ud2
-; X64-NEXT:     ...
-; X64-NEXT:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: test>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -30,7 +28,6 @@ define void @test() {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    udf #0x1
-; ARM64-NEXT:     ...
 entry:
   unreachable
 }

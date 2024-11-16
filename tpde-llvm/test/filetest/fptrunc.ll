@@ -90,7 +90,6 @@ define double @fptrunc_f128tof64(fp128 %in) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: fptrunc_f128tof64>:
 ; ARM64:         sub sp, sp, #0xc0

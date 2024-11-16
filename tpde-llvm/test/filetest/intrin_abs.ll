@@ -228,7 +228,6 @@ define i64 @absi64(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
 ;
 ; ARM64-LABEL: absi64>:
 ; ARM64:         sub sp, sp, #0xb0

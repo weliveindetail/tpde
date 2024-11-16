@@ -712,8 +712,6 @@ define void @shl_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
-; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: shl_i37_no_salvage_reg>:
 ; ARM64:         sub sp, sp, #0xc0

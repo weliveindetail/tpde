@@ -693,7 +693,6 @@ define i1 @extract_i128_i1_1_no_salvage(ptr %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
 ;
 ; ARM64-LABEL: extract_i128_i1_1_no_salvage>:
 ; ARM64:         sub sp, sp, #0xe0

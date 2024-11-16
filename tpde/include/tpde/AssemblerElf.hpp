@@ -1048,8 +1048,8 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
 
     // .text
     {
-        const auto size   = util::align_up(sec_text.data.size(), 16);
-        const auto pad    = size - sec_text.data.size();
+        const auto size   = sec_text.data.size();
+        const auto pad    = util::align_up(size, 16) - sec_text.data.size();
         const auto sh_off = out.size();
         out.insert(out.end(), sec_text.data.begin(), sec_text.data.end());
         out.resize(out.size() + pad);

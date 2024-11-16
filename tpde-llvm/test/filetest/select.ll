@@ -308,8 +308,6 @@ define %struct.i8_i64 @select_i8_i64_1(i1 %0, %struct.i8_i64 %1, %struct.i8_i64 
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    add byte ptr [rax], al
-; X64-NEXT:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: select_i8_i64_1>:
 ; ARM64:         sub sp, sp, #0xe0

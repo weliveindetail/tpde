@@ -62,7 +62,6 @@ define double @powif64(double %0, i32 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    <unknown>
 ;
 ; ARM64-LABEL: powif64>:
 ; ARM64:         sub sp, sp, #0xc0

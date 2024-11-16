@@ -1185,8 +1185,6 @@ define void @mul_i128_no_salvage_reg(i128 %0, i128 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:     ...
-; X64-NEXT:    add byte ptr [rax], al
 ;
 ; ARM64-LABEL: mul_i128_no_salvage_reg>:
 ; ARM64:         sub sp, sp, #0xd0
