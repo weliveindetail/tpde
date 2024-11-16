@@ -155,11 +155,14 @@ int main(const int argc, char *argv[]) {
     llvm::Triple    the_triple(triple);
 
     // Required so that our target triple is actually found
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargets();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmParsers();
-    llvm::InitializeAllAsmPrinters();
+    LLVMInitializeX86TargetInfo();
+    LLVMInitializeAArch64TargetInfo();
+    LLVMInitializeX86Target();
+    LLVMInitializeAArch64Target();
+    LLVMInitializeX86TargetMC();
+    LLVMInitializeAArch64TargetMC();
+    LLVMInitializeX86AsmPrinter();
+    LLVMInitializeAArch64AsmPrinter();
 
 
     std::string         error;

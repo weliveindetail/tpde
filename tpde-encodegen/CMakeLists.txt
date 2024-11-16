@@ -43,7 +43,7 @@ if (TPDE_ASSERTS)
 endif ()
 
 if (TPDE_LINK_LLVM_STATIC)
-    llvm_map_components_to_libnames(llvm_libs core irreader irprinter passes support bitreader bitstreamreader)
+    llvm_map_components_to_libnames(llvm_libs core X86 AArch64 CodeGen irreader irprinter passes mc support targetparser asmparser asmprinter bitreader bitstreamreader)
 else ()
     set(llvm_libs LLVM)
 endif ()
