@@ -15,6 +15,9 @@ find_package(LLVM 19.1 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
+find_program(LIT NAMES ${LLVM_DEFAULT_EXTERNAL_LIT} lit llvm-lit REQUIRED)
+message(STATUS "Found lit: ${LIT}")
+
 # *sigh*, why can't CLion just support this workflow...
 # add_subdirectory(tpde "${PROJECT_BINARY_DIR}/tpde")
 add_subdirectory(tpde-llvm)

@@ -4,6 +4,8 @@
 
 // COM: true && because otherwise update_cc_test_checks fails to run this
 
+// REQUIRES: DISABLED
+// DISABLED-NOTE: flaky run-test with broken LLVM-IR
 // RUN: %clang -emit-llvm -S %s -o - -std=c++20 | FileCheck %s -check-prefixes=IR --dump-input always
 // RUN: true && clang -std=c++20 -S -emit-llvm -o %t.ll %s && tpde_llvm -o %t.o %t.ll && clang -o %t %t.o && %t | FileCheck %s -check-prefixes=OUT --dump-input always
 

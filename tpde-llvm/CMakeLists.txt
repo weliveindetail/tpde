@@ -220,5 +220,6 @@ configure_file(test/filetest/lit.site.cfg.py.in test/filetest/lit.site.cfg.py @O
 
 # TODO(ts): make this configurable
 add_custom_target(tpde_llvm_filetest
-    COMMAND ${LLVM_TOOLS_BINARY_DIR}/llvm-lit -v "${CMAKE_CURRENT_BINARY_DIR}/test/filetest"
-    DEPENDS tpde_llvm)
+    COMMAND ${LIT} -v "${CMAKE_CURRENT_BINARY_DIR}/test/filetest"
+    DEPENDS tpde_llvm
+    USES_TERMINAL)

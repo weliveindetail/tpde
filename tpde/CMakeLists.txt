@@ -216,5 +216,6 @@ configure_file(test/filetest/lit.site.cfg.py.in test/filetest/lit.site.cfg.py @O
 
 # TODO(ts): make this configurable
 add_custom_target(tpde_filetest
-    COMMAND lit -v "${CMAKE_CURRENT_BINARY_DIR}/test/filetest"
-    DEPENDS tpde_test)
+    COMMAND ${LIT} -v "${CMAKE_CURRENT_BINARY_DIR}/test/filetest"
+    DEPENDS tpde_test
+    USES_TERMINAL)
