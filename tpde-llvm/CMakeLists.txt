@@ -152,8 +152,6 @@ endif ()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(tpde_llvm PRIVATE -fsanitize=address)
     target_link_options(tpde_llvm PRIVATE -fsanitize=address)
-
-    target_compile_definitions(tpde_llvm PUBLIC TPDE_TESTING)
 endif ()
 
 
@@ -161,55 +159,6 @@ endif ()
 target_link_libraries(tpde_llvm PUBLIC tpde::tpde)
 # link llvm
 target_link_libraries(tpde_llvm PUBLIC tpdeLLVM)
-
-#[[
-# TODO(ts): create test target which sets TPDE_TESTING so that we can say,
-# we only want to run until the early stages of the loop analysis or w/e
-#------------------------------------------------------------------------------
-# target tpde_test
-#------------------------------------------------------------------------------
-
-add_executable(tpde_test)
-
-target_link_libraries(tpde_test PUBLIC tpde)
-
-target_include_directories(tpde_test PRIVATE ../deps/)
-
-set(TPDE_TEST_SOURCES
-    src/test/TestIR.cpp
-    src/test/TestIR.hpp
-    src/test/TestIRCompiler.cpp
-    src/test/TestIRCompiler.hpp
-    src/test/test_main.cpp
-)
-
-target_sources(tpde_test PRIVATE ${TPDE_TEST_SOURCES})
-
-set_target_properties(tpde_test PROPERTIES
-    VERSION 0.1.0
-    LINKER_LANGUAGE CXX
-)
-
-# warnings
-if (MSVC)
-    target_compile_options(tpde_test PRIVATE /W4 /WX)
-else ()
-    target_compile_options(tpde_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
-
-    # this is annoying
-    target_compile_options(tpde_test PRIVATE -Wno-missing-field-initializers)
-endif ()
-
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(tpde_test PRIVATE -fsanitize=address)
-    target_link_options(tpde_test PRIVATE -fsanitize=address)
-endif ()
-
-target_compile_options(tpde_test PRIVATE -ferror-limit=1000)
-
-target_compile_definitions(tpde_test PUBLIC TPDE_TESTING)
-]]
-#
 
 #------------------------------------------------------------------------------
 # target tpde_llvm_filetest

@@ -157,8 +157,6 @@ target_link_libraries(tpde PUBLIC gch::small_vector)
 target_compile_definitions(tpde PUBLIC GCH_NO_STRONG_EXCEPTION_GUARANTEES)
 
 
-# TODO(ts): create test target which sets TPDE_TESTING so that we can say,
-# we only want to run until the early stages of the loop analysis or w/e
 #------------------------------------------------------------------------------
 # target tpde_test
 #------------------------------------------------------------------------------
@@ -204,8 +202,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif ()
 
 #target_compile_options(tpde_test PRIVATE -ferror-limit=1000)
-
-target_compile_definitions(tpde_test PUBLIC TPDE_TESTING)
 
 #------------------------------------------------------------------------------
 # target tpde_filetest

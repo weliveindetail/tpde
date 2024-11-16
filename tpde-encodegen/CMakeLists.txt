@@ -109,8 +109,6 @@ endif ()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(tpde_encodegen PRIVATE -fsanitize=address)
     target_link_options(tpde_encodegen PRIVATE -fsanitize=address)
-
-    target_compile_definitions(tpde_encodegen PUBLIC TPDE_TESTING)
 endif ()
 
 # link llvm
