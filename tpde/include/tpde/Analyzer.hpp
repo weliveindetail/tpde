@@ -78,7 +78,6 @@ struct Analyzer {
     RunTestUntil test_run_until          = RunTestUntil::full;
     bool         test_print_rpo          = false;
     bool         test_print_block_layout = false;
-    bool         test_print_loops        = false;
 #endif
 
     explicit Analyzer(Adaptor *adaptor) : adaptor(adaptor) {}
@@ -127,6 +126,7 @@ struct Analyzer {
         return (adaptor->block_info2(block_ref) & 0b11) == 2;
     }
 
+    void print_loops(std::ostream &os) const;
     void print_liveness(std::ostream &os) const;
 
   protected:
@@ -166,6 +166,19 @@ void Analyzer<Adaptor>::switch_func(IRFuncRef func) {
 #endif
 
     compute_liveness();
+}
+
+template <IRAdaptor Adaptor>
+void Analyzer<Adaptor>::print_loops(std::ostream &os) const {
+    for (u32 i = 0; i < loops.size(); ++i) {
+        const auto &loop = loops[i];
+        os << std::format("  {}: level {}, parent {}, {}->{}\n",
+                          i,
+                          loop.level,
+                          loop.parent,
+                          static_cast<u32>(loop.begin),
+                          static_cast<u32>(loop.end));
+    }
 }
 
 template <IRAdaptor Adaptor>
@@ -253,21 +266,6 @@ void Analyzer<Adaptor>::build_block_layout(IRFuncRef func) {
                 "  {}: {}\n", i, adaptor->block_fmt_ref(block_layout[i]));
         }
         std::cout << "End Block Layout";
-    }
-
-    if (test_print_loops) {
-        std::cout << std::format("Loops for {}\n",
-                                 adaptor->func_link_name(func));
-        for (u32 i = 0; i < loops.size(); ++i) {
-            const auto &loop = loops[i];
-            std::cout << std::format("  {}: level {}, parent {}, {}->{}\n",
-                                     i,
-                                     loop.level,
-                                     loop.parent,
-                                     static_cast<u32>(loop.begin),
-                                     static_cast<u32>(loop.end));
-        }
-        std::cout << "End Loops\n";
     }
 #endif
 }
