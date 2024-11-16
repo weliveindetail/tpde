@@ -3,7 +3,7 @@
 	url = https://github.com/gabime/spdlog.git
 [submodule "deps/small_vector"]
 	path = deps/small_vector
-	url = git@github.com:gharveymn/small_vector.git
+	url = https://github.com/gharveymn/small_vector.git
 	branch = main
 [submodule "deps/args"]
 	path = deps/args
