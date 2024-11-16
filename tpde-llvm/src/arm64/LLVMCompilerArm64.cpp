@@ -1309,9 +1309,7 @@ bool LLVMCompilerArm64::handle_overflow_intrin_128(
     }
 }
 
-extern bool compile_llvm(llvm::Module         &mod,
-                         std::vector<u8>      &out_buf,
-                         [[maybe_unused]] bool print_liveness) {
+extern bool compile_llvm(llvm::Module &mod, std::vector<u8> &out_buf) {
     auto adaptor  = std::make_unique<LLVMAdaptor>(mod.getContext(), mod);
     auto compiler = std::make_unique<LLVMCompilerArm64>(std::move(adaptor));
 

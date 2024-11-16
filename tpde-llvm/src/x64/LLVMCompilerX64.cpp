@@ -1269,9 +1269,7 @@ bool LLVMCompilerX64::handle_overflow_intrin_128(OverflowOp  op,
                               res_of);
 }
 
-extern bool compile_llvm(llvm::Module         &mod,
-                         std::vector<u8>      &out_buf,
-                         [[maybe_unused]] bool print_liveness) {
+extern bool compile_llvm(llvm::Module &mod, std::vector<u8> &out_buf) {
     auto adaptor  = std::make_unique<LLVMAdaptor>(mod.getContext(), mod);
     auto compiler = std::make_unique<LLVMCompilerX64>(std::move(adaptor));
 
@@ -1285,30 +1283,6 @@ extern bool compile_llvm(llvm::Module         &mod,
     }
     std::vector<u8> data = compiler->assembler.build_object_file();
     out_buf              = std::move(data);
-    if (llvm::timeTraceProfilerEnabled()) {
-        llvm::timeTraceProfilerEnd(time_entry);
-    }
-
-    return true;
-}
-
-extern bool compile_llvm(llvm::LLVMContext       &ctx,
-                         llvm::Module            &mod,
-                         llvm::raw_pwrite_stream &out,
-                         [[maybe_unused]] bool    print_liveness) {
-    auto adaptor  = std::make_unique<LLVMAdaptor>(ctx, mod);
-    auto compiler = std::make_unique<LLVMCompilerX64>(std::move(adaptor));
-
-    if (!compiler->compile()) {
-        return false;
-    }
-
-    llvm::TimeTraceProfilerEntry *time_entry = nullptr;
-    if (llvm::timeTraceProfilerEnabled()) {
-        time_entry = llvm::timeTraceProfilerBegin("TPDE_EmitObj", "");
-    }
-    std::vector<u8> data = compiler->assembler.build_object_file();
-    out.pwrite(reinterpret_cast<char *>(data.data()), data.size(), 0);
     if (llvm::timeTraceProfilerEnabled()) {
         llvm::timeTraceProfilerEnd(time_entry);
     }

@@ -35,11 +35,6 @@ int main(int argc, char *argv[]) {
         2);
     args::Flag print_ir(parser, "print_ir", "Print LLVM-IR", {"print-ir"});
 
-    args::Flag print_liveness(parser,
-                              "print_liveness",
-                              "Print the liveness information",
-                              {"print-liveness"});
-
     args::ValueFlag<std::string> target(parser,
                                         "target",
                                         "Target architecture",
@@ -108,7 +103,7 @@ int main(int argc, char *argv[]) {
     }
     llvm::Triple triple(triple_str);
 
-    using CompileFn = bool(llvm::Module &, std::vector<uint8_t> &, bool);
+    using CompileFn = bool(llvm::Module &, std::vector<uint8_t> &);
     CompileFn *compile_fn;
     switch (triple.getArch()) {
     case llvm::Triple::x86_64:
@@ -123,7 +118,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::vector<uint8_t> buf;
-    if (!compile_fn(*mod, buf, print_liveness)) {
+    if (!compile_fn(*mod, buf)) {
         std::cerr << "Failed to compile\n";
         return 1;
     }
