@@ -7,11 +7,7 @@
 #include "tpde/base.hpp"
 
 namespace tpde::test {
-bool compile_ir_arm64(TestIR *ir,
-                      bool               print_rpo,
-                      bool               print_block_layout,
-                      bool               print_loops,
-                      bool               print_liveness,
+bool compile_ir_arm64(TestIR            *ir,
                       bool               no_fixed_assignments,
                       const std::string &obj_out_path);
 }

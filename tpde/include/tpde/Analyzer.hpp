@@ -5,7 +5,7 @@
 
 #include <algorithm>
 #include <format>
-#include <iostream>
+#include <ostream>
 
 #include "IRAdaptor.hpp"
 #include "util/SmallBitSet.hpp"
@@ -74,10 +74,6 @@ struct Analyzer {
 
     util::SmallVector<LivenessInfo, SMALL_VALUE_NUM> liveness = {};
 
-#ifdef TPDE_TESTING
-    bool         test_print_rpo          = false;
-#endif
-
     explicit Analyzer(Adaptor *adaptor) : adaptor(adaptor) {}
 
     /// Start the compilation of a new function and build the loop tree and
@@ -124,6 +120,7 @@ struct Analyzer {
         return (adaptor->block_info2(block_ref) & 0b11) == 2;
     }
 
+    void print_rpo(std::ostream &os) const;
     void print_block_layout(std::ostream &os) const;
     void print_loops(std::ostream &os) const;
     void print_liveness(std::ostream &os) const;
@@ -132,7 +129,7 @@ struct Analyzer {
     // for use during liveness analysis
     LivenessInfo &liveness_maybe(const IRValueRef val) noexcept;
 
-    void build_block_layout(IRFuncRef func);
+    void build_block_layout();
 
     void build_loop_tree_and_block_layout(
         const util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> &block_rpo,
@@ -154,9 +151,31 @@ struct Analyzer {
 };
 
 template <IRAdaptor Adaptor>
-void Analyzer<Adaptor>::switch_func(IRFuncRef func) {
-    build_block_layout(func);
+void Analyzer<Adaptor>::switch_func([[maybe_unused]] IRFuncRef func) {
+    build_block_layout();
     compute_liveness();
+}
+
+template <IRAdaptor Adaptor>
+void Analyzer<Adaptor>::print_rpo(std::ostream &os) const {
+    // build_rpo_block_order clobbers block data, so save and restore.
+    util::SmallVector<std::tuple<IRBlockRef, u32, u32>, SMALL_BLOCK_NUM> data;
+    for (IRBlockRef cur = adaptor->cur_entry_block(); cur != INVALID_BLOCK_REF;
+         cur            = adaptor->block_sibling(cur)) {
+        data.emplace_back(
+            cur, adaptor->block_info(cur), adaptor->block_info2(cur));
+    }
+
+    util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> rpo;
+    build_rpo_block_order(rpo);
+    for (u32 i = 0; i < rpo.size(); ++i) {
+        os << std::format("  {}: {}\n", i, adaptor->block_fmt_ref(rpo[i]));
+    }
+
+    for (const auto &[cur, val1, val2] : data) {
+        adaptor->block_set_info(cur, val1);
+        adaptor->block_set_info2(cur, val2);
+    }
 }
 
 template <IRAdaptor Adaptor>
@@ -221,24 +240,9 @@ typename Analyzer<Adaptor>::LivenessInfo &
 }
 
 template <IRAdaptor Adaptor>
-void Analyzer<Adaptor>::build_block_layout(IRFuncRef func) {
+void Analyzer<Adaptor>::build_block_layout() {
     util::SmallVector<IRBlockRef, SMALL_BLOCK_NUM> block_rpo{};
     build_rpo_block_order(block_rpo);
-
-    // may be unused if TPDE_TESTING is not set
-    (void)func;
-
-#ifdef TPDE_TESTING
-    if (test_print_rpo) {
-        std::cout << std::format("RPO for func {}\n",
-                                 adaptor->func_link_name(func));
-        for (u32 i = 0; i < block_rpo.size(); ++i) {
-            std::cout << std::format(
-                "  {}: {}\n", i, adaptor->block_fmt_ref(block_rpo[i]));
-        }
-        std::cout << "End RPO\n";
-    }
-#endif
 
     util::SmallVector<u32, SMALL_BLOCK_NUM> loop_parent{};
     util::SmallBitSet<256>                  loop_heads{};

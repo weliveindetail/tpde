@@ -184,11 +184,17 @@ int main(int argc, char *argv[]) {
         test::TestIRAdaptor adaptor{&ir};
 
         Analyzer<test::TestIRAdaptor> analyzer{&adaptor};
-        analyzer.test_print_rpo          = print_rpo;
 
         for (auto func : adaptor.funcs()) {
             adaptor.switch_func(func);
             analyzer.switch_func(func);
+
+            if (print_rpo) {
+                std::cout << "RPO for func " << adaptor.func_link_name(func)
+                          << "\n";
+                analyzer.print_rpo(std::cout);
+                std::cout << "End RPO\n";
+            }
 
             if (print_layout) {
                 std::cout << "Block Layout for " << adaptor.func_link_name(func)
@@ -222,8 +228,6 @@ int main(int argc, char *argv[]) {
         test::TestIRAdaptor     adaptor{&ir};
         test::TestIRCompilerX64 compiler{&adaptor, no_fixed_assignments};
 
-        compiler.analyzer.test_print_rpo          = print_rpo;
-
         if (!compiler.compile()) {
             TPDE_LOG_ERR("Failed to compile IR");
             return 1;
@@ -241,13 +245,8 @@ int main(int argc, char *argv[]) {
         }
     } else {
         assert(arch.Get() == Arch::a64);
-        if (!test::compile_ir_arm64(&ir,
-                                    print_rpo,
-                                    print_layout,
-                                    print_loops,
-                                    print_liveness,
-                                    no_fixed_assignments.Get(),
-                                    obj_out_path.Get())) {
+        if (!test::compile_ir_arm64(
+                &ir, no_fixed_assignments.Get(), obj_out_path.Get())) {
             TPDE_LOG_ERR("Failed to compiler IR");
             return 1;
         }

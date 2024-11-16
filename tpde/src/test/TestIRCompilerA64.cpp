@@ -252,19 +252,10 @@ bool TestIRCompilerA64::compile_sub(IRValueRef val_idx) noexcept {
 } // namespace
 
 bool test::compile_ir_arm64(TestIR            *ir,
-                            bool               print_rpo,
-                            bool               print_layout,
-                            bool               print_loops,
-                            bool               print_liveness,
                             bool               no_fixed_assignments,
                             const std::string &obj_out_path) {
     test::TestIRAdaptor adaptor{ir};
     TestIRCompilerA64   compiler{&adaptor, no_fixed_assignments};
-
-    (void)print_layout;
-    (void)print_loops;
-    (void)print_liveness;
-    compiler.analyzer.test_print_rpo          = print_rpo;
 
     if (!compiler.compile()) {
         TPDE_LOG_ERR("Failed to compile IR");
