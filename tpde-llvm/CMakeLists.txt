@@ -2,167 +2,94 @@
 #
 # SPDX-License-Identifier: LicenseRef-Proprietary
 
-cmake_minimum_required(VERSION 3.13)
-
-#------------------------------------------------------------------------------
-# general
-#------------------------------------------------------------------------------
+cmake_minimum_required(VERSION 3.23)
 
 project(tpde_llvm)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(tpde_llvm)
-add_executable(tpde::tpde_llvm ALIAS tpde_llvm)
+# tpde_llvm library
 
-#------------------------------------------------------------------------------
-# options
-#------------------------------------------------------------------------------
+add_library(tpde_llvm)
+add_library(tpde::tpde_llvm ALIAS tpde_llvm)
+set_target_properties(tpde_llvm PROPERTIES
+    VERSION 0.1.0
+    LINKER_LANGUAGE CXX
+)
 
-option(TPDE_LLVM_X64 "enable x86-64 support" ON)
-option(TPDE_LLVM_ARM64 "enable AArch64 support" ON)
-
-
-#------------------------------------------------------------------------------
-# dependencies
-#------------------------------------------------------------------------------
-
-# we want to overwrite the options of the subdirs
-# see https://stackoverflow.com/a/75700631
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-
-# tpde config
-if (TPDE_LLVM_X64)
-    set(TPDE_X64 ON)
-else ()
-    set(TPDE_X64 OFF)
-endif ()
-if (TPDE_LLVM_ARM64)
-    set(TPDE_A64 ON)
-else ()
-    set(TPDE_A64 OFF)
-endif ()
-
-# tpde
 add_subdirectory(../tpde ${PROJECT_BINARY_DIR}/tpde)
-
-# tpde-encodegen
 add_subdirectory(../tpde-encodegen ${PROJECT_BINARY_DIR}/tpde-encodegen)
+
+target_link_libraries(tpde_llvm PRIVATE tpde)
 
 # hopscotch-map (disable warnings)
 target_include_directories(tpde_llvm SYSTEM PRIVATE ../deps/hopscotch-map/include)
 
-# general deps directory (for args)
-target_include_directories(tpde_llvm PRIVATE ../deps/)
-
 # Configure LLVM
 set(TPDE_LINK_LLVM_STATIC FALSE CACHE BOOL "Should LLVM be linked statically?")
-if (TPDE_ASSERTS)
-    set(LLVM_ENABLE_ASSERTIONS "ON")
-endif ()
-# set(LLVM_ABI_BREAKING_CHECKS "FORCE_OFF")
 
+target_include_directories(tpde_llvm SYSTEM PUBLIC ${LLVM_INCLUDE_DIRS})
+target_compile_definitions(tpde_llvm PUBLIC ${LLVM_DEFINITIONS})
 if (TPDE_LINK_LLVM_STATIC)
-    llvm_map_components_to_libnames(llvm_libs core irreader irprinter passes support bitreader bitstreamreader targetparser)
+    llvm_map_components_to_libnames(TPDE_LLVM_LIBS
+        core irreader irprinter passes support bitreader bitstreamreader targetparser
+    )
+    target_link_libraries(tpde_llvm PUBLIC ${TPDE_LLVM_LIBS})
 else ()
-    set(llvm_libs LLVM)
+    target_link_libraries(tpde_llvm PUBLIC LLVM)
 endif ()
-add_library(tpdeLLVM INTERFACE)
-target_include_directories(tpdeLLVM SYSTEM INTERFACE ${LLVM_INCLUDE_DIRS})
-target_compile_definitions(tpdeLLVM INTERFACE ${LLVM_DEFINITIONS})
-target_link_libraries(tpdeLLVM INTERFACE ${llvm_libs})
 
-#------------------------------------------------------------------------------
-# sources
-#------------------------------------------------------------------------------
-
-set(TPDE_LLVM_HEADERS
-    src/base.hpp
-    src/LLVMAdaptor.hpp
-    src/LLVMCompilerBase.hpp
+target_sources(tpde_llvm PRIVATE
+    PRIVATE
+    FILE_SET priv_headers TYPE HEADERS
+    BASE_DIRS src
+    FILES
+        src/base.hpp
+        src/LLVMAdaptor.hpp
+        src/LLVMCompilerBase.hpp
 )
 
-set(TPDE_LLVM_HEADERS_PUBLIC
-)
+if(TPDE_X64)
+    target_compile_definitions(tpde_llvm PRIVATE TPDE_LLVM_X64)
+    target_sources(tpde_llvm PRIVATE
+        src/x64/LLVMCompilerX64.cpp
 
-set(TPDE_LLVM_SOURCES
+        PUBLIC
+        FILE_SET HEADERS
+        BASE_DIRS src
+        FILES
+            src/x64/LLVMCompilerX64.hpp
+    )
+endif()
+
+if(TPDE_A64)
+    target_compile_definitions(tpde_llvm PRIVATE TPDE_LLVM_ARM64)
+    target_sources(tpde_llvm PRIVATE
+        src/arm64/LLVMCompilerArm64.cpp
+
+        PUBLIC
+        FILE_SET HEADERS
+        BASE_DIRS src
+        FILES
+            src/arm64/LLVMCompilerArm64.hpp
+    )
+endif()
+
+
+# tpde_llc binary
+
+add_executable(tpde-llc)
+add_executable(tpde::tpde-llc ALIAS tpde-llc)
+target_link_libraries(tpde-llc PRIVATE tpde_llvm)
+
+# general deps directory (for args)
+target_include_directories(tpde-llc PRIVATE ../deps/)
+
+target_sources(tpde-llc PRIVATE
     src/main.cpp
 )
 
-set(TPDE_LLVM_X64_HEADERS
-    src/x64/LLVMCompilerX64.hpp
-    src/x64/encode_compiler.hpp
-)
 
-set(TPDE_LLVM_X64_SOURCES
-    src/x64/LLVMCompilerX64.cpp
-)
-
-set(TPDE_LLVM_ARM64_HEADERS
-    src/arm64/LLVMCompilerArm64.hpp
-    src/arm64/encode_compiler.hpp
-)
-
-set(TPDE_LLVM_ARM64_SOURCES
-    src/arm64/LLVMCompilerArm64.cpp
-)
-
-
-#------------------------------------------------------------------------------
-# target tpde_llvm
-#------------------------------------------------------------------------------
-
-target_include_directories(tpde_llvm PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_include_directories(tpde_llvm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-
-target_sources(tpde_llvm PRIVATE ${TPDE_LLVM_SOURCES} ${TPDE_LLVM_HEADERS})
-
-if (TPDE_LLVM_X64)
-    target_compile_definitions(tpde_llvm PRIVATE TPDE_LLVM_X64)
-    target_sources(tpde_llvm PRIVATE ${TPDE_LLVM_X64_SOURCES} ${TPDE_LLVM_X64_HEADERS})
-endif ()
-if (TPDE_LLVM_ARM64)
-    target_compile_definitions(tpde_llvm PRIVATE TPDE_LLVM_ARM64)
-    target_sources(tpde_llvm PRIVATE ${TPDE_LLVM_ARM64_SOURCES} ${TPDE_LLVM_ARM64_HEADERS})
-endif ()
-
-set_target_properties(tpde_llvm PROPERTIES
-    VERSION 0.1.0
-    PUBLIC_HEADERS "${TPDE_LLVM_HEADERS_PUBLIC}"
-    LINKER_LANGUAGE CXX
-)
-
-# warnings
-if (MSVC)
-    target_compile_options(tpde_llvm PRIVATE /W4 /WX)
-    # disable RTTI and exceptions
-    target_compile_options(tpde_llvm PRIVATE /GR- /EHsc /D_HAS_EXCEPTIONS=0)
-else ()
-    target_compile_options(tpde_llvm PRIVATE -Wall -Wextra -Wpedantic -Werror)
-    # disable RTTI and exceptions
-    target_compile_options(tpde_llvm PRIVATE -fno-rtti -fno-exceptions)
-
-    # this is annoying
-    target_compile_options(tpde_llvm PRIVATE -Wno-missing-field-initializers)
-    # practically supported by every compiler
-    target_compile_options(tpde_llvm PRIVATE -Wno-nested-anon-types)
-endif ()
-
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(tpde_llvm PRIVATE -fsanitize=address)
-    target_link_options(tpde_llvm PRIVATE -fsanitize=address)
-endif ()
-
-
-# link tpde
-target_link_libraries(tpde_llvm PUBLIC tpde::tpde)
-# link llvm
-target_link_libraries(tpde_llvm PUBLIC tpdeLLVM)
-
-#------------------------------------------------------------------------------
-# target tpde_llvm_filetest
-#------------------------------------------------------------------------------
+# Tests
 
 # configure lit.site.cfg.py
 configure_file(test/filetest/lit.site.cfg.py.in test/filetest/lit.site.cfg.py @ONLY)
@@ -170,5 +97,5 @@ configure_file(test/filetest/lit.site.cfg.py.in test/filetest/lit.site.cfg.py @O
 # TODO(ts): make this configurable
 add_custom_target(tpde_llvm_filetest
     COMMAND ${LIT} -v "${CMAKE_CURRENT_BINARY_DIR}/test/filetest"
-    DEPENDS tpde_llvm
+    DEPENDS tpde-llc
     USES_TERMINAL)

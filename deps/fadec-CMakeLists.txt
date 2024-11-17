@@ -37,7 +37,7 @@ foreach (flag ${WARNING_FLAGS})
     unset(SUPPORT_FLAG CACHE)
     check_c_compiler_flag(${flag} SUPPORT_FLAG)
     if (SUPPORT_FLAG)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flag}")
+        add_compile_options(${flag})
     endif ()
 endforeach ()
 

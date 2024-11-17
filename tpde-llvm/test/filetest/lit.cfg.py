@@ -18,5 +18,6 @@ config.test_exec_root = os.path.join(config.tpde_llvm_bin_dir, 'test/filetest');
 # Tweak the PATH to include the tools dir and TPDE binaries.
 llvm_config.with_environment('PATH', config.llvm_tools_dir, append_path=True)
 llvm_config.with_environment('PATH', config.tpde_llvm_bin_dir, append_path=True)
+config.substitutions.append(('tpde_llvm', 'tpde-llc'))
 
 # TODO(ts): arch config

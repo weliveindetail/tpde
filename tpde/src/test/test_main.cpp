@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 
+#define ARGS_NOEXCEPT
 #include <args/args.hxx>
 
 #include "TestIR.hpp"
@@ -100,21 +101,16 @@ int main(int argc, char *argv[]) {
     args::Positional<std::string> ir_path(
         parser, "ir_path", "Path to the input IR file");
 
-    try {
-        parser.ParseCLI(argc, argv);
-    } catch (args::Help &) {
+    parser.ParseCLI(argc, argv);
+    if (parser.GetError() == args::Error::Help) {
         std::cout << parser;
         return 0;
-    } catch (args::ParseError &e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << parser;
-        return 1;
-    } catch (args::ValidationError &e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << parser;
+    }
+    if (parser.GetError() != args::Error::None) {
+        std::cerr << "Error parsing arguments: " << parser.GetErrorMsg()
+                  << '\n';
         return 1;
     }
-
 
 // TODO(ts): make this configurable
 #ifdef TPDE_LOGGING
