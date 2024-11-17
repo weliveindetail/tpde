@@ -77,16 +77,11 @@ endif()
 
 # tpde_llc binary
 
-add_executable(tpde-llc)
-add_executable(tpde::tpde-llc ALIAS tpde-llc)
+add_executable(tpde-llc tools/tpde-llc.cpp)
 target_link_libraries(tpde-llc PRIVATE tpde_llvm)
 
 # general deps directory (for args)
 target_include_directories(tpde-llc PRIVATE ../deps/)
-
-target_sources(tpde-llc PRIVATE
-    src/main.cpp
-)
 
 
 # Tests
