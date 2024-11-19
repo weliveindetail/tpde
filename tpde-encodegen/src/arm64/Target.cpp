@@ -20,6 +20,17 @@ using namespace std::literals;
 
 namespace tpde_encgen::arm64 {
 
+namespace {
+
+std::string format_reg(const llvm::MachineOperand &mo, std::string_view op) {
+    const auto &tri =
+        *mo.getParent()->getMF()->getRegInfo().getTargetRegisterInfo();
+    llvm::StringRef name = tri.getName(mo.getReg());
+    return name == "WZR" || name == "XZR" ? "DA_ZR" : std::string(op);
+}
+
+} // end anonymous namespace
+
 void EncodingTargetArm64::get_inst_candidates(
     llvm::MachineInstr &mi, llvm::SmallVectorImpl<MICandidate> &candidates) {
     const llvm::LLVMTargetMachine &TM   = mi.getMF()->getTarget();
@@ -65,19 +76,13 @@ void EncodingTargetArm64::get_inst_candidates(
             [mnem](std::string                        &buf,
                    const llvm::MachineInstr           &mi,
                    llvm::SmallVectorImpl<std::string> &ops) {
-                const auto &tri =
-                    *mi.getMF()->getRegInfo().getTargetRegisterInfo();
                 std::string val_reg = "";
                 unsigned    op_idx  = 0;
                 if (mi.getOperand(0).isImm()) {
                     val_reg =
                         std::format("(Da64PrfOp){}", mi.getOperand(0).getImm());
                 } else {
-                    llvm::StringRef name =
-                        tri.getName(mi.getOperand(0).getReg());
-                    bool is_zero = name == "WZR" || name == "XZR";
-                    val_reg      = is_zero ? "DA_ZR" : ops[op_idx];
-                    op_idx++;
+                    val_reg = format_reg(mi.getOperand(0), ops[op_idx++]);
                 }
                 std::format_to(std::back_inserter(buf),
                                "        ASMD({}, {}, {}.first, {}.second);\n",
@@ -96,22 +101,11 @@ void EncodingTargetArm64::get_inst_candidates(
             [mnem](std::string                        &buf,
                    const llvm::MachineInstr           &mi,
                    llvm::SmallVectorImpl<std::string> &ops) {
-                const auto &tri =
-                    *mi.getMF()->getRegInfo().getTargetRegisterInfo();
                 std::format_to(
                     std::back_inserter(buf), "        ASMD({}", mnem);
-                unsigned reg_idx = 0;
                 for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n;
                      i++) {
-                    const auto     &op   = mi.getOperand(i);
-                    llvm::StringRef name = tri.getName(op.getReg());
-                    if (name == "WZR" || name == "XZR") { // zero register
-                        buf += ", DA_ZR";
-                    } else {
-                        std::format_to(
-                            std::back_inserter(buf), ", {}", ops[reg_idx]);
-                    }
-                    reg_idx++;
+                    buf += ", " + format_reg(mi.getOperand(i), ops[i]);
                 }
                 std::format_to(std::back_inserter(buf), ");\n");
             });
@@ -124,17 +118,8 @@ void EncodingTargetArm64::get_inst_candidates(
             [mnem](std::string                        &buf,
                    const llvm::MachineInstr           &mi,
                    llvm::SmallVectorImpl<std::string> &ops) {
-                const auto &tri =
-                    *mi.getMF()->getRegInfo().getTargetRegisterInfo();
-
-                llvm::StringRef  name1 = tri.getName(mi.getOperand(0).getReg());
-                bool             is_zero1 = name1 == "WZR" || name1 == "XZR";
-                std::string_view dst      = is_zero1 ? "DA_ZR"sv : ops[0];
-
-                llvm::StringRef  name2 = tri.getName(mi.getOperand(1).getReg());
-                bool             is_zero2 = name2 == "WZR" || name2 == "XZR";
-                std::string_view src      = is_zero2 ? "DA_ZR"sv : ops[1];
-
+                auto dst = format_reg(mi.getOperand(0), ops[0]);
+                auto src = format_reg(mi.getOperand(1), ops[1]);
                 std::format_to(std::back_inserter(buf),
                                "        ASMD({}, {}, {}, {});",
                                mnem,
@@ -151,17 +136,8 @@ void EncodingTargetArm64::get_inst_candidates(
             [mnem](std::string                        &buf,
                    const llvm::MachineInstr           &mi,
                    llvm::SmallVectorImpl<std::string> &ops) {
-                const auto &tri =
-                    *mi.getMF()->getRegInfo().getTargetRegisterInfo();
-
-                llvm::StringRef  name1 = tri.getName(mi.getOperand(0).getReg());
-                bool             is_zero1 = name1 == "WZR" || name1 == "XZR";
-                std::string_view dst      = is_zero1 ? "DA_ZR"sv : ops[0];
-
-                llvm::StringRef  name2 = tri.getName(mi.getOperand(2).getReg());
-                bool             is_zero2 = name2 == "WZR" || name2 == "XZR";
-                std::string_view src      = is_zero2 ? "DA_ZR"sv : ops[1];
-
+                auto dst = format_reg(mi.getOperand(0), ops[0]);
+                auto src = format_reg(mi.getOperand(1), ops[1]);
                 std::format_to(std::back_inserter(buf),
                                "        ASMD({}, {}, {}, {});",
                                mnem,
@@ -176,23 +152,14 @@ void EncodingTargetArm64::get_inst_candidates(
                                     std::string                        &buf,
                                     const llvm::MachineInstr           &mi,
                                     llvm::SmallVectorImpl<std::string> &ops) {
-            const auto &tri = *mi.getMF()->getRegInfo().getTargetRegisterInfo();
             std::format_to(std::back_inserter(buf), "        ASMD({}", mnem);
             unsigned reg_idx = 0;
             for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
                 const auto &op = mi.getOperand(i);
                 if (op.isReg()) {
-                    if (op.isTied() && op.isUse()) {
-                        continue;
+                    if (!op.isTied() || !op.isUse()) {
+                        buf += ", " + format_reg(op, ops[reg_idx++]);
                     }
-                    llvm::StringRef name = tri.getName(op.getReg());
-                    if (name == "WZR" || name == "XZR") { // zero register
-                        buf += ", DA_ZR";
-                    } else {
-                        std::format_to(
-                            std::back_inserter(buf), ", {}", ops[reg_idx]);
-                    }
-                    reg_idx++;
                 } else if (op.isImm()) {
                     if (mnem.starts_with("CCMP") || mnem.starts_with("FCCMP")
                         || mnem.starts_with("CS")
@@ -237,23 +204,14 @@ void EncodingTargetArm64::get_inst_candidates(
                                     std::string                        &buf,
                                     const llvm::MachineInstr           &mi,
                                     llvm::SmallVectorImpl<std::string> &ops) {
-            const auto &tri = *mi.getMF()->getRegInfo().getTargetRegisterInfo();
             std::format_to(std::back_inserter(buf), "        ASMD({}", mnem);
             unsigned reg_idx = 0;
             for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
                 const auto &op = mi.getOperand(i);
                 if (op.isReg()) {
-                    if (op.isTied() && op.isUse()) {
-                        continue;
+                    if (!op.isTied() || !op.isUse()) {
+                        buf += ", " + format_reg(op, ops[reg_idx++]);
                     }
-                    llvm::StringRef name = tri.getName(op.getReg());
-                    if (name == "WZR" || name == "XZR") { // zero register
-                        buf += ", DA_ZR";
-                    } else {
-                        std::format_to(
-                            std::back_inserter(buf), ", {}", ops[reg_idx]);
-                    }
-                    reg_idx++;
                 } else if (op.isImm()) {
                 } else {
                     assert(false);
@@ -269,25 +227,11 @@ void EncodingTargetArm64::get_inst_candidates(
                                     std::string                        &buf,
                                     const llvm::MachineInstr           &mi,
                                     llvm::SmallVectorImpl<std::string> &ops) {
-            const auto &tri = *mi.getMF()->getRegInfo().getTargetRegisterInfo();
             std::format_to(std::back_inserter(buf), "        ASMD({}", mnem);
             assert(mi.getNumExplicitOperands() == 3);
             constexpr std::array<unsigned, 3> op_order = {1, 0, 2};
             for (unsigned i : op_order) {
-                const auto &op = mi.getOperand(i);
-                if (op.isReg()) {
-                    if (op.isTied() && op.isUse()) {
-                        assert(0);
-                    }
-                    llvm::StringRef name = tri.getName(op.getReg());
-                    if (name == "WZR" || name == "XZR") { // zero register
-                        buf += ", DA_ZR";
-                    } else {
-                        std::format_to(std::back_inserter(buf), ", {}", ops[i]);
-                    }
-                } else {
-                    assert(false);
-                }
+                buf += ", " + format_reg(mi.getOperand(i), ops[i]);
             }
             std::format_to(std::back_inserter(buf), ");\n");
         });
