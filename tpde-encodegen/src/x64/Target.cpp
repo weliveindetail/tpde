@@ -417,84 +417,257 @@ void EncodingTargetX64::get_inst_candidates(
         });
     };
 
-    if (Name == "MOVZX32rm8") {
-        handle_default("MOVZXr32m8", 1);
-    } else if (Name == "MOVZX32rm16") {
-        handle_default("MOVZXr32m16", 1);
-    } else if (Name == "MOVZX32rr8") {
-        handle_default("MOVZXr32r8");
-    } else if (Name == "MOVZX32rr16") {
-        handle_default("MOVZXr32r16");
-    } else if (Name == "MOVSX32rr8") {
-        handle_default("MOVSXr32r8");
-    } else if (Name == "MOVSX32rr16") {
-        handle_default("MOVSXr32r16");
-    } else if (Name == "MOVSX64rr8") {
-        handle_default("MOVSXr64r8");
-    } else if (Name == "MOVSX64rr16") {
-        handle_default("MOVSXr64r16");
-    } else if (Name == "MOVSX64rr32") {
-        handle_default("MOVSXr64r32");
-    } else if (Name == "MOV8mr") {
-        handle_immrepl("MOV8mi", 5, 0);
-        handle_default("MOV8mr", 0);
-    } else if (Name == "MOV16mr") {
-        handle_immrepl("MOV16mi", 5, 0);
-        handle_default("MOV16mr", 0);
-    } else if (Name == "MOV32mr") {
-        handle_immrepl("MOV32mi", 5, 0);
-        handle_default("MOV32mr", 0);
-    } else if (Name == "MOV64mr") {
-        handle_immrepl("MOV64mi", 5, 0);
-        handle_default("MOV64mr", 0);
-    } else if (Name == "MOV8mi") {
-        handle_default("MOV8mi", 0);
-    } else if (Name == "MOV16mi") {
-        handle_default("MOV16mi", 0);
-    } else if (Name == "MOV32mi") {
-        handle_default("MOV32mi", 0);
-    } else if (Name == "MOV64mi") {
-        handle_default("MOV64mi", 0);
-    } else if (Name == "MOV8ri") {
-        handle_default("MOV8ri");
-    } else if (Name == "MOV16ri") {
-        handle_default("MOV16ri");
-    } else if (Name == "MOV32ri") {
-        handle_default("MOV32ri");
-    } else if (Name == "MOV64ri") {
-        handle_default("MOV64ri");
-    } else if (Name == "MOV64ri32") {
-        handle_default("MOV64ri");
-    } else if (Name == "MOV8rr") {
-        handle_immrepl("MOV8ri", 1);
-        handle_memrepl("MOV8rm", 1);
-        handle_default("MOV8rr");
-    } else if (Name == "MOV16rr") {
-        handle_immrepl("MOV16ri", 1);
-        handle_memrepl("MOV16rm", 1);
-        handle_default("MOV16rr");
-    } else if (Name == "MOV32rr") {
-        handle_immrepl("MOV32ri", 1);
-        handle_memrepl("MOV32rm", 1);
-        handle_default("MOV32rr");
-    } else if (Name == "MOV64rr") {
-        handle_immrepl("MOV64ri", 1);
-        handle_memrepl("MOV64rm", 1);
-        handle_default("MOV64rr");
-    } else if (Name == "MOV32rm") {
-        handle_default("MOV32rm", 1);
-    } else if (Name == "MOV64rm") {
-        handle_default("MOV64rm", 1);
+    const auto handle_rm = [&](std::string_view llvm_mnem_r,
+                               std::string_view llvm_mnem_m,
+                               unsigned         memop_start,
+                               std::string_view fd_mnem_r,
+                               std::string_view fd_mnem_m) {
+        if (std::string_view(Name) == llvm_mnem_r) {
+            handle_memrepl(fd_mnem_m, memop_start);
+            handle_default(fd_mnem_r);
+        }
+        if (std::string_view(Name) == llvm_mnem_m) {
+            handle_default(fd_mnem_m, memop_start);
+        }
+    };
+    const auto handle_rmi = [&](std::string_view llvm_mnem_r,
+                                std::string_view llvm_mnem_m,
+                                std::string_view llvm_mnem_i,
+                                unsigned         replop_idx,
+                                std::string_view fd_mnem_r,
+                                std::string_view fd_mnem_m,
+                                std::string_view fd_mnem_i) {
+        if (std::string_view(Name) == llvm_mnem_r) {
+            handle_immrepl(fd_mnem_i, replop_idx);
+            handle_memrepl(fd_mnem_m, replop_idx);
+            handle_default(fd_mnem_r);
+        }
+        if (std::string_view(Name) == llvm_mnem_m) {
+            handle_default(fd_mnem_m, replop_idx);
+        }
+        if (std::string_view(Name) == llvm_mnem_i) {
+            handle_default(fd_mnem_i);
+        }
+    };
+    const auto handle_ri = [&](std::string_view llvm_mnem_r,
+                               std::string_view llvm_mnem_i,
+                               unsigned         replop_idx,
+                               unsigned         memop_start,
+                               std::string_view fd_mnem_r,
+                               std::string_view fd_mnem_i) {
+        if (std::string_view(Name) == llvm_mnem_r) {
+            handle_immrepl(fd_mnem_i, replop_idx, memop_start);
+            handle_default(fd_mnem_r, memop_start);
+        }
+        if (std::string_view(Name) == llvm_mnem_i) {
+            handle_default(fd_mnem_i, memop_start);
+        }
+    };
+    const auto handle_ri_shift = [&](std::string_view llvm_mnem_r,
+                                     std::string_view llvm_mnem_i,
+                                     unsigned         replop_idx,
+                                     unsigned         memop_start,
+                                     std::string_view fd_mnem_r,
+                                     std::string_view fd_mnem_i) {
+        if (std::string_view(Name) == llvm_mnem_r) {
+            handle_immrepl(fd_mnem_i, replop_idx, memop_start);
+            handle_default(fd_mnem_r, memop_start, ", FE_CX");
+        }
+        if (std::string_view(Name) == llvm_mnem_i) {
+            handle_default(fd_mnem_i, memop_start);
+        }
+    };
 
-    } else if (Name == "LCMPXCHG64") {
+    // clang-format off
+    handle_rm("MOVZX32rr8", "MOVZX32rm8", 1, "MOVZXr32r8", "MOVZXr32m8");
+    handle_rm("MOVZX32rr16", "MOVZX32rm16", 1, "MOVZXr32r16", "MOVZXr32m16");
+    handle_rm("MOVSX32rr8", "MOVSX32rm8", 1, "MOVSXr32r8", "MOVSXr32m8");
+    handle_rm("MOVSX32rr16", "MOVSX32rm16", 1, "MOVSXr32r16", "MOVSXr32m16");
+    handle_rm("MOVSX64rr8", "MOVSX64rm8", 1, "MOVSXr64r8", "MOVSXr64m8");
+    handle_rm("MOVSX64rr16", "MOVSX64rm16", 1, "MOVSXr64r16", "MOVSXr64m16");
+    handle_rm("MOVSX64rr32", "MOVSX64rm32", 1, "MOVSXr64r32", "MOVSXr64m32");
+
+    handle_rmi("MOV8rr", "MOV8rm", "MOV8ri", 1, "MOV8rr", "MOV8rm", "MOV8ri");
+    handle_rmi("MOV16rr", "MOV16rm", "MOV16ri", 1, "MOV16rr", "MOV16rm", "MOV16ri");
+    handle_rmi("MOV32rr", "MOV32rm", "MOV32ri", 1, "MOV32rr", "MOV32rm", "MOV32ri");
+    handle_rmi("MOV64rr", "MOV64rm", "MOV64ri32", 1, "MOV64rr", "MOV64rm", "MOV64ri");
+    if (Name == "MOV64ri") {
+        handle_default("MOV64ri");
+    }
+    handle_ri("MOV8mr", "MOV8mi", 5, 0, "MOV8mr", "MOV8mi");
+    handle_ri("MOV16mr", "MOV16mi", 5, 0, "MOV16mr", "MOV16mi");
+    handle_ri("MOV32mr", "MOV32mi", 5, 0, "MOV32mr", "MOV32mi");
+    handle_ri("MOV64mr", "MOV64mi32", 5, 0, "MOV64mr", "MOV64mi");
+    handle_rmi("ADD8rr", "ADD8rm", "ADD8ri", 2, "ADD8rr", "ADD8rm", "ADD8ri");
+    handle_rmi("ADD16rr", "ADD16rm", "ADD16ri", 2, "ADD16rr", "ADD16rm", "ADD16ri");
+    handle_rmi("ADD32rr", "ADD32rm", "ADD32ri", 2, "ADD32rr", "ADD32rm", "ADD32ri");
+    handle_rmi("ADD64rr", "ADD64rm", "ADD64ri32", 2, "ADD64rr", "ADD64rm", "ADD64ri");
+    handle_ri("ADD8mr", "ADD8mi", 5, 0, "ADD8mr", "ADD8mi");
+    handle_ri("ADD16mr", "ADD16mi", 5, 0, "ADD16mr", "ADD16mi");
+    handle_ri("ADD32mr", "ADD32mi", 5, 0, "ADD32mr", "ADD32mi");
+    handle_ri("ADD64mr", "ADD64mi32", 5, 0, "ADD64mr", "ADD64mi");
+    handle_rmi("OR8rr", "OR8rm", "OR8ri", 2, "OR8rr", "OR8rm", "OR8ri");
+    handle_rmi("OR16rr", "OR16rm", "OR16ri", 2, "OR16rr", "OR16rm", "OR16ri");
+    handle_rmi("OR32rr", "OR32rm", "OR32ri", 2, "OR32rr", "OR32rm", "OR32ri");
+    handle_rmi("OR64rr", "OR64rm", "OR64ri32", 2, "OR64rr", "OR64rm", "OR64ri");
+    handle_ri("OR8mr", "OR8mi", 5, 0, "OR8mr", "OR8mi");
+    handle_ri("OR16mr", "OR16mi", 5, 0, "OR16mr", "OR16mi");
+    handle_ri("OR32mr", "OR32mi", 5, 0, "OR32mr", "OR32mi");
+    handle_ri("OR64mr", "OR64mi32", 5, 0, "OR64mr", "OR64mi");
+    handle_rmi("ADC8rr", "ADC8rm", "ADC8ri", 2, "ADC8rr", "ADC8rm", "ADC8ri");
+    handle_rmi("ADC16rr", "ADC16rm", "ADC16ri", 2, "ADC16rr", "ADC16rm", "ADC16ri");
+    handle_rmi("ADC32rr", "ADC32rm", "ADC32ri", 2, "ADC32rr", "ADC32rm", "ADC32ri");
+    handle_rmi("ADC64rr", "ADC64rm", "ADC64ri32", 2, "ADC64rr", "ADC64rm", "ADC64ri");
+    handle_ri("ADC8mr", "ADC8mi", 5, 0, "ADC8mr", "ADC8mi");
+    handle_ri("ADC16mr", "ADC16mi", 5, 0, "ADC16mr", "ADC16mi");
+    handle_ri("ADC32mr", "ADC32mi", 5, 0, "ADC32mr", "ADC32mi");
+    handle_ri("ADC64mr", "ADC64mi32", 5, 0, "ADC64mr", "ADC64mi");
+    handle_rmi("SBB8rr", "SBB8rm", "SBB8ri", 2, "SBB8rr", "ADD8rm", "SBB8ri");
+    handle_rmi("SBB16rr", "SBB16rm", "SBB16ri", 2, "SBB16rr", "ADD16rm", "SBB16ri");
+    handle_rmi("SBB32rr", "SBB32rm", "SBB32ri", 2, "SBB32rr", "ADD32rm", "SBB32ri");
+    handle_rmi("SBB64rr", "SBB64rm", "SBB64ri32", 2, "SBB64rr", "ADD64rm", "SBB64ri");
+    handle_ri("SBB8mr", "SBB8mi", 5, 0, "SBB8mr", "SBB8mi");
+    handle_ri("SBB16mr", "SBB16mi", 5, 0, "SBB16mr", "SBB16mi");
+    handle_ri("SBB32mr", "SBB32mi", 5, 0, "SBB32mr", "SBB32mi");
+    handle_ri("SBB64mr", "SBB64mi32", 5, 0, "SBB64mr", "SBB64mi");
+    handle_rmi("AND8rr", "AND8rm", "AND8ri", 2, "AND8rr", "ADD8rm", "AND8ri");
+    handle_rmi("AND16rr", "AND16rm", "AND16ri", 2, "AND16rr", "ADD16rm", "AND16ri");
+    handle_rmi("AND32rr", "AND32rm", "AND32ri", 2, "AND32rr", "ADD32rm", "AND32ri");
+    handle_rmi("AND64rr", "AND64rm", "AND64ri32", 2, "AND64rr", "ADD64rm", "AND64ri");
+    handle_ri("AND8mr", "AND8mi", 5, 0, "AND8mr", "AND8mi");
+    handle_ri("AND16mr", "AND16mi", 5, 0, "AND16mr", "AND16mi");
+    handle_ri("AND32mr", "AND32mi", 5, 0, "AND32mr", "AND32mi");
+    handle_ri("AND64mr", "AND64mi32", 5, 0, "AND64mr", "AND64mi");
+    handle_rmi("SUB8rr", "SUB8rm", "SUB8ri", 2, "SUB8rr", "ADD8rm", "SUB8ri");
+    handle_rmi("SUB16rr", "SUB16rm", "SUB16ri", 2, "SUB16rr", "ADD16rm", "SUB16ri");
+    handle_rmi("SUB32rr", "SUB32rm", "SUB32ri", 2, "SUB32rr", "ADD32rm", "SUB32ri");
+    handle_rmi("SUB64rr", "SUB64rm", "SUB64ri32", 2, "SUB64rr", "ADD64rm", "SUB64ri");
+    handle_ri("SUB8mr", "SUB8mi", 5, 0, "SUB8mr", "SUB8mi");
+    handle_ri("SUB16mr", "SUB16mi", 5, 0, "SUB16mr", "SUB16mi");
+    handle_ri("SUB32mr", "SUB32mi", 5, 0, "SUB32mr", "SUB32mi");
+    handle_ri("SUB64mr", "SUB64mi32", 5, 0, "SUB64mr", "SUB64mi");
+    handle_rmi("XOR8rr", "XOR8rm", "XOR8ri", 2, "XOR8rr", "ADD8rm", "XOR8ri");
+    handle_rmi("XOR16rr", "XOR16rm", "XOR16ri", 2, "XOR16rr", "ADD16rm", "XOR16ri");
+    handle_rmi("XOR32rr", "XOR32rm", "XOR32ri", 2, "XOR32rr", "ADD32rm", "XOR32ri");
+    handle_rmi("XOR64rr", "XOR64rm", "XOR64ri32", 2, "XOR64rr", "ADD64rm", "XOR64ri");
+    handle_ri("XOR8mr", "XOR8mi", 5, 0, "XOR8mr", "XOR8mi");
+    handle_ri("XOR16mr", "XOR16mi", 5, 0, "XOR16mr", "XOR16mi");
+    handle_ri("XOR32mr", "XOR32mi", 5, 0, "XOR32mr", "XOR32mi");
+    handle_ri("XOR64mr", "XOR64mi32", 5, 0, "XOR64mr", "XOR64mi");
+    handle_rmi("CMP8rr", "CMP8rm", "CMP8ri", 1, "CMP8rr", "ADD8rm", "CMP8ri");
+    handle_rmi("CMP16rr", "CMP16rm", "CMP16ri", 1, "CMP16rr", "ADD16rm", "CMP16ri");
+    handle_rmi("CMP32rr", "CMP32rm", "CMP32ri", 1, "CMP32rr", "ADD32rm", "CMP32ri");
+    handle_rmi("CMP64rr", "CMP64rm", "CMP64ri32", 1, "CMP64rr", "ADD64rm", "CMP64ri");
+    handle_ri("CMP8mr", "CMP8mi", 5, 0, "CMP8mr", "CMP8mi");
+    handle_ri("CMP16mr", "CMP16mi", 5, 0, "CMP16mr", "CMP16mi");
+    handle_ri("CMP32mr", "CMP32mi", 5, 0, "CMP32mr", "CMP32mi");
+    handle_ri("CMP64mr", "CMP64mi32", 5, 0, "CMP64mr", "CMP64mi");
+    handle_rmi("TEST8rr", "TEST8rm", "TEST8ri", 1, "TEST8rr", "ADD8rm", "TEST8ri");
+    handle_rmi("TEST16rr", "TEST16rm", "TEST16ri", 1, "TEST16rr", "ADD16rm", "TEST16ri");
+    handle_rmi("TEST32rr", "TEST32rm", "TEST32ri", 1, "TEST32rr", "ADD32rm", "TEST32ri");
+    handle_rmi("TEST64rr", "TEST64rm", "TEST64ri32", 1, "TEST64rr", "ADD64rm", "TEST64ri");
+    handle_ri("TEST8mr", "TEST8mi", 5, 0, "TEST8mr", "TEST8mi");
+    handle_ri("TEST16mr", "TEST16mi", 5, 0, "TEST16mr", "TEST16mi");
+    handle_ri("TEST32mr", "TEST32mi", 5, 0, "TEST32mr", "TEST32mi");
+    handle_ri("TEST64mr", "TEST64mi32", 5, 0, "TEST64mr", "TEST64mi");
+
+    handle_ri_shift("SHR8rCL", "SHR8ri", 3, -1, "SHR8rr", "SHR8ri");
+    handle_ri_shift("SHR16rCL", "SHR16ri", 3, -1, "SHR16rr", "SHR16ri");
+    handle_ri_shift("SHR32rCL", "SHR32ri", 3, -1, "SHR32rr", "SHR32ri");
+    handle_ri_shift("SHR64rCL", "SHR64ri", 3, -1, "SHR64rr", "SHR64ri");
+    handle_ri_shift("SAR8rCL", "SAR8ri", 3, -1, "SAR8rr", "SAR8ri");
+    handle_ri_shift("SAR16rCL", "SAR16ri", 3, -1, "SAR16rr", "SAR16ri");
+    handle_ri_shift("SAR32rCL", "SAR32ri", 3, -1, "SAR32rr", "SAR32ri");
+    handle_ri_shift("SAR64rCL", "SAR64ri", 3, -1, "SAR64rr", "SAR64ri");
+    handle_ri_shift("SHL8rCL", "SHL8ri", 3, -1, "SHL8rr", "SHL8ri");
+    handle_ri_shift("SHL16rCL", "SHL16ri", 3, -1, "SHL16rr", "SHL16ri");
+    handle_ri_shift("SHL32rCL", "SHL32ri", 3, -1, "SHL32rr", "SHL32ri");
+    handle_ri_shift("SHL64rCL", "SHL64ri", 3, -1, "SHL64rr", "SHL64ri");
+    handle_ri_shift("ROR8rCL", "ROR8ri", 3, -1, "ROR8rr", "ROR8ri");
+    handle_ri_shift("ROR16rCL", "ROR16ri", 3, -1, "ROR16rr", "ROR16ri");
+    handle_ri_shift("ROR32rCL", "ROR32ri", 3, -1, "ROR32rr", "ROR32ri");
+    handle_ri_shift("ROR64rCL", "ROR64ri", 3, -1, "ROR64rr", "ROR64ri");
+    handle_ri_shift("ROL8rCL", "ROL8ri", 3, -1, "ROL8rr", "ROL8ri");
+    handle_ri_shift("ROL16rCL", "ROL16ri", 3, -1, "ROL16rr", "ROL16ri");
+    handle_ri_shift("ROL32rCL", "ROL32ri", 3, -1, "ROL32rr", "ROL32ri");
+    handle_ri_shift("ROL64rCL", "ROL64ri", 3, -1, "ROL64rr", "ROL64ri");
+    handle_ri_shift("SHRD8rCL", "SHRD8ri", 3, -1, "SHRD8rr", "SHRD8ri");
+    handle_ri_shift("SHRD16rCL", "SHRD16ri", 3, -1, "SHRD16rr", "SHRD16ri");
+    handle_ri_shift("SHRD32rCL", "SHRD32ri", 3, -1, "SHRD32rr", "SHRD32ri");
+    handle_ri_shift("SHRD64rCL", "SHRD64ri", 3, -1, "SHRD64rr", "SHRD64ri");
+    handle_ri_shift("SHLD8rCL", "SHLD8ri", 3, -1, "SHLD8rr", "SHLD8ri");
+    handle_ri_shift("SHLD16rCL", "SHLD16ri", 3, -1, "SHLD16rr", "SHLD16ri");
+    handle_ri_shift("SHLD32rCL", "SHLD32ri", 3, -1, "SHLD32rr", "SHLD32ri");
+    handle_ri_shift("SHLD64rCL", "SHLD64ri", 3, -1, "SHLD64rr", "SHLD64ri");
+
+    handle_rm("MUL8r", "MUL8m", 0, "MUL8r", "MUL8m");
+    handle_rm("MUL16r", "MUL16m", 0, "MUL16r", "MUL16m");
+    handle_rm("MUL32r", "MUL32m", 0, "MUL32r", "MUL32m");
+    handle_rm("MUL64r", "MUL64m", 0, "MUL64r", "MUL64m");
+    handle_rm("IMUL8r", "IMUL8m", 0, "IMUL8r", "IMUL8m");
+    handle_rm("IMUL16r", "IMUL16m", 0, "IMUL16r", "IMUL16m");
+    handle_rm("IMUL32r", "IMUL32m", 0, "IMUL32r", "IMUL32m");
+    handle_rm("IMUL64r", "IMUL64m", 0, "IMUL64r", "IMUL64m");
+    handle_rm("DIV8r", "DIV8m", 0, "DIV8r", "DIV8m");
+    handle_rm("DIV16r", "DIV16m", 0, "DIV16r", "DIV16m");
+    handle_rm("DIV32r", "DIV32m", 0, "DIV32r", "DIV32m");
+    handle_rm("DIV64r", "DIV64m", 0, "DIV64r", "DIV64m");
+    handle_rm("IDIV8r", "IDIV8m", 0, "IDIV8r", "IDIV8m");
+    handle_rm("IDIV16r", "IDIV16m", 0, "IDIV16r", "IDIV16m");
+    handle_rm("IDIV32r", "IDIV32m", 0, "IDIV32r", "IDIV32m");
+    handle_rm("IDIV64r", "IDIV64m", 0, "IDIV64r", "IDIV64m");
+
+    handle_rm("BSF16rr", "BSF16rm", 1, "BSF16rr", "BSF16rm");
+    handle_rm("BSF32rr", "BSF32rm", 1, "BSF32rr", "BSF32rm");
+    handle_rm("BSF64rr", "BSF64rm", 1, "BSF64rr", "BSF64rm");
+    handle_rm("BSR16rr", "BSR16rm", 1, "BSR16rr", "BSR16rm");
+    handle_rm("BSR32rr", "BSR32rm", 1, "BSR32rr", "BSR32rm");
+    handle_rm("BSR64rr", "BSR64rm", 1, "BSR64rr", "BSR64rm");
+
+    // TODO: memrepl for first mov operand
+    handle_rm("MOVSSrr", "MOVSSrm_alt", 1, "SSE_MOVSSrr", "SSE_MOVSSrm");
+    handle_rm("MOVSDrr", "MOVSDrm_alt", 1, "SSE_MOVSDrr", "SSE_MOVSDrm");
+    handle_rm("MOVAPSrr", "MOVAPSrm", 1, "SSE_MOVAPSrr", "SSE_MOVAPSrm");
+    handle_rm("MOVAPDrr", "MOVAPDrm", 1, "SSE_MOVAPDrr", "SSE_MOVAPDrm");
+    handle_rm("MOVUPSrr", "MOVUPSrm", 1, "SSE_MOVUPSrr", "SSE_MOVUPSrm");
+    handle_rm("MOVUPDrr", "MOVUPDrm", 1, "SSE_MOVUPDrr", "SSE_MOVUPDrm");
+    handle_rm("ADDSSrr", "ADDSSrm", 2, "SSE_ADDSSrr", "SSE_ADDSSrm");
+    handle_rm("ADDSDrr", "ADDSDrm", 2, "SSE_ADDSDrr", "SSE_ADDSDrm");
+    handle_rm("ADDPSrr", "ADDPSrm", 2, "SSE_ADDPSrr", "SSE_ADDPSrm");
+    handle_rm("ADDPDrr", "ADDPDrm", 2, "SSE_ADDPDrr", "SSE_ADDPDrm");
+    handle_rm("SUBSSrr", "SUBSSrm", 2, "SSE_SUBSSrr", "SSE_SUBSSrm");
+    handle_rm("SUBSDrr", "SUBSDrm", 2, "SSE_SUBSDrr", "SSE_SUBSDrm");
+    handle_rm("SUBPSrr", "SUBPSrm", 2, "SSE_SUBPSrr", "SSE_SUBPSrm");
+    handle_rm("SUBPDrr", "SUBPDrm", 2, "SSE_SUBPDrr", "SSE_SUBPDrm");
+    handle_rm("MULSSrr", "MULSSrm", 2, "SSE_MULSSrr", "SSE_MULSSrm");
+    handle_rm("MULSDrr", "MULSDrm", 2, "SSE_MULSDrr", "SSE_MULSDrm");
+    handle_rm("MULPSrr", "MULPSrm", 2, "SSE_MULPSrr", "SSE_MULPSrm");
+    handle_rm("MULPDrr", "MULPDrm", 2, "SSE_MULPDrr", "SSE_MULPDrm");
+    handle_rm("DIVSSrr", "DIVSSrm", 2, "SSE_DIVSSrr", "SSE_DIVSSrm");
+    handle_rm("DIVSDrr", "DIVSDrm", 2, "SSE_DIVSDrr", "SSE_DIVSDrm");
+    handle_rm("DIVPSrr", "DIVPSrm", 2, "SSE_DIVPSrr", "SSE_DIVPSrm");
+    handle_rm("DIVPDrr", "DIVPDrm", 2, "SSE_DIVPDrr", "SSE_DIVPDrm");
+    handle_rm("CMPSSrri", "CMPSSrmi", 2, "SSE_CMPSSrri", "SSE_CMPSSrmi");
+    handle_rm("CMPSDrri", "CMPSDrmi", 2, "SSE_CMPSDrri", "SSE_CMPSDrmi");
+    handle_rm("CMPPSrri", "CMPPSrmi", 2, "SSE_CMPPSrri", "SSE_CMPPSrmi");
+    handle_rm("CMPPDrri", "CMPPDrmi", 2, "SSE_CMPPDrri", "SSE_CMPPDrmi");
+    handle_rm("ANDPSrr", "ANDPSrm", 2, "SSE_ANDPSrr", "SSE_ANDPSrm");
+    handle_rm("ANDPDrr", "ANDPDrm", 2, "SSE_ANDPDrr", "SSE_ANDPDrm");
+    handle_rm("XORPSrr", "XORPSrm", 2, "SSE_XORPSrr", "SSE_XORPSrm");
+    handle_rm("XORPDrr", "XORPDrm", 2, "SSE_XORPDrr", "SSE_XORPDrm");
+    handle_rm("ORPSrr", "ORPSrm", 2, "SSE_ORPSrr", "SSE_ORPSrm");
+    handle_rm("ORPDrr", "ORPDrm", 2, "SSE_ORPDrr", "SSE_ORPDrm");
+    handle_rm("ANDNPSrr", "ANDNPSrm", 2, "SSE_ANDNPSrr", "SSE_ANDNPSrm");
+    handle_rm("ANDNPDrr", "ANDNPDrm", 2, "SSE_ANDNPDrr", "SSE_ANDNPDrm");
+    handle_rm("COMISSrr", "COMISSrm", 1, "SSE_COMISSrr", "SSE_COMISSrm");
+    handle_rm("COMISDrr", "COMISDrm", 1, "SSE_COMISDrr", "SSE_COMISDrm");
+    handle_rm("UCOMISSrr", "UCOMISSrm", 1, "SSE_UCOMISSrr", "SSE_UCOMISSrm");
+    handle_rm("UCOMISDrr", "UCOMISDrm", 1, "SSE_UCOMISDrr", "SSE_UCOMISDrm");
+    // clang-format on
+
+    if (Name == "LCMPXCHG64") {
         handle_default("LOCK_CMPXCHG64mr", 0);
 
-    } else if (Name == "MOVSSrm_alt") {
-        handle_default("SSE_MOVSSrm", 1);
-    } else if (Name == "MOVSDrm_alt") {
-        handle_default("SSE_MOVSDrm", 1);
-    } else if (Name == "MOVAPSrm") {
-        handle_default("SSE_MOVAPSrm", 1);
     } else if (Name == "VMOVAPSYrm") {
         handle_default("VMOVAPS256rm", 1);
     } else if (Name == "VMOVAPSZrm") {
@@ -510,158 +683,6 @@ void EncodingTargetX64::get_inst_candidates(
     } else if (Name == "VMOVAPSZmr") {
         handle_default("VMOVAPS512mr", 0);
 
-    } else if (Name == "CMPSSrri") {
-        handle_memrepl("SSE_CMPSSrmi", 2);
-        handle_default("SSE_CMPSSrri");
-    } else if (Name == "CMPSDrri") {
-        handle_memrepl("SSE_CMPSDrmi", 2);
-        handle_default("SSE_CMPSDrri");
-    } else if (Name == "CMPPSrri") {
-        handle_memrepl("SSE_CMPPSrmi", 2);
-        handle_default("SSE_CMPPSrri");
-    } else if (Name == "CMPPDrri") {
-        handle_memrepl("SSE_CMPPDrmi", 2);
-        handle_default("SSE_CMPPDrri");
-    } else if (Name == "ADDSSrr") {
-        handle_memrepl("SSE_ADDSSrm", 2);
-        handle_default("SSE_ADDSSrr");
-    } else if (Name == "SUBSSrr") {
-        handle_memrepl("SSE_SUBSSrm", 2);
-        handle_default("SSE_SUBSSrr");
-    } else if (Name == "MULSSrr") {
-        handle_memrepl("SSE_MULSSrm", 2);
-        handle_default("SSE_MULSSrr");
-    } else if (Name == "DIVSSrr") {
-        handle_memrepl("SSE_DIVSSrm", 2);
-        handle_default("SSE_DIVSSrr");
-    } else if (Name == "ADDSDrr") {
-        handle_memrepl("SSE_ADDSDrm", 2);
-        handle_default("SSE_ADDSDrr");
-    } else if (Name == "SUBSDrr") {
-        handle_memrepl("SSE_SUBSDrm", 2);
-        handle_default("SSE_SUBSDrr");
-    } else if (Name == "MULSDrr") {
-        handle_memrepl("SSE_MULSDrm", 2);
-        handle_default("SSE_MULSDrr");
-    } else if (Name == "DIVSDrr") {
-        handle_memrepl("SSE_DIVSDrm", 2);
-        handle_default("SSE_DIVSDrr");
-    } else if (Name == "ADDPSrr") {
-        handle_memrepl("SSE_ADDPSrm", 2);
-        handle_default("SSE_ADDPSrr");
-    } else if (Name == "SUBPSrr") {
-        handle_memrepl("SSE_SUBPSrm", 2);
-        handle_default("SSE_SUBPSrr");
-    } else if (Name == "MULPSrr") {
-        handle_memrepl("SSE_MULPSrm", 2);
-        handle_default("SSE_MULPSrr");
-    } else if (Name == "DIVPSrr") {
-        handle_memrepl("SSE_DIVPSrm", 2);
-        handle_default("SSE_DIVPSrr");
-    } else if (Name == "ADDPDrr") {
-        handle_memrepl("SSE_ADDPDrm", 2);
-        handle_default("SSE_ADDPDrr");
-    } else if (Name == "SUBPDrr") {
-        handle_memrepl("SSE_SUBPDrm", 2);
-        handle_default("SSE_SUBPDrr");
-    } else if (Name == "MULPDrr") {
-        handle_memrepl("SSE_MULPDrm", 2);
-        handle_default("SSE_MULPDrr");
-    } else if (Name == "DIVPDrr") {
-        handle_memrepl("SSE_DIVPDrm", 2);
-        handle_default("SSE_DIVPDrr");
-    } else if (Name == "XORPSrr") {
-        handle_memrepl("SSE_XORPSrm", 2);
-        handle_default("SSE_XORPSrr");
-    } else if (Name == "XORPDrr") {
-        handle_memrepl("SSE_XORPDrm", 2);
-        handle_default("SSE_XORPDrr");
-    } else if (Name == "ANDPSrr") {
-        handle_memrepl("SSE_ANDPSrm", 2);
-        handle_default("SSE_ANDPSrr");
-    } else if (Name == "ANDPDrr") {
-        handle_memrepl("SSE_ANDPDrm", 2);
-        handle_default("SSE_ANDPDrr");
-    } else if (Name == "ANDNPSrr") {
-        handle_memrepl("SSE_ANDNPSrm", 2);
-        handle_default("SSE_ANDNPSrr");
-    } else if (Name == "ANDNPDrr") {
-        handle_memrepl("SSE_ANDNPDrm", 2);
-        handle_default("SSE_ANDNPDrr");
-    } else if (Name == "ORPSrr") {
-        handle_memrepl("SSE_ORPSrm", 2);
-        handle_default("SSE_ORPSrr");
-    } else if (Name == "ORPDrr") {
-        handle_memrepl("SSE_ORPDrm", 2);
-        handle_default("SSE_ORPDrr");
-    } else if (Name == "ADDSSrm") {
-        handle_default("SSE_ADDSSrm", 2);
-    } else if (Name == "SUBSSrm") {
-        handle_default("SSE_SUBSSrm", 2);
-    } else if (Name == "MULSSrm") {
-        handle_default("SSE_MULSSrm", 2);
-    } else if (Name == "DIVSSrm") {
-        handle_default("SSE_DIVSSrm", 2);
-    } else if (Name == "ADDSDrm") {
-        handle_default("SSE_ADDSDrm", 2);
-    } else if (Name == "SUBSDrm") {
-        handle_default("SSE_SUBSDrm", 2);
-    } else if (Name == "MULSDrm") {
-        handle_default("SSE_MULSDrm", 2);
-    } else if (Name == "DIVSDrm") {
-        handle_default("SSE_DIVSDrm", 2);
-    } else if (Name == "ADDPSrm") {
-        handle_default("SSE_ADDPSrm", 2);
-    } else if (Name == "SUBPSrm") {
-        handle_default("SSE_SUBPSrm", 2);
-    } else if (Name == "MULPSrm") {
-        handle_default("SSE_MULPSrm", 2);
-    } else if (Name == "DIVPSrm") {
-        handle_default("SSE_DIVPSrm", 2);
-    } else if (Name == "ADDSDrm") {
-        handle_default("SSE_ADDSDrm", 2);
-    } else if (Name == "SUBPDrm") {
-        handle_default("SSE_SUBPDrm", 2);
-    } else if (Name == "MULPDrm") {
-        handle_default("SSE_MULPDrm", 2);
-    } else if (Name == "DIVPDrm") {
-        handle_default("SSE_DIVPDrm", 2);
-    } else if (Name == "XORPSrm") {
-        handle_default("SSE_XORPSrm", 2);
-    } else if (Name == "XORPDrm") {
-        handle_default("SSE_XORPDrm", 2);
-    } else if (Name == "ANDPSrm") {
-        handle_default("SSE_ANDPSrm", 2);
-    } else if (Name == "ANDPDrm") {
-        handle_default("SSE_ANDPDrm", 2);
-    } else if (Name == "ANDNPSrm") {
-        handle_default("SSE_ANDNPSrm", 2);
-    } else if (Name == "ANDNPDrm") {
-        handle_default("SSE_ANDNPDrm", 2);
-    } else if (Name == "ORPSrm") {
-        handle_default("SSE_ORPSrm", 2);
-    } else if (Name == "ORPDrm") {
-        handle_default("SSE_ORPDrm", 2);
-    } else if (Name == "COMISSrr") {
-        handle_memrepl("SSE_COMISSrm", 1);
-        handle_default("SSE_COMISSrr");
-    } else if (Name == "COMISDrr") {
-        handle_memrepl("SSE_COMISDrm", 1);
-        handle_default("SSE_COMISDrr");
-    } else if (Name == "UCOMISSrr") {
-        handle_memrepl("SSE_UCOMISSrm", 1);
-        handle_default("SSE_UCOMISSrr");
-    } else if (Name == "UCOMISDrr") {
-        handle_memrepl("SSE_UCOMISDrm", 1);
-        handle_default("SSE_UCOMISDrr");
-    } else if (Name == "COMISSrm") {
-        handle_default("SSE_COMISSrm", 1);
-    } else if (Name == "COMISDrm") {
-        handle_default("SSE_COMISDrm", 1);
-    } else if (Name == "UCOMISSrm") {
-        handle_default("SSE_UCOMISSrm", 1);
-    } else if (Name == "UCOMISDrm") {
-        handle_default("SSE_UCOMISDrm", 1);
     } else if (Name == "CVTSD2SSrr") {
         handle_memrepl("SSE_CVTSD2SSrm", 1);
         handle_default("SSE_CVTSD2SSrr");
@@ -709,83 +730,6 @@ void EncodingTargetX64::get_inst_candidates(
     } else if (Name == "UNPCKHPDrr") {
         handle_default("SSE_UNPCKHPDrr");
 
-    } else if (Name == "SHR32ri") {
-        handle_default("SHR32ri");
-    } else if (Name == "SHR64ri") {
-        handle_default("SHR64ri");
-    } else if (Name == "SAR32ri") {
-        handle_default("SAR32ri");
-    } else if (Name == "SAR64ri") {
-        handle_default("SAR64ri");
-    } else if (Name == "SHL32ri") {
-        handle_default("SHL32ri");
-    } else if (Name == "SHL64ri") {
-        handle_default("SHL64ri");
-    } else if (Name == "SHR32rCL") {
-        handle_immrepl("SHR32ri", 3);
-        handle_default("SHR32rr", -1, ", FE_CX");
-    } else if (Name == "SHR64rCL") {
-        handle_immrepl("SHR64ri", 3);
-        handle_default("SHR64rr", -1, ", FE_CX");
-    } else if (Name == "SAR32rCL") {
-        handle_immrepl("SAR32ri", 3);
-        handle_default("SAR32rr", -1, ", FE_CX");
-    } else if (Name == "SAR64rCL") {
-        handle_immrepl("SAR64ri", 3);
-        handle_default("SAR64rr", -1, ", FE_CX");
-    } else if (Name == "SHL32rCL") {
-        handle_immrepl("SHL32ri", 3);
-        handle_default("SHL32rr", -1, ", FE_CX");
-    } else if (Name == "SHL64rCL") {
-        handle_immrepl("SHL64ri", 3);
-        handle_default("SHL64rr", -1, ", FE_CX");
-    } else if (Name == "SHLD64rrCL") {
-        handle_immrepl("SHLD64rri", 4);
-        handle_default("SHLD64rrr", -1, ", FE_CX");
-    } else if (Name == "SHRD64rrCL") {
-        handle_immrepl("SHRD64rri", 4);
-        handle_default("SHRD64rrr", -1, ", FE_CX");
-    } else if (Name == "ROR8ri") {
-        handle_default("ROR8ri");
-    } else if (Name == "ROR16ri") {
-        handle_default("ROR16ri");
-    } else if (Name == "ROR32ri") {
-        handle_default("ROR32ri");
-    } else if (Name == "ROR64ri") {
-        handle_default("ROR64ri");
-    } else if (Name == "ROL8ri") {
-        handle_default("ROL8ri");
-    } else if (Name == "ROL16ri") {
-        handle_default("ROL16ri");
-    } else if (Name == "ROL32ri") {
-        handle_default("ROL32ri");
-    } else if (Name == "ROL64ri") {
-        handle_default("ROL64ri");
-    } else if (Name == "ROR8rCL") {
-        handle_immrepl("ROR8ri", 3);
-        handle_default("ROR8rr", -1, ", FE_CX");
-    } else if (Name == "ROR16rCL") {
-        handle_immrepl("ROR16ri", 3);
-        handle_default("ROR16rr", -1, ", FE_CX");
-    } else if (Name == "ROR32rCL") {
-        handle_immrepl("ROR32ri", 3);
-        handle_default("ROR32rr", -1, ", FE_CX");
-    } else if (Name == "ROR64rCL") {
-        handle_immrepl("ROR64ri", 3);
-        handle_default("ROR64rr", -1, ", FE_CX");
-    } else if (Name == "ROL8rCL") {
-        handle_immrepl("ROL8ri", 3);
-        handle_default("ROL8rr", -1, ", FE_CX");
-    } else if (Name == "ROL16rCL") {
-        handle_immrepl("ROL16ri", 3);
-        handle_default("ROL16rr", -1, ", FE_CX");
-    } else if (Name == "ROL32rCL") {
-        handle_immrepl("ROL32ri", 3);
-        handle_default("ROL32rr", -1, ", FE_CX");
-    } else if (Name == "ROL64rCL") {
-        handle_immrepl("ROL64ri", 3);
-        handle_default("ROL64rr", -1, ", FE_CX");
-
     } else if (Name == "INC8r") {
         handle_default("INC8r");
     } else if (Name == "INC16r") {
@@ -802,276 +746,6 @@ void EncodingTargetX64::get_inst_candidates(
         handle_default("DEC32r");
     } else if (Name == "DEC64r") {
         handle_default("DEC64r");
-    } else if (Name == "ADD8rr") {
-        handle_immrepl("ADD8ri", 2);
-        handle_memrepl("ADD8rm", 2);
-        handle_default("ADD8rr");
-    } else if (Name == "ADD16rr") {
-        handle_immrepl("ADD16ri", 2);
-        handle_memrepl("ADD16rm", 2);
-        handle_default("ADD16rr");
-    } else if (Name == "ADD32rr") {
-        handle_immrepl("ADD32ri", 2);
-        handle_memrepl("ADD32rm", 2);
-        handle_default("ADD32rr");
-    } else if (Name == "ADD64rr") {
-        handle_immrepl("ADD64ri", 2);
-        handle_memrepl("ADD64rm", 2);
-        handle_default("ADD64rr");
-    } else if (Name == "ADD8mr") {
-        handle_immrepl("ADD8mi", 5, 0);
-        handle_default("ADD8mr", 0);
-    } else if (Name == "ADD16mr") {
-        handle_immrepl("ADD16mi", 5, 0);
-        handle_default("ADD16mr", 0);
-    } else if (Name == "ADD32mr") {
-        handle_immrepl("ADD32mi", 5, 0);
-        handle_default("ADD32mr", 0);
-    } else if (Name == "ADD64mr") {
-        handle_immrepl("ADD64mi", 5, 0);
-        handle_default("ADD64mr", 0);
-    } else if (Name == "ADD32ri") {
-        handle_default("ADD32ri");
-    } else if (Name == "ADD64ri32") {
-        handle_default("ADD64ri");
-    } else if (Name == "ADC8rr") {
-        handle_immrepl("ADC8ri", 2);
-        handle_memrepl("ADC8rm", 2);
-        handle_default("ADC8rr");
-    } else if (Name == "ADC16rr") {
-        handle_immrepl("ADC16ri", 2);
-        handle_memrepl("ADC16rm", 2);
-        handle_default("ADC16rr");
-    } else if (Name == "ADC32rr") {
-        handle_immrepl("ADC32ri", 2);
-        handle_memrepl("ADC32rm", 2);
-        handle_default("ADC32rr");
-    } else if (Name == "ADC64rr") {
-        handle_immrepl("ADC64ri", 2);
-        handle_memrepl("ADC64rm", 2);
-        handle_default("ADC64rr");
-    } else if (Name == "ADC8mr") {
-        handle_immrepl("ADC8mi", 5, 0);
-        handle_default("ADC8mr", 0);
-    } else if (Name == "ADC16mr") {
-        handle_immrepl("ADC16mi", 5, 0);
-        handle_default("ADC16mr", 0);
-    } else if (Name == "ADC32mr") {
-        handle_immrepl("ADC32mi", 5, 0);
-        handle_default("ADC32mr", 0);
-    } else if (Name == "ADC64mr") {
-        handle_immrepl("ADC64mi", 5, 0);
-        handle_default("ADC64mr", 0);
-    } else if (Name == "ADC32ri") {
-        handle_default("ADC32ri");
-    } else if (Name == "ADC64ri32") {
-        handle_default("ADC64ri");
-    } else if (Name == "SUB8rr") {
-        handle_immrepl("SUB8ri", 2);
-        handle_memrepl("SUB8rm", 2);
-        handle_default("SUB8rr");
-    } else if (Name == "SUB16rr") {
-        handle_immrepl("SUB16ri", 2);
-        handle_memrepl("SUB16rm", 2);
-        handle_default("SUB16rr");
-    } else if (Name == "SUB32rr") {
-        handle_immrepl("SUB32ri", 2);
-        handle_memrepl("SUB32rm", 2);
-        handle_default("SUB32rr");
-    } else if (Name == "SUB64rr") {
-        handle_immrepl("SUB64ri", 2);
-        handle_memrepl("SUB64rm", 2);
-        handle_default("SUB64rr");
-    } else if (Name == "SUB8mr") {
-        handle_immrepl("SUB8mi", 5, 0);
-        handle_default("SUB8mr", 0);
-    } else if (Name == "SUB16mr") {
-        handle_immrepl("SUB16mi", 5, 0);
-        handle_default("SUB16mr", 0);
-    } else if (Name == "SUB32mr") {
-        handle_immrepl("SUB32mi", 5, 0);
-        handle_default("SUB32mr", 0);
-    } else if (Name == "SUB64mr") {
-        handle_immrepl("SUB64mi", 5, 0);
-        handle_default("SUB64mr", 0);
-    } else if (Name == "SBB32rr") {
-        handle_immrepl("SBB32ri", 2);
-        handle_memrepl("SBB32rm", 2);
-        handle_default("SBB32rr");
-    } else if (Name == "SBB64rr") {
-        handle_immrepl("SBB64ri", 2);
-        handle_memrepl("SBB64rm", 2);
-        handle_default("SBB64rr");
-    } else if (Name == "SBB8mr") {
-        handle_immrepl("SBB8mi", 5, 0);
-        handle_default("SBB8mr", 0);
-    } else if (Name == "SBB16mr") {
-        handle_immrepl("SBB16mi", 5, 0);
-        handle_default("SBB16mr", 0);
-    } else if (Name == "SBB32mr") {
-        handle_immrepl("SBB32mi", 5, 0);
-        handle_default("SBB32mr", 0);
-    } else if (Name == "SBB64mr") {
-        handle_immrepl("SBB64mi", 5, 0);
-        handle_default("SBB64mr", 0);
-    } else if (Name == "CMP8rr") {
-        handle_immrepl("CMP8ri", 1);
-        handle_memrepl("CMP8rm", 1);
-        handle_default("CMP8rr");
-    } else if (Name == "CMP16rr") {
-        handle_immrepl("CMP16ri", 1);
-        handle_memrepl("CMP16rm", 1);
-        handle_default("CMP16rr");
-    } else if (Name == "CMP32rr") {
-        handle_immrepl("CMP32ri", 1);
-        handle_memrepl("CMP32rm", 1);
-        handle_default("CMP32rr");
-    } else if (Name == "CMP64rr") {
-        handle_immrepl("CMP64ri", 1);
-        handle_memrepl("CMP64rm", 1);
-        handle_default("CMP64rr");
-    } else if (Name == "CMP32ri") {
-        handle_memrepl("CMP32mi", 0);
-        handle_default("CMP32ri");
-    } else if (Name == "CMP64ri") {
-        handle_memrepl("CMP64mi", 0);
-        handle_default("CMP64ri");
-    } else if (Name == "OR8rr") {
-        handle_immrepl("OR8ri", 2);
-        handle_memrepl("OR8rm", 2);
-        handle_default("OR8rr");
-    } else if (Name == "OR16rr") {
-        handle_immrepl("OR16ri", 2);
-        handle_memrepl("OR16rm", 2);
-        handle_default("OR16rr");
-    } else if (Name == "OR32rr") {
-        handle_immrepl("OR32ri", 2);
-        handle_memrepl("OR32rm", 2);
-        handle_default("OR32rr");
-    } else if (Name == "OR64rr") {
-        handle_immrepl("OR64ri", 2);
-        handle_memrepl("OR64rm", 2);
-        handle_default("OR64rr");
-    } else if (Name == "OR8mr") {
-        handle_immrepl("OR8mi", 5, 0);
-        handle_default("OR8mr", 0);
-    } else if (Name == "OR16mr") {
-        handle_immrepl("OR16mi", 5, 0);
-        handle_default("OR16mr", 0);
-    } else if (Name == "OR32mr") {
-        handle_immrepl("OR32mi", 5, 0);
-        handle_default("OR32mr", 0);
-    } else if (Name == "OR64mr") {
-        handle_immrepl("OR64mi", 5, 0);
-        handle_default("OR64mr", 0);
-    } else if (Name == "OR8ri") {
-        handle_default("OR8ri");
-    } else if (Name == "OR16ri") {
-        handle_default("OR16ri");
-    } else if (Name == "OR32ri") {
-        handle_default("OR32ri");
-    } else if (Name == "OR64ri32") {
-        handle_default("OR64ri");
-    } else if (Name == "XOR32rr") {
-        handle_immrepl("XOR32ri", 2);
-        handle_memrepl("XOR32rm", 2);
-        handle_default("XOR32rr");
-    } else if (Name == "XOR64rr") {
-        handle_immrepl("XOR64ri", 2);
-        handle_memrepl("XOR64rm", 2);
-        handle_default("XOR64rr");
-    } else if (Name == "XOR8mr") {
-        handle_immrepl("XOR8mi", 5, 0);
-        handle_default("XOR8mr", 0);
-    } else if (Name == "XOR16mr") {
-        handle_immrepl("XOR16mi", 5, 0);
-        handle_default("XOR16mr", 0);
-    } else if (Name == "XOR32mr") {
-        handle_immrepl("XOR32mi", 5, 0);
-        handle_default("XOR32mr", 0);
-    } else if (Name == "XOR64mr") {
-        handle_immrepl("XOR64mi", 5, 0);
-        handle_default("XOR64mr", 0);
-    } else if (Name == "XOR8ri") {
-        handle_default("XOR8ri");
-    } else if (Name == "XOR16ri") {
-        handle_default("XOR16ri");
-    } else if (Name == "XOR32ri") {
-        handle_default("XOR32ri");
-    } else if (Name == "XOR64ri32") {
-        handle_default("XOR64ri");
-    } else if (Name == "AND8rr") {
-        handle_immrepl("AND8ri", 2);
-        handle_memrepl("AND8rm", 2);
-        handle_default("AND8rr");
-    } else if (Name == "AND16rr") {
-        handle_immrepl("AND16ri", 2);
-        handle_memrepl("AND16rm", 2);
-        handle_default("AND16rr");
-    } else if (Name == "AND32rr") {
-        handle_immrepl("AND32ri", 2);
-        handle_memrepl("AND32rm", 2);
-        handle_default("AND32rr");
-    } else if (Name == "AND64rr") {
-        handle_immrepl("AND64ri", 2);
-        handle_memrepl("AND64rm", 2);
-        handle_default("AND64rr");
-    } else if (Name == "AND8mr") {
-        handle_immrepl("AND8mi", 5, 0);
-        handle_default("AND8mr", 0);
-    } else if (Name == "AND16mr") {
-        handle_immrepl("AND16mi", 5, 0);
-        handle_default("AND16mr", 0);
-    } else if (Name == "AND32mr") {
-        handle_immrepl("AND32mi", 5, 0);
-        handle_default("AND32mr", 0);
-    } else if (Name == "AND64mr") {
-        handle_immrepl("AND64mi", 5, 0);
-        handle_default("AND64mr", 0);
-    } else if (Name == "AND32ri") {
-        handle_default("AND32ri");
-    } else if (Name == "AND64ri32") {
-        handle_default("AND64ri");
-    } else if (Name == "TEST8ri") {
-        handle_memrepl("TEST8mi", 0);
-        handle_default("TEST8ri");
-    } else if (Name == "TEST16ri") {
-        handle_memrepl("TEST16mi", 0);
-        handle_default("TEST16ri");
-    } else if (Name == "TEST32ri") {
-        handle_memrepl("TEST32mi", 0);
-        handle_default("TEST32ri");
-    } else if (Name == "TEST64ri") {
-        handle_memrepl("TEST64mi", 0);
-        handle_default("TEST64ri");
-    } else if (Name == "TEST8rr") {
-        handle_immrepl("TEST8ri", 1);
-        handle_memrepl("TEST8mr", 0);
-        handle_default("TEST8rr");
-    } else if (Name == "TEST16rr") {
-        handle_immrepl("TEST16ri", 1);
-        handle_memrepl("TEST16mr", 0);
-        handle_default("TEST16rr");
-    } else if (Name == "TEST32rr") {
-        handle_immrepl("TEST32ri", 1);
-        handle_memrepl("TEST32mr", 0);
-        handle_default("TEST32rr");
-    } else if (Name == "TEST64rr") {
-        handle_immrepl("TEST64ri", 1);
-        handle_memrepl("TEST64mr", 0);
-        handle_default("TEST64rr");
-    } else if (Name == "BSF16rr") {
-        handle_default("BSF16rr");
-    } else if (Name == "BSF32rr") {
-        handle_default("BSF32rr");
-    } else if (Name == "BSF64rr") {
-        handle_default("BSF64rr");
-    } else if (Name == "BSR16rr") {
-        handle_default("BSR16rr");
-    } else if (Name == "BSR32rr") {
-        handle_default("BSR32rr");
-    } else if (Name == "BSR64rr") {
-        handle_default("BSR64rr");
     } else if (Name == "BT16rr") {
         // TODO(ts): need check for imm8
         handle_default("BT16rr");
@@ -1081,30 +755,6 @@ void EncodingTargetX64::get_inst_candidates(
     } else if (Name == "BT64rr") {
         // TODO(ts): need check for imm8
         handle_default("BT64rr");
-    } else if (Name == "MUL8r") {
-        handle_memrepl("MUL8m", 0);
-        handle_default("MUL8r");
-    } else if (Name == "MUL16r") {
-        handle_memrepl("MUL16m", 0);
-        handle_default("MUL16r");
-    } else if (Name == "MUL32r") {
-        handle_memrepl("MUL32m", 0);
-        handle_default("MUL32r");
-    } else if (Name == "MUL64r") {
-        handle_memrepl("MUL64m", 0);
-        handle_default("MUL64r");
-    } else if (Name == "IMUL8r") {
-        handle_memrepl("IMUL8m", 0);
-        handle_default("IMUL8r");
-    } else if (Name == "IMUL16r") {
-        handle_memrepl("IMUL16m", 0);
-        handle_default("IMUL16r");
-    } else if (Name == "IMUL32r") {
-        handle_memrepl("IMUL32m", 0);
-        handle_default("IMUL32r");
-    } else if (Name == "IMUL64r") {
-        handle_memrepl("IMUL64m", 0);
-        handle_default("IMUL64r");
     } else if (Name == "IMUL16rr") {
         // TODO: for imm replacment, use rri encoding
         handle_memrepl("IMUL16rm", 2);
@@ -1123,18 +773,6 @@ void EncodingTargetX64::get_inst_candidates(
     } else if (Name == "IMUL64rri") {
         handle_memrepl("IMUL64rmi", 1);
         handle_default("IMUL64rri");
-    } else if (Name == "DIV32r") {
-        handle_memrepl("DIV32m", 0);
-        handle_default("DIV32r");
-    } else if (Name == "DIV64r") {
-        handle_memrepl("DIV64m", 0);
-        handle_default("DIV64r");
-    } else if (Name == "IDIV32r") {
-        handle_memrepl("IDIV32m", 0);
-        handle_default("IDIV32r");
-    } else if (Name == "IDIV64r") {
-        handle_memrepl("IDIV64m", 0);
-        handle_default("IDIV64r");
     } else if (Name == "NEG8r") {
         handle_default("NEG8r");
     } else if (Name == "NEG16r") {
@@ -1254,7 +892,9 @@ void EncodingTargetX64::get_inst_candidates(
         handle_default("PREFETCHT1m", 0);
     } else if (Name == "PREFETCHT0") {
         handle_default("PREFETCHT0m", 0);
-    } else {
+    }
+
+    if (candidates.size() == 0) {
         llvm::errs() << "ERROR: unhandled instruction " << Name << "\n";
         assert(false);
     }
