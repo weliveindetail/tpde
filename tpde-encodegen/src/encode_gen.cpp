@@ -648,6 +648,9 @@ bool generate_inst(std::string        &buf,
             // TODO: is this correct?
             // We must still count implicit uses.
             if (state.target->reg_should_be_ignored(use.getReg())) {
+                if (!use.isImplicit()) {
+                    use_ops.push_back("");
+                }
                 continue;
             }
 
@@ -1107,6 +1110,9 @@ bool generate_inst(std::string        &buf,
                 continue;
             }
             if (state.target->reg_should_be_ignored(reg)) {
+                if (!def.isImplicit()) {
+                    ops.push_back("");
+                }
                 continue;
             }
 

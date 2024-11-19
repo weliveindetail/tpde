@@ -173,9 +173,9 @@ void EncodingTargetX64::get_inst_candidates(
                     const auto &op = mi.getOperand(i);
                     if (i == (unsigned)memop_start
                         && mi.getOperand(i + 3).isCPI()) {
-                        // idx as noreg; rip is ignored
-                        cp_sym   = ops[reg_idx + 1];
-                        reg_idx += 2;
+                        // base is rip; idx is noreg
+                        cp_sym   = ops[reg_idx + 2];
+                        reg_idx += 3;
                         i       += 4;
                         std::format_to(std::back_inserter(buf),
                                        ", FE_MEM(FE_IP, 0, FE_NOREG, 0)");
@@ -405,9 +405,9 @@ void EncodingTargetX64::get_inst_candidates(
                 const auto &op = mi.getOperand(i);
                 if (i == (unsigned)memop_start
                     && mi.getOperand(i + 3).isCPI()) {
-                    // idx as noreg; rip is ignored
-                    cp_sym   = ops[reg_idx + 1];
-                    reg_idx += 2;
+                    // base is rip; idx is noreg
+                    cp_sym   = ops[reg_idx + 2];
+                    reg_idx += 3;
                     i       += 4;
                     std::format_to(std::back_inserter(buf),
                                    ", FE_MEM(FE_IP, 0, FE_NOREG, 0)");
