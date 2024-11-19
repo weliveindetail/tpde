@@ -73,23 +73,17 @@ void EncodingTargetArm64::get_inst_candidates(
         candidates.emplace_back(
             1,
             cond1,
-            [mnem](std::string                        &buf,
-                   const llvm::MachineInstr           &mi,
-                   llvm::SmallVectorImpl<std::string> &ops) {
-                std::string val_reg = "";
-                unsigned    op_idx  = 0;
+            [mnem](llvm::raw_ostream           &os,
+                   const llvm::MachineInstr    &mi,
+                   std::span<const std::string> ops) {
+                os << "    ASMD(" << mnem << ", ";
                 if (mi.getOperand(0).isImm()) {
-                    val_reg =
-                        std::format("(Da64PrfOp){}", mi.getOperand(0).getImm());
+                    os << "(Da64PrfOp)" << mi.getOperand(0).getImm();
                 } else {
-                    val_reg = format_reg(mi.getOperand(0), ops[op_idx++]);
+                    os << format_reg(mi.getOperand(0), ops[0]);
                 }
-                std::format_to(std::back_inserter(buf),
-                               "        ASMD({}, {}, {}.first, {}.second);\n",
-                               mnem,
-                               val_reg,
-                               ops[op_idx],
-                               ops[op_idx]);
+                const auto &mem_op = ops[ops.size() - 1];
+                os << ", " << mem_op << ".first, " << mem_op << ".second);\n";
             });
         (void)mnemu;
     };
@@ -98,16 +92,15 @@ void EncodingTargetArm64::get_inst_candidates(
         candidates.emplace_back(
             2,
             cond,
-            [mnem](std::string                        &buf,
-                   const llvm::MachineInstr           &mi,
-                   llvm::SmallVectorImpl<std::string> &ops) {
-                std::format_to(
-                    std::back_inserter(buf), "        ASMD({}", mnem);
+            [mnem](llvm::raw_ostream           &os,
+                   const llvm::MachineInstr    &mi,
+                   std::span<const std::string> ops) {
+                os << "    ASMD(" << mnem;
                 for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n;
                      i++) {
-                    buf += ", " + format_reg(mi.getOperand(i), ops[i]);
+                    os << ", " << format_reg(mi.getOperand(i), ops[i]);
                 }
-                std::format_to(std::back_inserter(buf), ");\n");
+                os << ");\n";
             });
     };
     const auto handle_arith_imm = [&](std::string_view mnem) {
@@ -115,17 +108,13 @@ void EncodingTargetArm64::get_inst_candidates(
         candidates.emplace_back(
             2,
             cond,
-            [mnem](std::string                        &buf,
-                   const llvm::MachineInstr           &mi,
-                   llvm::SmallVectorImpl<std::string> &ops) {
+            [mnem](llvm::raw_ostream           &os,
+                   const llvm::MachineInstr    &mi,
+                   std::span<const std::string> ops) {
                 auto dst = format_reg(mi.getOperand(0), ops[0]);
                 auto src = format_reg(mi.getOperand(1), ops[1]);
-                std::format_to(std::back_inserter(buf),
-                               "        ASMD({}, {}, {}, {});",
-                               mnem,
-                               dst,
-                               src,
-                               ops[2]);
+                os << "    ASMD(" << mnem << ", " << dst << ", " << src << ", "
+                   << ops[2] << ");\n";
             });
         if (!mnem.starts_with("ADD")) {
             return;
@@ -133,32 +122,28 @@ void EncodingTargetArm64::get_inst_candidates(
         candidates.emplace_back(
             1,
             cond,
-            [mnem](std::string                        &buf,
-                   const llvm::MachineInstr           &mi,
-                   llvm::SmallVectorImpl<std::string> &ops) {
+            [mnem](llvm::raw_ostream           &os,
+                   const llvm::MachineInstr    &mi,
+                   std::span<const std::string> ops) {
                 auto dst = format_reg(mi.getOperand(0), ops[0]);
-                auto src = format_reg(mi.getOperand(1), ops[1]);
-                std::format_to(std::back_inserter(buf),
-                               "        ASMD({}, {}, {}, {});",
-                               mnem,
-                               dst,
-                               ops[2],
-                               src);
+                auto src = format_reg(mi.getOperand(2), ops[2]);
+                os << "    ASMD(" << mnem << ", " << dst << ", " << src << ", "
+                   << ops[1] << ");\n";
             });
     };
     const auto handle_default = [&](std::string_view mnem,
                                     std::string      extra_ops = "") {
-        candidates.emplace_back([mnem, extra_ops](
-                                    std::string                        &buf,
-                                    const llvm::MachineInstr           &mi,
-                                    llvm::SmallVectorImpl<std::string> &ops) {
-            std::format_to(std::back_inserter(buf), "        ASMD({}", mnem);
+        candidates.emplace_back([mnem,
+                                 extra_ops](llvm::raw_ostream           &os,
+                                            const llvm::MachineInstr    &mi,
+                                            std::span<const std::string> ops) {
+            os << "    ASMD(" << mnem;
             unsigned reg_idx = 0;
             for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
                 const auto &op = mi.getOperand(i);
                 if (op.isReg()) {
                     if (!op.isTied() || !op.isUse()) {
-                        buf += ", " + format_reg(op, ops[reg_idx++]);
+                        os << ", " << format_reg(op, ops[reg_idx++]);
                     }
                 } else if (op.isImm()) {
                     if (mnem.starts_with("CCMP") || mnem.starts_with("FCCMP")
@@ -180,60 +165,53 @@ void EncodingTargetArm64::get_inst_candidates(
                                                                 "DA_LE",
                                                                 "DA_AL",
                                                                 "DA_NV"};
-                        std::format_to(
-                            std::back_inserter(buf), ", {}", ccs[op.getImm()]);
+                        os << ", " << ccs[op.getImm()];
                     } else if (op.getOperandNo() == 0
                                && mnem.starts_with("PRFM")) {
-                        std::format_to(std::back_inserter(buf),
-                                       ", (Da64PrfOp){}",
-                                       op.getImm());
+                        os << ", (Da64PrfOp)" << op.getImm();
                     } else {
-                        std::format_to(
-                            std::back_inserter(buf), ", {:#x}", op.getImm());
+                        os << ", " << op.getImm();
                     }
                 } else {
                     assert(false);
                 }
             }
-            std::format_to(std::back_inserter(buf), "{});\n", extra_ops);
+            os << extra_ops << ");\n";
         });
     };
     const auto handle_noimm = [&](std::string_view mnem,
                                   std::string      extra_ops = "") {
-        candidates.emplace_back([mnem, extra_ops](
-                                    std::string                        &buf,
-                                    const llvm::MachineInstr           &mi,
-                                    llvm::SmallVectorImpl<std::string> &ops) {
-            std::format_to(std::back_inserter(buf), "        ASMD({}", mnem);
+        candidates.emplace_back([mnem,
+                                 extra_ops](llvm::raw_ostream           &os,
+                                            const llvm::MachineInstr    &mi,
+                                            std::span<const std::string> ops) {
+            os << "    ASMD(" << mnem;
             unsigned reg_idx = 0;
             for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
                 const auto &op = mi.getOperand(i);
                 if (op.isReg()) {
                     if (!op.isTied() || !op.isUse()) {
-                        buf += ", " + format_reg(op, ops[reg_idx++]);
+                        os << ", " << format_reg(op, ops[reg_idx++]);
                     }
                 } else if (op.isImm()) {
                 } else {
                     assert(false);
                 }
             }
-            std::format_to(std::back_inserter(buf), "{});\n", extra_ops);
+            os << extra_ops << ");\n";
         });
     };
     // atomic memory operations (LDADD) have their source and dest operands
     // swapped
     const auto handle_atomic_mem_op = [&](std::string_view mnem) {
-        candidates.emplace_back([mnem](
-                                    std::string                        &buf,
-                                    const llvm::MachineInstr           &mi,
-                                    llvm::SmallVectorImpl<std::string> &ops) {
-            std::format_to(std::back_inserter(buf), "        ASMD({}", mnem);
-            assert(mi.getNumExplicitOperands() == 3);
-            constexpr std::array<unsigned, 3> op_order = {1, 0, 2};
-            for (unsigned i : op_order) {
-                buf += ", " + format_reg(mi.getOperand(i), ops[i]);
-            }
-            std::format_to(std::back_inserter(buf), ");\n");
+        candidates.emplace_back([mnem](llvm::raw_ostream           &os,
+                                       const llvm::MachineInstr    &mi,
+                                       std::span<const std::string> ops) {
+            os << "    ASMD(" << mnem;
+            os << ", " << format_reg(mi.getOperand(1), ops[1]);
+            os << ", " << format_reg(mi.getOperand(0), ops[0]);
+            os << ", " << format_reg(mi.getOperand(2), ops[2]);
+            os << ");\n";
         });
     };
 

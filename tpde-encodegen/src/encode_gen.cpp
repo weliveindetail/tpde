@@ -1143,7 +1143,8 @@ bool generate_inst(std::string        &buf,
 
         ops.append(use_ops);
 
-        cand.generator(buf, *inst, ops);
+        llvm::raw_string_ostream os(buf);
+        cand.generator(os, *inst, ops);
         if (candidates.size() > 1) {
             state.fmt_line(buf, 8, "break;");
         }

@@ -45,11 +45,10 @@ void EncodingTargetX64::get_inst_candidates(
                 MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext()"},
                 MICandidate::Cond{(unsigned)memop_start, cond},
                 [has_idx, mnem, memop_start, replop_idx](
-                    std::string                        &buf,
-                    const llvm::MachineInstr           &mi,
-                    llvm::SmallVectorImpl<std::string> &ops) {
-                    std::format_to(
-                        std::back_inserter(buf), "        ASMD({}", mnem);
+                    llvm::raw_ostream           &os,
+                    const llvm::MachineInstr    &mi,
+                    std::span<const std::string> ops) {
+                    os << "    ASMD(" << mnem;
                     unsigned reg_idx = 0;
                     for (unsigned i = 0, n = mi.getNumExplicitOperands();
                          i != n;
@@ -57,43 +56,32 @@ void EncodingTargetX64::get_inst_candidates(
                         const auto &op = mi.getOperand(i);
                         if (i == (unsigned)memop_start) {
                             if (has_idx) { // Need to replace index register
-                                std::format_to(std::back_inserter(buf),
-                                               ", FE_MEM({}.base, "
-                                               "{}.scale, {}, {}.off)",
-                                               ops[reg_idx],
-                                               ops[reg_idx],
-                                               ops[reg_idx + 1],
-                                               ops[reg_idx]);
+                                os << ", FE_MEM(" << ops[reg_idx] << ".base, "
+                                   << ops[reg_idx] << ".scale, "
+                                   << ops[reg_idx + 1] << ", " << ops[reg_idx]
+                                   << ".off)";
                             } else {
-                                std::format_to(std::back_inserter(buf),
-                                               ", {}",
-                                               ops[reg_idx]);
+                                os << ", " << ops[reg_idx];
                             }
                             reg_idx += 3;
                             i       += 4;
                         } else if (i == replop_idx) {
                             assert(op.isReg());
-                            std::format_to(std::back_inserter(buf),
-                                           ", {}",
-                                           ops[reg_idx++]);
+                            os << ", " << ops[reg_idx++];
                         } else if (op.isReg()) {
                             if (op.isTied() && op.isUse()) {
                                 continue;
                             }
-                            std::format_to(std::back_inserter(buf),
-                                           ", {}",
-                                           ops[reg_idx++]);
+                            os << ", " << ops[reg_idx++];
                         } else if (op.isImm()) {
                             if (mnem.starts_with("CMOV")
                                 || mnem.starts_with("SET")) {
                                 continue;
                             }
-                            std::format_to(std::back_inserter(buf),
-                                           ", {:#x}",
-                                           op.getImm());
+                            os << ", " << op.getImm();
                         }
                     }
-                    std::format_to(std::back_inserter(buf), ");\n");
+                    os << ");\n";
                 });
         }
         // TODO: better code, less copy-paste, all cases, etc.
@@ -111,60 +99,48 @@ void EncodingTargetX64::get_inst_candidates(
                 MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext()"},
                 MICandidate::Cond{(unsigned)memop_start + 2, cond},
                 [mnem, memop_start, replop_idx](
-                    std::string                        &buf,
-                    const llvm::MachineInstr           &mi,
-                    llvm::SmallVectorImpl<std::string> &ops) {
-                    std::format_to(
-                        std::back_inserter(buf), "        ASMD({}", mnem);
+                    llvm::raw_ostream           &os,
+                    const llvm::MachineInstr    &mi,
+                    std::span<const std::string> ops) {
+                    os << "    ASMD(" << mnem;
                     unsigned reg_idx = 0;
                     for (unsigned i = 0, n = mi.getNumExplicitOperands();
                          i != n;
                          i++) {
                         const auto &op = mi.getOperand(i);
                         if (i == (unsigned)memop_start) {
-                            std::format_to(
-                                std::back_inserter(buf),
-                                ", FE_MEM({}, {}.scale, {}.idx, {}.off)",
-                                ops[reg_idx],
-                                ops[reg_idx + 1],
-                                ops[reg_idx + 1],
-                                ops[reg_idx + 1]);
+                            os << ", FE_MEM(" << ops[reg_idx] << ", "
+                               << ops[reg_idx + 1] << ".scale, "
+                               << ops[reg_idx + 1] << ".idx, "
+                               << ops[reg_idx + 1] << ".off)";
                             reg_idx += 3;
                             i       += 4;
                         } else if (i == replop_idx) {
                             assert(op.isReg());
-                            std::format_to(std::back_inserter(buf),
-                                           ", {}",
-                                           ops[reg_idx++]);
+                            os << ", " << ops[reg_idx++];
                         } else if (op.isReg()) {
                             if (op.isTied() && op.isUse()) {
                                 continue;
                             }
-                            std::format_to(std::back_inserter(buf),
-                                           ", {}",
-                                           ops[reg_idx++]);
+                            os << ", " << ops[reg_idx++];
                         } else if (op.isImm()) {
                             if (mnem.starts_with("CMOV")
                                 || mnem.starts_with("SET")) {
                                 continue;
                             }
-                            std::format_to(std::back_inserter(buf),
-                                           ", {:#x}",
-                                           op.getImm());
+                            os << ", " << op.getImm();
                         }
                     }
-                    std::format_to(std::back_inserter(buf), ");\n");
+                    os << ");\n";
                 });
         }
         candidates.emplace_back(
             replop_idx,
             "encodeable_as_imm32_sext()",
-            [mnem, replop_idx, memop_start](
-                std::string                        &buf,
-                const llvm::MachineInstr           &mi,
-                llvm::SmallVectorImpl<std::string> &ops) {
-                std::format_to(
-                    std::back_inserter(buf), "        ASMD({}", mnem);
+            [mnem, replop_idx, memop_start](llvm::raw_ostream           &os,
+                                            const llvm::MachineInstr    &mi,
+                                            std::span<const std::string> ops) {
+                os << "    ASMD(" << mnem;
                 unsigned         reg_idx = 0;
                 std::string_view cp_sym  = "";
                 bool             has_imm = false;
@@ -177,8 +153,7 @@ void EncodingTargetX64::get_inst_candidates(
                         cp_sym   = ops[reg_idx + 2];
                         reg_idx += 3;
                         i       += 4;
-                        std::format_to(std::back_inserter(buf),
-                                       ", FE_MEM(FE_IP, 0, FE_NOREG, 0)");
+                        os << ", FE_MEM(FE_IP, 0, FE_NOREG, 0)";
                     } else if (i == (unsigned)memop_start) {
                         std::string_view base =
                             op.getReg().isValid() ? ops[reg_idx] : "FE_NOREG"sv;
@@ -193,48 +168,39 @@ void EncodingTargetX64::get_inst_candidates(
                         assert(!mi.getOperand(i + 4).getReg().isValid());
                         reg_idx += 3;
                         i       += 4;
-                        std::format_to(std::back_inserter(buf),
-                                       ", FE_MEM({}, {}, {}, {})",
-                                       base,
-                                       sc,
-                                       idx,
-                                       off);
+                        os << ", FE_MEM(" << base << ", " << sc << ", " << idx
+                           << ", " << off << ")";
                     } else if (i == replop_idx) {
                         assert(op.isReg());
                         has_imm = true;
-                        std::format_to(
-                            std::back_inserter(buf), ", {}", ops[reg_idx++]);
+                        os << ", " << ops[reg_idx++];
                     } else if (op.isReg()) {
                         if (op.isTied() && op.isUse()) {
                             continue;
                         }
-                        std::format_to(
-                            std::back_inserter(buf), ", {}", ops[reg_idx++]);
+                        os << ", " << ops[reg_idx++];
                     } else if (op.isImm()) {
                         if (mnem.starts_with("CMOV")
                             || mnem.starts_with("SET")) {
                             continue;
                         }
                         has_imm = true;
-                        std::format_to(
-                            std::back_inserter(buf), ", {:#x}", op.getImm());
+                        os << ", " << op.getImm();
                     }
                 }
                 if (replop_idx
                     >= mi.getNumExplicitOperands()) { // SHL etc. with CL
                     has_imm = true;
-                    std::format_to(
-                        std::back_inserter(buf), ", {}", ops[reg_idx++]);
+                    os << ", " << ops[reg_idx++];
                 }
-                std::format_to(std::back_inserter(buf), ");\n");
+                os << ");\n";
                 if (!cp_sym.empty()) {
                     assert(!has_imm && "CPI with imm unsupported!");
-                    std::format_to(
-                        std::back_inserter(buf),
-                        "        "
-                        "derived()->assembler.reloc_text_pc32({}, "
-                        "derived()->assembler.text_cur_off() - 4, -4);\n",
-                        cp_sym);
+                    os << "        "
+                          "derived()->assembler.reloc_text_pc32("
+                       << cp_sym
+                       << ", "
+                          "derived()->assembler.text_cur_off() - 4, -4);\n";
                 }
             });
     };
@@ -243,35 +209,31 @@ void EncodingTargetX64::get_inst_candidates(
         candidates.emplace_back(
             replop_idx,
             "encodeable_as_mem()",
-            [mnem, replop_idx](std::string                        &buf,
-                               const llvm::MachineInstr           &mi,
-                               llvm::SmallVectorImpl<std::string> &ops) {
-                std::format_to(
-                    std::back_inserter(buf), "        ASMD({}", mnem);
+            [mnem, replop_idx](llvm::raw_ostream           &os,
+                               const llvm::MachineInstr    &mi,
+                               std::span<const std::string> ops) {
+                os << "    ASMD(" << mnem;
                 unsigned reg_idx = 0;
                 for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n;
                      i++) {
                     const auto &op = mi.getOperand(i);
                     if (i == replop_idx) {
                         assert(op.isReg());
-                        std::format_to(
-                            std::back_inserter(buf), ", {}", ops[reg_idx++]);
+                        os << ", " << ops[reg_idx++];
                     } else if (op.isReg()) {
                         if (op.isTied() && op.isUse()) {
                             continue;
                         }
-                        std::format_to(
-                            std::back_inserter(buf), ", {}", ops[reg_idx++]);
+                        os << ", " << ops[reg_idx++];
                     } else if (op.isImm()) {
                         if (mnem.starts_with("CMOV")
                             || mnem.starts_with("SET")) {
                             continue;
                         }
-                        std::format_to(
-                            std::back_inserter(buf), ", {:#x}", op.getImm());
+                        os << ", " << op.getImm();
                     }
                 }
-                std::format_to(std::back_inserter(buf), ");\n");
+                os << ");\n";
             });
     };
     const auto handle_default = [&](std::string_view mnem,
@@ -290,11 +252,10 @@ void EncodingTargetX64::get_inst_candidates(
                 memop_start,
                 cond,
                 [has_idx, mnem, memop_start, extra_ops](
-                    std::string                        &buf,
-                    const llvm::MachineInstr           &mi,
-                    llvm::SmallVectorImpl<std::string> &ops) {
-                    std::format_to(
-                        std::back_inserter(buf), "        ASMD({}", mnem);
+                    llvm::raw_ostream           &os,
+                    const llvm::MachineInstr    &mi,
+                    std::span<const std::string> ops) {
+                    os << "    ASMD(" << mnem;
                     unsigned reg_idx = 0;
                     for (unsigned i = 0, n = mi.getNumExplicitOperands();
                          i != n;
@@ -302,17 +263,12 @@ void EncodingTargetX64::get_inst_candidates(
                         const auto &op = mi.getOperand(i);
                         if (i == (unsigned)memop_start) {
                             if (has_idx) { // Need to replace index register
-                                std::format_to(std::back_inserter(buf),
-                                               ", FE_MEM({}.base, "
-                                               "{}.scale, {}, {}.off)",
-                                               ops[reg_idx],
-                                               ops[reg_idx],
-                                               ops[reg_idx + 1],
-                                               ops[reg_idx]);
+                                os << ", FE_MEM(" << ops[reg_idx] << ".base, "
+                                   << ops[reg_idx] << ".scale, "
+                                   << ops[reg_idx + 1] << ", " << ops[reg_idx]
+                                   << ".off)";
                             } else {
-                                std::format_to(std::back_inserter(buf),
-                                               ", {}",
-                                               ops[reg_idx]);
+                                os << ", " << ops[reg_idx];
                             }
                             reg_idx += 3;
                             i       += 4;
@@ -320,21 +276,16 @@ void EncodingTargetX64::get_inst_candidates(
                             if (op.isTied() && op.isUse()) {
                                 continue;
                             }
-                            std::format_to(std::back_inserter(buf),
-                                           ", {}",
-                                           ops[reg_idx++]);
+                            os << ", " << ops[reg_idx++];
                         } else if (op.isImm()) {
                             if (mnem.starts_with("CMOV")
                                 || mnem.starts_with("SET")) {
                                 continue;
                             }
-                            std::format_to(std::back_inserter(buf),
-                                           ", {:#x}",
-                                           op.getImm());
+                            os << ", " << op.getImm();
                         }
                     }
-                    std::format_to(
-                        std::back_inserter(buf), "{});\n", extra_ops);
+                    os << extra_ops << ");\n";
                 });
         }
         // TODO: better code, less copy-paste, all cases, etc.
@@ -352,52 +303,43 @@ void EncodingTargetX64::get_inst_candidates(
                 memop_start + 2,
                 cond,
                 [mnem, memop_start, extra_ops](
-                    std::string                        &buf,
-                    const llvm::MachineInstr           &mi,
-                    llvm::SmallVectorImpl<std::string> &ops) {
-                    std::format_to(
-                        std::back_inserter(buf), "        ASMD({}", mnem);
+                    llvm::raw_ostream           &os,
+                    const llvm::MachineInstr    &mi,
+                    std::span<const std::string> ops) {
+                    os << "    ASMD(" << mnem;
                     unsigned reg_idx = 0;
                     for (unsigned i = 0, n = mi.getNumExplicitOperands();
                          i != n;
                          i++) {
                         const auto &op = mi.getOperand(i);
                         if (i == (unsigned)memop_start) {
-                            std::format_to(
-                                std::back_inserter(buf),
-                                ", FE_MEM({}, {}.scale, {}.idx, {}.off)",
-                                ops[reg_idx],
-                                ops[reg_idx + 1],
-                                ops[reg_idx + 1],
-                                ops[reg_idx + 1]);
+                            os << ", FE_MEM(" << ops[reg_idx] << ", "
+                               << ops[reg_idx + 1] << ".scale, "
+                               << ops[reg_idx + 1] << ".idx, "
+                               << ops[reg_idx + 1] << ".off)";
                             reg_idx += 3;
                             i       += 4;
                         } else if (op.isReg()) {
                             if (op.isTied() && op.isUse()) {
                                 continue;
                             }
-                            std::format_to(std::back_inserter(buf),
-                                           ", {}",
-                                           ops[reg_idx++]);
+                            os << ", " << ops[reg_idx++];
                         } else if (op.isImm()) {
                             if (mnem.starts_with("CMOV")
                                 || mnem.starts_with("SET")) {
                                 continue;
                             }
-                            std::format_to(std::back_inserter(buf),
-                                           ", {:#x}",
-                                           op.getImm());
+                            os << ", " << op.getImm();
                         }
                     }
-                    std::format_to(
-                        std::back_inserter(buf), "{});\n", extra_ops);
+                    os << extra_ops << ");\n";
                 });
         }
         candidates.emplace_back([mnem, memop_start, extra_ops](
-                                    std::string                        &buf,
-                                    const llvm::MachineInstr           &mi,
-                                    llvm::SmallVectorImpl<std::string> &ops) {
-            std::format_to(std::back_inserter(buf), "        ASMD({}", mnem);
+                                    llvm::raw_ostream           &os,
+                                    const llvm::MachineInstr    &mi,
+                                    std::span<const std::string> ops) {
+            os << "    ASMD(" << mnem;
             unsigned         reg_idx = 0;
             std::string_view cp_sym  = "";
             bool             has_imm = false;
@@ -409,8 +351,7 @@ void EncodingTargetX64::get_inst_candidates(
                     cp_sym   = ops[reg_idx + 2];
                     reg_idx += 3;
                     i       += 4;
-                    std::format_to(std::back_inserter(buf),
-                                   ", FE_MEM(FE_IP, 0, FE_NOREG, 0)");
+                    os << ", FE_MEM(FE_IP, 0, FE_NOREG, 0)";
                 } else if (i == (unsigned)memop_start) {
                     std::string_view base =
                         op.getReg().isValid() ? ops[reg_idx] : "FE_NOREG"sv;
@@ -425,36 +366,29 @@ void EncodingTargetX64::get_inst_candidates(
                     assert(!mi.getOperand(i + 4).getReg().isValid());
                     reg_idx += 3;
                     i       += 4;
-                    std::format_to(std::back_inserter(buf),
-                                   ", FE_MEM({}, {}, {}, {})",
-                                   base,
-                                   sc,
-                                   idx,
-                                   off);
+                    os << ", FE_MEM(" << base << ", " << sc << ", " << idx
+                       << ", " << off << ")";
                 } else if (op.isReg()) {
                     if (op.isTied() && op.isUse()) {
                         continue;
                     }
-                    std::format_to(
-                        std::back_inserter(buf), ", {}", ops[reg_idx++]);
+                    os << ", " << ops[reg_idx++];
                 } else if (op.isImm()) {
                     if (mnem.starts_with("CMOV") || mnem.starts_with("SET")) {
                         continue;
                     }
                     has_imm = true;
-                    std::format_to(
-                        std::back_inserter(buf), ", {:#x}", op.getImm());
+                    os << ", " << op.getImm();
                 }
             }
-            std::format_to(std::back_inserter(buf), "{});\n", extra_ops);
+            os << extra_ops << ");\n";
             if (!cp_sym.empty()) {
                 assert(!has_imm && "CPI with imm unsupported!");
-                std::format_to(
-                    std::back_inserter(buf),
-                    "        "
-                    "derived()->assembler.reloc_text_pc32({}, "
-                    "derived()->assembler.text_cur_off() - 4, -4);\n",
-                    cp_sym);
+                os << "        "
+                      "derived()->assembler.reloc_text_pc32("
+                   << cp_sym
+                   << ", "
+                      "derived()->assembler.text_cur_off() - 4, -4);\n";
             }
         });
     };
@@ -462,9 +396,9 @@ void EncodingTargetX64::get_inst_candidates(
     const auto handle_xchg_mem = [&](std::string_view mnem, int memop_start) {
         // TODO: address candidate
         candidates.emplace_back([mnem, memop_start](
-                                    std::string                        &buf,
-                                    const llvm::MachineInstr           &mi,
-                                    llvm::SmallVectorImpl<std::string> &ops) {
+                                    llvm::raw_ostream           &os,
+                                    const llvm::MachineInstr    &mi,
+                                    std::span<const std::string> ops) {
             std::string_view base =
                 mi.getOperand(memop_start).getReg().isValid() ? ops[1]
                                                               : "FE_NOREG"sv;
@@ -478,14 +412,8 @@ void EncodingTargetX64::get_inst_candidates(
             auto off = mi.getOperand(memop_start + 3).getImm();
             assert(!mi.getOperand(memop_start + 4).getReg().isValid());
 
-            std::format_to(std::back_inserter(buf),
-                           "        ASMD({}, FE_MEM({}, {}, {}, {}), {});",
-                           mnem,
-                           base,
-                           sc,
-                           idx,
-                           off,
-                           ops[0]);
+            os << "    ASMD(" << mnem << ", FE_MEM(" << base << ", " << sc
+               << ", " << idx << ", " << off << "), " << ops[0] << ");\n";
         });
     };
 

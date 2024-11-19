@@ -2,12 +2,14 @@
 //
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
+#include <span>
 #include <string>
 #include <string_view>
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/CodeGen/MachineFunction.h>
 #include <llvm/CodeGen/MachineInstr.h>
+#include <llvm/Support/raw_ostream.h>
 
 namespace tpde_encgen {
 
@@ -39,10 +41,9 @@ struct MICandidate {
             : op_idx(op_idx), cond_str(cond_str) {}
     };
 
-    using Generator =
-        std::function<void(std::string                        &buf,
-                           const llvm::MachineInstr           &mi,
-                           llvm::SmallVectorImpl<std::string> &ops)>;
+    using Generator = std::function<void(llvm::raw_ostream           &os,
+                                         const llvm::MachineInstr    &mi,
+                                         std::span<const std::string> ops)>;
     llvm::SmallVector<Cond, 2> conds;
     Generator                  generator;
 
