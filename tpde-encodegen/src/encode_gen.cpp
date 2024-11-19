@@ -2178,7 +2178,6 @@ bool create_encode_function(llvm::MachineFunction *func,
                             std::string           &impl_lines) {
     std::string write_buf{};
 
-    std::cerr << "Creating encoder for " << name << "\n";
     // update dead/kill flags since they might not be very accurate anymore
     // NOTE: we assume that the MBB liveins are accurate though
     for (auto &MBB : *func) {

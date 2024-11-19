@@ -28,7 +28,6 @@ void EncodingTargetArm64::get_inst_candidates(
     (void)MCID;
 
     llvm::StringRef Name = MCII.getName(mi.getOpcode());
-    llvm::dbgs() << "get for " << Name << "\n";
 
     // From Disarm
     const auto imm_logical = [](bool sf, uint64_t Nimmsimmr) {
@@ -1343,6 +1342,7 @@ void EncodingTargetArm64::get_inst_candidates(
         handle_default("STLRx");
 
     } else {
+        llvm::errs() << "ERROR: unhandled instruction " << Name << "\n";
         assert(false);
     }
 }

@@ -28,7 +28,6 @@ void EncodingTargetX64::get_inst_candidates(
     (void)MCID;
 
     llvm::StringRef Name = MCII.getName(mi.getOpcode());
-    llvm::dbgs() << "get for " << Name << "\n";
 
     const auto handle_immrepl = [&](std::string_view mnem,
                                     unsigned         replop_idx,
@@ -1328,6 +1327,7 @@ void EncodingTargetX64::get_inst_candidates(
     } else if (Name == "PREFETCHT0") {
         handle_default("PREFETCHT0m", 0);
     } else {
+        llvm::errs() << "ERROR: unhandled instruction " << Name << "\n";
         assert(false);
     }
 }

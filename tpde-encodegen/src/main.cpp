@@ -234,18 +234,6 @@ int main(const int argc, char *argv[]) {
             const auto func_name = f.getName().str();
             if (func_name.starts_with(regcall_prefix)) {
                 f.setName(func_name.substr(regcall_prefix.size()));
-            } else {
-                // AE: we can surely live without this warning.
-                // // TODO(ts): sometimes you seem to need it (e.g. when passing
-                // // struct {char a,b,c;} since that seems to get treated
-                // // differently) so add something to suppress that warning
-                // std::cerr << std::format(
-                //     "WARN: function {} does not seem to use the regcall "
-                //     "calling "
-                //     "convention "
-                //     "(name not prefixed with \"__regcall3__\"), though "
-                //     "its use is highly recommended.\n",
-                //     func_name);
             }
         }
 
@@ -255,25 +243,11 @@ int main(const int argc, char *argv[]) {
             mod.print(llvm::outs(), nullptr);
         }
 
-        // Everything is set up, now run all passes
         pass_manager->run(mod);
 
-        // Get the MVachineModule and the MachineFunction for our input
         llvm::MachineModuleInfo &MMI = MMIWP->getMMI();
-
-
-        // For every input function, query the resulting MachineFunction
         for (llvm::Function &fn : mod) {
-            std::string              tmp{};
-            llvm::raw_string_ostream os{tmp};
-            fn.printAsOperand(os);
-            std::cerr << std::format(
-                "Handling function {}: {}\n", fn.getName().str(), tmp);
-
             if (fn.isIntrinsic() || fn.isDeclaration()) {
-                std::cerr << std::format(
-                    "WARN: Intrinsic function {} was skipped\n",
-                    fn.getName().str());
                 continue;
             }
             llvm::MachineFunction *machine_func =
@@ -281,9 +255,6 @@ int main(const int argc, char *argv[]) {
             if (dumpIR) {
                 machine_func->print(llvm::outs(), nullptr);
             }
-
-            // auto live_intervals = std::make_unique<llvm::LiveIntervals>();
-            // live_intervals->runOnMachineFunction(*machine_func);
 
             if (!create_encode_function(machine_func,
                                         fn.getName(),
