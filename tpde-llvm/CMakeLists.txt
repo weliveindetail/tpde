@@ -48,7 +48,26 @@ target_sources(tpde_llvm PRIVATE
         src/LLVMCompilerBase.hpp
 )
 
+find_program(clang NAMES clang clang-17 clang-18 clang-19)
+
 if(TPDE_X64)
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
+        COMMAND clang -c -emit-llvm -ffreestanding -fcf-protection=none
+            -O3 -fomit-frame-pointer
+            --target=x86_64 -march=x86-64-v4
+            -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.c
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.c
+    )
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.hpp
+        COMMAND tpde_encodegen
+            -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.hpp
+            ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
+        DEPENDS tpde_encodegen ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
+    )
+
     target_compile_definitions(tpde_llvm PRIVATE TPDE_LLVM_X64)
     target_sources(tpde_llvm PRIVATE
         src/x64/LLVMCompilerX64.cpp
@@ -58,10 +77,33 @@ if(TPDE_X64)
         BASE_DIRS src
         FILES
             src/x64/LLVMCompilerX64.hpp
+
+        PRIVATE
+        FILE_SET encodegen TYPE HEADERS
+        BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}
+        FILES
+            ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.hpp
     )
 endif()
 
 if(TPDE_A64)
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
+        COMMAND clang -c -emit-llvm -ffreestanding -fcf-protection=none
+            -O3 -fomit-frame-pointer
+            --target=aarch64 -march=armv8.1-a
+            -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.c
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.c
+    )
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.hpp
+        COMMAND tpde_encodegen
+            -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.hpp
+            ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
+        DEPENDS tpde_encodegen ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
+    )
+
     target_compile_definitions(tpde_llvm PRIVATE TPDE_LLVM_ARM64)
     target_sources(tpde_llvm PRIVATE
         src/arm64/LLVMCompilerArm64.cpp
@@ -71,6 +113,12 @@ if(TPDE_A64)
         BASE_DIRS src
         FILES
             src/arm64/LLVMCompilerArm64.hpp
+
+        PRIVATE
+        FILE_SET encodegen TYPE HEADERS
+        BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}
+        FILES
+            ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.hpp
     )
 endif()
 

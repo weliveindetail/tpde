@@ -6,7 +6,7 @@
 
 #include "LLVMAdaptor.hpp"
 #include "LLVMCompilerBase.hpp"
-#include "encode_compiler.hpp"
+#include "encode_template_x64.hpp"
 #include "tpde/x64/CompilerX64.hpp"
 
 namespace tpde_llvm::x64 {

@@ -235,7 +235,7 @@ define i32 @umul_i32_0(i32 %0, i32 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    umull x0, w0, w1
 ; ARM64-NEXT:    tst x0, #0xffffffff00000000
-; ARM64-NEXT:    and x1, x0, #0xffffffff
+; ARM64-NEXT:    mov w1, w0
 ; ARM64-NEXT:    cset w2, ne
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -280,7 +280,7 @@ define i1 @umul_i32_1(i32 %0, i32 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    umull x0, w0, w1
 ; ARM64-NEXT:    tst x0, #0xffffffff00000000
-; ARM64-NEXT:    and x1, x0, #0xffffffff
+; ARM64-NEXT:    mov w1, w0
 ; ARM64-NEXT:    cset w2, ne
 ; ARM64-NEXT:    mov w0, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -597,7 +597,7 @@ define i32 @smul_i32_0(i32 %0, i32 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    smull x0, w0, w1
 ; ARM64-NEXT:    cmp x0, w0, sxtw
-; ARM64-NEXT:    and x1, x0, #0xffffffff
+; ARM64-NEXT:    mov w1, w0
 ; ARM64-NEXT:    cset w2, ne
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -640,7 +640,7 @@ define i1 @smul_i32_1(i32 %0, i32 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    smull x0, w0, w1
 ; ARM64-NEXT:    cmp x0, w0, sxtw
-; ARM64-NEXT:    and x1, x0, #0xffffffff
+; ARM64-NEXT:    mov w1, w0
 ; ARM64-NEXT:    cset w2, ne
 ; ARM64-NEXT:    mov w0, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]

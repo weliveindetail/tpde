@@ -513,17 +513,14 @@ define i128 @ashr_i128_74(i128 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x50
 ; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    sar rax, 0x3f
+; X64-NEXT:    sar rax, 0xa
 ; X64-NEXT:    mov rcx, rsi
-; X64-NEXT:    sar rcx, 0xa
-; X64-NEXT:    mov qword ptr [rbp - 0x48], rax
-; X64-NEXT:    mov rax, rcx
-; X64-NEXT:    mov rdx, qword ptr [rbp - 0x48]
+; X64-NEXT:    sar rcx, 0x3f
+; X64-NEXT:    mov rdx, rcx
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: ashr_i128_74>:
 ; ARM64:         sub sp, sp, #0xc0
