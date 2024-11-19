@@ -166,6 +166,9 @@ struct EncodingTargetX64 : EncodingTarget {
         if (inst_info->getName(inst.getOpcode()) == "VZEROUPPER") {
             return true;
         }
+        if (inst_info->getName(inst.getOpcode()) == "ENDBR64") {
+            return true;
+        }
         return false;
     }
 
