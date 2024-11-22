@@ -3627,6 +3627,16 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         this->set_value(res_ref, res);
         return true;
     }
+    case llvm::Intrinsic::ptrmask: {
+        // ptrmask is just an integer and.
+        AsmOperand lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        AsmOperand rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+        auto       res = this->result_ref_lazy(inst_idx, 0);
+        auto       res_scratch = ScratchReg{derived()};
+        derived()->encode_landi64(std::move(lhs), std::move(rhs), res_scratch);
+        this->set_value(res, res_scratch);
+        return true;
+    }
     case llvm::Intrinsic::uadd_with_overflow:
         return compile_overflow_intrin(inst_idx, inst, OverflowOp::uadd);
     case llvm::Intrinsic::sadd_with_overflow:
