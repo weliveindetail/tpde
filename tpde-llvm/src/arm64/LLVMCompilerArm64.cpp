@@ -1179,13 +1179,11 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef         inst_idx,
             ASM(STRxu, tmp_reg, list_reg, 16);
         }
 
-        uint32_t gr_offs = ~(0 - ((8 - scalar_arg_count) * 8));
-        uint32_t vr_offs = ~(0 - ((8 - vec_arg_count) * 16));
-        assert(gr_offs <= 0xFFFF);
-        assert(vr_offs <= 0xFFFF);
-        ASM(MOVNw, tmp_reg, gr_offs);
+        uint32_t gr_offs = 0 - ((8 - scalar_arg_count) * 8);
+        uint32_t vr_offs = 0 - ((8 - vec_arg_count) * 16);
+        materialize_constant(gr_offs, 0, sizeof(uint32_t), tmp_reg);
         ASM(STRwu, tmp_reg, list_reg, 24);
-        ASM(MOVNw, tmp_reg, vr_offs);
+        materialize_constant(vr_offs, 0, sizeof(uint32_t), tmp_reg);
         ASM(STRwu, tmp_reg, list_reg, 28);
         return true;
     }
