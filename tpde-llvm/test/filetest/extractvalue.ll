@@ -561,10 +561,10 @@ define i128 @extract_i128_i1_0(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x1, x2, [x0]
-; ARM64-NEXT:    mov x3, x1
-; ARM64-NEXT:    ldrb w1, [x0, #0x10]
-; ARM64-NEXT:    mov x0, x3
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:    ldr x2, [x0, #0x8]
+; ARM64-NEXT:    ldrb w3, [x0, #0x10]
+; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    mov x1, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xe0
@@ -604,10 +604,10 @@ define i1 @extract_i128_i1_1(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x1, x2, [x0]
-; ARM64-NEXT:    mov x3, x1
-; ARM64-NEXT:    ldrb w1, [x0, #0x10]
-; ARM64-NEXT:    mov w0, w1
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:    ldr x2, [x0, #0x8]
+; ARM64-NEXT:    ldrb w3, [x0, #0x10]
+; ARM64-NEXT:    mov w0, w3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xe0
 ; ARM64-NEXT:    ret
@@ -628,13 +628,13 @@ define i128 @extract_i128_i1_0_no_salvage(ptr %0) {
 ; X64-NEXT:    mov rax, qword ptr [rdi]
 ; X64-NEXT:    mov rcx, qword ptr [rdi + 0x8]
 ; X64-NEXT:    movzx edx, byte ptr [rdi + 0x10]
-; X64-NEXT:    mov rbx, rcx
-; X64-NEXT:    mov rsi, rax
-; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
+; X64-NEXT:    mov rbx, rax
+; X64-NEXT:    mov rsi, rcx
 ; X64-NEXT:    mov qword ptr [rdi], rax
+; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], dl
-; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    mov rdx, rbx
+; X64-NEXT:    mov rax, rbx
+; X64-NEXT:    mov rdx, rsi
 ; X64-NEXT:    add rsp, 0x58
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
@@ -654,15 +654,16 @@ define i128 @extract_i128_i1_0_no_salvage(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x1, x2, [x0]
-; ARM64-NEXT:    mov x3, x1
-; ARM64-NEXT:    ldrb w1, [x0, #0x10]
-; ARM64-NEXT:    mov x4, x2
-; ARM64-NEXT:    mov x5, x3
-; ARM64-NEXT:    stp x3, x2, [x0]
-; ARM64-NEXT:    strb w1, [x0, #0x10]
-; ARM64-NEXT:    mov x0, x5
-; ARM64-NEXT:    mov x1, x4
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:    ldr x2, [x0, #0x8]
+; ARM64-NEXT:    ldrb w3, [x0, #0x10]
+; ARM64-NEXT:    mov x4, x1
+; ARM64-NEXT:    mov x5, x2
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    str x2, [x0, #0x8]
+; ARM64-NEXT:    strb w3, [x0, #0x10]
+; ARM64-NEXT:    mov x0, x4
+; ARM64-NEXT:    mov x1, x5
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xe0
 ; ARM64-NEXT:    ret
@@ -685,14 +686,16 @@ define i1 @extract_i128_i1_1_no_salvage(ptr %0) {
 ; X64-NEXT:    mov rcx, qword ptr [rdi + 0x8]
 ; X64-NEXT:    movzx edx, byte ptr [rdi + 0x10]
 ; X64-NEXT:    mov ebx, edx
-; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov qword ptr [rdi], rax
+; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], dl
 ; X64-NEXT:    mov eax, ebx
 ; X64-NEXT:    add rsp, 0x58
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: extract_i128_i1_1_no_salvage>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -707,12 +710,13 @@ define i1 @extract_i128_i1_1_no_salvage(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x1, x2, [x0]
-; ARM64-NEXT:    mov x3, x1
-; ARM64-NEXT:    ldrb w1, [x0, #0x10]
-; ARM64-NEXT:    mov w4, w1
-; ARM64-NEXT:    stp x3, x2, [x0]
-; ARM64-NEXT:    strb w1, [x0, #0x10]
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:    ldr x2, [x0, #0x8]
+; ARM64-NEXT:    ldrb w3, [x0, #0x10]
+; ARM64-NEXT:    mov w4, w3
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    str x2, [x0, #0x8]
+; ARM64-NEXT:    strb w3, [x0, #0x10]
 ; ARM64-NEXT:    mov w0, w4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xe0
@@ -723,6 +727,109 @@ entry:
   %2 = extractvalue %struct.i128_i1 %1, 1
   store %struct.i128_i1 %1, ptr %0
   ret i1 %2
+}
+
+define i64 @params({i8, {i8, i8}, i8} %s, i64, [2 x i64] %a, [2 x i64] %b) {
+; X64-LABEL: params>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x98
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x10]
+; X64-NEXT:    mov qword ptr [rbp - 0x48], rax
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x18]
+; X64-NEXT:    mov qword ptr [rbp - 0x60], rax
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x20]
+; X64-NEXT:    mov qword ptr [rbp - 0x58], rax
+; X64-NEXT:    mov eax, edi
+; X64-NEXT:    movzx eax, al
+; X64-NEXT:    mov ebx, esi
+; X64-NEXT:    mov r8d, edx
+; X64-NEXT:    mov r10d, ebx
+; X64-NEXT:    movzx r10d, r10b
+; X64-NEXT:    movzx r8d, r8b
+; X64-NEXT:    movzx ecx, cl
+; X64-NEXT:    mov rdx, r9
+; X64-NEXT:    mov rbx, qword ptr [rbp - 0x48]
+; X64-NEXT:    mov rsi, qword ptr [rbp - 0x60]
+; X64-NEXT:    mov rdi, rsi
+; X64-NEXT:    mov r9, qword ptr [rbp - 0x58]
+; X64-NEXT:    lea rax, [rax + r10]
+; X64-NEXT:    lea rax, [rax + r8]
+; X64-NEXT:    lea rax, [rax + rcx]
+; X64-NEXT:    lea rax, [rax + rdx]
+; X64-NEXT:    lea rax, [rax + rbx]
+; X64-NEXT:    lea rax, [rax + rdi]
+; X64-NEXT:    lea rax, [rax + r9]
+; X64-NEXT:    add rsp, 0x98
+; X64-NEXT:    pop rbx
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: params>:
+; ARM64:         sub sp, sp, #0x120
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x8, sp, #0x120
+; ARM64-NEXT:    ldr x4, [x8]
+; ARM64-NEXT:    str x4, [x29, #0xc0]
+; ARM64-NEXT:    ldr x4, [x8, #0x8]
+; ARM64-NEXT:    str x4, [x29, #0xc8]
+; ARM64-NEXT:    mov w4, w0
+; ARM64-NEXT:    ubfx x4, x4, #0, #8
+; ARM64-NEXT:    mov w7, w1
+; ARM64-NEXT:    mov w8, w2
+; ARM64-NEXT:    mov w9, w7
+; ARM64-NEXT:    ubfx x9, x9, #0, #8
+; ARM64-NEXT:    ubfx x8, x8, #0, #8
+; ARM64-NEXT:    ubfx x3, x3, #0, #8
+; ARM64-NEXT:    mov x0, x5
+; ARM64-NEXT:    ldr x1, [x29, #0xc0]
+; ARM64-NEXT:    mov x2, x1
+; ARM64-NEXT:    ldr x5, [x29, #0xc8]
+; ARM64-NEXT:    add x9, x9, x4
+; ARM64-NEXT:    add x8, x8, x9
+; ARM64-NEXT:    add x3, x3, x8
+; ARM64-NEXT:    add x0, x0, x3
+; ARM64-NEXT:    add x6, x6, x0
+; ARM64-NEXT:    add x2, x2, x6
+; ARM64-NEXT:    add x5, x5, x2
+; ARM64-NEXT:    mov x0, x5
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0x120
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %s0 = extractvalue {i8, {i8, i8}, i8} %s, 0
+  %xs0 = zext i8 %s0 to i64
+  %s1 = extractvalue {i8, {i8, i8}, i8} %s, 1
+  %s1_0 = extractvalue {i8, i8} %s1, 0
+  %xs1_0 = zext i8 %s1_0 to i64
+  %s1_1 = extractvalue {i8, i8} %s1, 1
+  %xs1_1 = zext i8 %s1_1 to i64
+  %s2 = extractvalue {i8, {i8, i8}, i8} %s, 2
+  %xs2 = zext i8 %s2 to i64
+  %a0 = extractvalue [2 x i64] %a, 0
+  %a1 = extractvalue [2 x i64] %a, 1
+  %b0 = extractvalue [2 x i64] %b, 0
+  %b1 = extractvalue [2 x i64] %b, 1
+  %add0 = add i64 %xs0, %xs1_0
+  %add1 = add i64 %add0, %xs1_1
+  %add2 = add i64 %add1, %xs2
+  %add3 = add i64 %add2, %a0
+  %add4 = add i64 %add3, %a1
+  %add5 = add i64 %add4, %b0
+  %add6 = add i64 %add5, %b1
+  ret i64 %add6
 }
 
 ;; NOTE: These prefixes are unused and the list is autogenerated. Do not add tests below this line:

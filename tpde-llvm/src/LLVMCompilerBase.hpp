@@ -281,163 +281,64 @@ template <typename Adaptor, typename Derived, typename Config>
 std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     LLVMCompilerBase<Adaptor, Derived, Config>::val_ref_special(
         ValLocalIdx local_idx, u32 part) noexcept {
-    const auto *val = this->adaptor->values[static_cast<u32>(local_idx)].val;
-    const auto *const_val = llvm::dyn_cast<llvm::Constant>(val);
+    auto val_idx = static_cast<LLVMAdaptor::IRValueRef>(local_idx);
+    auto *val = this->adaptor->values[val_idx].val;
+    auto *const_val = llvm::dyn_cast<llvm::Constant>(val);
 
-    if (const_val == nullptr || llvm::isa<llvm::GlobalValue>(val)) {
-        return {};
-    }
+    auto ty = this->adaptor->values[val_idx].type;
+    unsigned sub_part = part;
 
-    const auto val_ref_simple =
-        [](const llvm::Constant  *const_val,
-           const LLVMBasicValType ty,
-           const u32              part) -> std::optional<ValuePartRef> {
-        if (const auto *const_int =
-                llvm::dyn_cast<llvm::ConstantInt>(const_val);
-            const_int != nullptr) {
-            switch (ty) {
-                using enum LLVMBasicValType;
-            case i1:
-            case i8:
-                return ValuePartRef(static_cast<u8>(const_int->getZExtValue()),
-                                    Config::GP_BANK,
-                                    1);
-            case i16:
-                return ValuePartRef(static_cast<u16>(const_int->getZExtValue()),
-                                    Config::GP_BANK,
-                                    2);
-            case i32:
-                return ValuePartRef(static_cast<u32>(const_int->getZExtValue()),
-                                    Config::GP_BANK,
-                                    4);
-            case i64:
-            case ptr:
-                return ValuePartRef(
-                    const_int->getZExtValue(), Config::GP_BANK, 8);
-            case i128:
-                return ValuePartRef(
-                    const_int->getValue().extractBitsAsZExtValue(64, 64 * part),
-                    Config::GP_BANK,
-                    8);
-            default: assert(0); exit(1);
-            }
-        }
+    if (const_val && ty == LLVMBasicValType::complex) {
+        unsigned ty_idx = this->adaptor->values[val_idx].complex_part_tys_idx;
+        LLVMComplexPart *part_descs =
+            &this->adaptor->complex_part_types[ty_idx + 1];
 
-        if (const auto *const_ptr =
-                llvm::dyn_cast<llvm::ConstantPointerNull>(const_val);
-            const_ptr != nullptr) {
-            return ValuePartRef(0, Config::GP_BANK, 8);
-        }
-
-        if (const auto *const_fp = llvm::dyn_cast<llvm::ConstantFP>(const_val);
-            const_fp != nullptr) {
-            switch (ty) {
-                using enum LLVMBasicValType;
-            case f32:
-            case v32:
-                return ValuePartRef(
-                    static_cast<u32>(
-                        const_fp->getValue().bitcastToAPInt().getZExtValue()),
-                    Config::FP_BANK,
-                    4);
-            case f64:
-            case v64:
-                return ValuePartRef(
-                    const_fp->getValue().bitcastToAPInt().getZExtValue(),
-                    Config::FP_BANK,
-                    8);
-            case v128: {
-                llvm::APInt data = const_fp->getValue().bitcastToAPInt();
-                auto raw_data = reinterpret_cast<const u8 *>(data.getRawData());
-                auto num_bytes = sizeof(uint64_t) * data.getNumWords();
-                return ValuePartRef({raw_data, num_bytes}, Config::FP_BANK);
-            }
-                // TODO(ts): support the rest
-            default: assert(0); exit(1);
-            }
-        }
-
-        if (llvm::isa<llvm::PoisonValue>(const_val)
-            || llvm::isa<llvm::UndefValue>(const_val)
-            || llvm::isa<llvm::ConstantAggregateZero>(const_val)) {
-            switch (ty) {
-                using enum LLVMBasicValType;
-            case i1:
-            case i8: return ValuePartRef(0, Config::GP_BANK, 1);
-            case i16: return ValuePartRef(0, Config::GP_BANK, 2);
-            case i32: return ValuePartRef(0, Config::GP_BANK, 4);
-            case ptr:
-            case i128:
-            case i64: return ValuePartRef(0, Config::GP_BANK, 8);
-            case f32:
-            case v32: return ValuePartRef(0, Config::FP_BANK, 4);
-            case f64:
-            case v64:
-                return ValuePartRef(0, Config::FP_BANK, 8);
-                // TODO(ts): support larger constants
-            default: return {};
-            }
-        }
-
-        return {};
-    };
-
-    const auto ty = this->adaptor->values[static_cast<u32>(local_idx)].type;
-    if (auto opt = val_ref_simple(const_val, ty, part); opt) {
-        return opt;
-    }
-
-    if (ty == LLVMBasicValType::complex
-        && (llvm::isa<llvm::PoisonValue>(const_val)
-            || llvm::isa<llvm::UndefValue>(const_val)
-            || llvm::isa<llvm::ConstantAggregateZero>(const_val))) {
-        u32   size = 0, bank = 0;
-        auto *val_ty = val->getType();
-        assert(val_ty->isAggregateType());
-
-        const auto llvm_part_count = val_ty->getNumContainedTypes();
-        const auto ty_idx = this->adaptor->values[static_cast<u32>(local_idx)]
-                                .complex_part_tys_idx;
-        u32 real_part_count = 0;
-        for (u32 i = 0; i < llvm_part_count; ++i) {
-            const auto part_ty =
-                this->adaptor->complex_part_types[ty_idx + real_part_count];
-            const auto part_count = derived()->basic_ty_part_count(
-                this->adaptor->complex_part_types[ty_idx + real_part_count]);
-
-            if (i <= part && i + part_count > part) {
-                switch (part_ty) {
-                    using enum LLVMBasicValType;
-                case i1:
-                case i8: size = 1; break;
-                case i16: size = 2; break;
-                case i32: size = 4; break;
-                case i64:
-                case ptr:
-                case i128: size = 8; break;
-                case f32:
-                case v32:
-                    size = 4;
-                    bank = Config::FP_BANK;
-                    break;
-                case f64:
-                case v64:
-                    size = 8;
-                    bank = Config::FP_BANK;
-                    break;
-                // TODO(ts): support larger constants
-                default: assert(0); exit(1);
+        // Iterate over complex data type to find the struct/array indices that
+        // belong to part.
+        tpde::util::SmallVector<unsigned, 16> indices;
+        for (unsigned i = 0; i < part; i++) {
+            indices.resize(indices.size() + part_descs[i].part.nest_inc
+                           - part_descs[i].part.nest_dec);
+            if (part_descs[i].part.ends_value) {
+                sub_part = 0;
+                if (!indices.empty()) {
+                    indices.back()++;
                 }
+            } else {
+                sub_part++;
             }
+        }
+        indices.resize(indices.size() + part_descs[part].part.nest_inc);
 
-            // skip over duplicate entries when LLVM part has multiple TPDE
-            // parts
-            real_part_count += part_count;
+        for (unsigned idx : indices) {
+            if (!const_val) {
+                break;
+            }
+            auto *agg = llvm::dyn_cast<llvm::ConstantAggregate>(const_val);
+            if (!agg) {
+                break;
+            }
+            const_val = llvm::dyn_cast<llvm::Constant>(agg->getOperand(idx));
         }
 
+        ty = part_descs[part].part.type;
+    }
+
+    // At this point, ty is the basic type of the element and sub_part the part
+    // inside the basic type.
+
+    if (const_val == nullptr || llvm::isa<llvm::GlobalValue>(const_val)) {
+        return {};
+    }
+
+    if (llvm::isa<llvm::PoisonValue>(const_val)
+        || llvm::isa<llvm::UndefValue>(const_val)
+        || llvm::isa<llvm::ConstantPointerNull>(const_val)
+        || llvm::isa<llvm::ConstantAggregateZero>(const_val)) {
+        u32 size = this->adaptor->val_part_size(val_idx, part);
+        u32 bank = derived()->val_part_bank(val_idx, part);
         return ValuePartRef(0, bank, size);
     }
-
 
     if (llvm::isa<llvm::ConstantVector>(const_val)) {
         // TODO(ts): check how to handle this
@@ -445,44 +346,60 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
         exit(1);
     }
 
-    if (const auto *const_agg =
-            llvm::dyn_cast<llvm::ConstantAggregate>(const_val);
-        const_agg != nullptr) {
-        assert(this->adaptor->values[static_cast<u32>(local_idx)].type
-               == LLVMBasicValType::complex);
-        auto complex_part_idx =
-            this->adaptor->values[static_cast<u32>(local_idx)]
-                .complex_part_tys_idx;
-        u32       cur_val_part = 0;
-        const u32 num_ops      = const_agg->getNumOperands();
-        for (; complex_part_idx < num_ops; ++complex_part_idx) {
-            if (cur_val_part == part) {
-                const auto part_ty =
-                    this->adaptor->complex_part_types[complex_part_idx];
-                auto opt = val_ref_simple(
-                    const_agg->getOperand(complex_part_idx), part_ty, 0);
-                assert(opt);
-                return opt;
-            }
-
-            if (this->adaptor->complex_part_types[complex_part_idx]
-                == LLVMBasicValType::i128) {
-                ++cur_val_part;
-
-                if (cur_val_part == part) {
-                    auto opt =
-                        val_ref_simple(const_agg->getOperand(complex_part_idx),
-                                       LLVMBasicValType::i128,
-                                       1);
-                    assert(opt);
-                    return opt;
-                }
-            }
-            ++cur_val_part;
+    if (const auto *const_int = llvm::dyn_cast<llvm::ConstantInt>(const_val);
+        const_int != nullptr) {
+        switch (ty) {
+            using enum LLVMBasicValType;
+        case i1:
+        case i8:
+            return ValuePartRef(
+                static_cast<u8>(const_int->getZExtValue()), Config::GP_BANK, 1);
+        case i16:
+            return ValuePartRef(static_cast<u16>(const_int->getZExtValue()),
+                                Config::GP_BANK,
+                                2);
+        case i32:
+            return ValuePartRef(static_cast<u32>(const_int->getZExtValue()),
+                                Config::GP_BANK,
+                                4);
+        case i64:
+        case ptr:
+            return ValuePartRef(const_int->getZExtValue(), Config::GP_BANK, 8);
+        case i128:
+            return ValuePartRef(
+                const_int->getValue().extractBitsAsZExtValue(64, 64 * sub_part),
+                Config::GP_BANK,
+                8);
+        default: assert(0); exit(1);
         }
+    }
 
-        assert(0);
-        exit(1);
+    if (const auto *const_fp = llvm::dyn_cast<llvm::ConstantFP>(const_val);
+        const_fp != nullptr) {
+        switch (ty) {
+            using enum LLVMBasicValType;
+        case f32:
+        case v32:
+            return ValuePartRef(
+                static_cast<u32>(
+                    const_fp->getValue().bitcastToAPInt().getZExtValue()),
+                Config::FP_BANK,
+                4);
+        case f64:
+        case v64:
+            return ValuePartRef(
+                const_fp->getValue().bitcastToAPInt().getZExtValue(),
+                Config::FP_BANK,
+                8);
+        case v128: {
+            llvm::APInt data = const_fp->getValue().bitcastToAPInt();
+            auto raw_data = reinterpret_cast<const u8 *>(data.getRawData());
+            auto num_bytes = sizeof(uint64_t) * data.getNumWords();
+            return ValuePartRef({raw_data, num_bytes}, Config::FP_BANK);
+        }
+            // TODO(ts): support the rest
+        default: assert(0); exit(1);
+        }
     }
 
     TPDE_LOG_ERR("Encountered unknown constant type");
@@ -1334,93 +1251,41 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     case complex: {
         res.reset_without_refcount();
 
-        // TODO: suffering, postponed, think about hwo to represent
-        // parts that need multiple parts in complex types
-        auto *load_ty = load->getType();
-        assert(load_ty->isAggregateType());
-        const auto *ty_sl = this->adaptor->mod.getDataLayout().getStructLayout(
-            llvm::cast<llvm::StructType>(load_ty));
-
-        const auto part_count = load_ty->getNumContainedTypes();
-        const auto ty_idx =
-            this->adaptor->values[load_idx].complex_part_tys_idx;
-        u32 res_part_idx = 0;
+        auto ty_idx = this->adaptor->values[load_idx].complex_part_tys_idx;
+        const LLVMComplexPart *part_descs =
+            &this->adaptor->complex_part_types[ty_idx + 1];
+        unsigned part_count = part_descs[-1].num_parts;
 
         auto ptr_ref =
             this->val_ref(llvm_val_idx(load->getPointerOperand()), 0);
         ScratchReg ptr_scratch{derived()};
-        auto       ptr_reg = this->val_as_reg(ptr_ref, ptr_scratch);
-        for (u32 part_idx = 0; part_idx < part_count;
-             ++part_idx, ++res_part_idx) {
-            const auto part_ty =
-                this->adaptor->complex_part_types[ty_idx + res_part_idx];
+        auto ptr_reg = this->val_as_reg(ptr_ref, ptr_scratch);
 
+
+        unsigned off = 0;
+        for (unsigned i = 0; i < part_count; i++) {
+            auto part_ref = this->result_ref_lazy(load_idx, i);
             auto part_addr = typename Derived::AsmOperand::Expr{
-                ptr_reg,
-                static_cast<tpde::i32>(
-                    ty_sl->getElementOffset(part_idx).getFixedValue())};
-
-            auto part_ref = this->result_ref_lazy(load_idx, res_part_idx);
+                ptr_reg, static_cast<tpde::i32>(off)};
+            auto part_ty = part_descs[i].part.type;
             switch (part_ty) {
             case i1:
             case i8:
-            case i16:
-            case i32:
-            case i64: {
-                assert(load_ty->getContainedType(part_idx)->isIntegerTy());
-                const auto bit_width =
-                    load_ty->getContainedType(part_idx)->getIntegerBitWidth();
-                switch (bit_width) {
-                case 1:
-                case 8:
-                    derived()->encode_loadi8(std::move(part_addr), res_scratch);
-                    break;
-                case 16:
-                    derived()->encode_loadi16(std::move(part_addr),
-                                              res_scratch);
-                    break;
-                case 24:
-                    derived()->encode_loadi24(std::move(part_addr),
-                                              res_scratch);
-                    break;
-                case 32:
-                    derived()->encode_loadi32(std::move(part_addr),
-                                              res_scratch);
-                    break;
-                case 40:
-                    derived()->encode_loadi40(std::move(part_addr),
-                                              res_scratch);
-                    break;
-                case 48:
-                    derived()->encode_loadi48(std::move(part_addr),
-                                              res_scratch);
-                    break;
-                case 56:
-                    derived()->encode_loadi56(std::move(part_addr),
-                                              res_scratch);
-                    break;
-                case 64:
-                    derived()->encode_loadi64(std::move(part_addr),
-                                              res_scratch);
-                    break;
-                default: assert(0); return false;
-                }
+                derived()->encode_loadi8(std::move(part_addr), res_scratch);
                 break;
-            }
+            case i16:
+                derived()->encode_loadi16(std::move(part_addr), res_scratch);
+                break;
+            case i32:
+                derived()->encode_loadi32(std::move(part_addr), res_scratch);
+                break;
+            case i64:
             case ptr:
                 derived()->encode_loadi64(std::move(part_addr), res_scratch);
                 break;
-            case i128: {
-                ScratchReg res_scratch_high{derived()};
-                derived()->encode_loadi128(
-                    std::move(part_addr), res_scratch, res_scratch_high);
-
-                auto part_ref_high =
-                    this->result_ref_lazy(load_idx, ++res_part_idx);
-                this->set_value(part_ref_high, res_scratch_high);
-                part_ref_high.reset_without_refcount();
+            case i128:
+                derived()->encode_loadi64(std::move(part_addr), res_scratch);
                 break;
-            }
             case v32:
             case f32:
                 derived()->encode_loadf32(std::move(part_addr), res_scratch);
@@ -1432,26 +1297,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
             case v128:
                 derived()->encode_loadv128(std::move(part_addr), res_scratch);
                 break;
-#if 0
-            case v256:
-                if (!derived()->encode_loadv256(std::move(part_addr),
-                                                res_scratch)) {
-                    return false;
-                }
-                break;
-            case v512:
-                if (!derived()->encode_loadv512(std::move(part_addr),
-                                                res_scratch)) {
-                    return false;
-                }
-                break;
-#endif
             default: assert(0); return false;
             }
 
-            this->set_value(part_ref, res_scratch);
+            off += part_descs[i].part.size + part_descs[i].part.pad_after;
 
-            if (part_idx != part_count - 1) {
+            this->set_value(part_ref, res_scratch);
+            if (i != part_count - 1) {
                 part_ref.reset_without_refcount();
             }
         }
@@ -1583,82 +1435,40 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     case complex: {
         op_ref.reset_without_refcount();
 
-        // TODO: suffering, postponed, think about hwo to represent
-        // parts that need multiple parts in complex types
-        auto *store_ty = op_val->getType();
-        assert(store_ty->isAggregateType());
-        const auto *ty_sl = this->adaptor->mod.getDataLayout().getStructLayout(
-            llvm::cast<llvm::StructType>(store_ty));
-
-        const auto part_count = store_ty->getNumContainedTypes();
         const auto ty_idx = this->adaptor->values[op_idx].complex_part_tys_idx;
-        u32        res_part_idx = 0;
+        const LLVMComplexPart *part_descs =
+            &this->adaptor->complex_part_types[ty_idx + 1];
+        unsigned part_count = part_descs[-1].num_parts;
 
         auto ptr_ref =
             this->val_ref(llvm_val_idx(store->getPointerOperand()), 0);
         ScratchReg ptr_scratch{derived()};
-        auto       ptr_reg = this->val_as_reg(ptr_ref, ptr_scratch);
-        for (u32 part_idx = 0; part_idx < part_count;
-             ++part_idx, ++res_part_idx) {
-            const auto part_ty =
-                this->adaptor->complex_part_types[ty_idx + res_part_idx];
+        auto ptr_reg = this->val_as_reg(ptr_ref, ptr_scratch);
 
+        unsigned off = 0;
+        for (unsigned i = 0; i < part_count; i++) {
+            auto part_ref = this->val_ref(op_idx, i);
             auto part_addr = typename Derived::AsmOperand::Expr{
-                ptr_reg,
-                static_cast<tpde::i32>(
-                    ty_sl->getElementOffset(part_idx).getFixedValue())};
-
-            auto part_ref = this->val_ref(op_idx, res_part_idx);
+                ptr_reg, static_cast<tpde::i32>(off)};
+            auto part_ty = part_descs[i].part.type;
             switch (part_ty) {
             case i1:
             case i8:
-            case i16:
-            case i32:
-            case i64: {
-                assert(store_ty->getContainedType(part_idx)->isIntegerTy());
-                const auto bit_width =
-                    store_ty->getContainedType(part_idx)->getIntegerBitWidth();
-                switch (bit_width) {
-                case 1:
-                case 8:
-                    derived()->encode_storei8(std::move(part_addr), part_ref);
-                    break;
-                case 16:
-                    derived()->encode_storei16(std::move(part_addr), part_ref);
-                    break;
-                case 24:
-                    derived()->encode_storei24(std::move(part_addr), part_ref);
-                    break;
-                case 32:
-                    derived()->encode_storei32(std::move(part_addr), part_ref);
-                    break;
-                case 40:
-                    derived()->encode_storei40(std::move(part_addr), part_ref);
-                    break;
-                case 48:
-                    derived()->encode_storei48(std::move(part_addr), part_ref);
-                    break;
-                case 56:
-                    derived()->encode_storei56(std::move(part_addr), part_ref);
-                    break;
-                case 64:
-                    derived()->encode_storei64(std::move(part_addr), part_ref);
-                    break;
-                default: assert(0); return false;
-                }
+                derived()->encode_storei8(std::move(part_addr), part_ref);
                 break;
-            }
+            case i16:
+                derived()->encode_storei16(std::move(part_addr), part_ref);
+                break;
+            case i32:
+                derived()->encode_storei32(std::move(part_addr), part_ref);
+                break;
+            case i64:
             case ptr:
                 derived()->encode_storei64(std::move(part_addr), part_ref);
                 break;
-            case i128: {
-                auto part_ref_high = this->val_ref(op_idx, ++res_part_idx);
-                derived()->encode_storei128(
-                    std::move(part_addr), part_ref, part_ref_high);
-
-                part_ref_high.reset_without_refcount();
+            case i128:
+                derived()->encode_storei64(std::move(part_addr), part_ref);
                 break;
-            }
             case v32:
             case f32:
                 derived()->encode_storef32(std::move(part_addr), part_ref);
@@ -1670,24 +1480,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
             case v128:
                 derived()->encode_storev128(std::move(part_addr), part_ref);
                 break;
-#if 0
-            case v256:
-                if (!derived()->encode_storev256(std::move(part_addr),
-                                                 part_ref)) {
-                    return false;
-                }
-                break;
-            case v512:
-                if (!derived()->encode_storev512(std::move(part_addr),
-                                                 part_ref)) {
-                    return false;
-                }
-                break;
-#endif
             default: assert(0); return false;
             }
 
-            if (part_idx != part_count - 1) {
+            off += part_descs[i].part.size + part_descs[i].part.pad_after;
+            if (i != part_count - 1) {
                 part_ref.reset_without_refcount();
             }
         }
@@ -2350,138 +2147,82 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_value(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
     auto *extract = llvm::cast<llvm::ExtractValueInst>(inst);
-    assert(extract->getNumIndices() == 1);
+    if (extract->getNumIndices() != 1) {
+        return false;
+    }
 
-    auto *src_val = inst->getOperand(0);
-    auto *src_ty  = src_val->getType();
-    auto  src_idx = llvm_val_idx(src_val);
-    assert(src_ty->isAggregateType());
+    auto src_idx = llvm_val_idx(inst->getOperand(0));
 
     const auto target_idx = extract->getIndices()[0];
+    auto [first_part, last_part] =
+        this->adaptor->complex_part_for_index(src_idx, target_idx);
 
-    const auto llvm_part_count = src_ty->getNumContainedTypes();
-    const auto ty_idx = this->adaptor->values[src_idx].complex_part_tys_idx;
-
-    u32 part_idx = 0;
-    for (u32 llvm_part_idx = 0; llvm_part_idx < llvm_part_count;
-         ++llvm_part_idx) {
-        const auto part_ty =
-            this->adaptor->complex_part_types[ty_idx + part_idx];
-        assert(part_ty != LLVMBasicValType::complex);
-        if (llvm_part_idx != target_idx) {
-            part_idx += derived()->basic_ty_part_count(part_ty);
-            continue;
-        }
-
-        auto part_ref = this->val_ref(src_idx, part_idx);
-
-        if (part_ty == LLVMBasicValType::i128) {
-            auto part_ref_high = this->val_ref(src_idx, part_idx + 1);
-            part_ref_high.inc_ref_count();
-
-            AsmReg orig;
-            auto   res_ref_high = this->result_ref_salvage_with_original(
-                inst_idx, 1, std::move(part_ref_high), orig, 2);
-
-            if (orig != res_ref_high.cur_reg()) {
-                derived()->mov(res_ref_high.cur_reg(), orig, 8);
-            }
-            this->set_value(res_ref_high, res_ref_high.cur_reg());
-            res_ref_high.reset_without_refcount();
+    for (unsigned i = first_part; i <= last_part; i++) {
+        auto part_ref = this->val_ref(src_idx, i);
+        if (i != last_part) {
+            part_ref.inc_ref_count();
         }
 
         AsmReg orig;
-        auto   res_ref = this->result_ref_salvage_with_original(
-            inst_idx, 0, std::move(part_ref), orig);
-
+        auto res_ref =
+            this->result_ref_salvage_with_original(inst_idx,
+                                                   i - first_part,
+                                                   std::move(part_ref),
+                                                   orig,
+                                                   i != last_part ? 2 : 1);
         if (orig != res_ref.cur_reg()) {
             derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
         }
         this->set_value(res_ref, res_ref.cur_reg());
-        return true;
+        if (i != last_part) {
+            res_ref.inc_ref_count();
+        }
     }
 
-    return false;
+    return true;
 }
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_value(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
     auto *insert = llvm::cast<llvm::InsertValueInst>(inst);
-    assert(insert->getNumIndices() == 1);
+    if (insert->getNumIndices() != 1) {
+        return false;
+    }
 
-    auto      *agg_val = insert->getAggregateOperand();
-    auto      *agg_ty  = agg_val->getType();
-    const auto agg_idx = llvm_val_idx(agg_val);
-
-    auto      *ins_val = insert->getInsertedValueOperand();
-    const auto ins_idx = llvm_val_idx(ins_val);
+    auto agg_idx = llvm_val_idx(insert->getAggregateOperand());
+    auto ins_idx = llvm_val_idx(insert->getInsertedValueOperand());
 
     auto target_idx = insert->getIndices()[0];
+    unsigned part_count = this->adaptor->val_part_count(agg_idx);
+    auto [first_part, last_part] =
+        this->adaptor->complex_part_for_index(agg_idx, target_idx);
 
-    const auto llvm_part_count = agg_ty->getNumContainedTypes();
-    const auto ty_idx = this->adaptor->values[agg_idx].complex_part_tys_idx;
-
-    u32 part_idx = 0;
-    for (u32 llvm_part_idx = 0; llvm_part_idx < llvm_part_count;
-         ++llvm_part_idx) {
-        const auto part_ty =
-            this->adaptor->complex_part_types[ty_idx + part_idx];
-        assert(part_ty != LLVMBasicValType::complex);
-
-        const auto part_count = derived()->basic_ty_part_count(part_ty);
-        // TODO(ts): I'd really like to always not do refcounting in the loop
-        // and then refcount once when the loop is done
-        for (u32 inner_part_idx = 0; inner_part_idx < part_count;
-             ++inner_part_idx) {
-            const auto copy_or_salvage =
-                [this,
-                 inst_idx,
-                 part_idx,
-                 inner_part_idx,
-                 part_ty,
-                 llvm_part_count,
-                 part_count,
-                 llvm_part_idx](ValuePartRef &&src_ref) {
-                    AsmReg orig;
-                    auto   res_ref = this->result_ref_salvage_with_original(
-                        inst_idx,
-                        part_idx + inner_part_idx,
-                        std::move(src_ref),
-                        orig,
-                        (inner_part_idx != part_count - 1) ? 2 : 1);
-                    if (orig != res_ref.cur_reg()) {
-                        derived()->mov(res_ref.cur_reg(),
-                                       orig,
-                                       derived()->basic_ty_part_size(part_ty));
-                    }
-                    this->set_value(res_ref, res_ref.cur_reg());
-                    if (llvm_part_idx != llvm_part_count - 1
-                        || inner_part_idx != part_count - 1) {
-                        res_ref.reset_without_refcount();
-                    }
-                };
-            if (llvm_part_idx == target_idx) {
-                assert(derived()->val_part_count(ins_idx) == part_count);
-                auto ins_ref = this->val_ref(ins_idx, inner_part_idx);
-                if (inner_part_idx != part_count - 1) {
-                    ins_ref.inc_ref_count();
-                }
-                copy_or_salvage(std::move(ins_ref));
-            } else {
-                auto agg_ref =
-                    this->val_ref(agg_idx, part_idx + inner_part_idx);
-                if (inner_part_idx != part_count - 1
-                    || (llvm_part_idx
-                        != llvm_part_count
-                               - (target_idx == llvm_part_count - 1 ? 2 : 1))) {
-                    agg_ref.inc_ref_count();
-                }
-                copy_or_salvage(std::move(agg_ref));
-            }
+    for (unsigned i = 0; i < part_count; i++) {
+        ValuePartRef val_ref;
+        bool inc_ref_count;
+        if (i >= first_part && i <= last_part) {
+            val_ref = this->val_ref(ins_idx, i - first_part);
+            inc_ref_count = i != last_part;
+        } else {
+            val_ref = this->val_ref(agg_idx, i);
+            inc_ref_count =
+                i != part_count - 1
+                && (last_part != part_count - 1 || i != first_part - 1);
         }
-
-        part_idx += part_count;
+        if (inc_ref_count) {
+            val_ref.inc_ref_count();
+        }
+        AsmReg orig;
+        auto res_ref = this->result_ref_salvage_with_original(
+            inst_idx, i, std::move(val_ref), orig, inc_ref_count ? 2 : 1);
+        if (orig != res_ref.cur_reg()) {
+            derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
+        }
+        this->set_value(res_ref, res_ref.cur_reg());
+        if (i != part_count - 1) {
+            res_ref.inc_ref_count();
+        }
     }
 
     return true;

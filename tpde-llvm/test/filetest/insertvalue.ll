@@ -720,8 +720,8 @@ define void @insert_i128_i1_0(ptr %0, i128 %1) {
 ; X64-NEXT:    mov rax, qword ptr [rdi]
 ; X64-NEXT:    mov rcx, qword ptr [rdi + 0x8]
 ; X64-NEXT:    movzx ebx, byte ptr [rdi + 0x10]
-; X64-NEXT:    mov qword ptr [rdi + 0x8], rdx
 ; X64-NEXT:    mov qword ptr [rdi], rsi
+; X64-NEXT:    mov qword ptr [rdi + 0x8], rdx
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], bl
 ; X64-NEXT:    add rsp, 0x78
 ; X64-NEXT:    pop rbx
@@ -741,11 +741,12 @@ define void @insert_i128_i1_0(ptr %0, i128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x1, x4, [x0]
-; ARM64-NEXT:    mov x5, x1
-; ARM64-NEXT:    ldrb w1, [x0, #0x10]
-; ARM64-NEXT:    stp x2, x3, [x0]
-; ARM64-NEXT:    strb w1, [x0, #0x10]
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:    ldr x4, [x0, #0x8]
+; ARM64-NEXT:    ldrb w5, [x0, #0x10]
+; ARM64-NEXT:    str x2, [x0]
+; ARM64-NEXT:    str x3, [x0, #0x8]
+; ARM64-NEXT:    strb w5, [x0, #0x10]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x100
 ; ARM64-NEXT:    ret
@@ -766,8 +767,8 @@ define void @insert_i128_i1_1(ptr %0, i1 %1) {
 ; X64-NEXT:    mov rax, qword ptr [rdi]
 ; X64-NEXT:    mov rcx, qword ptr [rdi + 0x8]
 ; X64-NEXT:    movzx edx, byte ptr [rdi + 0x10]
-; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov qword ptr [rdi], rax
+; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], sil
 ; X64-NEXT:    add rsp, 0x80
 ; X64-NEXT:    pop rbp
@@ -788,10 +789,11 @@ define void @insert_i128_i1_1(ptr %0, i1 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x2, x3, [x0]
-; ARM64-NEXT:    mov x4, x2
-; ARM64-NEXT:    ldrb w2, [x0, #0x10]
-; ARM64-NEXT:    stp x4, x3, [x0]
+; ARM64-NEXT:    ldr x2, [x0]
+; ARM64-NEXT:    ldr x3, [x0, #0x8]
+; ARM64-NEXT:    ldrb w4, [x0, #0x10]
+; ARM64-NEXT:    str x2, [x0]
+; ARM64-NEXT:    str x3, [x0, #0x8]
 ; ARM64-NEXT:    strb w1, [x0, #0x10]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xf0
@@ -815,11 +817,11 @@ define void @insert_i128_i1_0_nosalvage(ptr %0, i128 %1) {
 ; X64-NEXT:    mov rcx, qword ptr [rdi + 0x8]
 ; X64-NEXT:    movzx ebx, byte ptr [rdi + 0x10]
 ; X64-NEXT:    mov r8d, ebx
-; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov qword ptr [rdi], rax
+; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], bl
-; X64-NEXT:    mov qword ptr [rdi + 0x8], rdx
 ; X64-NEXT:    mov qword ptr [rdi], rsi
+; X64-NEXT:    mov qword ptr [rdi + 0x8], rdx
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], r8b
 ; X64-NEXT:    add rsp, 0x78
 ; X64-NEXT:    pop rbx
@@ -840,13 +842,15 @@ define void @insert_i128_i1_0_nosalvage(ptr %0, i128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x1, x4, [x0]
-; ARM64-NEXT:    mov x5, x1
-; ARM64-NEXT:    ldrb w1, [x0, #0x10]
-; ARM64-NEXT:    mov w6, w1
-; ARM64-NEXT:    stp x5, x4, [x0]
-; ARM64-NEXT:    strb w1, [x0, #0x10]
-; ARM64-NEXT:    stp x2, x3, [x0]
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:    ldr x4, [x0, #0x8]
+; ARM64-NEXT:    ldrb w5, [x0, #0x10]
+; ARM64-NEXT:    mov w6, w5
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    str x4, [x0, #0x8]
+; ARM64-NEXT:    strb w5, [x0, #0x10]
+; ARM64-NEXT:    str x2, [x0]
+; ARM64-NEXT:    str x3, [x0, #0x8]
 ; ARM64-NEXT:    strb w6, [x0, #0x10]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x100
@@ -872,11 +876,11 @@ define void @insert_i128_i1_1_nosalvage(ptr %0, i1 %1) {
 ; X64-NEXT:    movzx edx, byte ptr [rdi + 0x10]
 ; X64-NEXT:    mov rbx, rax
 ; X64-NEXT:    mov r8, rcx
-; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov qword ptr [rdi], rax
+; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], dl
-; X64-NEXT:    mov qword ptr [rdi + 0x8], r8
 ; X64-NEXT:    mov qword ptr [rdi], rbx
+; X64-NEXT:    mov qword ptr [rdi + 0x8], r8
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], sil
 ; X64-NEXT:    add rsp, 0x78
 ; X64-NEXT:    pop rbx
@@ -896,14 +900,16 @@ define void @insert_i128_i1_1_nosalvage(ptr %0, i1 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x2, x3, [x0]
-; ARM64-NEXT:    mov x4, x2
-; ARM64-NEXT:    ldrb w2, [x0, #0x10]
-; ARM64-NEXT:    mov x5, x4
+; ARM64-NEXT:    ldr x2, [x0]
+; ARM64-NEXT:    ldr x3, [x0, #0x8]
+; ARM64-NEXT:    ldrb w4, [x0, #0x10]
+; ARM64-NEXT:    mov x5, x2
 ; ARM64-NEXT:    mov x6, x3
-; ARM64-NEXT:    stp x4, x3, [x0]
-; ARM64-NEXT:    strb w2, [x0, #0x10]
-; ARM64-NEXT:    stp x5, x6, [x0]
+; ARM64-NEXT:    str x2, [x0]
+; ARM64-NEXT:    str x3, [x0, #0x8]
+; ARM64-NEXT:    strb w4, [x0, #0x10]
+; ARM64-NEXT:    str x5, [x0]
+; ARM64-NEXT:    str x6, [x0, #0x8]
 ; ARM64-NEXT:    strb w1, [x0, #0x10]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xf0

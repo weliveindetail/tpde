@@ -1767,8 +1767,8 @@ define void @store_struct_i128_i1(ptr %a) {
 ; X64-NEXT:    mov rax, qword ptr [rdi]
 ; X64-NEXT:    mov rcx, qword ptr [rdi + 0x8]
 ; X64-NEXT:    movzx edx, byte ptr [rdi + 0x10]
-; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov qword ptr [rdi], rax
+; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], dl
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
@@ -1788,11 +1788,12 @@ define void @store_struct_i128_i1(ptr %a) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x1, x2, [x0]
-; ARM64-NEXT:    mov x3, x1
-; ARM64-NEXT:    ldrb w1, [x0, #0x10]
-; ARM64-NEXT:    stp x3, x2, [x0]
-; ARM64-NEXT:    strb w1, [x0, #0x10]
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:    ldr x2, [x0, #0x8]
+; ARM64-NEXT:    ldrb w3, [x0, #0x10]
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    str x2, [x0, #0x8]
+; ARM64-NEXT:    strb w3, [x0, #0x10]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret

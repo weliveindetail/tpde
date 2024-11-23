@@ -1879,9 +1879,9 @@ define void @load_struct_i128_i1(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x1, x2, [x0]
-; ARM64-NEXT:    mov x3, x1
-; ARM64-NEXT:    ldrb w1, [x0, #0x10]
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:    ldr x2, [x0, #0x8]
+; ARM64-NEXT:    ldrb w3, [x0, #0x10]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret

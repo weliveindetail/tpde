@@ -1497,7 +1497,6 @@ entry:
   ret %struct.i32_ptr %1
 }
 
-; COM: idk if this is even legal in SysV but we can do it
 define %struct.f32_ptr @ret_f32_ptr(ptr %0) {
 ; X64-LABEL: ret_f32_ptr>:
 ; X64:         push rbp
@@ -1509,6 +1508,8 @@ define %struct.f32_ptr @ret_f32_ptr(ptr %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: ret_f32_ptr>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1533,6 +1534,154 @@ define %struct.f32_ptr @ret_f32_ptr(ptr %0) {
 entry:
   %1 = load %struct.f32_ptr, ptr %0
   ret %struct.f32_ptr %1
+}
+
+define %struct.f32_ptr @ret_f32_ptr_const1(ptr %0) {
+; X64-LABEL: ret_f32_ptr_const1>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    mov eax, 0x41200000
+; X64-NEXT:    movd xmm0, eax
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop dword ptr [rax + rax]
+;
+; ARM64-LABEL: ret_f32_ptr_const1>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    fmov s0, #10.00000000
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  ret %struct.f32_ptr { float 10.0, ptr null }
+}
+
+define {float, i64} @ret_float_i64_const(ptr %0) {
+; X64-LABEL: ret_float_i64_const>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    mov eax, 0x3f800000
+; X64-NEXT:    movd xmm0, eax
+; X64-NEXT:    mov rax, 0x4d2
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+;
+; ARM64-LABEL: ret_float_i64_const>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    fmov s0, #1.00000000
+; ARM64-NEXT:    mov x0, #0x4d2 // =1234
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  ret {float, i64} { float 1.0, i64 1234 }
+}
+
+define {float, {i8, double}} @ret_float_i8_double_const(ptr %0) {
+; X64-LABEL: ret_float_i8_double_const>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    mov eax, 0x3f800000
+; X64-NEXT:    movd xmm0, eax
+; X64-NEXT:    mov eax, 0x20
+; X64-NEXT:    movabs rax, 0x4024000000000000
+; X64-NEXT:    movq xmm1, rax
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+;
+; ARM64-LABEL: ret_float_i8_double_const>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    fmov s0, #1.00000000
+; ARM64-NEXT:    mov x0, #0x20 // =32
+; ARM64-NEXT:    fmov d1, #10.00000000
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  ret {float, {i8, double}} { float 1.0, {i8, double} { i8 32, double 10.0 } }
+}
+
+define {i8, {i8, double}} @ret_i8_i8_double_const(ptr %0) {
+; X64-LABEL: ret_i8_i8_double_const>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    mov eax, 0x7b
+; X64-NEXT:    mov edx, 0x20
+; X64-NEXT:    movabs rax, 0x4024000000000000
+; X64-NEXT:    movq xmm0, rax
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: ret_i8_i8_double_const>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov x0, #0x7b // =123
+; ARM64-NEXT:    mov x1, #0x20 // =32
+; ARM64-NEXT:    fmov d0, #10.00000000
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  ret {i8, {i8, double}} { i8 123, {i8, double} { i8 32, double 10.0 } }
 }
 
 ;; NOTE: These prefixes are unused and the list is autogenerated. Do not add tests below this line:

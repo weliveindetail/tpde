@@ -66,6 +66,39 @@ enum class LLVMBasicValType : u8 {
     complex,
 };
 
+union LLVMComplexPart {
+    struct {
+        /// Type of the part.
+        LLVMBasicValType type;
+        /// In-memory size in bytes, e.g. 3 for i24.
+        u8 size;
+        /// Padding after the part for the in-memory layout.
+        u8 pad_after : 7;
+        /// Whether the part begins a new LLVM value. This is not the case for,
+        /// e.g., the second part of i128.
+        u8 ends_value : 1;
+        /// Nesting depth increase before the part.
+        u8 nest_inc : 4;
+        /// Nesting depth decrease after the part.
+        u8 nest_dec : 4;
+    } part;
+
+    /// Number of parts following.
+    u32 num_parts;
+
+    LLVMComplexPart() : part{.type = LLVMBasicValType::invalid} {}
+
+    LLVMComplexPart(LLVMBasicValType type, u8 size, bool ends_value = true)
+        : part{.type = type,
+               .size = size,
+               .pad_after = 0,
+               .ends_value = ends_value,
+               .nest_inc = 0,
+               .nest_dec = 0} {}
+};
+
+static_assert(sizeof(LLVMComplexPart) == 4);
+
 struct LLVMAdaptor {
     llvm::LLVMContext &context;
     llvm::Module      &mod;
@@ -95,7 +128,7 @@ struct LLVMAdaptor {
     tpde::util::SmallVector<ValInfo, 128>         values;
     tsl::hopscotch_map<const llvm::Value *, u32>  value_lookup;
     tsl::hopscotch_map<llvm::BasicBlock *, u32>   block_lookup;
-    tpde::util::SmallVector<LLVMBasicValType, 32> complex_part_types;
+    tpde::util::SmallVector<LLVMComplexPart, 32> complex_part_types;
 
     // helpers for faster lookup
     tpde::util::SmallVector<u32, 16> funcs_as_operands;
@@ -720,22 +753,26 @@ struct LLVMAdaptor {
     }
 
     // other public stuff for the compiler impl
-    [[nodiscard]] LLVMBasicValType
-        val_basic_ty(const IRValueRef idx) const noexcept {
-        assert(values[idx].type != LLVMBasicValType::invalid);
-        return values[idx].type;
+    [[nodiscard]] LLVMBasicValType val_part_ty(const IRValueRef idx,
+                                               u32 part_idx) const noexcept {
+        auto ty = values[idx].type;
+        if (ty == LLVMBasicValType::complex) {
+            unsigned ty_idx = values[idx].complex_part_tys_idx;
+            ty = complex_part_types[ty_idx + 1 + part_idx].part.type;
+        }
+        assert(ty != LLVMBasicValType::complex);
+        return ty;
     }
 
-    u32 complex_real_part_count(const IRValueRef idx) const noexcept {
-        assert(values[idx].type == LLVMBasicValType::complex);
-        return *reinterpret_cast<const u32 *>(
-            complex_part_types.data() + values[idx].complex_part_tys_idx - 4);
+    u32 val_part_count(const IRValueRef idx) const noexcept {
+        if (values[idx].type != LLVMBasicValType::complex) {
+            return basic_ty_part_count(values[idx].type);
+        }
+        return complex_part_types[values[idx].complex_part_tys_idx].num_parts;
     }
 
-    u32 &complex_real_part_count(const IRValueRef idx) noexcept {
-        assert(values[idx].type == LLVMBasicValType::complex);
-        return *reinterpret_cast<u32 *>(complex_part_types.data()
-                                        + values[idx].complex_part_tys_idx - 4);
+    u32 val_part_size(IRValueRef idx, u32 part_idx) const noexcept {
+        return basic_ty_part_size(val_part_ty(idx, part_idx));
     }
 
     [[nodiscard]] bool val_fused(const IRValueRef idx) const noexcept {
@@ -768,6 +805,85 @@ struct LLVMAdaptor {
 
     // internal helpers
   private:
+    static unsigned basic_ty_part_size(const LLVMBasicValType ty) noexcept {
+        switch (ty) {
+            using enum LLVMBasicValType;
+        case i1:
+        case i8: return 1;
+        case i16: return 2;
+        case i32: return 4;
+        case i64:
+        case ptr:
+        case i128: return 8;
+        case f32: return 4;
+        case f64: return 8;
+        case v32: return 4;
+        case v64: return 8;
+        case v128: return 16;
+        case v256:
+        case v512:
+        case complex:
+        case invalid:
+        case none: {
+            assert(0);
+            __builtin_unreachable();
+        }
+        }
+    }
+
+    static unsigned basic_ty_part_align(const LLVMBasicValType ty) noexcept {
+        switch (ty) {
+            using enum LLVMBasicValType;
+        case i1:
+        case i8: return 1;
+        case i16: return 2;
+        case i32: return 4;
+        case i64:
+        case ptr: return 8;
+        case i128: return 16;
+        case f32: return 4;
+        case f64: return 8;
+        case v32: return 4;
+        case v64: return 8;
+        case v128: return 16;
+        case v256:
+        case v512:
+        case complex:
+        case invalid:
+        case none: {
+            assert(0);
+            __builtin_unreachable();
+        }
+        }
+    }
+
+    static unsigned basic_ty_part_count(const LLVMBasicValType ty) noexcept {
+        switch (ty) {
+            using enum LLVMBasicValType;
+        case i1:
+        case i8:
+        case i16:
+        case i32:
+        case i64:
+        case ptr:
+        case f32:
+        case f64:
+        case v32:
+        case v64:
+        case v128: return 1;
+        case i128: return 2;
+        case complex:
+        case v256:
+        case v512:
+        case none:
+        case invalid: {
+            TPDE_LOG_ERR("basic_ty_part_count for value with invalid type");
+            assert(0);
+            exit(1);
+        }
+        }
+    }
+
     [[nodiscard]] static LLVMBasicValType
         llvm_ty_to_basic_ty_simple(const llvm::Type        *type,
                                    const llvm::Type::TypeID id) noexcept {
@@ -823,44 +939,70 @@ struct LLVMAdaptor {
         }
     }
 
-    /// Append basic types of specified type to complex_part_types.
-    unsigned complex_types_append(llvm::Type *type) noexcept {
+    /// Append basic types of specified type to complex_part_types. Returns the
+    /// allocation size in bytes and the alignment.
+    std::pair<unsigned, unsigned>
+        complex_types_append(llvm::Type *type) noexcept {
         const auto type_id = type->getTypeID();
         if (auto ty = llvm_ty_to_basic_ty_simple(type, type_id);
             ty != LLVMBasicValType::invalid) {
-            complex_part_types.emplace_back(ty);
-            // since some parts of the code just index into this array
-            // with the part_idx that TPDE sees we need to actually have
-            // as many part tys as there are registers used
-            if (ty == LLVMBasicValType::i128) {
-                complex_part_types.emplace_back(ty);
-                return 2;
+            unsigned size = basic_ty_part_size(ty);
+            unsigned align = basic_ty_part_align(ty);
+            unsigned part_count = basic_ty_part_count(ty);
+            assert(part_count > 0);
+            // TODO: support types with different part types/sizes?
+            for (unsigned i = 0; i < part_count; i++) {
+                complex_part_types.emplace_back(ty, size, i == part_count - 1);
             }
-            return 1;
+            return std::make_pair(part_count * size, align);
         }
 
+        size_t start = complex_part_types.size();
         switch (type_id) {
         case llvm::Type::ArrayTyID: {
-            size_t start = complex_part_types.size();
-            unsigned len = complex_types_append(type->getArrayElementType());
+            auto [sz, algn] = complex_types_append(type->getArrayElementType());
+            size_t len = complex_part_types.size() - start;
 
             unsigned nelem = type->getArrayNumElements();
             complex_part_types.resize(start + nelem * len);
             for (unsigned i = 1; i < nelem; i++) {
                 std::memcpy(&complex_part_types[start + i * len],
                             &complex_part_types[start],
-                            len * sizeof(LLVMBasicValType));
+                            len * sizeof(LLVMComplexPart));
             }
-            return nelem * len;
+            if (nelem > 0) {
+                complex_part_types[start].part.nest_inc++;
+                complex_part_types[start + nelem * len - 1].part.nest_dec++;
+            }
+            return std::make_pair(nelem * sz, algn);
         }
         case llvm::Type::StructTyID: {
-            unsigned type_count = type->getNumContainedTypes();
-            complex_part_types.reserve(complex_part_types.size() + type_count);
-            unsigned len = 0;
+            unsigned size = 0;
+            unsigned align = 1;
             for (auto *el : llvm::cast<llvm::StructType>(type)->elements()) {
-                len += complex_types_append(el);
+                unsigned prev = complex_part_types.size() - 1;
+                auto [el_size, el_align] = complex_types_append(el);
+                assert(el_size % el_align == 0
+                       && "size must be multiple of alignment");
+
+                unsigned old_size = size;
+                size = tpde::util::align_up(size, el_align);
+                if (size != old_size) {
+                    complex_part_types[prev].part.pad_after += size - old_size;
+                }
+                size += el_size;
+                align = std::max(align, el_align);
             }
-            return len;
+
+            size_t end = complex_part_types.size() - 1;
+            unsigned old_size = size;
+            size = tpde::util::align_up(size, align);
+            if (size > 0) {
+                complex_part_types[start].part.nest_inc++;
+                complex_part_types[end].part.nest_dec++;
+                complex_part_types[end].part.pad_after += size - old_size;
+            }
+            return std::make_pair(size, align);
         }
         default:
             llvm::errs() << "Type: " << *type << "\n";
@@ -883,16 +1025,51 @@ struct LLVMAdaptor {
             return std::make_pair(ty, ~0u);
         }
 
-        const auto len_start =
-            tpde::util::align_up(complex_part_types.size(), 4);
-        const auto ty_start = len_start + 4;
-        complex_part_types.resize(ty_start);
-        unsigned len = complex_types_append(type);
-        *reinterpret_cast<u32 *>(complex_part_types.data() + len_start) = len;
+        unsigned start = complex_part_types.size();
+        complex_part_types.push_back(LLVMComplexPart{}); // length
+        // TODO: store size/alignment?
+        complex_types_append(type);
+        unsigned len = complex_part_types.size() - (start + 1);
+        complex_part_types[start].num_parts = len;
 
-        return std::make_pair(LLVMBasicValType::complex, ty_start);
+        return std::make_pair(LLVMBasicValType::complex, start);
     }
 
+  public:
+    /// Map insertvalue/extractvalue indices to parts. Returns (first part,
+    /// last part (inclusive)).
+    std::pair<unsigned, unsigned> complex_part_for_index(IRValueRef val_idx,
+                                                         unsigned index) {
+        assert(values[val_idx].type == LLVMBasicValType::complex);
+        const auto ty_idx = values[val_idx].complex_part_tys_idx;
+        const LLVMComplexPart *part_descs = &complex_part_types[ty_idx + 1];
+        unsigned part_count = part_descs[-1].num_parts;
+
+        tpde::util::SmallVector<unsigned, 16> indices;
+        unsigned first_part = -1u;
+        for (unsigned i = 0; i < part_count; i++) {
+            indices.resize(indices.size() + part_descs[i].part.nest_inc);
+            // TODO: support more than one index operand. Comparing this index
+            // vector with the operands should be sufficient.
+            if (indices[0] == index && first_part == -1u) {
+                first_part = i;
+            }
+
+            indices.resize(indices.size() - part_descs[i].part.nest_dec);
+            if (part_descs[i].part.ends_value && !indices.empty()) {
+                indices.back()++;
+            }
+
+            if (indices.size() == 0 || indices[0] > index) {
+                return std::make_pair(first_part, i);
+            }
+        }
+
+        assert(0 && "out-of-range part index?");
+        exit(1);
+    }
+
+  private:
     [[nodiscard]] static bool
         fixup_phi_constants(llvm::Instruction     *&ins_before,
                             const llvm::BasicBlock *cur_block,
@@ -1157,31 +1334,6 @@ struct LLVMAdaptor {
                     inst->setOperand(idx, expr_inst);
                     // TODO: do we need to clean up the ConstantExpr?
                     it   = expr_inst->getIterator();
-                    cont = true;
-                    break;
-                } else if (auto *aggr =
-                               llvm::dyn_cast<llvm::ConstantAggregate>(val);
-                           aggr) {
-                    // we need to expand this out as we cant directly build this
-                    // we only support aggregates of the form {ty0, ty1} with
-                    // ty0 and ty1 being int or ptr
-                    auto *ty = aggr->getType();
-                    assert(aggr->getNumOperands() == 2);
-                    auto                  *el0 = aggr->getAggregateElement(0u);
-                    auto                  *el1 = aggr->getAggregateElement(1);
-                    [[maybe_unused]] auto *ty0 = el0->getType();
-                    [[maybe_unused]] auto *ty1 = el1->getType();
-                    assert(ty0->isIntegerTy() || ty0->isPointerTy());
-                    assert(ty1->isIntegerTy() || ty1->isPointerTy());
-
-                    auto *v = llvm::InsertValueInst::Create(
-                        llvm::PoisonValue::get(ty), el0, {0}, "", inst);
-                    auto *v2 =
-                        llvm::InsertValueInst::Create(v, el1, {1}, "", inst);
-                    inst->setOperand(idx, v2);
-
-                    // start over at the InsertValue instructions
-                    it   = v->getIterator();
                     cont = true;
                     break;
                 }

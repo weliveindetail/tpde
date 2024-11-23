@@ -230,8 +230,8 @@ define void @freeze_i128_i1(ptr %0) {
 ; X64-NEXT:    mov rax, qword ptr [rdi]
 ; X64-NEXT:    mov rcx, qword ptr [rdi + 0x8]
 ; X64-NEXT:    movzx edx, byte ptr [rdi + 0x10]
-; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov qword ptr [rdi], rax
+; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], dl
 ; X64-NEXT:    add rsp, 0x70
 ; X64-NEXT:    pop rbp
@@ -251,11 +251,12 @@ define void @freeze_i128_i1(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x1, x2, [x0]
-; ARM64-NEXT:    mov x3, x1
-; ARM64-NEXT:    ldrb w1, [x0, #0x10]
-; ARM64-NEXT:    stp x3, x2, [x0]
-; ARM64-NEXT:    strb w1, [x0, #0x10]
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:    ldr x2, [x0, #0x8]
+; ARM64-NEXT:    ldrb w3, [x0, #0x10]
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    str x2, [x0, #0x8]
+; ARM64-NEXT:    strb w3, [x0, #0x10]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xf0
 ; ARM64-NEXT:    ret
@@ -280,8 +281,8 @@ define void @freeze_i128_i1_no_salvage(ptr %0) {
 ; X64-NEXT:    mov rbx, rax
 ; X64-NEXT:    mov rsi, rcx
 ; X64-NEXT:    mov r8d, edx
-; X64-NEXT:    mov qword ptr [rdi + 0x8], rsi
 ; X64-NEXT:    mov qword ptr [rdi], rbx
+; X64-NEXT:    mov qword ptr [rdi + 0x8], rsi
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], r8b
 ; X64-NEXT:    add rsp, 0x88
 ; X64-NEXT:    pop rbx
@@ -301,13 +302,14 @@ define void @freeze_i128_i1_no_salvage(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldp x1, x2, [x0]
-; ARM64-NEXT:    mov x3, x1
-; ARM64-NEXT:    ldrb w1, [x0, #0x10]
-; ARM64-NEXT:    mov x4, x3
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:    ldr x2, [x0, #0x8]
+; ARM64-NEXT:    ldrb w3, [x0, #0x10]
+; ARM64-NEXT:    mov x4, x1
 ; ARM64-NEXT:    mov x5, x2
-; ARM64-NEXT:    mov w6, w1
-; ARM64-NEXT:    stp x4, x5, [x0]
+; ARM64-NEXT:    mov w6, w3
+; ARM64-NEXT:    str x4, [x0]
+; ARM64-NEXT:    str x5, [x0, #0x8]
 ; ARM64-NEXT:    strb w6, [x0, #0x10]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x110
