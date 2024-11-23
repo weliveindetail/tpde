@@ -8,16 +8,6 @@ IndentWidth: 4
 ---
 Language: Cpp
 AlignArrayOfStructures: Right
-AlignConsecutiveAssignments:
-  Enabled: true
-  AcrossEmptyLines: false
-  AcrossComments: true
-  AlignCompound: true
-  # AlignFunctionPointers: false
-  PadOperators: true
-AlignConsecutiveBitFields: AcrossComments
-AlignConsecutiveDeclarations: AcrossComments
-AlignConsecutiveMacros: AcrossComments
 # AlignConsecutiveShortCaseStatements: AcrossComments
 #AlignEscapedNewlines: LeftWithLastLine
 AlignEscapedNewlines: Right
