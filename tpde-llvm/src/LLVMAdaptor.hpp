@@ -823,115 +823,74 @@ struct LLVMAdaptor {
         }
     }
 
+    /// Append basic types of specified type to complex_part_types.
+    unsigned complex_types_append(llvm::Type *type) noexcept {
+        const auto type_id = type->getTypeID();
+        if (auto ty = llvm_ty_to_basic_ty_simple(type, type_id);
+            ty != LLVMBasicValType::invalid) {
+            complex_part_types.emplace_back(ty);
+            // since some parts of the code just index into this array
+            // with the part_idx that TPDE sees we need to actually have
+            // as many part tys as there are registers used
+            if (ty == LLVMBasicValType::i128) {
+                complex_part_types.emplace_back(ty);
+                return 2;
+            }
+            return 1;
+        }
+
+        switch (type_id) {
+        case llvm::Type::ArrayTyID: {
+            size_t start = complex_part_types.size();
+            unsigned len = complex_types_append(type->getArrayElementType());
+
+            unsigned nelem = type->getArrayNumElements();
+            complex_part_types.resize(start + nelem * len);
+            for (unsigned i = 1; i < nelem; i++) {
+                std::memcpy(&complex_part_types[start + i * len],
+                            &complex_part_types[start],
+                            len * sizeof(LLVMBasicValType));
+            }
+            return nelem * len;
+        }
+        case llvm::Type::StructTyID: {
+            unsigned type_count = type->getNumContainedTypes();
+            complex_part_types.reserve(complex_part_types.size() + type_count);
+            unsigned len = 0;
+            for (auto *el : llvm::cast<llvm::StructType>(type)->elements()) {
+                len += complex_types_append(el);
+            }
+            return len;
+        }
+        default:
+            llvm::errs() << "Type: " << *type << "\n";
+            llvm::errs() << std::format("\nEncountered unsupported TypeID {}\n",
+                                        static_cast<uint8_t>(type_id));
+            assert(0);
+            exit(1);
+        }
+    }
+
     [[nodiscard]] std::pair<LLVMBasicValType, u32>
         val_basic_type_uncached(const llvm::Value *val,
-                                const bool         const_or_global) noexcept {
+                                const bool const_or_global) noexcept {
+        (void)const_or_global;
         // TODO: Cache this?
-        const auto *type    = val->getType();
-        const auto  type_id = type->getTypeID();
+        auto *type = val->getType();
+        auto type_id = type->getTypeID();
         if (auto ty = llvm_ty_to_basic_ty_simple(type, type_id);
             ty != LLVMBasicValType::invalid) {
             return std::make_pair(ty, ~0u);
         }
 
-        switch (type_id) {
-        case llvm::Type::StructTyID: {
-            // for now, only support non-nested structs
-            const auto type_count = type->getNumContainedTypes();
+        const auto len_start =
+            tpde::util::align_up(complex_part_types.size(), 4);
+        const auto ty_start = len_start + 4;
+        complex_part_types.resize(ty_start);
+        unsigned len = complex_types_append(type);
+        *reinterpret_cast<u32 *>(complex_part_types.data() + len_start) = len;
 
-            const auto part_tys_len_start =
-                tpde::util::align_up(complex_part_types.size(), 4);
-            const auto part_tys_idx_start = part_tys_len_start + 4;
-            complex_part_types.resize(part_tys_idx_start + type_count);
-
-            *reinterpret_cast<u32 *>(complex_part_types.data()
-                                     + part_tys_len_start) = 0xFFFF'FFFF;
-
-            u32 part_idx = 0;
-            for (u32 i = 0; i < type_count; ++i, ++part_idx) {
-                const auto *part_ty = type->getContainedType(i);
-                const auto  ty_id   = part_ty->getTypeID();
-                auto tpde_ty = llvm_ty_to_basic_ty_simple(part_ty, ty_id);
-
-                // TODO(ts): this needs to be templated for the architecture...
-                if (tpde_ty == LLVMBasicValType::i128) {
-                    // since some parts of the code just index into this array
-                    // with the part_idx that TPDE sees we need to actually have
-                    // as many part tys as there are registers used
-                    //
-                    // so pad this with i128 twice so it at least blows up
-                    // properly when some code thinks these are actually two 128
-                    // bit parts
-                    complex_part_types[part_tys_idx_start + part_idx] =
-                        LLVMBasicValType::i128;
-                    complex_part_types[part_tys_idx_start + part_idx + 1] =
-                        LLVMBasicValType::i128;
-                    complex_part_types.emplace_back(LLVMBasicValType::invalid);
-                    ++part_idx;
-                    continue;
-                }
-
-                if (tpde_ty == LLVMBasicValType::invalid) {
-                    llvm::errs() << "Full Type: " << type << "\n";
-                    llvm::errs() << "Part Type: " << part_ty;
-                    llvm::errs()
-                        << std::format("\nEncountered unsupported TypeID {} "
-                                       "when handling complex type part {}\n",
-                                       static_cast<uint8_t>(ty_id),
-                                       i);
-                    assert(0);
-                    exit(1);
-                }
-                complex_part_types[part_tys_idx_start + part_idx] = tpde_ty;
-            }
-
-            return std::make_pair(LLVMBasicValType::complex,
-                                  part_tys_idx_start);
-        }
-        case llvm::Type::ArrayTyID: {
-            if (type->getArrayNumElements() != 2) {
-                if (const_or_global) {
-                    // same as default, e.g. landingpad filter arrays land up
-                    // here
-                    return std::make_pair(LLVMBasicValType::invalid, ~0u);
-                }
-
-                type->print(llvm::errs());
-                TPDE_LOG_ERR("Arrays without exactly two members not "
-                             "supported in registers");
-                assert(0);
-                exit(1);
-            }
-
-            auto *ty = type->getArrayElementType();
-            if (!ty->isIntegerTy(64)) {
-                if (const_or_global) {
-                    // same as above
-                    return std::make_pair(LLVMBasicValType::invalid, ~0u);
-                }
-
-                TPDE_LOG_ERR("Currently only array of 2 x i64 supported\n");
-                assert(0);
-                exit(1);
-            }
-
-            // essentially the same as a struct type as far as I can tell
-            return std::make_pair(LLVMBasicValType::i128, ~0u);
-        }
-
-
-        default:
-            if (const_or_global) {
-                // these can be more complex like arrays etc that we do not
-                // store in registers under normal circumstances
-                return std::make_pair(LLVMBasicValType::invalid, ~0u);
-            }
-            val->printAsOperand(llvm::errs());
-            TPDE_LOG_ERR("Encountered unsupported TypeID {}\n",
-                         static_cast<u8>(type_id));
-            assert(0);
-            exit(1);
-        }
+        return std::make_pair(LLVMBasicValType::complex, ty_start);
     }
 
     [[nodiscard]] static bool
