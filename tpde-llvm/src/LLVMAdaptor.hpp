@@ -789,6 +789,9 @@ struct LLVMAdaptor {
             return idx;
         }
         const auto it = value_lookup.find(val);
+        if (it == value_lookup.end()) {
+            llvm::errs() << "unhandled value: " << *val << "\n";
+        }
         assert(it != value_lookup.end());
         return it->second;
     }

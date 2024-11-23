@@ -703,12 +703,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
     }
 
     TPDE_LOG_ERR("Encountered unknown constant in global initializer");
-#ifdef TPDE_DEBUG
     constant->print(llvm::errs(), true);
     llvm::errs() << "\n";
-#endif
 
-    assert(0);
     return false;
 }
 
@@ -734,7 +731,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_const_expr_to_data(
             return true;
         } else {
             TPDE_LOG_ERR("Operand to IntToPtr is not a constant int");
-            assert(0);
             return false;
         }
     }
@@ -745,7 +741,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_const_expr_to_data(
         if (auto *GV = llvm::dyn_cast<llvm::GlobalVariable>(ptr); GV) {
             ptr_sym = global_sym(GV);
         } else {
-            assert(0);
             return false;
         }
 
@@ -798,7 +793,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_const_expr_to_data(
     }
     default: {
         TPDE_LOG_ERR("Unknown constant expression in global initializer");
-        assert(0);
+        llvm::errs() << *expr << "\n";
         return false;
     }
     }
@@ -1043,8 +1038,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
                      opcode,
                      i->getOpcodeName());
-        assert(0);
-        exit(1);
+        return 1;
     }
     }
 }
@@ -1055,7 +1049,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ret(
     assert(llvm::isa<llvm::ReturnInst>(ret));
 
     if (ret->getNumOperands() != 0) {
-        assert(ret->getNumOperands() == 1);
         derived()->move_val_to_ret_regs(ret->getOperand(0));
     }
 
@@ -1069,7 +1062,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     const IRValueRef load_idx, llvm::Instruction *inst) noexcept {
     using AsmOperand = typename Derived::AsmOperand;
 
-    assert(llvm::isa<llvm::LoadInst>(inst));
     auto *load = llvm::cast<llvm::LoadInst>(inst);
 
 
@@ -1321,9 +1313,11 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     const IRValueRef, llvm::Instruction *inst) noexcept {
     using AsmOperand = typename Derived::AsmOperand;
-    assert(llvm::isa<llvm::StoreInst>(inst));
     auto *store = llvm::cast<llvm::StoreInst>(inst);
-    assert(!store->isAtomic());
+    if (store->isAtomic()) {
+        // TODO: atomic stores
+        return false;
+    }
 
     const auto calc_ptr_op = [this, store]() -> AsmOperand {
         auto ptr_ref =
@@ -1508,8 +1502,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     auto *inst_ty = inst->getType();
 
     if (inst_ty->isVectorTy()) {
-        assert(0);
-        exit(1);
+        return false;
     }
 
     assert(inst_ty->isIntegerTy());
@@ -1767,12 +1760,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
     auto *inst_ty = inst->getType();
 
     if (inst_ty->isVectorTy()) {
-        assert(0);
-        exit(1);
+        return false;
     }
 
     const bool is_double = inst_ty->isDoubleTy();
-    assert(inst_ty->isFloatTy() || inst_ty->isDoubleTy());
+    if (!inst_ty->isFloatTy() && !inst_ty->isDoubleTy()) {
+        return false;
+    }
 
     auto res = this->result_ref_lazy(inst_idx, 0);
 
@@ -1816,7 +1810,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fneg(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
     const auto is_double = inst->getType()->isDoubleTy();
 
-    assert(inst->getType()->isDoubleTy() || inst->getType()->isFloatTy());
+    if (!inst->getType()->isFloatTy() && !inst->getType()->isDoubleTy()) {
+        return false;
+    }
 
     auto src_ref     = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
     auto res_ref     = this->result_ref_lazy(inst_idx, 0);
@@ -1876,7 +1872,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
     IRValueRef inst_idx, llvm::Instruction *inst, const bool sign) noexcept {
     auto *src_val = inst->getOperand(0);
     auto *src_ty  = src_val->getType();
-    assert(src_ty->isFloatTy() || src_ty->isDoubleTy());
+    if (!src_ty->isFloatTy() && !src_ty->isDoubleTy()) {
+        return false;
+    }
 
     auto *dst_ty = inst->getType();
     assert(dst_ty->isIntegerTy());
@@ -2024,7 +2022,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
         res_scratch =
             derived()->ext_int(std::move(src_ref), sign, src_width, ext_width);
     } else {
-        assert(src_width == 64);
+        if (src_width != 64) {
+            return false;
+        }
         if (src_ref.can_salvage()) {
             if (!src_ref.assignment().register_valid()) {
                 src_ref.alloc_reg(true);
@@ -2041,7 +2041,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
     auto res_ref = this->result_ref_lazy(inst_idx, 0);
 
     if (dst_width == 128) {
-        assert(src_width <= 64);
+        if (src_width > 64) {
+            return false;
+        }
         res_ref.inc_ref_count();
         auto       res_ref_high = this->result_ref_lazy(inst_idx, 1);
         ScratchReg scratch_high{derived()};
@@ -2986,8 +2988,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
             continue;
         }
 
-        landing_pad = llvm::dyn_cast<llvm::LandingPadInst>(inst);
-        assert(landing_pad != nullptr);
+        landing_pad = llvm::cast<llvm::LandingPadInst>(inst);
         break;
     }
 
@@ -3276,7 +3277,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         auto *ty  = val->getType();
 
         if (!ty->isFloatTy() && !ty->isDoubleTy()) {
-            assert(0);
             TPDE_LOG_ERR("only float/double supported for fabs");
             return false;
         }
@@ -3324,7 +3324,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
         auto *ty = inst->getOperand(0)->getType();
         if (!ty->isDoubleTy() && !ty->isFloatTy()) {
-            assert(0);
             return false;
         }
         const auto is_double = inst->getOperand(0)->getType()->isDoubleTy();
@@ -3343,12 +3342,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         auto *val    = inst->getOperand(0);
         auto *val_ty = val->getType();
         if (!val_ty->isIntegerTy()) {
-            assert(0);
             return false;
         }
         const auto width = val_ty->getIntegerBitWidth();
         if (width > 64) {
-            assert(0);
             return false;
         }
 
@@ -3396,7 +3393,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         assert(val->getType()->isIntegerTy());
         const auto width = val->getType()->getIntegerBitWidth();
         if (width != 8 && width != 16 && width != 32 && width != 64) {
-            assert(0);
             return false;
         }
 
@@ -3552,7 +3548,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         auto        os = llvm::raw_string_ostream{buf};
         intrin->print(os);
         llvm::errs() << "Unknown intrinsic:\n" << buf << '\n';
-        assert(0);
         return false;
     }
     }
