@@ -734,41 +734,33 @@ void CallingConv::handle_func_args(
 
         for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
             auto part_ref = compiler->result_ref_lazy(arg, part_idx);
+            auto ap = part_ref.assignment();
+            unsigned size = ap.part_size();
+            unsigned bank = compiler->derived()->val_part_bank(arg, part_idx);
+            ScratchReg scratch{compiler};
 
-            if (compiler->derived()->val_part_bank(arg, part_idx) == 0) {
+            if (bank == 0) {
                 if (scalar_reg_count < gp_regs.size()) {
                     compiler->set_value(part_ref, gp_regs[scalar_reg_count++]);
                 } else {
                     const auto stack_reg = stack_off_reg();
-                    const auto size =
-                        compiler->derived()->val_part_size(arg, part_idx);
-                    auto ap = part_ref.assignment();
+
+                    AsmReg dst = ap.fixed_assignment()
+                                     ? AsmReg{ap.full_reg_id()}
+                                     : scratch.alloc_from_bank(bank);
+                    if (size <= 1) {
+                        ASMC(compiler, LDRBu, dst, stack_reg, frame_off);
+                    } else if (size <= 2) {
+                        ASMC(compiler, LDRHu, dst, stack_reg, frame_off);
+                    } else if (size <= 4) {
+                        ASMC(compiler, LDRwu, dst, stack_reg, frame_off);
+                    } else {
+                        assert(size <= 8 && "gp arg size > 8");
+                        ASMC(compiler, LDRxu, dst, stack_reg, frame_off);
+                    }
                     if (ap.fixed_assignment()) {
-                        const auto dst = AsmReg{ap.full_reg_id()};
-                        if (size == 1) {
-                            ASMC(compiler, LDRBu, dst, stack_reg, frame_off);
-                        } else if (size == 2) {
-                            ASMC(compiler, LDRHu, dst, stack_reg, frame_off);
-                        } else if (size == 4) {
-                            ASMC(compiler, LDRwu, dst, stack_reg, frame_off);
-                        } else {
-                            assert(size == 8);
-                            ASMC(compiler, LDRxu, dst, stack_reg, frame_off);
-                        }
                         ap.set_modified(true);
                     } else {
-                        ScratchReg scratch{compiler};
-                        auto       dst = scratch.alloc_gp();
-                        if (size == 1) {
-                            ASMC(compiler, LDRBu, dst, stack_reg, frame_off);
-                        } else if (size == 2) {
-                            ASMC(compiler, LDRHu, dst, stack_reg, frame_off);
-                        } else if (size == 4) {
-                            ASMC(compiler, LDRwu, dst, stack_reg, frame_off);
-                        } else {
-                            assert(size == 8);
-                            ASMC(compiler, LDRxu, dst, stack_reg, frame_off);
-                        }
                         // TODO(ts): do we need to spill here?
                         compiler->spill_reg(dst, ap.frame_off(), size);
                     }
@@ -779,44 +771,27 @@ void CallingConv::handle_func_args(
                     compiler->set_value(part_ref, vec_regs[vec_reg_count++]);
                 } else {
                     const auto stack_reg = stack_off_reg();
-                    auto       ap        = part_ref.assignment();
-                    auto       size      = ap.part_size();
-                    assert(size <= 16);
-                    if (size == 16) {
-                        // TODO(ts): I'm correct that 16 byte vector regs get
-                        // aligned?
-                        frame_off = util::align_up(frame_off, 16);
-                    }
+                    uint64_t word_size = size <= 8 ? 8 : 16;
+                    frame_off = util::align_up(frame_off, word_size);
 
+                    AsmReg dst = ap.fixed_assignment()
+                                     ? AsmReg{ap.full_reg_id()}
+                                     : scratch.alloc_from_bank(bank);
+                    if (size <= 4) {
+                        ASMC(compiler, LDRsu, dst, stack_reg, frame_off);
+                    } else if (size <= 8) {
+                        ASMC(compiler, LDRdu, dst, stack_reg, frame_off);
+                    } else {
+                        assert(size <= 16);
+                        ASMC(compiler, LDRqu, dst, stack_reg, frame_off);
+                    }
                     if (ap.fixed_assignment()) {
-                        const auto dst = AsmReg{ap.full_reg_id()};
-                        if (size == 4) {
-                            ASMC(compiler, LDRsu, dst, stack_reg, frame_off);
-                        } else if (size == 8) {
-                            ASMC(compiler, LDRdu, dst, stack_reg, frame_off);
-                        } else {
-                            assert(size == 16);
-                            ASMC(compiler, LDRqu, dst, stack_reg, frame_off);
-                        }
                         ap.set_modified(true);
                     } else {
-                        ScratchReg scratch{compiler};
-                        auto       dst = scratch.alloc_from_bank(1);
-                        if (size == 4) {
-                            ASMC(compiler, LDRsu, dst, stack_reg, frame_off);
-                        } else if (size == 8) {
-                            ASMC(compiler, LDRdu, dst, stack_reg, frame_off);
-                        } else {
-                            assert(size == 16);
-                            ASMC(compiler, LDRqu, dst, stack_reg, frame_off);
-                        }
                         compiler->spill_reg(dst, ap.frame_off(), size);
                     }
 
-                    frame_off += 8;
-                    if (size > 8) {
-                        frame_off += 8;
-                    }
+                    frame_off += word_size;
                 }
             }
 
