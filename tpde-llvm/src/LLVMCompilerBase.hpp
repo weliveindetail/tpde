@@ -3199,6 +3199,26 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     const auto intrin_id = intrin->getIntrinsicID();
 
     switch (intrin_id) {
+    case llvm::Intrinsic::donothing:
+    case llvm::Intrinsic::sideeffect:
+    case llvm::Intrinsic::experimental_noalias_scope_decl:
+    case llvm::Intrinsic::dbg_assign:
+    case llvm::Intrinsic::dbg_declare:
+    case llvm::Intrinsic::dbg_label: return true;
+    case llvm::Intrinsic::dbg_value:
+        // reference counting
+        this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+        return true;
+    case llvm::Intrinsic::assume:
+        // reference counting
+        this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        return true;
+    case llvm::Intrinsic::lifetime_start:
+    case llvm::Intrinsic::lifetime_end:
+        // reference counting
+        this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+        return true;
     case llvm::Intrinsic::memcpy: {
         const auto dst = llvm_val_idx(inst->getOperand(0));
         const auto src = llvm_val_idx(inst->getOperand(1));

@@ -425,6 +425,9 @@ struct LLVMAdaptor {
 
     [[nodiscard]] bool
         val_ignore_in_liveness_analysis(const IRValueRef idx) const noexcept {
+        if (idx == INVALID_VALUE_REF) {
+            return true;
+        }
         const auto *inst = llvm::dyn_cast<llvm::Instruction>(values[idx].val);
         if (!inst) {
             if (llvm::isa<llvm::Argument>(values[idx].val)) {
@@ -584,11 +587,17 @@ struct LLVMAdaptor {
             return idx;
         }
         const auto it = value_lookup.find(val);
-        if (it == value_lookup.end()) {
-            llvm::errs() << "unhandled value: " << *val << "\n";
+        if (it != value_lookup.end()) {
+            return it->second;
         }
-        assert(it != value_lookup.end());
-        return it->second;
+        // Ignore inlineasm, which can only occur in calls, and metadata, which
+        // can only occur in intrinsics.
+        if (llvm::isa<llvm::InlineAsm, llvm::MetadataAsValue>(val)) {
+            return INVALID_VALUE_REF;
+        }
+        llvm::errs() << "unhandled value: " << *val << "\n";
+        assert(0);
+        return INVALID_VALUE_REF;
     }
 
     [[nodiscard]] u32
