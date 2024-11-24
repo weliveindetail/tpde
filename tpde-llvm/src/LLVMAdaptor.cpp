@@ -345,7 +345,6 @@ void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     blocks.clear();
     block_succ_indices.clear();
     block_succ_ranges.clear();
-    funcs_as_operands.clear();
     func_arg_indices.clear();
     initial_stack_slot_indices.clear();
     func_has_dynamic_alloca = false;
@@ -357,30 +356,25 @@ void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
         globals_init = true;
         // reserve a constant size and optimize for smaller functions
         value_lookup.reserve(512);
-        for (auto it = mod.global_begin(); it != mod.global_end(); ++it) {
-            llvm::GlobalVariable *gv = &*it;
+        auto add_global = [&](llvm::GlobalValue *gv) {
             assert(value_lookup.find(gv) == value_lookup.end());
             value_lookup.insert_or_assign(gv, values.size());
             const auto [ty, complex_part_idx] =
                 val_basic_type_uncached(gv, true);
-            values.push_back(ValInfo{.val = static_cast<llvm::Value *>(gv),
+            values.push_back(ValInfo{.val = gv,
                                      .type = ty,
                                      .fused = false,
                                      .argument = false,
                                      .complex_part_tys_idx = complex_part_idx});
+        };
+        for (llvm::Function &fn : mod.functions()) {
+            add_global(&fn);
         }
-
-        for (auto it = mod.alias_begin(); it != mod.alias_end(); ++it) {
-            llvm::GlobalAlias *ga = &*it;
-            assert(value_lookup.find(ga) == value_lookup.end());
-            value_lookup.insert_or_assign(ga, values.size());
-            const auto [ty, complex_part_idx] =
-                val_basic_type_uncached(ga, true);
-            values.push_back(ValInfo{.val = static_cast<llvm::Value *>(ga),
-                                     .type = ty,
-                                     .fused = false,
-                                     .argument = false,
-                                     .complex_part_tys_idx = complex_part_idx});
+        for (llvm::GlobalVariable &gv : mod.globals()) {
+            add_global(&gv);
+        }
+        for (llvm::GlobalAlias &ga : mod.aliases()) {
+            add_global(&ga);
         }
         global_idx_end = values.size();
         global_complex_part_types_end_idx = complex_part_types.size();
@@ -473,14 +467,6 @@ void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
                             .fused = false,
                             .argument = false,
                             .complex_part_tys_idx = complex_part_idx});
-
-                if (auto *F = llvm::dyn_cast<llvm::Function>(C);
-                    F && !F->isIntrinsic()) {
-                    // globalIndices.push_back(values.size() - 1);
-#if 1
-                    funcs_as_operands.push_back(values.size() - 1);
-#endif
-                }
             }
         }
         block_constants.clear();
@@ -508,7 +494,6 @@ void LLVMAdaptor::reset() noexcept {
     value_lookup.clear();
     block_lookup.clear();
     complex_part_types.clear();
-    funcs_as_operands.clear();
     func_arg_indices.clear();
     initial_stack_slot_indices.clear();
     cur_func = nullptr;

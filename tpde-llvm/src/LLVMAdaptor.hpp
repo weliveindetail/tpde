@@ -129,7 +129,6 @@ struct LLVMAdaptor {
     tpde::util::SmallVector<LLVMComplexPart, 32> complex_part_types;
 
     // helpers for faster lookup
-    tpde::util::SmallVector<u32, 16> funcs_as_operands;
     tpde::util::SmallVector<u32, 8>  func_arg_indices;
     tpde::util::SmallVector<u32, 16> initial_stack_slot_indices;
 
