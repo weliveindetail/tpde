@@ -39,6 +39,8 @@ else ()
 endif ()
 
 target_sources(tpde_llvm PRIVATE
+    src/LLVMAdaptor.cpp
+
     PRIVATE
     FILE_SET priv_headers TYPE HEADERS
     BASE_DIRS src

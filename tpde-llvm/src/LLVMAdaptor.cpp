@@ -1,0 +1,706 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+
+#include "LLVMAdaptor.hpp"
+
+#include <format>
+
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Support/TimeProfiler.h>
+
+#include "base.hpp"
+#include "tpde/util/misc.hpp"
+
+namespace tpde_llvm {
+
+namespace {
+
+[[nodiscard]] bool fixup_phi_constants(llvm::Instruction *&ins_before,
+                                       const llvm::BasicBlock *cur_block,
+                                       llvm::BasicBlock *target) noexcept {
+    auto replaced = false;
+    for (auto it = target->begin(), end = target->end(); it != end; ++it) {
+        auto *phi = llvm::dyn_cast<llvm::PHINode>(it);
+        if (!phi) {
+            break;
+        }
+
+        const auto idx = phi->getBasicBlockIndex(cur_block);
+        if (idx == -1) {
+            continue;
+        }
+
+        auto *val = phi->getIncomingValue(idx);
+        assert(val);
+        auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(val);
+        if (!cexpr) {
+            continue;
+        }
+
+        auto *inst = cexpr->getAsInstruction();
+
+        inst->insertBefore(ins_before);
+
+        // TODO: so apparently, it happens that a block can show up multiple
+        // time in the same phi-node need to clarify the semantics of that
+        // (does that mean the value has to be the same??)
+        phi->setIncomingValueForBlock(cur_block, inst);
+        ins_before = inst;
+        replaced = true;
+    }
+    return replaced;
+}
+
+} // end anonymous namespace
+
+bool LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
+                                       llvm::Instruction *inst,
+                                       llvm::BasicBlock::iterator &it,
+                                       bool is_entry_block,
+                                       bool &found_phi_end) {
+    // check if the function contains dynamic allocas
+    if (auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(inst); alloca) {
+        if (!alloca->isStaticAlloca()) {
+            func_has_dynamic_alloca = true;
+        }
+    }
+
+    // I don't want to handle constant expressions in a store value operand
+    // so we split it up here
+    if (auto *store = llvm::dyn_cast<llvm::StoreInst>(inst); store) {
+        auto *val = store->getValueOperand();
+        if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(val); cexpr)
+            [[unlikely]] {
+            auto *exprInst = cexpr->getAsInstruction();
+            exprInst->insertBefore(inst);
+            store->setOperand(0, exprInst);
+            // TODO: is it faster to use getIterator or decrement the
+            // iterator?
+            it = exprInst->getIterator();
+            return false;
+        }
+    }
+
+    // I also don't want to handle non-constant values in GEPs in the GEP
+    // handler below it's easier to just split them here
+    if (auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(inst); gep) {
+        // TODO: we probably want to optimize the case where we have a
+        // getelementptr [10 x i32], ptr %3, i64 0, i64 %13 since that is
+        // just one scaled add
+        u8 split_indices[10];
+        u8 split_indices_size = 0;
+        {
+            auto idx_it = gep->idx_begin(), idx_end_it = gep->idx_end();
+            if (idx_it != idx_end_it) {
+                auto idx = 0;
+                ++idx_it; // we don't care if the first idx is non-const
+                ++idx;
+                for (; idx_it != idx_end_it; ++idx_it, ++idx) {
+                    const auto *idx_val = idx_it->get();
+                    if (llvm::dyn_cast<llvm::ConstantInt>(idx_val) == nullptr) {
+                        assert(split_indices_size < 9);
+                        split_indices[split_indices_size++] = idx;
+                    }
+                }
+            }
+        }
+
+        if (split_indices_size != 0) {
+            auto replaced_it = false;
+            auto idx_vec = tpde::util::SmallVector<llvm::Value *, 8>{};
+
+            auto begin = gep->idx_begin();
+            auto *ty = gep->getSourceElementType();
+            auto *ptr_val = gep->getPointerOperand();
+            auto start_idx = 0;
+            auto nullC =
+                llvm::ConstantInt::get(llvm::Type::getInt64Ty(context), 0);
+            auto inbounds = gep->isInBounds();
+            for (auto split_idx = 0; split_idx < split_indices_size;
+                 ++split_idx) {
+                idx_vec.clear();
+                auto len =
+                    static_cast<size_t>(split_indices[split_idx] - start_idx);
+                assert(len > 0);
+                idx_vec.resize(len + 1);
+                for (auto i = 0u; i < len; ++i) {
+                    idx_vec[i] = (begin + start_idx + i)->get();
+                }
+                idx_vec[len] = nullC;
+
+                llvm::GetElementPtrInst *newGEP;
+                if (inbounds) {
+                    newGEP = llvm::GetElementPtrInst::CreateInBounds(
+                        ty, ptr_val, {idx_vec.data(), len + 1}, "", inst);
+                } else {
+                    newGEP = llvm::GetElementPtrInst::Create(
+                        ty, ptr_val, {idx_vec.data(), len + 1}, "", inst);
+                }
+
+                ty = newGEP->getResultElementType();
+                ptr_val = newGEP;
+                start_idx = split_indices[split_idx];
+
+                if (!replaced_it) {
+                    it = newGEP->getIterator();
+                    replaced_it = true;
+                }
+            }
+
+            // last doesn't need the zero constant
+            {
+                idx_vec.clear();
+                auto len =
+                    static_cast<size_t>(gep->getNumIndices() - start_idx);
+                assert(len > 0);
+                idx_vec.resize(len);
+                for (auto i = 0u; i < len; ++i) {
+                    idx_vec[i] = (begin + start_idx + i)->get();
+                }
+
+                llvm::GetElementPtrInst *new_gep;
+                if (inbounds) {
+                    new_gep = llvm::GetElementPtrInst::CreateInBounds(
+                        ty, ptr_val, {idx_vec.data(), len}, "", inst);
+                } else {
+                    new_gep = llvm::GetElementPtrInst::Create(
+                        ty, ptr_val, {idx_vec.data(), len}, "", inst);
+                }
+
+                inst->replaceAllUsesWith(new_gep);
+                inst->removeFromParent();
+                inst->deleteValue();
+
+                if (!replaced_it) {
+                    it = new_gep->getIterator();
+                }
+            }
+
+            // we want to handle the GEP normally now
+            return false;
+        }
+    }
+
+    bool cont = false;
+    if (inst->isTerminator()) {
+        assert(llvm::isa<llvm::IndirectBrInst>(inst) == false);
+        assert(llvm::isa<llvm::CatchSwitchInst>(inst) == false);
+        assert(llvm::isa<llvm::CatchReturnInst>(inst) == false);
+        assert(llvm::isa<llvm::CleanupReturnInst>(inst) == false);
+        assert(llvm::isa<llvm::CallBrInst>(inst) == false);
+        auto *ins_before = inst;
+        if (block->begin().getNodePtr() != ins_before) {
+            auto *prev_inst = ins_before->getPrevNonDebugInstruction();
+            if (prev_inst
+                && (prev_inst->getOpcode() == llvm::Instruction::ICmp
+                    || prev_inst->getOpcode() == llvm::Instruction::FCmp)) {
+                // make sure fusing can still happen
+                ins_before = prev_inst;
+            }
+        }
+
+        if (auto *br = llvm::dyn_cast<llvm::BranchInst>(inst); br) {
+            if (fixup_phi_constants(ins_before, block, br->getSuccessor(0))) {
+                cont = true;
+            }
+            if (!br->isUnconditional()) {
+                if (fixup_phi_constants(
+                        ins_before, block, br->getSuccessor(1))) {
+                    cont = true;
+                }
+            }
+        } else if (auto *sw = llvm::dyn_cast<llvm::SwitchInst>(inst); sw) {
+            auto num_succs = sw->getNumSuccessors();
+            for (auto i = 0u; i < num_succs; ++i) {
+                if (fixup_phi_constants(
+                        ins_before, block, sw->getSuccessor(i))) {
+                    cont = true;
+                }
+            }
+        } else if (auto *invoke = llvm::dyn_cast<llvm::InvokeInst>(inst);
+                   invoke) {
+            if (fixup_phi_constants(
+                    ins_before, block, invoke->getNormalDest())) {
+                cont = true;
+            }
+            if (fixup_phi_constants(
+                    ins_before, block, invoke->getUnwindDest())) {
+                cont = true;
+            }
+        }
+
+        if (cont) {
+            it = ins_before->getIterator();
+            return false;
+        }
+    }
+
+    // check operands for constants
+    // TODO: just do this for all constants/globals in the context/module
+    // always?
+    size_t idx = 0;
+    for (llvm::Value *val : inst->operands()) {
+        if (auto *C = llvm::dyn_cast<llvm::Constant>(val); C) {
+            if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(val); cexpr) {
+                if (inst->getOpcode() == llvm::Instruction::PHI) {
+                    // we didn't see the incoming block yet so we fix the
+                    // constant expression here
+                    auto *phi = llvm::cast<llvm::PHINode>(inst);
+                    auto *incoming_block = phi->getIncomingBlock(idx);
+                    auto *ins_before = incoming_block->getTerminator();
+                    if (incoming_block->begin().getNodePtr() != ins_before) {
+                        auto *prev_inst =
+                            ins_before->getPrevNonDebugInstruction();
+                        if (prev_inst
+                            && (prev_inst->getOpcode()
+                                    == llvm::Instruction::ICmp
+                                || prev_inst->getOpcode()
+                                       == llvm::Instruction::FCmp)) {
+                            // make sure fusing can still happen
+                            ins_before = prev_inst;
+                        }
+                    }
+
+                    auto *expr_inst = cexpr->getAsInstruction();
+                    expr_inst->insertBefore(ins_before);
+                    phi->setIncomingValueForBlock(incoming_block, expr_inst);
+                    continue;
+                }
+
+                // clang creates these and we don't want to handle them so
+                // we split them up into their own values
+                auto *expr_inst = cexpr->getAsInstruction();
+                expr_inst->insertBefore(inst);
+                inst->setOperand(idx, expr_inst);
+                // TODO: do we need to clean up the ConstantExpr?
+                it = expr_inst->getIterator();
+                cont = true;
+                break;
+            }
+
+
+            // we insert constants inbetween block so that instructions in a
+            // block are consecutive
+            if (!value_lookup.contains(C)) {
+                block_constants.push_back(C);
+            }
+        }
+        ++idx;
+    }
+
+    if (cont) {
+        return false;
+    }
+
+    auto fused = false;
+    if (is_entry_block) {
+        if (inst->getOpcode() == llvm::Instruction::Alloca) {
+            const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(inst);
+            if (alloca->isStaticAlloca()) {
+                initial_stack_slot_indices.push_back(values.size());
+                // fuse static alloca's in the initial block so we dont try
+                // to dynamically allocate them
+                fused = true;
+            }
+        }
+    }
+
+    if (!found_phi_end && !llvm::isa<llvm::PHINode>(inst)) {
+        found_phi_end = true;
+    }
+
+    auto val_idx = values.size();
+    val_idx_for_inst(inst) = val_idx;
+
+#ifndef NDEBUG
+    value_lookup.insert_or_assign(inst, val_idx);
+#endif
+    auto [ty, complex_part_idx] = val_basic_type_uncached(inst, false);
+    values.push_back(ValInfo{.val = static_cast<llvm::Value *>(inst),
+                             .type = ty,
+                             .fused = fused,
+                             .argument = false,
+                             .complex_part_tys_idx = complex_part_idx});
+    return true;
+}
+
+void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
+    cur_func = function;
+
+    TPDE_LOG_DBG("Compiling func: {}",
+                 static_cast<std::string_view>(function->getName()));
+
+    const bool profile_time = llvm::timeTraceProfilerEnabled();
+    llvm::TimeTraceProfilerEntry *time_entry;
+    if (profile_time) {
+        time_entry = llvm::timeTraceProfilerBegin("TPDE_Prepass", "");
+    }
+
+
+    // assign local ids
+    value_lookup.clear();
+    block_lookup.clear();
+    blocks.clear();
+    block_succ_indices.clear();
+    block_succ_ranges.clear();
+    funcs_as_operands.clear();
+    func_arg_indices.clear();
+    initial_stack_slot_indices.clear();
+    func_has_dynamic_alloca = false;
+
+    // we keep globals around for all function compilation
+    // and assign their value indices at the start of the compilation
+    // TODO(ts): move this to start_compile?
+    if (!globals_init) {
+        globals_init = true;
+        // reserve a constant size and optimize for smaller functions
+        value_lookup.reserve(512);
+        for (auto it = mod.global_begin(); it != mod.global_end(); ++it) {
+            llvm::GlobalVariable *gv = &*it;
+            assert(value_lookup.find(gv) == value_lookup.end());
+            value_lookup.insert_or_assign(gv, values.size());
+            const auto [ty, complex_part_idx] =
+                val_basic_type_uncached(gv, true);
+            values.push_back(ValInfo{.val = static_cast<llvm::Value *>(gv),
+                                     .type = ty,
+                                     .fused = false,
+                                     .argument = false,
+                                     .complex_part_tys_idx = complex_part_idx});
+        }
+
+        for (auto it = mod.alias_begin(); it != mod.alias_end(); ++it) {
+            llvm::GlobalAlias *ga = &*it;
+            assert(value_lookup.find(ga) == value_lookup.end());
+            value_lookup.insert_or_assign(ga, values.size());
+            const auto [ty, complex_part_idx] =
+                val_basic_type_uncached(ga, true);
+            values.push_back(ValInfo{.val = static_cast<llvm::Value *>(ga),
+                                     .type = ty,
+                                     .fused = false,
+                                     .argument = false,
+                                     .complex_part_tys_idx = complex_part_idx});
+        }
+        global_idx_end = values.size();
+        global_complex_part_types_end_idx = complex_part_types.size();
+    } else {
+        values.resize(global_idx_end);
+        complex_part_types.resize(global_complex_part_types_end_idx);
+        // reserve a constant size and optimize for smaller functions
+        value_lookup.reserve(512 + global_idx_end);
+        for (u32 v = 0; v < global_idx_end; ++v) {
+            value_lookup[values[v].val] = v;
+        }
+    }
+
+    // add 20% overhead for constants and values that get duplicated
+    // value_lookup.reserve(
+    //   ((function->getInstructionCount() + function->arg_size()) * 6) /
+    //   5);
+
+    block_lookup.reserve(128);
+
+    const size_t arg_count = function->arg_size();
+    for (size_t i = 0; i < arg_count; ++i) {
+        llvm::Argument *arg = function->getArg(i);
+        value_lookup.insert_or_assign(arg, values.size());
+        func_arg_indices.push_back(values.size());
+        const auto [ty, complex_part_idx] = val_basic_type_uncached(arg, false);
+        values.push_back(ValInfo{.val = static_cast<llvm::Value *>(arg),
+                                 .type = ty,
+                                 .fused = false,
+                                 .argument = true,
+                                 .complex_part_tys_idx = complex_part_idx});
+    }
+
+    bool is_entry_block = true;
+    for (llvm::BasicBlock &block : *function) {
+        const u32 idx_start = values.size();
+        u32 phi_end = idx_start;
+        bool found_phi_end = false;
+        bool found_phi_end_bak = false;
+
+        for (auto it = block.begin(); it != block.end();) {
+            llvm::Instruction *inst = &*it;
+
+            if (handle_inst_in_block(
+                    &block, inst, it, is_entry_block, found_phi_end)) {
+                ++it;
+            }
+
+            if (found_phi_end != found_phi_end_bak) {
+                found_phi_end_bak = found_phi_end;
+                phi_end =
+                    std::max(idx_start, static_cast<u32>(values.size() - 1));
+            }
+        }
+
+        u32 idx_end = values.size();
+
+        const auto block_idx = blocks.size();
+        if (!blocks.empty()) {
+            blocks.back().aux.sibling = block_idx;
+        }
+
+        blocks.push_back(BlockInfo{
+            .block = &block,
+            .aux = BlockAux{.idx_start = idx_start,
+                            .idx_end = idx_end,
+                            .idx_phi_end = phi_end,
+                            .sibling = INVALID_BLOCK_REF}
+        });
+
+        block_lookup[&block] = block_idx;
+        block_embedded_idx(&block) = block_idx;
+
+        // blocks are also used as operands for branches so they need an
+        // IRValueRef, too
+        value_lookup.insert_or_assign(&block, values.size());
+        values.push_back(ValInfo{.val = static_cast<llvm::Value *>(&block),
+                                 .type = LLVMBasicValType::invalid,
+                                 .fused = false,
+                                 .argument = false});
+
+        for (auto *C : block_constants) {
+            if (value_lookup.find(C) == value_lookup.end()) {
+                value_lookup.insert_or_assign(C, values.size());
+                const auto [ty, complex_part_idx] =
+                    val_basic_type_uncached(C, true);
+                values.push_back(
+                    ValInfo{.val = static_cast<llvm::Value *>(C),
+                            .type = ty,
+                            .fused = false,
+                            .argument = false,
+                            .complex_part_tys_idx = complex_part_idx});
+
+                if (auto *F = llvm::dyn_cast<llvm::Function>(C);
+                    F && !F->isIntrinsic()) {
+                    // globalIndices.push_back(values.size() - 1);
+#if 1
+                    funcs_as_operands.push_back(values.size() - 1);
+#endif
+                }
+            }
+        }
+        block_constants.clear();
+
+        is_entry_block = false;
+    }
+
+    for (const auto &info : blocks) {
+        const u32 start_idx = block_succ_indices.size();
+        for (auto *succ : llvm::successors(info.block)) {
+            // blockSuccs.push_back(blockLookup[succ]);
+            block_succ_indices.push_back(block_embedded_idx(succ));
+        }
+        block_succ_ranges.push_back(
+            std::make_pair(start_idx, block_succ_indices.size()));
+    }
+
+    if (profile_time) {
+        llvm::timeTraceProfilerEnd(time_entry);
+    }
+}
+
+void LLVMAdaptor::reset() noexcept {
+    values.clear();
+    value_lookup.clear();
+    block_lookup.clear();
+    complex_part_types.clear();
+    funcs_as_operands.clear();
+    func_arg_indices.clear();
+    initial_stack_slot_indices.clear();
+    cur_func = nullptr;
+    globals_init = false;
+    global_idx_end = 0;
+    global_complex_part_types_end_idx = 0;
+    block_constants.clear();
+    blocks.clear();
+    block_succ_indices.clear();
+    block_succ_ranges.clear();
+}
+
+namespace {
+
+[[nodiscard]] LLVMBasicValType
+    llvm_ty_to_basic_ty_simple(const llvm::Type *type,
+                               const llvm::Type::TypeID id) noexcept {
+    switch (id) {
+    case llvm::Type::FloatTyID: return LLVMBasicValType::f32;
+    case llvm::Type::DoubleTyID: return LLVMBasicValType::f64;
+    case llvm::Type::FP128TyID: return LLVMBasicValType::v128;
+    case llvm::Type::VoidTyID:
+        return LLVMBasicValType::none;
+        // case llvm::Type::X86_MMXTyID: return LLVMBasicValType::v64;
+
+    case llvm::Type::IntegerTyID: {
+        auto bit_width = type->getIntegerBitWidth();
+        // round up to the nearest size we support
+        if (bit_width <= 8) {
+            return LLVMBasicValType::i8;
+        }
+        if (bit_width <= 16) {
+            return LLVMBasicValType::i16;
+        }
+        if (bit_width <= 32) {
+            return LLVMBasicValType::i32;
+        }
+        if (bit_width <= 64) {
+            return LLVMBasicValType::i64;
+        }
+        if (bit_width == 128) {
+            return LLVMBasicValType::i128;
+        }
+        TPDE_LOG_ERR("Encountered unsupported integer bit width {}", bit_width);
+        assert(0);
+        exit(1);
+    }
+    case llvm::Type::PointerTyID: return LLVMBasicValType::ptr;
+    case llvm::Type::FixedVectorTyID: {
+        const auto bit_width = type->getPrimitiveSizeInBits().getFixedValue();
+        switch (bit_width) {
+        case 32: return LLVMBasicValType::v32;
+        case 64: return LLVMBasicValType::v64;
+        case 128: return LLVMBasicValType::v128;
+        case 256: return LLVMBasicValType::v256;
+        case 512: return LLVMBasicValType::v512;
+        default:
+            assert(0);
+            TPDE_LOG_ERR("Encountered unsupported integer bit width {}",
+                         bit_width);
+            exit(1);
+        }
+    }
+    default: return LLVMBasicValType::invalid;
+    }
+}
+
+} // end anonymous namespace
+
+std::pair<unsigned, unsigned>
+    LLVMAdaptor::complex_types_append(llvm::Type *type) noexcept {
+    const auto type_id = type->getTypeID();
+    if (auto ty = llvm_ty_to_basic_ty_simple(type, type_id);
+        ty != LLVMBasicValType::invalid) {
+        unsigned size = basic_ty_part_size(ty);
+        unsigned align = basic_ty_part_align(ty);
+        unsigned part_count = basic_ty_part_count(ty);
+        assert(part_count > 0);
+        // TODO: support types with different part types/sizes?
+        for (unsigned i = 0; i < part_count; i++) {
+            complex_part_types.emplace_back(ty, size, i == part_count - 1);
+        }
+        return std::make_pair(part_count * size, align);
+    }
+
+    size_t start = complex_part_types.size();
+    switch (type_id) {
+    case llvm::Type::ArrayTyID: {
+        auto [sz, algn] = complex_types_append(type->getArrayElementType());
+        size_t len = complex_part_types.size() - start;
+
+        unsigned nelem = type->getArrayNumElements();
+        complex_part_types.resize(start + nelem * len);
+        for (unsigned i = 1; i < nelem; i++) {
+            std::memcpy(&complex_part_types[start + i * len],
+                        &complex_part_types[start],
+                        len * sizeof(LLVMComplexPart));
+        }
+        if (nelem > 0) {
+            complex_part_types[start].part.nest_inc++;
+            complex_part_types[start + nelem * len - 1].part.nest_dec++;
+        }
+        return std::make_pair(nelem * sz, algn);
+    }
+    case llvm::Type::StructTyID: {
+        unsigned size = 0;
+        unsigned align = 1;
+        for (auto *el : llvm::cast<llvm::StructType>(type)->elements()) {
+            unsigned prev = complex_part_types.size() - 1;
+            auto [el_size, el_align] = complex_types_append(el);
+            assert(el_size % el_align == 0
+                   && "size must be multiple of alignment");
+
+            unsigned old_size = size;
+            size = tpde::util::align_up(size, el_align);
+            if (size != old_size) {
+                complex_part_types[prev].part.pad_after += size - old_size;
+            }
+            size += el_size;
+            align = std::max(align, el_align);
+        }
+
+        size_t end = complex_part_types.size() - 1;
+        unsigned old_size = size;
+        size = tpde::util::align_up(size, align);
+        if (size > 0) {
+            complex_part_types[start].part.nest_inc++;
+            complex_part_types[end].part.nest_dec++;
+            complex_part_types[end].part.pad_after += size - old_size;
+        }
+        return std::make_pair(size, align);
+    }
+    default:
+        llvm::errs() << "Type: " << *type << "\n";
+        llvm::errs() << std::format("\nEncountered unsupported TypeID {}\n",
+                                    static_cast<uint8_t>(type_id));
+        assert(0);
+        exit(1);
+    }
+}
+
+[[nodiscard]] std::pair<LLVMBasicValType, u32>
+    LLVMAdaptor::val_basic_type_uncached(const llvm::Value *val,
+                                         const bool const_or_global) noexcept {
+    (void)const_or_global;
+    // TODO: Cache this?
+    auto *type = val->getType();
+    auto type_id = type->getTypeID();
+    if (auto ty = llvm_ty_to_basic_ty_simple(type, type_id);
+        ty != LLVMBasicValType::invalid) {
+        return std::make_pair(ty, ~0u);
+    }
+
+    unsigned start = complex_part_types.size();
+    complex_part_types.push_back(LLVMComplexPart{}); // length
+    // TODO: store size/alignment?
+    complex_types_append(type);
+    unsigned len = complex_part_types.size() - (start + 1);
+    complex_part_types[start].num_parts = len;
+
+    return std::make_pair(LLVMBasicValType::complex, start);
+}
+
+std::pair<unsigned, unsigned>
+    LLVMAdaptor::complex_part_for_index(IRValueRef val_idx, unsigned index) {
+    assert(values[val_idx].type == LLVMBasicValType::complex);
+    const auto ty_idx = values[val_idx].complex_part_tys_idx;
+    const LLVMComplexPart *part_descs = &complex_part_types[ty_idx + 1];
+    unsigned part_count = part_descs[-1].num_parts;
+
+    tpde::util::SmallVector<unsigned, 16> indices;
+    unsigned first_part = -1u;
+    for (unsigned i = 0; i < part_count; i++) {
+        indices.resize(indices.size() + part_descs[i].part.nest_inc);
+        // TODO: support more than one index operand. Comparing this index
+        // vector with the operands should be sufficient.
+        if (indices[0] == index && first_part == -1u) {
+            first_part = i;
+        }
+
+        indices.resize(indices.size() - part_descs[i].part.nest_dec);
+        if (part_descs[i].part.ends_value && !indices.empty()) {
+            indices.back()++;
+        }
+
+        if (indices.size() == 0 || indices[0] > index) {
+            return std::make_pair(first_part, i);
+        }
+    }
+
+    assert(0 && "out-of-range part index?");
+    exit(1);
+}
+
+} // end namespace tpde_llvm

@@ -3,6 +3,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Support/TimeProfiler.h>
+
 #include "tpde/CompilerBase.hpp"
 
 #include "LLVMAdaptor.hpp"
