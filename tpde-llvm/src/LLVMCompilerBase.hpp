@@ -290,6 +290,9 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     auto val_idx = static_cast<LLVMAdaptor::IRValueRef>(local_idx);
     auto *val = this->adaptor->values[val_idx].val;
     auto *const_val = llvm::dyn_cast<llvm::Constant>(val);
+    if (!const_val) {
+        return std::nullopt;
+    }
 
     auto ty = this->adaptor->values[val_idx].type;
     unsigned sub_part = part;
@@ -326,6 +329,9 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
             }
             const_val = llvm::dyn_cast<llvm::Constant>(agg->getOperand(idx));
         }
+        if (!const_val) {
+            return {};
+        }
 
         ty = part_descs[part].part.type;
     }
@@ -333,8 +339,12 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     // At this point, ty is the basic type of the element and sub_part the part
     // inside the basic type.
 
-    if (const_val == nullptr || llvm::isa<llvm::GlobalValue>(const_val)) {
-        return {};
+    if (llvm::isa<llvm::GlobalValue>(const_val)) {
+        assert(ty == LLVMBasicValType::ptr && sub_part == 0);
+        u32 global_idx = this->adaptor->val_lookup_idx(const_val);
+        auto local_idx =
+            static_cast<ValLocalIdx>(this->adaptor->val_local_idx(global_idx));
+        return ValuePartRef{this, local_idx, 0};
     }
 
     if (llvm::isa<llvm::PoisonValue>(const_val)
