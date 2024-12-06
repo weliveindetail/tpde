@@ -213,6 +213,8 @@ bool LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
             }
         } else if (auto *invoke = llvm::dyn_cast<llvm::InvokeInst>(inst);
                    invoke) {
+            // TODO: remove this hack, see compile_invoke.
+            func_has_dynamic_alloca = true;
             if (fixup_phi_constants(
                     ins_before, block, invoke->getNormalDest())) {
                 cont = true;

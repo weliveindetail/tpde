@@ -2984,7 +2984,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
     // compile the call
     // TODO: in the case of an exception we need to invalidate the result
     // registers
-    this->compile_call(inst_idx, inst);
+    // TODO: if the call needs stack space, this must be undone in the unwind
+    // block! LLVM emits .cfi_escape 0x2e, <off>, we should do the same?
+    // (Current workaround by treating invoke as dynamic alloca.)
+    if (!this->compile_call(inst_idx, inst)) {
+        return false;
+    }
     const auto off_after_call = this->assembler.text_cur_off();
 
     // build the eh table
