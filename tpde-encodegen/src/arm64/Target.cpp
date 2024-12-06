@@ -917,13 +917,13 @@ void EncodingTargetArm64::get_inst_candidates(
         handle_default("UCVTFdx"); // TODO: correct?
 
     } else if (Name == "FMOVSWr") {
-        handle_default("FMOVsw");
-    } else if (Name == "FMOVDXr") {
-        handle_default("FMOVdx");
-    } else if (Name == "FMOVWSr") {
         handle_default("FMOVws");
-    } else if (Name == "FMOVXDr") {
+    } else if (Name == "FMOVDXr") {
         handle_default("FMOVxd");
+    } else if (Name == "FMOVWSr") {
+        handle_default("FMOVsw");
+    } else if (Name == "FMOVXDr") {
+        handle_default("FMOVdx");
 
     } else if (Name == "CASB") {
         handle_default("CASB");
