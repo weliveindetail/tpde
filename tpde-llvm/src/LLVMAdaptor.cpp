@@ -58,15 +58,7 @@ namespace {
 bool LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
                                        llvm::Instruction *inst,
                                        llvm::BasicBlock::iterator &it,
-                                       bool is_entry_block,
                                        bool &found_phi_end) {
-    // check if the function contains dynamic allocas
-    if (auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(inst); alloca) {
-        if (!alloca->isStaticAlloca()) {
-            func_has_dynamic_alloca = true;
-        }
-    }
-
     // I don't want to handle constant expressions in a store value operand
     // so we split it up here
     if (auto *store = llvm::dyn_cast<llvm::StoreInst>(inst); store) {
@@ -290,21 +282,20 @@ bool LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
         ++idx;
     }
 
-    if (cont) {
-        return false;
+    auto fused = false;
+    if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(inst)) {
+        if (is_static_alloca(alloca)) {
+            initial_stack_slot_indices.push_back(values.size());
+            // fuse static alloca's in the initial block so we dont try
+            // to dynamically allocate them
+            fused = true;
+        } else {
+            func_has_dynamic_alloca = true;
+        }
     }
 
-    auto fused = false;
-    if (is_entry_block) {
-        if (inst->getOpcode() == llvm::Instruction::Alloca) {
-            const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(inst);
-            if (alloca->isStaticAlloca()) {
-                initial_stack_slot_indices.push_back(values.size());
-                // fuse static alloca's in the initial block so we dont try
-                // to dynamically allocate them
-                fused = true;
-            }
-        }
+    if (cont) {
+        return false;
     }
 
     if (!found_phi_end && !llvm::isa<llvm::PHINode>(inst)) {
@@ -408,7 +399,6 @@ void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
                                  .complex_part_tys_idx = complex_part_idx});
     }
 
-    bool is_entry_block = true;
     for (llvm::BasicBlock &block : *function) {
         const u32 idx_start = values.size();
         u32 phi_end = idx_start;
@@ -418,8 +408,7 @@ void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
         for (auto it = block.begin(); it != block.end();) {
             llvm::Instruction *inst = &*it;
 
-            if (handle_inst_in_block(
-                    &block, inst, it, is_entry_block, found_phi_end)) {
+            if (handle_inst_in_block(&block, inst, it, found_phi_end)) {
                 ++it;
             }
 
@@ -470,8 +459,6 @@ void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
             }
         }
         block_constants.clear();
-
-        is_entry_block = false;
     }
 
     for (const auto &info : blocks) {

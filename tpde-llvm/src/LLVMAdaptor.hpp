@@ -439,7 +439,7 @@ struct LLVMAdaptor {
         if (inst->getOpcode() != llvm::Instruction::Alloca) {
             return false;
         }
-        return llvm::cast<llvm::AllocaInst>(inst)->isStaticAlloca();
+        return is_static_alloca(llvm::cast<llvm::AllocaInst>(inst));
     }
 
     [[nodiscard]] bool
@@ -497,6 +497,16 @@ struct LLVMAdaptor {
         };
     }
 
+  private:
+    static bool is_static_alloca(const llvm::AllocaInst *alloca) noexcept {
+        // Larger allocas need dynamic stack alignment. In future, we might
+        // realign the stack at the beginning, but for now, treat them like
+        // dynamic allocas.
+        // TODO: properly support over-aligned static allocas.
+        return alloca->isStaticAlloca() && alloca->getAlign().value() <= 16;
+    }
+
+  public:
     [[nodiscard]] u32 val_alloca_size(const IRValueRef idx) const noexcept {
         const auto *alloca = llvm::cast<llvm::AllocaInst>(values[idx].val);
         assert(alloca->isStaticAlloca());
@@ -509,7 +519,7 @@ struct LLVMAdaptor {
         const auto *alloca = llvm::cast<llvm::AllocaInst>(values[idx].val);
         assert(alloca->isStaticAlloca());
         const u64 align = alloca->getAlign().value();
-        assert(align <= std::numeric_limits<u32>::max());
+        assert(align <= 16);
         return align;
     }
 
@@ -542,7 +552,6 @@ struct LLVMAdaptor {
     bool handle_inst_in_block(llvm::BasicBlock *block,
                               llvm::Instruction *inst,
                               llvm::BasicBlock::iterator &it,
-                              bool is_entry_block,
                               bool &found_phi_end);
 
   public:

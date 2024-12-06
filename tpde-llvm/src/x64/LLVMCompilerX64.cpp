@@ -370,8 +370,8 @@ bool LLVMCompilerX64::compile_unreachable(IRValueRef,
 
 bool LLVMCompilerX64::compile_alloca(IRValueRef         inst_idx,
                                      llvm::Instruction *inst) noexcept {
-    auto alloca = llvm::dyn_cast<llvm::AllocaInst>(inst);
-    assert(!alloca->isStaticAlloca()); // those should've been handled already
+    auto alloca = llvm::cast<llvm::AllocaInst>(inst);
+    assert(this->adaptor->cur_has_dynamic_alloca());
 
     // refcount
     auto size_ref = this->val_ref(llvm_val_idx(alloca->getArraySize()), 0);

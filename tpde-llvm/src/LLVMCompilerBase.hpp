@@ -900,7 +900,9 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
         this->adaptor->val_set_fused(v, true);
 
         auto size = this->adaptor->val_alloca_size(v);
-        size = tpde::util::align_up(size, this->adaptor->val_alloca_align(v));
+        auto align = this->adaptor->val_alloca_align(v);
+        assert(align <= 16 && "over-aligned alloca not supported");
+        size = tpde::util::align_up(size, align);
         const auto frame_off = this->allocate_stack_slot(size);
 
         variable_refs[cur_idx].alloca_frame_off = frame_off;

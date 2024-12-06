@@ -831,6 +831,7 @@ define i16 @dyn_alloca_dyn_si3_cnt_i16_no_salvage(i16 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: dyn_alloca_dyn_si3_cnt_i16_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -864,6 +865,87 @@ entry:
 bb1:
     %1 = alloca %struct.i32_3, i16 %0
     ret i16 %0
+}
+
+define ptr @alloca_align_4k() {
+; X64-LABEL: alloca_align_4k>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    sub rsp, 0x10
+; X64-NEXT:    and rsp, -0x1000
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    mov rsp, rbp
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+;
+; ARM64-LABEL: alloca_align_4k>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    sub sp, sp, #0x10
+; ARM64-NEXT:    mov x0, sp
+; ARM64-NEXT:    and sp, x0, #0xfffffffffffff000
+; ARM64-NEXT:    mov x0, sp
+; ARM64-NEXT:    mov sp, x29
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+    %a = alloca i32, align 4096
+    ret ptr %a
+}
+
+define ptr @dynalloca_align_4k() {
+; X64-LABEL: dynalloca_align_4k>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    sub rsp, 0x10
+; X64-NEXT:    and rsp, -0x1000
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    mov rsp, rbp
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: dynalloca_align_4k>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    sub sp, sp, #0x10
+; ARM64-NEXT:    mov x0, sp
+; ARM64-NEXT:    and sp, x0, #0xfffffffffffff000
+; ARM64-NEXT:    mov x0, sp
+; ARM64-NEXT:    mov sp, x29
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+    br label %bb1
+bb1:
+    %a = alloca i32, align 4096
+    ret ptr %a
 }
 
 ; COM: TODO
