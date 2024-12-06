@@ -7,6 +7,118 @@
 ; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 
+define ptr @alloca_empty() {
+; X64-LABEL: alloca_empty>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    lea rax, [rbp - 0x1]
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop
+;
+; ARM64-LABEL: alloca_empty>:
+; ARM64:         sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x0, x29, #0x1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+    %a = alloca {}
+    ret ptr %a
+}
+
+define ptr @dynalloca_empty() {
+; X64-LABEL: dynalloca_empty>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    and rsp, -0x10
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    mov rsp, rbp
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: dynalloca_empty>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov x0, sp
+; ARM64-NEXT:    mov sp, x29
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+    br label %bb1
+bb1:
+    %a = alloca {}
+    ret ptr %a
+}
+
+define ptr @dynalloca_empty_array(i64 %0) {
+; X64-LABEL: dynalloca_empty_array>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    xor edi, edi
+; X64-NEXT:    sub rsp, rdi
+; X64-NEXT:    and rsp, -0x10
+; X64-NEXT:    mov rdi, rsp
+; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    mov rsp, rbp
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop dword ptr [rax + rax]
+;
+; ARM64-LABEL: dynalloca_empty_array>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
+; ARM64-NEXT:    mov sp, x0
+; ARM64-NEXT:    mov sp, x29
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+    %a = alloca {}, i64 %0
+    ret ptr %a
+}
+
 define void @dyn_alloca_const() {
 ; X64-LABEL: dyn_alloca_const>:
 ; X64:         push rbp

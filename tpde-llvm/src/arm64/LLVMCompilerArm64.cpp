@@ -371,7 +371,7 @@ bool LLVMCompilerArm64::compile_alloca(IRValueRef         inst_idx,
             auto       tmp = scratch.alloc_gp();
             materialize_constant(size_val, 0, 8, tmp);
             ASM(SUBx_uxtx, DA_SP, DA_SP, tmp, 0);
-        } else {
+        } else if (size_val > 0) {
             if (size_val >= 0x1000) {
                 ASM(SUBxi, DA_SP, DA_SP, size_val & 0xff'f000);
             }
@@ -392,12 +392,13 @@ bool LLVMCompilerArm64::compile_alloca(IRValueRef         inst_idx,
     }
 
     const auto elem_size = layout.getTypeAllocSize(alloca->getAllocatedType());
-    assert(elem_size > 0);
     ScratchReg scratch{this};
     res_ref = this->result_ref_must_salvage(inst_idx, 0, std::move(size_ref));
     const auto res_reg = res_ref.cur_reg();
 
-    if ((elem_size & (elem_size - 1)) == 0) {
+    if (elem_size == 0) {
+        ASM(MOVZw, res_reg, 0);
+    } else if ((elem_size & (elem_size - 1)) == 0) {
         const auto shift = __builtin_ctzll(elem_size);
         if (shift <= 4) {
             ASM(SUBx_uxtx, res_reg, DA_SP, res_reg, shift);

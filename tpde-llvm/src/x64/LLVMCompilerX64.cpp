@@ -385,19 +385,21 @@ bool LLVMCompilerX64::compile_alloca(IRValueRef         inst_idx,
         assert(!size.isScalable());
         auto size_val = size.getFixedValue();
         size_val      = tpde::util::align_up(size_val, 16);
-        assert(size < 0x8000'0000);
-        ASM(SUB64ri, FE_SP, size_val);
-
+        if (size_val > 0) {
+            assert(size < 0x8000'0000);
+            ASM(SUB64ri, FE_SP, size_val);
+        }
     } else {
         const auto elem_size =
             layout.getTypeAllocSize(alloca->getAllocatedType());
-        assert(elem_size > 0);
         ScratchReg scratch{this};
         res_ref =
             this->result_ref_must_salvage(inst_idx, 0, std::move(size_ref));
         const auto res_reg = res_ref.cur_reg();
 
-        if ((elem_size & (elem_size - 1)) == 0) {
+        if (elem_size == 0) {
+            ASM(XOR32rr, res_reg, res_reg);
+        } else if ((elem_size & (elem_size - 1)) == 0) {
             // elSize is power of two
             if (elem_size != 1) {
                 const auto shift = __builtin_ctzll(elem_size);

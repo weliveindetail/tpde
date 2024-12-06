@@ -710,10 +710,10 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
     u32 size) noexcept {
-    assert(size > 0);
-
     unsigned align_bits = 4;
-    if (size <= 16) {
+    if (size == 0) {
+        return 1; // 0 is used for variable references...
+    } else if (size <= 16) {
         // Align up to next power of two.
         u32 free_list_idx = size == 1 ? 0 : 32 - util::cnt_lz<u32>(size - 1);
         assert(size <= 1 << free_list_idx);
@@ -758,7 +758,10 @@ u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::free_stack_slot(
     u32 slot, u32 size) noexcept {
-    if (size <= 16) {
+    if (size == 0) {
+        assert(slot == 1 && "unexpected slot for zero-sized stack-slot?");
+        // Do nothing.
+    } else if (size <= 16) {
         u32 free_list_idx = size == 1 ? 0 : 32 - util::cnt_lz<u32>(size - 1);
         stack.fixed_free_lists[free_list_idx].push_back(slot);
     } else {
