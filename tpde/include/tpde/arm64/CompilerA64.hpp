@@ -352,11 +352,9 @@ struct CallingConv {
                                                             AsmReg::V6,
                                                             AsmReg::V7};
 
-        constexpr static std::array<AsmReg, 2> ret_regs_gp{AsmReg::R0,
-                                                           AsmReg::R1};
+        constexpr static std::array<AsmReg, 8> ret_regs_gp = arg_regs_gp;
 
-        constexpr static std::array<AsmReg, 2> ret_regs_vec{AsmReg::V0,
-                                                            AsmReg::V1};
+        constexpr static std::array<AsmReg, 8> ret_regs_vec = arg_regs_vec;
 
         // TODO(ts): only the low 64 bits of V8-V15 are callee-saved, either
         // treat them as non-callee saved here and have some special casing in
