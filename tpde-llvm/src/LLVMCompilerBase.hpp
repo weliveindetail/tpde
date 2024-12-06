@@ -448,7 +448,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
         const llvm::GlobalVariable *gv = &*it;
         if (gv->hasAppendingLinkage()) [[unlikely]] {
             if (gv->getName() != "llvm.global_ctors"
-                && gv->getName() != "llvm.global_dtors") {
+                && gv->getName() != "llvm.global_dtors"
+                && gv->getName() != "llvm.used"
+                && gv->getName() != "llvm.compiler.used") {
                 TPDE_LOG_ERR("Unknown global with appending linkage: {}\n",
                              static_cast<std::string_view>(gv->getName()));
                 assert(0);
@@ -501,6 +503,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
 
         auto *init = gv->getInitializer();
         if (gv->hasAppendingLinkage()) [[unlikely]] {
+            // TODO: for non-aliases in llvm.used, set SHF_GNU_RETAIN to prevent
+            // linker section GC from removing the entire section.
+            if (gv->getName() == "llvm.used"
+                || gv->getName() == "llvm.compiler.used") {
+                continue;
+            }
+
             tpde::util::SmallVector<std::pair<SymRef, u32>, 16> functions;
             assert(gv->getName() == "llvm.global_ctors"
                    || gv->getName() == "llvm.global_dtors");
