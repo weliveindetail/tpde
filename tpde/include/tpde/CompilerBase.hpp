@@ -711,44 +711,39 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
     u32 size) noexcept {
     assert(size > 0);
-    if (size <= 16) {
-        assert(size == 1 || size == 2 || size == 4 || size == 8 || size == 16);
 
-        const u32 free_list_idx = util::cnt_tz(size);
+    unsigned align_bits = 4;
+    if (size <= 16) {
+        // Align up to next power of two.
+        u32 free_list_idx = size == 1 ? 0 : 32 - util::cnt_lz<u32>(size - 1);
+        assert(size <= 1 << free_list_idx);
+        size = 1 << free_list_idx;
+        align_bits = free_list_idx;
+
         if (!stack.fixed_free_lists[free_list_idx].empty()) {
             auto slot = stack.fixed_free_lists[free_list_idx].back();
-            if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
-                slot += size;
-            }
-
             stack.fixed_free_lists[free_list_idx].pop_back();
             return slot;
         }
-
-        // align the frame size
-        for (u32 list_idx = util::cnt_tz(stack.frame_size);
-             list_idx < free_list_idx;
-             list_idx = util::cnt_tz(stack.frame_size)) {
-            stack.fixed_free_lists[list_idx].push_back(stack.frame_size);
-            stack.frame_size += 1ull << list_idx;
-        }
     } else {
-        // align the size to 16
         size = util::align_up(size, 16);
-
         auto it = stack.dynamic_free_lists.find(size);
         if (it != stack.dynamic_free_lists.end() && !it->second.empty()) {
             const auto slot = it->second.back();
             it->second.pop_back();
             return slot;
         }
+    }
 
-        // align the frame size up to 16
-        for (u32 list_idx = util::cnt_tz(stack.frame_size); list_idx < 4;
-             list_idx     = util::cnt_tz(stack.frame_size)) {
-            stack.fixed_free_lists[list_idx].push_back(stack.frame_size);
-            stack.frame_size += 1ull << list_idx;
+    // Align frame_size to align_bits
+    for (u32 list_idx = util::cnt_tz(stack.frame_size); list_idx < align_bits;
+         list_idx = util::cnt_tz(stack.frame_size)) {
+        u32 slot = stack.frame_size;
+        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
+            slot += 1ull << list_idx;
         }
+        stack.fixed_free_lists[list_idx].push_back(slot);
+        stack.frame_size += 1ull << list_idx;
     }
 
     auto slot         = stack.frame_size;
@@ -764,20 +759,10 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::free_stack_slot(
     u32 slot, u32 size) noexcept {
     if (size <= 16) {
-        assert(size == 1 || size == 2 || size == 4 || size == 8 || size == 16);
-
-        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
-            slot -= size;
-        }
-        const u32 free_list_idx = util::cnt_tz(size);
+        u32 free_list_idx = size == 1 ? 0 : 32 - util::cnt_lz<u32>(size - 1);
         stack.fixed_free_lists[free_list_idx].push_back(slot);
     } else {
-        // align the size to 16
         size = util::align_up(size, 16);
-        if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
-            slot -= size;
-        }
-
         stack.dynamic_free_lists[size].push_back(slot);
     }
 }
