@@ -2386,6 +2386,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
         // this is a direct call
         call_target = global_sym(fn);
         var_arg     = fn->getFunctionType()->isVarArg();
+    } else if (call->isInlineAsm()) {
+        // TODO: handle inline assembly
+        return false;
     } else {
         // either indirect call or call with mismatch of arguments
         var_arg  = call->getFunctionType()->isVarArg();
