@@ -8,17 +8,13 @@ IndentWidth: 4
 ---
 Language: Cpp
 AlignArrayOfStructures: Right
-# AlignConsecutiveShortCaseStatements: AcrossComments
-#AlignEscapedNewlines: LeftWithLastLine
-AlignEscapedNewlines: Right
-AllowShortBlocksOnASingleLine: Empty
+#AllowShortBlocksOnASingleLine: Empty
 AllowShortCaseLabelsOnASingleLine: true
-# AllowShortCompoundRequirementOnASingleLine: true
 AllowShortEnumsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: false
 BinPackParameters: false
 BreakBeforeBinaryOperators: NonAssignment
-AlwaysBreakTemplateDeclarations: Yes
 CompactNamespaces: true
 IndentPPDirectives: BeforeHash
 IndentWrappedFunctionNames: true
