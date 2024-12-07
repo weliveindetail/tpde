@@ -28,7 +28,35 @@ std::pair<llvm::Value *, llvm::Instruction *>
         return {expr_inst, expr_inst};
     }
 
-    // TODO: check aggregates for ConstantExprs
+    if (auto *agg = llvm::dyn_cast<llvm::ConstantAggregate>(cst)) {
+        // TODO: implement support for constant vectors
+        assert(!llvm::isa<llvm::ConstantVector>(cst));
+
+        llvm::Instruction *ins_begin = nullptr;
+        llvm::SmallVector<llvm::Value *> repls;
+        for (auto it : llvm::enumerate(agg->operands())) {
+            auto *cst = llvm::cast<llvm::Constant>(it.value());
+            if (auto [repl, inst] = fixup_constant(cst, ins_before); repl) {
+                repls.resize(agg->getNumOperands());
+                repls[it.index()] = repl;
+                if (!ins_begin) {
+                    ins_begin = inst;
+                }
+            }
+        }
+        if (!repls.empty()) {
+            // TODO: optimize so that all supported constants are in the
+            // top-level constant?
+            llvm::Value *repl = llvm::PoisonValue::get(cst->getType());
+            for (auto it : llvm::enumerate(repls)) {
+                unsigned idx = it.index();
+                auto *el = it.value() ? it.value() : agg->getOperand(idx);
+                repl = llvm::InsertValueInst::Create(
+                    repl, el, {idx}, "", ins_before);
+            }
+            return {repl, ins_begin};
+        }
+    }
 
     return {nullptr, nullptr};
 }
