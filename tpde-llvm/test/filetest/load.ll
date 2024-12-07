@@ -719,7 +719,7 @@ define i56 @load_i56_alloca() {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ldrb w0, [x29, #0xa6]
-; ARM64-NEXT:    ldrh w1, [x29, #0xa2]
+; ARM64-NEXT:    ldrh w1, [x29, #0xa4]
 ; ARM64-NEXT:    orr w0, w1, w0, lsl #16
 ; ARM64-NEXT:    ldr w1, [x29, #0xa0]
 ; ARM64-NEXT:    orr x2, x1, x0, lsl #32

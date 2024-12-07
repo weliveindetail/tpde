@@ -1114,7 +1114,7 @@ define void @store_i48_alloca(i48 %b) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsr x1, x0, #32
 ; ARM64-NEXT:    str w0, [x29, #0xa0]
-; ARM64-NEXT:    strh w1, [x29, #0xa2]
+; ARM64-NEXT:    strh w1, [x29, #0xa4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret

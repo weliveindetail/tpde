@@ -68,7 +68,7 @@ void EncodingTargetArm64::get_inst_candidates(
                                     std::string_view mnemu,
                                     unsigned         shift) {
         auto cond1 = std::format("encodeable_with_mem_uoff12(this, {:#x}, {})",
-                                 mi.getOperand(2).getImm(),
+                                 mi.getOperand(2).getImm() << shift,
                                  shift);
         candidates.emplace_back(
             1,
