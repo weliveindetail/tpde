@@ -1590,45 +1590,48 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         case IntBinaryOp::ashr:
             rhs_high.reset();
             if (rhs.is_const) {
-                auto shift_amount =
-                    static_cast<u32>(rhs.state.c.const_u64 & 0b111'1111);
-                if (shift_amount < 64) {
+                u32 amt = rhs.state.c.const_u64 & 0b111'1111;
+                u32 iamt = 64 - amt;
+                if (amt < 64) {
                     if (op == IntBinaryOp::shl) {
                         derived()->encode_shli128_lt64(std::move(lhs),
                                                        std::move(lhs_high),
-                                                       std::move(rhs),
+                                                       EncodeImm{amt & 0x3f},
+                                                       EncodeImm{iamt & 0x3f},
                                                        scratch_low,
                                                        scratch_high);
                     } else if (op == IntBinaryOp::shr) {
                         derived()->encode_shri128_lt64(std::move(lhs),
                                                        std::move(lhs_high),
-                                                       std::move(rhs),
+                                                       EncodeImm{amt & 0x3f},
+                                                       EncodeImm{iamt & 0x3f},
                                                        scratch_low,
                                                        scratch_high);
                     } else {
                         assert(op == IntBinaryOp::ashr);
                         derived()->encode_ashri128_lt64(std::move(lhs),
                                                         std::move(lhs_high),
-                                                        std::move(rhs),
+                                                        EncodeImm{amt & 0x3f},
+                                                        EncodeImm{iamt & 0x3f},
                                                         scratch_low,
                                                         scratch_high);
                     }
                 } else {
-                    shift_amount -= 64;
+                    amt -= 64;
                     if (op == IntBinaryOp::shl) {
                         derived()->encode_shli128_ge64(std::move(lhs),
-                                                       EncodeImm{shift_amount},
+                                                       EncodeImm{amt & 0x3f},
                                                        scratch_low,
                                                        scratch_high);
                     } else if (op == IntBinaryOp::shr) {
                         derived()->encode_shri128_ge64(std::move(lhs_high),
-                                                       EncodeImm{shift_amount},
+                                                       EncodeImm{amt & 0x3f},
                                                        scratch_low,
                                                        scratch_high);
                     } else {
                         assert(op == IntBinaryOp::ashr);
                         derived()->encode_ashri128_ge64(std::move(lhs_high),
-                                                        EncodeImm{shift_amount},
+                                                        EncodeImm{amt & 0x3f},
                                                         scratch_low,
                                                         scratch_high);
                     }
