@@ -739,7 +739,7 @@ void LLVMCompilerArm64::compile_i32_cmp_zero(
     case llvm::CmpInst::ICMP_ULE: cond = DA_LS; break;
     default: assert(0);
     }
-    ASM(CMPxi, reg, 0);
+    ASM(CMPwi, reg, 0);
     ASM(CSETw, reg, cond);
 }
 

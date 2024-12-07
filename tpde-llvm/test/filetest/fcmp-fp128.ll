@@ -106,7 +106,7 @@ define i1 @fcmp_f128_oge(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x110 <fcmp_f128_oge+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __getf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, ge
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -148,7 +148,7 @@ define i1 @fcmp_f128_ord(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x180 <fcmp_f128_ord+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __unordtf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -190,7 +190,7 @@ define i1 @fcmp_f128_oeq(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x1f0 <fcmp_f128_oeq+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __eqtf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -232,7 +232,7 @@ define i1 @fcmp_f128_ogt(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x260 <fcmp_f128_ogt+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __gttf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, gt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -274,7 +274,7 @@ define i1 @fcmp_f128_olt(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x2d0 <fcmp_f128_olt+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __lttf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, lt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -316,7 +316,7 @@ define i1 @fcmp_f128_ole(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x340 <fcmp_f128_ole+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __letf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, le
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -358,7 +358,7 @@ define i1 @fcmp_f128_uno(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x3b0 <fcmp_f128_uno+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __unordtf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, ne
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -400,7 +400,7 @@ define i1 @fcmp_f128_ugt(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x420 <fcmp_f128_ugt+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __letf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, gt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -442,7 +442,7 @@ define i1 @fcmp_f128_uge(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x490 <fcmp_f128_uge+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __lttf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, ge
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -484,7 +484,7 @@ define i1 @fcmp_f128_ult(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x500 <fcmp_f128_ult+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __getf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, lt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -526,7 +526,7 @@ define i1 @fcmp_f128_ule(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x570 <fcmp_f128_ule+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __gttf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, le
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -567,7 +567,7 @@ define i1 @fcmp_f128_une(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x5e0 <fcmp_f128_une+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __netf2
-; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, ne
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
