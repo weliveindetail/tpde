@@ -548,11 +548,9 @@ struct LLVMAdaptor {
 
   private:
     /// Handle instruction during switch_func.
-    /// retval = increment iterator or not
-    bool handle_inst_in_block(llvm::BasicBlock *block,
-                              llvm::Instruction *inst,
-                              llvm::BasicBlock::iterator &it,
-                              bool &found_phi_end);
+    /// retval = restart from instruction, or nullptr to continue
+    llvm::Instruction *handle_inst_in_block(llvm::BasicBlock *block,
+                                            llvm::Instruction *inst);
 
   public:
     void switch_func(const IRFuncRef function) noexcept;

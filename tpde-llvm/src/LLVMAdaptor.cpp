@@ -17,63 +17,27 @@ namespace tpde_llvm {
 
 namespace {
 
-[[nodiscard]] bool fixup_phi_constants(llvm::Instruction *&ins_before,
-                                       const llvm::BasicBlock *cur_block,
-                                       llvm::BasicBlock *target) noexcept {
-    auto replaced = false;
-    for (auto it = target->begin(), end = target->end(); it != end; ++it) {
-        auto *phi = llvm::dyn_cast<llvm::PHINode>(it);
-        if (!phi) {
-            break;
-        }
-
-        const auto idx = phi->getBasicBlockIndex(cur_block);
-        if (idx == -1) {
-            continue;
-        }
-
-        auto *val = phi->getIncomingValue(idx);
-        assert(val);
-        auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(val);
-        if (!cexpr) {
-            continue;
-        }
-
-        auto *inst = cexpr->getAsInstruction();
-
-        inst->insertBefore(ins_before);
-
-        // TODO: so apparently, it happens that a block can show up multiple
-        // time in the same phi-node need to clarify the semantics of that
-        // (does that mean the value has to be the same??)
-        phi->setIncomingValueForBlock(cur_block, inst);
-        ins_before = inst;
-        replaced = true;
+// Returns pair of replaced value and first inserted instruction.
+std::pair<llvm::Value *, llvm::Instruction *>
+    fixup_constant(llvm::Constant *cst, llvm::Instruction *ins_before) {
+    if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(cst); cexpr) {
+        // clang creates these and we don't want to handle them so
+        // we split them up into their own values
+        llvm::Instruction *expr_inst = cexpr->getAsInstruction();
+        expr_inst->insertBefore(ins_before);
+        return {expr_inst, expr_inst};
     }
-    return replaced;
+
+    // TODO: check aggregates for ConstantExprs
+
+    return {nullptr, nullptr};
 }
 
 } // end anonymous namespace
 
-bool LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
-                                       llvm::Instruction *inst,
-                                       llvm::BasicBlock::iterator &it,
-                                       bool &found_phi_end) {
-    // I don't want to handle constant expressions in a store value operand
-    // so we split it up here
-    if (auto *store = llvm::dyn_cast<llvm::StoreInst>(inst); store) {
-        auto *val = store->getValueOperand();
-        if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(val); cexpr)
-            [[unlikely]] {
-            auto *exprInst = cexpr->getAsInstruction();
-            exprInst->insertBefore(inst);
-            store->setOperand(0, exprInst);
-            // TODO: is it faster to use getIterator or decrement the
-            // iterator?
-            it = exprInst->getIterator();
-            return false;
-        }
-    }
+llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
+                                                     llvm::Instruction *inst) {
+    llvm::Instruction *restart_from = nullptr;
 
     // I also don't want to handle non-constant values in GEPs in the GEP
     // handler below it's easier to just split them here
@@ -100,7 +64,6 @@ bool LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
         }
 
         if (split_indices_size != 0) {
-            auto replaced_it = false;
             auto idx_vec = tpde::util::SmallVector<llvm::Value *, 8>{};
 
             auto begin = gep->idx_begin();
@@ -135,9 +98,8 @@ bool LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
                 ptr_val = newGEP;
                 start_idx = split_indices[split_idx];
 
-                if (!replaced_it) {
-                    it = newGEP->getIterator();
-                    replaced_it = true;
+                if (!restart_from) {
+                    restart_from = newGEP;
                 }
             }
 
@@ -162,126 +124,72 @@ bool LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
                 }
 
                 inst->replaceAllUsesWith(new_gep);
-                inst->removeFromParent();
-                inst->deleteValue();
+                inst->eraseFromParent();
 
-                if (!replaced_it) {
-                    it = new_gep->getIterator();
+                if (!restart_from) {
+                    restart_from = new_gep;
                 }
             }
-
-            // we want to handle the GEP normally now
-            return false;
+            return restart_from;
         }
     }
 
-    bool cont = false;
     if (inst->isTerminator()) {
-        assert(llvm::isa<llvm::IndirectBrInst>(inst) == false);
-        assert(llvm::isa<llvm::CatchSwitchInst>(inst) == false);
-        assert(llvm::isa<llvm::CatchReturnInst>(inst) == false);
-        assert(llvm::isa<llvm::CleanupReturnInst>(inst) == false);
-        assert(llvm::isa<llvm::CallBrInst>(inst) == false);
+        // TODO: remove this hack, see compile_invoke.
+        if (llvm::isa<llvm::InvokeInst>(inst)) {
+            func_has_dynamic_alloca = true;
+        }
+
         auto *ins_before = inst;
         if (block->begin().getNodePtr() != ins_before) {
             auto *prev_inst = ins_before->getPrevNonDebugInstruction();
-            if (prev_inst
-                && (prev_inst->getOpcode() == llvm::Instruction::ICmp
-                    || prev_inst->getOpcode() == llvm::Instruction::FCmp)) {
+            if (prev_inst && llvm::isa<llvm::CmpInst>(prev_inst)) {
                 // make sure fusing can still happen
                 ins_before = prev_inst;
             }
         }
 
-        if (auto *br = llvm::dyn_cast<llvm::BranchInst>(inst); br) {
-            if (fixup_phi_constants(ins_before, block, br->getSuccessor(0))) {
-                cont = true;
-            }
-            if (!br->isUnconditional()) {
-                if (fixup_phi_constants(
-                        ins_before, block, br->getSuccessor(1))) {
-                    cont = true;
+        for (llvm::BasicBlock *succ : llvm::successors(inst->getParent())) {
+            for (llvm::PHINode &phi : succ->phis()) {
+                auto *val = phi.getIncomingValueForBlock(inst->getParent());
+                auto *cst = llvm::dyn_cast<llvm::Constant>(val);
+                if (!cst) {
+                    continue;
+                }
+                auto [repl, ins_begin] = fixup_constant(cst, ins_before);
+                if (repl) {
+                    phi.setIncomingValueForBlock(inst->getParent(), repl);
+                    if (!restart_from) {
+                        restart_from = ins_begin;
+                    }
+                } else if (!value_lookup.contains(cst)) {
+                    // we insert constants inbetween block so that instructions
+                    // in a block are consecutive
+                    block_constants.push_back(cst);
                 }
             }
-        } else if (auto *sw = llvm::dyn_cast<llvm::SwitchInst>(inst); sw) {
-            auto num_succs = sw->getNumSuccessors();
-            for (auto i = 0u; i < num_succs; ++i) {
-                if (fixup_phi_constants(
-                        ins_before, block, sw->getSuccessor(i))) {
-                    cont = true;
-                }
-            }
-        } else if (auto *invoke = llvm::dyn_cast<llvm::InvokeInst>(inst);
-                   invoke) {
-            // TODO: remove this hack, see compile_invoke.
-            func_has_dynamic_alloca = true;
-            if (fixup_phi_constants(
-                    ins_before, block, invoke->getNormalDest())) {
-                cont = true;
-            }
-            if (fixup_phi_constants(
-                    ins_before, block, invoke->getUnwindDest())) {
-                cont = true;
-            }
-        }
-
-        if (cont) {
-            it = ins_before->getIterator();
-            return false;
         }
     }
 
-    // check operands for constants
-    // TODO: just do this for all constants/globals in the context/module
-    // always?
-    size_t idx = 0;
-    for (llvm::Value *val : inst->operands()) {
-        if (auto *C = llvm::dyn_cast<llvm::Constant>(val); C) {
-            if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(val); cexpr) {
-                if (inst->getOpcode() == llvm::Instruction::PHI) {
-                    // we didn't see the incoming block yet so we fix the
-                    // constant expression here
-                    auto *phi = llvm::cast<llvm::PHINode>(inst);
-                    auto *incoming_block = phi->getIncomingBlock(idx);
-                    auto *ins_before = incoming_block->getTerminator();
-                    if (incoming_block->begin().getNodePtr() != ins_before) {
-                        auto *prev_inst =
-                            ins_before->getPrevNonDebugInstruction();
-                        if (prev_inst
-                            && (prev_inst->getOpcode()
-                                    == llvm::Instruction::ICmp
-                                || prev_inst->getOpcode()
-                                       == llvm::Instruction::FCmp)) {
-                            // make sure fusing can still happen
-                            ins_before = prev_inst;
-                        }
-                    }
-
-                    auto *expr_inst = cexpr->getAsInstruction();
-                    expr_inst->insertBefore(ins_before);
-                    phi->setIncomingValueForBlock(incoming_block, expr_inst);
-                    continue;
-                }
-
-                // clang creates these and we don't want to handle them so
-                // we split them up into their own values
-                auto *expr_inst = cexpr->getAsInstruction();
-                expr_inst->insertBefore(inst);
-                inst->setOperand(idx, expr_inst);
-                // TODO: do we need to clean up the ConstantExpr?
-                it = expr_inst->getIterator();
-                cont = true;
-                break;
+    // Check operands for constants; PHI nodes are handled by predecessors.
+    if (!llvm::isa<llvm::PHINode>(inst)) {
+        for (auto it : llvm::enumerate(inst->operands())) {
+            auto *cst = llvm::dyn_cast<llvm::Constant>(it.value());
+            if (!cst) {
+                continue;
             }
 
-
-            // we insert constants inbetween block so that instructions in a
-            // block are consecutive
-            if (!value_lookup.contains(C)) {
-                block_constants.push_back(C);
+            if (auto [repl, ins_begin] = fixup_constant(cst, inst); repl) {
+                inst->setOperand(it.index(), repl);
+                if (!restart_from) {
+                    restart_from = ins_begin;
+                }
+            } else if (!value_lookup.contains(cst)) {
+                // we insert constants inbetween block so that instructions in a
+                // block are consecutive
+                block_constants.push_back(cst);
             }
         }
-        ++idx;
     }
 
     auto fused = false;
@@ -296,12 +204,8 @@ bool LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
         }
     }
 
-    if (cont) {
-        return false;
-    }
-
-    if (!found_phi_end && !llvm::isa<llvm::PHINode>(inst)) {
-        found_phi_end = true;
+    if (restart_from) {
+        return restart_from;
     }
 
     auto val_idx = values.size();
@@ -316,7 +220,7 @@ bool LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
                              .fused = fused,
                              .argument = false,
                              .complex_part_tys_idx = complex_part_idx});
-    return true;
+    return nullptr;
 }
 
 void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
@@ -404,20 +308,16 @@ void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     for (llvm::BasicBlock &block : *function) {
         const u32 idx_start = values.size();
         u32 phi_end = idx_start;
-        bool found_phi_end = false;
-        bool found_phi_end_bak = false;
 
-        for (auto it = block.begin(); it != block.end();) {
-            llvm::Instruction *inst = &*it;
-
-            if (handle_inst_in_block(&block, inst, it, found_phi_end)) {
+        for (auto it = block.begin(), end = block.end(); it != end;) {
+            auto *restart_from = handle_inst_in_block(&block, &*it);
+            if (restart_from) {
+                it = restart_from->getIterator();
+            } else {
+                if (llvm::isa<llvm::PHINode>(&*it)) {
+                    phi_end = static_cast<u32>(values.size());
+                }
                 ++it;
-            }
-
-            if (found_phi_end != found_phi_end_bak) {
-                found_phi_end_bak = found_phi_end;
-                phi_end =
-                    std::max(idx_start, static_cast<u32>(values.size() - 1));
             }
         }
 
