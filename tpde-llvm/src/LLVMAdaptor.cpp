@@ -518,11 +518,15 @@ std::pair<unsigned, unsigned>
     case llvm::Type::StructTyID: {
         unsigned size = 0;
         unsigned align = 1;
+        bool packed = llvm::cast<llvm::StructType>(type)->isPacked();
         for (auto *el : llvm::cast<llvm::StructType>(type)->elements()) {
             unsigned prev = complex_part_types.size() - 1;
             auto [el_size, el_align] = complex_types_append(el);
             assert(el_size % el_align == 0
                    && "size must be multiple of alignment");
+            if (packed) {
+                el_align = 1;
+            }
 
             unsigned old_size = size;
             size = tpde::util::align_up(size, el_align);
