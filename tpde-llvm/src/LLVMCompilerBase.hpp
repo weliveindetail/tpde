@@ -651,15 +651,16 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
         const auto num_elements = CA->getType()->getNumElements();
         const auto element_size =
             layout.getTypeAllocSize(CA->getType()->getElementType());
+        bool success = true;
         for (auto i = 0u; i < num_elements; ++i) {
-            global_init_to_data(reloc_base,
-                                data,
-                                relocs,
-                                layout,
-                                CA->getAggregateElement(i),
-                                off + i * element_size);
+            success &= global_init_to_data(reloc_base,
+                                           data,
+                                           relocs,
+                                           layout,
+                                           CA->getAggregateElement(i),
+                                           off + i * element_size);
         }
-        return true;
+        return success;
     }
     if (auto *CA = llvm::dyn_cast<llvm::ConstantAggregate>(constant); CA) {
         const auto num_elements = CA->getType()->getStructNumElements();
@@ -1047,7 +1048,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
         TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
                      opcode,
                      i->getOpcodeName());
-        return 1;
+        return false;
     }
     }
 }
