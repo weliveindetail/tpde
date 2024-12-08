@@ -1209,13 +1209,14 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
                 phi_ref.incoming_val_for_block(cur_block_ref);
             auto *assignment = val_assignment(val_idx(inc_val));
             if (assignment == nullptr) {
-#ifdef TPDE_ASSERTS
-                // this should only happen if the value is a constant
-                auto ref = this->val_ref(inc_val, 0);
-                assert(ref.is_const);
+                // val_ref_special can lazily create Assignments
+                auto ref = derived()->val_ref(inc_val, 0);
+                if (ref.is_const) {
+                    continue;
+                }
+                assignment = ref.state.v.assignment;
                 ref.reset_without_refcount();
-#endif
-                continue;
+                assert(assignment && "non-const value without assignment");
             }
             u32 part_count = derived()->val_part_count(inc_val);
             for (u32 i = 0; i < part_count; ++i) {

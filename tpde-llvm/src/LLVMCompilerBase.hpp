@@ -344,6 +344,20 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
         u32 global_idx = this->adaptor->val_lookup_idx(const_val);
         auto local_idx =
             static_cast<ValLocalIdx>(this->adaptor->val_local_idx(global_idx));
+        if (!this->val_assignment(local_idx)) {
+            auto *assignment = this->allocate_assignment(1);
+            assignment->initialize(global_idx,
+                                   Config::PLATFORM_POINTER_SIZE,
+                                   0,
+                                   Config::PLATFORM_POINTER_SIZE);
+            this->assignments.value_ptrs[u32(local_idx)] = assignment;
+
+            auto ap = AssignmentPartRef{assignment, 0};
+            ap.reset();
+            ap.set_bank(Config::GP_BANK);
+            ap.set_variable_ref(true);
+            ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
+        }
         return ValuePartRef{this, local_idx, 0};
     }
 
@@ -871,30 +885,25 @@ template <typename Adaptor, typename Derived, typename Config>
 void LLVMCompilerBase<Adaptor, Derived, Config>::
     setup_var_ref_assignments() noexcept {
     using AssignmentPartRef = typename Base::AssignmentPartRef;
-    variable_refs.clear();
+    bool needs_globals = variable_refs.empty();
 
     variable_refs.resize(this->adaptor->initial_stack_slot_indices.size()
                          + this->adaptor->global_idx_end);
 
-
-    u32        cur_idx         = 0;
-    const auto init_assignment = [this, &cur_idx](IRValueRef v) {
-        auto *assignment = this->allocate_assignment(1, true);
-        assignment->initialize(cur_idx++,
-                               Config::PLATFORM_POINTER_SIZE,
-                               0,
-                               Config::PLATFORM_POINTER_SIZE);
-        this->assignments.value_ptrs[this->adaptor->val_local_idx(v)] =
-            assignment;
-
-        auto ap = AssignmentPartRef{assignment, 0};
-        ap.reset();
-        ap.set_bank(Config::GP_BANK);
-        ap.set_variable_ref(true);
-        ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
-    };
+    // Allocate regs for globals
+    if (needs_globals) {
+        for (u32 v = 0; v < this->adaptor->global_idx_end; ++v) {
+            variable_refs[v].val = v;
+            variable_refs[v].alloca = false;
+            variable_refs[v].local =
+                !llvm::dyn_cast<llvm::GlobalValue>(this->adaptor->values[v].val)
+                     ->hasExternalLinkage();
+            // assignments are initialized lazily in val_ref_special.
+        }
+    }
 
     // Allocate registers for TPDE's stack slots
+    u32 cur_idx = this->adaptor->global_idx_end;
     for (auto v : this->adaptor->cur_static_allocas()) {
         variable_refs[cur_idx].val    = v;
         variable_refs[cur_idx].alloca = true;
@@ -908,18 +917,20 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
         const auto frame_off = this->allocate_stack_slot(size);
 
         variable_refs[cur_idx].alloca_frame_off = frame_off;
-        init_assignment(v);
-    }
 
-    // Allocate regs for globals
-    for (u32 v = 0; v < this->adaptor->global_idx_end; ++v) {
-        variable_refs[cur_idx].val    = v;
-        variable_refs[cur_idx].alloca = false;
-        variable_refs[cur_idx].local =
-            !llvm::dyn_cast<llvm::GlobalValue>(this->adaptor->values[v].val)
-                 ->hasExternalLinkage();
+        auto *assignment = this->allocate_assignment(1, true);
+        assignment->initialize(cur_idx++,
+                               Config::PLATFORM_POINTER_SIZE,
+                               0,
+                               Config::PLATFORM_POINTER_SIZE);
+        this->assignments.value_ptrs[this->adaptor->val_local_idx(v)] =
+            assignment;
 
-        init_assignment(v);
+        auto ap = AssignmentPartRef{assignment, 0};
+        ap.reset();
+        ap.set_bank(Config::GP_BANK);
+        ap.set_variable_ref(true);
+        ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
     }
 }
 
