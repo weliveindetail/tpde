@@ -3416,6 +3416,35 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         return compile_overflow_intrin(inst_idx, inst, OverflowOp::umul);
     case llvm::Intrinsic::smul_with_overflow:
         return compile_overflow_intrin(inst_idx, inst, OverflowOp::smul);
+    case llvm::Intrinsic::bswap: {
+        auto *val = inst->getOperand(0);
+        if (!val->getType()->isIntegerTy()) {
+            return false;
+        }
+        const auto width = val->getType()->getIntegerBitWidth();
+        if (width % 16 || width > 64) {
+            return false;
+        }
+
+        using EncodeFnTy = bool (Derived::*)(AsmOperand, ScratchReg &);
+        static constexpr std::array<EncodeFnTy, 4> encode_fns = {
+            &Derived::encode_bswapi16,
+            &Derived::encode_bswapi32,
+            &Derived::encode_bswapi48,
+            &Derived::encode_bswapi64,
+        };
+        EncodeFnTy encode_fn = encode_fns[width / 16 - 1];
+
+        auto val_ref = this->val_ref(llvm_val_idx(val), 0);
+        ScratchReg res{derived()};
+        if (!(derived()->*encode_fn)(std::move(val_ref), res)) {
+            return false;
+        }
+
+        auto res_ref = this->result_ref_lazy(inst_idx, 0);
+        this->set_value(res_ref, res);
+        return true;
+    }
     case llvm::Intrinsic::ctlz:
     case llvm::Intrinsic::cttz: {
         auto *val = inst->getOperand(0);

@@ -178,6 +178,11 @@ u128 TARGET_V1 ashri128_ge64(i128 a, u64 amt) {
     return a >> (64 + (amt % 64));
 }
 
+u16 TARGET_V1 bswapi16(u16 a) { return __builtin_bswap16(a); }
+u32 TARGET_V1 bswapi32(u32 a) { return __builtin_bswap32(a); }
+u64 TARGET_V1 bswapi48(u64 a) { return __builtin_bswap64(a) >> 16; }
+u64 TARGET_V1 bswapi64(u64 a) { return __builtin_bswap64(a); }
+
 u32 TARGET_V1 cttzi32_zero_poison(u32 a) { return __builtin_ctz(a); }
 u64 TARGET_V1 cttzi64_zero_poison(u64 a) { return __builtin_ctzll(a); }
 
