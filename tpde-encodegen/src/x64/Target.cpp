@@ -143,7 +143,7 @@ void EncodingTargetX64::get_inst_candidates(
                 os << "    ASMD(" << mnem;
                 unsigned         reg_idx = 0;
                 std::string_view cp_sym  = "";
-                bool             has_imm = false;
+                [[maybe_unused]] bool has_imm = false;
                 for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n;
                      i++) {
                     const auto &op = mi.getOperand(i);
@@ -342,7 +342,7 @@ void EncodingTargetX64::get_inst_candidates(
             os << "    ASMD(" << mnem;
             unsigned         reg_idx = 0;
             std::string_view cp_sym  = "";
-            bool             has_imm = false;
+            [[maybe_unused]] bool has_imm = false;
             for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
                 const auto &op = mi.getOperand(i);
                 if (i == (unsigned)memop_start
