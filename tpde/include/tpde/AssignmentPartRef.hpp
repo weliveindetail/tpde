@@ -28,6 +28,10 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
     AssignmentPartRef(ValueAssignment *assignment, const u32 part)
         : assignment(assignment), part(part) {}
 
+    void reset() noexcept {
+        assignment->parts[part] = 0;
+    }
+
     [[nodiscard]] u8 bank() const noexcept {
         return (assignment->parts[part] >> 5) & 0b111;
     }

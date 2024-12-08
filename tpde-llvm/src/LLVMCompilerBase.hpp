@@ -888,6 +888,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
             assignment;
 
         auto ap = AssignmentPartRef{assignment, 0};
+        ap.reset();
         ap.set_bank(Config::GP_BANK);
         ap.set_variable_ref(true);
         ap.set_part_size(Config::PLATFORM_POINTER_SIZE);

@@ -463,10 +463,6 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
                 a != nullptr) {
                 assignments.fixed_free_lists[free_list_idx] =
                     a->next_free_list_entry;
-
-                for (u32 i = 0; i < part_count; ++i) {
-                    a->parts[i] = 0;
-                }
                 return a;
             }
         } else {
@@ -474,9 +470,6 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
             if (it != assignments.dynamic_free_lists.end()) {
                 if (auto *a = it->second; a != nullptr) {
                     it->second = a->next_free_list_entry;
-                    for (u32 i = 0; i < part_count; ++i) {
-                        a->parts[i] = 0;
-                    }
                     return a;
                 }
                 // TODO(ts): remove if it->second is nullptr?
@@ -493,9 +486,6 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
         buf.cur_off += size;
 
         new (assignment) ValueAssignment{};
-        for (u32 i = 0; i < part_count; ++i) {
-            assignment->parts[i] = 0;
-        }
         return assignment;
     }
 
@@ -512,9 +502,6 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
     buf.cur_off      = size;
 
     new (assignment) ValueAssignment{};
-    for (u32 i = 0; i < part_count; ++i) {
-        assignment->parts[i] = 0;
-    }
     return assignment;
 }
 
@@ -571,6 +558,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
     u32 max_part_size = 0;
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
         auto ap = AssignmentPartRef{assignment, part_idx};
+        ap.reset();
         ap.set_bank(derived()->val_part_bank(value, part_idx));
         const u32 size = derived()->val_part_size(value, part_idx);
         assert(size > 0);
@@ -1829,6 +1817,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
             assignments.value_ptrs[local_idx] = assignment;
 
             auto ap = AssignmentPartRef{assignment, 0};
+            ap.reset();
             ap.set_bank(Config::GP_BANK);
             ap.set_variable_ref(true);
             ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
