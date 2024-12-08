@@ -124,6 +124,13 @@ struct LLVMAdaptor {
     };
 
     tpde::util::SmallVector<ValInfo, 128>         values;
+    /// Map from global value to value index. Globals are the lowest values.
+    /// Keep them separate so that we don't have to repeatedly insert them for
+    /// every function.
+    tsl::hopscotch_map<const llvm::GlobalValue *, u32> global_lookup;
+    /// Map from non-global value to value index. This map contains constants
+    /// that are not globals, arguments, and basic blocks. Instructions are
+    /// only included in debug builds.
     tsl::hopscotch_map<const llvm::Value *, u32>  value_lookup;
     tsl::hopscotch_map<llvm::BasicBlock *, u32>   block_lookup;
     tpde::util::SmallVector<LLVMComplexPart, 32> complex_part_types;
@@ -592,6 +599,11 @@ struct LLVMAdaptor {
         if (auto *inst = llvm::dyn_cast<llvm::Instruction>(val); inst) {
             const auto idx = inst_lookup_idx(inst);
             return idx;
+        }
+        if (auto *gv = llvm::dyn_cast<llvm::GlobalValue>(val)) {
+            if (auto it = global_lookup.find(gv); it != global_lookup.end()) {
+                return it->second;
+            }
         }
         const auto it = value_lookup.find(val);
         if (it != value_lookup.end()) {

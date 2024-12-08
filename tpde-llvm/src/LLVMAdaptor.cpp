@@ -181,7 +181,7 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
             for (llvm::PHINode &phi : succ->phis()) {
                 auto *val = phi.getIncomingValueForBlock(inst->getParent());
                 auto *cst = llvm::dyn_cast<llvm::Constant>(val);
-                if (!cst) {
+                if (!cst || llvm::isa<llvm::GlobalValue>(cst)) {
                     continue;
                 }
                 auto [repl, ins_begin] = fixup_constant(cst, ins_before);
@@ -203,7 +203,7 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
     if (!llvm::isa<llvm::PHINode>(inst)) {
         for (auto it : llvm::enumerate(inst->operands())) {
             auto *cst = llvm::dyn_cast<llvm::Constant>(it.value());
-            if (!cst) {
+            if (!cst || llvm::isa<llvm::GlobalValue>(cst)) {
                 continue;
             }
 
@@ -279,11 +279,10 @@ void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     // TODO(ts): move this to start_compile?
     if (!globals_init) {
         globals_init = true;
-        // reserve a constant size and optimize for smaller functions
-        value_lookup.reserve(512);
+        global_lookup.reserve(512);
         auto add_global = [&](llvm::GlobalValue *gv) {
-            assert(value_lookup.find(gv) == value_lookup.end());
-            value_lookup.insert_or_assign(gv, values.size());
+            assert(global_lookup.find(gv) == global_lookup.end());
+            global_lookup.insert_or_assign(gv, values.size());
             const auto [ty, complex_part_idx] =
                 val_basic_type_uncached(gv, true);
             values.push_back(ValInfo{.val = gv,
@@ -306,18 +305,10 @@ void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     } else {
         values.resize(global_idx_end);
         complex_part_types.resize(global_complex_part_types_end_idx);
-        // reserve a constant size and optimize for smaller functions
-        value_lookup.reserve(512 + global_idx_end);
-        for (u32 v = 0; v < global_idx_end; ++v) {
-            value_lookup[values[v].val] = v;
-        }
     }
 
-    // add 20% overhead for constants and values that get duplicated
-    // value_lookup.reserve(
-    //   ((function->getInstructionCount() + function->arg_size()) * 6) /
-    //   5);
-
+    // reserve a constant size and optimize for smaller functions
+    value_lookup.reserve(512);
     block_lookup.reserve(128);
 
     const size_t arg_count = function->arg_size();
@@ -408,6 +399,7 @@ void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
 
 void LLVMAdaptor::reset() noexcept {
     values.clear();
+    global_lookup.clear();
     value_lookup.clear();
     block_lookup.clear();
     complex_part_types.clear();
