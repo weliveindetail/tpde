@@ -153,6 +153,7 @@ struct CompilerBase {
     struct ScratchReg;
     struct AssignmentPartRef;
     struct ValuePartRef;
+    struct GenericValuePart;
 #pragma endregion
 
     struct InstRange {
@@ -317,6 +318,8 @@ struct CompilerBase {
 
     void salvage_reg_for_values(ValuePartRef &to, ValuePartRef &from) noexcept;
 
+    AsmReg gval_as_reg(GenericValuePart &gv) noexcept;
+
     // TODO(ts): switch to a branch_spill_before naming style?
     typename RegisterFile::RegBitSet spill_before_branch() noexcept;
     void release_spilled_regs(typename RegisterFile::RegBitSet) noexcept;
@@ -349,6 +352,7 @@ struct CompilerBase {
 } // namespace tpde
 
 #include "AssignmentPartRef.hpp"
+#include "GenericValuePart.hpp"
 #include "RegisterFile.hpp"
 #include "ScratchReg.hpp"
 #include "ValuePartRef.hpp"
@@ -1134,6 +1138,44 @@ void CompilerBase<Adaptor, Derived, Config>::salvage_reg_for_values(
         register_file.update_reg_assignment(
             from_reg, to.local_idx(), to.part());
     }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::AsmReg
+    CompilerBase<Adaptor, Derived, Config>::gval_as_reg(
+        GenericValuePart &gv) noexcept {
+    if (std::holds_alternative<ScratchReg>(gv.state)) {
+        return std::get<ScratchReg>(gv.state).cur_reg;
+    }
+    if (std::holds_alternative<ValuePartRef>(gv.state)) {
+        auto &val_ref = std::get<ValuePartRef>(gv.state);
+        const auto reg = val_ref.alloc_reg();
+        val_ref.lock();
+        return reg;
+    }
+    if (std::holds_alternative<ValuePartRef *>(gv.state)) {
+        auto &val_ref = *std::get<ValuePartRef *>(gv.state);
+        const auto reg = val_ref.alloc_reg();
+        val_ref.lock();
+        return reg;
+    }
+    if (auto *imm =
+            std::get_if<typename GenericValuePart::Immediate>(&gv.state)) {
+        ScratchReg dst{derived()};
+        const auto dst_reg = dst.alloc(imm->bank);
+        derived()->materialize_constant(
+            imm->const_bytes, imm->bank, imm->size, dst_reg);
+        gv.state = std::move(dst);
+        return dst_reg;
+    }
+    if (auto *expr = std::get_if<typename GenericValuePart::Expr>(&gv.state)) {
+        if (expr->has_base() && !expr->has_index() && expr->disp == 0) {
+            return expr->base_reg();
+        }
+        return derived()->gval_expr_as_reg(gv);
+    }
+    assert(0);
+    return AsmReg::make_invalid();
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

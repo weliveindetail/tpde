@@ -52,6 +52,11 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
               ARG(u32))
     };
 
+    // (value); might allocate register
+    {
+        a.gval_expr_as_reg(ARG(typename T::GenericValuePart &))
+    } -> std::same_as<typename Config::AsmReg>;
+
     {
         a.select_fixed_assignment_reg(ARG(u32), ARG(typename T::IRValueRef))
     } -> std::same_as<typename Config::AsmReg>;

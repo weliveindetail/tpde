@@ -106,8 +106,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
     bool compile_icmp(IRValueRef, llvm::Instruction *, InstRange) noexcept;
     void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
-    AsmOperand::Expr resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
-    void addr_to_reg(AsmOperand::Expr &&addr, ScratchReg &result) noexcept;
+    GenericValuePart resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
     AsmOperand::Expr create_addr_for_alloca(u32 ref_idx) noexcept;
 
     void switch_emit_cmp(ScratchReg &scratch,
@@ -743,15 +742,12 @@ void LLVMCompilerArm64::compile_i32_cmp_zero(
     ASM(CSETw, reg, cond);
 }
 
-tpde_encodegen::EncodeCompiler<LLVMAdaptor,
-                               LLVMCompilerArm64,
-                               LLVMCompilerBase,
-                               CompilerConfig>::AsmOperand::Expr
+LLVMCompilerArm64::GenericValuePart
     LLVMCompilerArm64::resolved_gep_to_addr(ResolvedGEP &resolved) noexcept {
     ScratchReg   base_scratch{this}, index_scratch{this};
     const AsmReg base = this->val_as_reg(resolved.base, base_scratch);
 
-    AsmOperand::Expr addr{};
+    GenericValuePart::Expr addr{};
     if (base_scratch.cur_reg.valid()) {
         addr.base = std::move(base_scratch);
     } else {
@@ -789,20 +785,6 @@ tpde_encodegen::EncodeCompiler<LLVMAdaptor,
     addr.disp  = resolved.displacement;
 
     return addr;
-}
-
-void LLVMCompilerArm64::addr_to_reg(AsmOperand::Expr &&addr,
-                                    ScratchReg        &result) noexcept {
-    // not the most efficient but it's okay for now
-    AsmOperand operand{std::move(addr)};
-    AsmReg     res_reg = operand.as_reg(this);
-
-    if (auto *op_reg = std::get_if<ScratchReg>(&operand.state)) {
-        result = std::move(*op_reg);
-    } else {
-        AsmReg copy_reg = result.alloc_gp();
-        ASM(MOVx, copy_reg, res_reg);
-    }
 }
 
 tpde_encodegen::EncodeCompiler<LLVMAdaptor,

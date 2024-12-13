@@ -423,6 +423,7 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
     using AssignmentPartRef = typename Base::AssignmentPartRef;
     using ScratchReg        = typename Base::ScratchReg;
     using ValuePartRef      = typename Base::ValuePartRef;
+    using GenericValuePart = typename Base::GenericValuePart;
 
     using Assembler    = typename PlatformConfig::Assembler;
     using RegisterFile = typename Base::RegisterFile;
@@ -503,6 +504,8 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
                                        AssignmentPartRef ap) noexcept;
 
     void mov(AsmReg dst, AsmReg src, u32 size) noexcept;
+
+    AsmReg gval_expr_as_reg(GenericValuePart &gv) noexcept;
 
     void materialize_constant(ValuePartRef &val_ref, AsmReg dst) noexcept;
     void materialize_constant(ValuePartRef &val_ref, ScratchReg &dst) noexcept;
@@ -1703,6 +1706,88 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::mov(
             ASM(FMOVdx, dst, src);
         }
     }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> typename BaseTy,
+          typename Config>
+AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
+    GenericValuePart &gv) noexcept {
+    auto &expr = std::get<typename GenericValuePart::Expr>(gv.state);
+
+    ScratchReg scratch{derived()};
+    if (!expr.has_base() && !expr.has_index()) {
+        AsmReg dst = scratch.alloc_gp();
+        derived()->materialize_constant(expr.disp, 0, 8, dst);
+        expr.disp = 0;
+    } else if (!expr.has_base() && expr.has_index()) {
+        AsmReg index_reg = expr.index_reg();
+        if (std::holds_alternative<ScratchReg>(expr.index)) {
+            scratch = std::move(std::get<ScratchReg>(expr.index));
+        } else {
+            (void)scratch.alloc_gp();
+        }
+        AsmReg dst = scratch.cur_reg;
+        if ((expr.scale & (expr.scale - 1)) == 0) {
+            const auto shift = util::cnt_tz<u64>(expr.scale);
+            ASM(LSLxi, dst, index_reg, shift);
+        } else {
+            ScratchReg scratch2{derived()};
+            AsmReg tmp2 = scratch2.alloc_gp();
+            derived()->materialize_constant(expr.scale, 0, 8, tmp2);
+            ASM(MULx, dst, index_reg, tmp2);
+        }
+    } else if (expr.has_base() && expr.has_index()) {
+        AsmReg base_reg = expr.base_reg();
+        AsmReg index_reg = expr.index_reg();
+        if (std::holds_alternative<ScratchReg>(expr.base)) {
+            scratch = std::move(std::get<ScratchReg>(expr.base));
+        } else if (std::holds_alternative<ScratchReg>(expr.index)) {
+            scratch = std::move(std::get<ScratchReg>(expr.index));
+        } else {
+            (void)scratch.alloc_gp();
+        }
+        AsmReg dst = scratch.cur_reg;
+        if ((expr.scale & (expr.scale - 1)) == 0) {
+            const auto shift = util::cnt_tz<u64>(expr.scale);
+            ASM(ADDx_lsl, dst, base_reg, index_reg, shift);
+        } else {
+            ScratchReg scratch2{derived()};
+            AsmReg tmp2 = scratch2.alloc_gp();
+            derived()->materialize_constant(expr.scale, 0, 8, tmp2);
+            ASM(MULx, tmp2, index_reg, tmp2);
+            ASM(ADDx, dst, base_reg, tmp2);
+        }
+    } else if (expr.has_base() && !expr.has_index()) {
+        AsmReg base_reg = expr.base_reg();
+        if (std::holds_alternative<ScratchReg>(expr.base)) {
+            scratch = std::move(std::get<ScratchReg>(expr.base));
+        } else {
+            (void)scratch.alloc_gp();
+        }
+        AsmReg dst = scratch.cur_reg;
+        if (ASMIF(ADDxi, dst, base_reg, expr.disp)) {
+            expr.disp = 0;
+        } else {
+            ASM(MOVx, dst, base_reg);
+        }
+    } else {
+        assert(0);
+    }
+
+    AsmReg dst = scratch.cur_reg;
+    if (expr.disp != 0) {
+        if (!ASMIF(ADDxi, dst, dst, expr.disp)) {
+            ScratchReg scratch2{derived()};
+            AsmReg tmp2 = scratch2.alloc_gp();
+            derived()->materialize_constant(expr.disp, 0, 8, tmp2);
+            ASM(ADDx, dst, dst, tmp2);
+        }
+    }
+
+    gv.state = std::move(scratch);
+    return dst;
 }
 
 template <IRAdaptor Adaptor,

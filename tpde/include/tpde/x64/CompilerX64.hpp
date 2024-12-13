@@ -367,6 +367,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
     using AssignmentPartRef = typename Base::AssignmentPartRef;
     using ScratchReg        = typename Base::ScratchReg;
     using ValuePartRef      = typename Base::ValuePartRef;
+    using GenericValuePart = typename Base::GenericValuePart;
 
     using Assembler    = typename PlatformConfig::Assembler;
     using RegisterFile = typename Base::RegisterFile;
@@ -470,6 +471,8 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
                                        AssignmentPartRef ap) noexcept;
 
     void mov(AsmReg dst, AsmReg src, u32 size) noexcept;
+
+    AsmReg gval_expr_as_reg(GenericValuePart &gv) noexcept;
 
     void materialize_constant(ValuePartRef &val_ref, AsmReg dst) noexcept;
     void materialize_constant(ValuePartRef &val_ref, ScratchReg &dst) noexcept;
@@ -1523,6 +1526,104 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::mov(
             }
         }
     }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> typename BaseTy,
+          typename Config>
+AsmReg CompilerX64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
+    GenericValuePart &gv) noexcept {
+    auto &expr = std::get<typename GenericValuePart::Expr>(gv.state);
+
+    ScratchReg scratch{derived()};
+    bool disp32 = i32(expr.disp) == expr.disp;
+    AsmReg base = expr.has_base() ? expr.base_reg() : AsmReg::make_invalid();
+    AsmReg idx = expr.has_index() ? expr.index_reg() : AsmReg::make_invalid();
+    if (std::holds_alternative<ScratchReg>(expr.base)) {
+        scratch = std::move(std::get<ScratchReg>(expr.base));
+    } else if (std::holds_alternative<ScratchReg>(expr.index)) {
+        scratch = std::move(std::get<ScratchReg>(expr.index));
+    } else {
+        (void)scratch.alloc_gp();
+    }
+    auto dst = scratch.cur_reg;
+    if (idx.valid()) {
+        if ((expr.scale & (expr.scale - 1)) == 0 && expr.scale < 16) {
+            u8 sc = expr.scale;
+            if (base.valid() && disp32) {
+                ASM(LEA64rm, dst, FE_MEM(base, sc, idx, i32(expr.disp)));
+                expr.disp = 0;
+            } else if (base.valid()) {
+                ASM(LEA64rm, dst, FE_MEM(base, sc, idx, 0));
+            } else if (disp32) {
+                ASM(LEA64rm, dst, FE_MEM(FE_NOREG, sc, idx, i32(expr.disp)));
+            } else {
+                ASM(LEA64rm, dst, FE_MEM(FE_NOREG, sc, idx, 0));
+            }
+        } else {
+            u64 scale = expr.scale;
+            if (base == idx) {
+                base = AsmReg::make_invalid();
+                scale += 1;
+            }
+
+            ScratchReg idx_scratch{derived()};
+            // We need a register to compute the scaled index.
+            AsmReg idx_tmp = dst;
+            if (dst == base && std::holds_alternative<ScratchReg>(expr.index)) {
+                // We can't use dst, it'd clobber base, so use the other
+                // register we currently own.
+                idx_tmp = std::get<ScratchReg>(expr.index).cur_reg;
+            } else if (dst == base) {
+                idx_tmp = idx_scratch.alloc_gp();
+            }
+
+            if ((scale & (scale - 1)) == 0) {
+                if (idx_tmp != idx) {
+                    ASM(MOV64rr, idx_tmp, idx);
+                }
+                ASM(SHL64ri, idx_tmp, util::cnt_tz(scale));
+            } else {
+                if (i32(scale) == i64(scale)) {
+                    ASM(IMUL64rri, idx_tmp, idx, scale);
+                } else {
+                    ScratchReg scratch2{derived()};
+                    auto tmp2 = scratch2.alloc_gp();
+                    ASM(MOV64ri, tmp2, scale);
+                    if (idx_tmp != idx) {
+                        ASM(MOV64rr, idx_tmp, idx);
+                    }
+                    ASM(IMUL64rr, idx_tmp, tmp2);
+                }
+            }
+            if (base.valid()) {
+                if (disp32 || (idx_tmp != dst && base != dst)) {
+                    ASM(LEA64rm, dst, FE_MEM(base, 1, idx_tmp, i32(expr.disp)));
+                    expr.disp = 0;
+                } else if (dst == base) {
+                    ASM(ADD64rr, dst, idx_tmp);
+                } else {
+                    ASM(ADD64rr, dst, base);
+                }
+            }
+        }
+    } else if (base.valid()) {
+        if (expr.disp && disp32) {
+            ASM(LEA64rm, dst, FE_MEM(base, 0, FE_NOREG, i32(expr.disp)));
+            expr.disp = 0;
+        } else if (dst != base) {
+            ASM(MOV64rr, dst, base);
+        }
+    }
+    if (expr.disp) {
+        ScratchReg scratch2{derived()};
+        auto tmp2 = scratch2.alloc_gp();
+        ASM(MOV64ri, tmp2, expr.disp);
+        ASM(ADD64rr, dst, tmp2);
+    }
+    gv.state = std::move(scratch);
+    return dst;
 }
 
 template <IRAdaptor Adaptor,

@@ -34,8 +34,6 @@ define ptr @gep_ptr_no_idx(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -70,8 +68,6 @@ define ptr @gep_ptr_zero(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -107,8 +103,6 @@ define ptr @gep_ptr_zero_no_salvage(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -144,8 +138,6 @@ define ptr @gep_i16_zero(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -181,8 +173,6 @@ define ptr @gep_i16_zero_no_salvage(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -218,8 +208,6 @@ define ptr @gep_sti_zero(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -255,8 +243,6 @@ define ptr @gep_sti_zero_no_salvage(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -1339,8 +1325,8 @@ define ptr @gep_i128_varoff_i32(ptr %0, i32 %1) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movsxd rsi, esi
 ; X64-NEXT:    shl rsi, 0x4
-; X64-NEXT:    lea rsi, [rdi + rsi]
-; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    lea rdi, [rdi + rsi]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -1571,12 +1557,12 @@ define ptr @gep_i2048_varoff_i64(ptr %0, i64 %1) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    mov rax, rsi
 ; X64-NEXT:    shl rax, 0x8
-; X64-NEXT:    lea rax, [rdi + rax]
+; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: gep_i2048_varoff_i64>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1731,8 +1717,8 @@ define ptr @gep_stf_varoff_i8_zero(ptr %0, i8 %1) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movsx rsi, sil
 ; X64-NEXT:    imul rsi, rsi, 0xc
-; X64-NEXT:    lea rsi, [rdi + rsi]
-; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    lea rdi, [rdi + rsi]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -1850,8 +1836,8 @@ define ptr @gep_stf_varoff_i16_zero(ptr %0, i16 %1) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movsx rsi, si
 ; X64-NEXT:    imul rsi, rsi, 0xc
-; X64-NEXT:    lea rsi, [rdi + rsi]
-; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    lea rdi, [rdi + rsi]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -1891,8 +1877,8 @@ define ptr @gep_i512_varoff_i32(ptr %0, i32 %1) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movsxd rsi, esi
 ; X64-NEXT:    shl rsi, 0x6
-; X64-NEXT:    lea rsi, [rdi + rsi]
-; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    lea rdi, [rdi + rsi]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -1930,8 +1916,8 @@ define ptr @gep_stf_varoff_i32_zero(ptr %0, i32 %1) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movsxd rsi, esi
 ; X64-NEXT:    imul rsi, rsi, 0xc
-; X64-NEXT:    lea rsi, [rdi + rsi]
-; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    lea rdi, [rdi + rsi]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -1970,12 +1956,13 @@ define ptr @gep_stf_varoff_i64_zero(ptr %0, i64 %1) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rax, [rdi + rax]
+; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: gep_stf_varoff_i64_zero>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -2011,8 +1998,8 @@ define ptr @gep_stf_varoff_i8_one(ptr %0, i8 %1) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movsx rsi, sil
 ; X64-NEXT:    imul rsi, rsi, 0xc
-; X64-NEXT:    lea rsi, [rdi + rsi + 0x4]
-; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    lea rdi, [rdi + rsi + 0x4]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -2053,8 +2040,8 @@ define ptr @gep_stf_varoff_i16_one(ptr %0, i16 %1) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movsx rsi, si
 ; X64-NEXT:    imul rsi, rsi, 0xc
-; X64-NEXT:    lea rsi, [rdi + rsi + 0x4]
-; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    lea rdi, [rdi + rsi + 0x4]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -2095,8 +2082,8 @@ define ptr @gep_stf_varoff_i32_one(ptr %0, i32 %1) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movsxd rsi, esi
 ; X64-NEXT:    imul rsi, rsi, 0xc
-; X64-NEXT:    lea rsi, [rdi + rsi + 0x4]
-; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    lea rdi, [rdi + rsi + 0x4]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -2136,12 +2123,13 @@ define ptr @gep_stf_varoff_i64_one(ptr %0, i64 %1) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rax, [rdi + rax + 0x4]
+; X64-NEXT:    lea rdi, [rdi + rax + 0x4]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: gep_stf_varoff_i64_one>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -2195,8 +2183,6 @@ define ptr @gep_ptr_no_idx_fuse_zero(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2232,8 +2218,6 @@ define ptr @gep_ptr_zero_fuse_no_idx(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2269,8 +2253,6 @@ define ptr @gep_ptr_zero_fuse_zero(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2346,9 +2328,7 @@ define ptr @gep_ptr_zero_fuse_one(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    add x1, x1, #0x8
-; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    add x0, x0, #0x8
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2385,8 +2365,6 @@ define ptr @gep_stf_zero_fuse_zero(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2462,9 +2440,7 @@ define ptr @gep_stf_zero_fuse_one(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    add x1, x1, #0xc
-; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    add x0, x0, #0xc
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2811,12 +2787,13 @@ define ptr @gep_stf_varoff_fuse_zero(ptr %0, i64 %1) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rax, [rdi + rax]
+; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: gep_stf_varoff_fuse_zero>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -2851,12 +2828,13 @@ define ptr @gep_stf_varoff_zero_fuse_zero(ptr %0, i64 %1) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rax, [rdi + rax]
+; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: gep_stf_varoff_zero_fuse_zero>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -2892,13 +2870,13 @@ define ptr @gep_stf_varoff_zero_fuse_one(ptr %0, i64 %1) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rax, [rdi + rax]
-; X64-NEXT:    lea rax, [rax + 0x4]
+; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    lea rdi, [rdi + 0x4]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: gep_stf_varoff_zero_fuse_one>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -2937,13 +2915,14 @@ define ptr @gep_stf_varoff_zero_fuse_one_no_salvage(ptr %0, i64 %1) {
 ; X64-NEXT:    lea rax, [rdi + rax]
 ; X64-NEXT:    lea rax, [rax + 0x4]
 ; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rax, [rdi + rax]
-; X64-NEXT:    lea rax, [rax + 0x4]
+; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    lea rdi, [rdi + 0x4]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: gep_stf_varoff_zero_fuse_one_no_salvage>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -3006,8 +2985,6 @@ define ptr @gep_zai32_zero_zero_i64(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -3079,8 +3056,6 @@ define ptr @gep_zai32_one_zero_i64(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -3152,8 +3127,6 @@ define ptr @gep_zai32_varoff_zero_i64(ptr %0, i64 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x2, x0
-; ARM64-NEXT:    mov x0, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -3225,8 +3198,6 @@ define dso_local ptr @gep_array(ptr noundef %0) #0 {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    add x0, x29, #0xb0
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x180
 ; ARM64-NEXT:    ret

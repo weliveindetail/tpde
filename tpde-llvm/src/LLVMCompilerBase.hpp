@@ -26,6 +26,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     using ScratchReg        = typename Base::ScratchReg;
     using ValuePartRef      = typename Base::ValuePartRef;
     using AssignmentPartRef = typename Base::AssignmentPartRef;
+    using GenericValuePart = typename Base::GenericValuePart;
     using ValLocalIdx       = typename Base::ValLocalIdx;
     using InstRange         = typename Base::InstRange;
 
@@ -2611,15 +2612,21 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     }
     resolved.displacement = disp;
 
+    GenericValuePart addr = derived()->resolved_gep_to_addr(resolved);
+
     // TODO(ts): fusing
 
-    auto addr    = derived()->resolved_gep_to_addr(resolved);
     auto res_ref = this->result_ref_lazy(final_idx, 0);
 
-    ScratchReg res_scratch{derived()};
-    derived()->addr_to_reg(std::move(addr), res_scratch);
-
-    this->set_value(res_ref, res_scratch);
+    AsmReg res_reg = derived()->gval_as_reg(addr);
+    if (auto *op_reg = std::get_if<ScratchReg>(&addr.state)) {
+        ScratchReg res_scratch = std::move(*op_reg);
+        this->set_value(res_ref, res_scratch);
+    } else {
+        ScratchReg res_scratch{derived()};
+        derived()->mov(res_scratch.alloc_gp(), res_reg, 8);
+        this->set_value(res_ref, res_scratch);
+    }
 
     return true;
 }

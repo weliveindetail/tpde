@@ -134,7 +134,7 @@ struct EncodingTargetX64 : EncodingTarget {
                                "",
                                indent);
                 std::format_to(std::back_inserter(buf),
-                               "{:>{}}    ASMD(VMOVUPD128rr, {}, {});\n",
+                               "{:>{}}    ASMD(VMOVAPD128rr, {}, {});\n",
                                "",
                                indent,
                                dst,
@@ -142,7 +142,7 @@ struct EncodingTargetX64 : EncodingTarget {
                 std::format_to(
                     std::back_inserter(buf), "{:>{}}}} else {{\n", "", indent);
                 std::format_to(std::back_inserter(buf),
-                               "{:>{}}    ASMD(SSE_MOVUPDrr, {}, {});\n",
+                               "{:>{}}    ASMD(SSE_MOVAPDrr, {}, {});\n",
                                "",
                                indent,
                                dst,
@@ -151,7 +151,7 @@ struct EncodingTargetX64 : EncodingTarget {
                     std::back_inserter(buf), "{:>{}}}}\n", "", indent);
             } else if (size <= 32) {
                 std::format_to(std::back_inserter(buf),
-                               "{:>{}}ASMD(VMOVUPD256rr, {}, {});\n",
+                               "{:>{}}ASMD(VMOVAPD256rr, {}, {});\n",
                                "",
                                indent,
                                dst,
@@ -159,7 +159,7 @@ struct EncodingTargetX64 : EncodingTarget {
             } else {
                 assert(size <= 64);
                 std::format_to(std::back_inserter(buf),
-                               "{:>{}}ASMD(VMOVUPD512rr, {}, {});\n",
+                               "{:>{}}ASMD(VMOVAPD512rr, {}, {});\n",
                                "",
                                indent,
                                dst,
