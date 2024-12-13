@@ -885,6 +885,7 @@ u32 CallingConv::calculate_call_stack_space(
                 if (vec_reg_count < vec_regs.size()) {
                     ++vec_reg_count;
                 } else {
+                    stack_space = util::align_up(stack_space, ref.part_size());
                     stack_space += util::align_up(ref.part_size(), 8);
                 }
             }
