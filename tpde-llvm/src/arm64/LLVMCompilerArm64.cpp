@@ -316,7 +316,7 @@ LLVMCompilerArm64::ScratchReg LLVMCompilerArm64::ext_int(AsmOperand op,
                                                          unsigned to) noexcept {
     ScratchReg scratch{this};
     AsmReg     src = op.as_reg_try_salvage(this, scratch, 0);
-    ext_int(scratch.alloc_from_bank(0), src, sign, from, to);
+    ext_int(scratch.alloc_gp(), src, sign, from, to);
     return scratch;
 }
 
@@ -963,8 +963,8 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef         inst_idx,
         const auto src_reg = this->val_as_reg(src_ref, scratch1);
         const auto dst_reg = this->val_as_reg(dst_ref, scratch2);
 
-        const auto tmp_reg1 = scratch3.alloc_from_bank(1);
-        const auto tmp_reg2 = scratch4.alloc_from_bank(1);
+        const auto tmp_reg1 = scratch3.alloc(1);
+        const auto tmp_reg2 = scratch4.alloc(1);
         ASM(LDPq, tmp_reg1, tmp_reg2, src_reg, 0);
         ASM(STPq, tmp_reg1, tmp_reg2, dst_reg, 0);
         return true;
@@ -1003,26 +1003,26 @@ bool LLVMCompilerArm64::handle_overflow_intrin_128(
     case OverflowOp::uadd: {
         AsmReg lhs_lo_reg = lhs_lo.as_reg_try_salvage(this, res_lo, 0);
         AsmReg rhs_lo_reg = rhs_lo.as_reg_try_salvage(this, res_lo, 0);
-        AsmReg res_lo_reg = res_lo.alloc_from_bank(0);
+        AsmReg res_lo_reg = res_lo.alloc_gp();
         ASM(ADDSx, res_lo_reg, lhs_lo_reg, rhs_lo_reg);
         AsmReg lhs_hi_reg = lhs_hi.as_reg_try_salvage(this, res_hi, 0);
         AsmReg rhs_hi_reg = rhs_hi.as_reg_try_salvage(this, res_hi, 0);
-        AsmReg res_hi_reg = res_hi.alloc_from_bank(0);
+        AsmReg res_hi_reg = res_hi.alloc_gp();
         ASM(ADCSx, res_hi_reg, lhs_hi_reg, rhs_hi_reg);
-        AsmReg res_of_reg = res_of.alloc_from_bank(0);
+        AsmReg res_of_reg = res_of.alloc_gp();
         ASM(CSETw, res_of_reg, DA_CS);
         return true;
     }
     case OverflowOp::sadd: {
         AsmReg lhs_lo_reg = lhs_lo.as_reg_try_salvage(this, res_lo, 0);
         AsmReg rhs_lo_reg = rhs_lo.as_reg_try_salvage(this, res_lo, 0);
-        AsmReg res_lo_reg = res_lo.alloc_from_bank(0);
+        AsmReg res_lo_reg = res_lo.alloc_gp();
         ASM(ADDSx, res_lo_reg, lhs_lo_reg, rhs_lo_reg);
         AsmReg lhs_hi_reg = lhs_hi.as_reg_try_salvage(this, res_hi, 0);
         AsmReg rhs_hi_reg = rhs_hi.as_reg_try_salvage(this, res_hi, 0);
-        AsmReg res_hi_reg = res_hi.alloc_from_bank(0);
+        AsmReg res_hi_reg = res_hi.alloc_gp();
         ASM(ADCSx, res_hi_reg, lhs_hi_reg, rhs_hi_reg);
-        AsmReg res_of_reg = res_of.alloc_from_bank(0);
+        AsmReg res_of_reg = res_of.alloc_gp();
         ASM(CSETw, res_of_reg, DA_VS);
         return true;
     }
@@ -1030,26 +1030,26 @@ bool LLVMCompilerArm64::handle_overflow_intrin_128(
     case OverflowOp::usub: {
         AsmReg lhs_lo_reg = lhs_lo.as_reg_try_salvage(this, res_lo, 0);
         AsmReg rhs_lo_reg = rhs_lo.as_reg_try_salvage(this, res_lo, 0);
-        AsmReg res_lo_reg = res_lo.alloc_from_bank(0);
+        AsmReg res_lo_reg = res_lo.alloc_gp();
         ASM(SUBSx, res_lo_reg, lhs_lo_reg, rhs_lo_reg);
         AsmReg lhs_hi_reg = lhs_hi.as_reg_try_salvage(this, res_hi, 0);
         AsmReg rhs_hi_reg = rhs_hi.as_reg_try_salvage(this, res_hi, 0);
-        AsmReg res_hi_reg = res_hi.alloc_from_bank(0);
+        AsmReg res_hi_reg = res_hi.alloc_gp();
         ASM(SBCSx, res_hi_reg, lhs_hi_reg, rhs_hi_reg);
-        AsmReg res_of_reg = res_of.alloc_from_bank(0);
+        AsmReg res_of_reg = res_of.alloc_gp();
         ASM(CSETw, res_of_reg, DA_CC);
         return true;
     }
     case OverflowOp::ssub: {
         AsmReg lhs_lo_reg = lhs_lo.as_reg_try_salvage(this, res_lo, 0);
         AsmReg rhs_lo_reg = rhs_lo.as_reg_try_salvage(this, res_lo, 0);
-        AsmReg res_lo_reg = res_lo.alloc_from_bank(0);
+        AsmReg res_lo_reg = res_lo.alloc_gp();
         ASM(SUBSx, res_lo_reg, lhs_lo_reg, rhs_lo_reg);
         AsmReg lhs_hi_reg = lhs_hi.as_reg_try_salvage(this, res_hi, 0);
         AsmReg rhs_hi_reg = rhs_hi.as_reg_try_salvage(this, res_hi, 0);
-        AsmReg res_hi_reg = res_hi.alloc_from_bank(0);
+        AsmReg res_hi_reg = res_hi.alloc_gp();
         ASM(SBCSx, res_hi_reg, lhs_hi_reg, rhs_hi_reg);
-        AsmReg res_of_reg = res_of.alloc_from_bank(0);
+        AsmReg res_of_reg = res_of.alloc_gp();
         ASM(CSETw, res_of_reg, DA_VS);
         return true;
     }
@@ -1059,7 +1059,7 @@ bool LLVMCompilerArm64::handle_overflow_intrin_128(
 #if 0
         const auto frame_off = allocate_stack_slot(1);
         ScratchReg scratch{this};
-        AsmReg tmp = scratch.alloc_from_bank(0);
+        AsmReg tmp = scratch.alloc_gp();
         if (!ASMIF(ADDxi, tmp, DA_GP(29), frame_off)) {
             materialize_constant(frame_off, 0, 4, tmp);
             ASM(ADDx, tmp, DA_GP(29), tmp);

@@ -681,7 +681,7 @@ bool generate_inst(std::string        &buf,
                     state.fmt_line(buf,
                                    8,
                                    "AsmReg inst{}_op{} = "
-                                   "scratch_{}.alloc_from_bank({});\n",
+                                   "scratch_{}.alloc({});\n",
                                    inst_id,
                                    op_idx,
                                    state.target->reg_name_lower(orig_reg_id),
@@ -865,7 +865,7 @@ bool generate_inst(std::string        &buf,
                     std::format_to(
                         std::back_inserter(buf),
                         "{:>{}}"
-                        "scratch_{}.alloc_from_bank({});\n",
+                        "scratch_{}.alloc({});\n",
                         "",
                         8,
                         state.target->reg_name_lower(def_resolved_reg_id),
@@ -880,7 +880,7 @@ bool generate_inst(std::string        &buf,
                     state.fmt_line(
                         buf,
                         8,
-                        "AsmReg reg_{0} = scratch_{0}.alloc_from_bank({1});",
+                        "AsmReg reg_{0} = scratch_{0}.alloc({1});",
                         state.target->reg_name_lower(def_resolved_reg_id),
                         state.target->reg_bank(def_resolved_reg_id));
                     state.target->generate_copy(
@@ -962,7 +962,7 @@ bool generate_inst(std::string        &buf,
                     std::format_to(
                         std::back_inserter(buf),
                         "{:>{}}AsmReg inst{}_op{} = "
-                        "scratch_{}.alloc_from_bank({});\n",
+                        "scratch_{}.alloc({});\n",
                         "",
                         8,
                         inst_id,
@@ -1127,7 +1127,7 @@ bool generate_inst(std::string        &buf,
                                "        // def {} has not been allocated yet\n",
                                state.target->reg_name_lower(reg_id));
                 std::format_to(std::back_inserter(buf),
-                               "        scratch_{}.alloc_from_bank({});\n",
+                               "        scratch_{}.alloc({});\n",
                                state.target->reg_name_lower(reg_id),
                                state.target->reg_bank(reg_id));
             }
@@ -1391,7 +1391,7 @@ static void materialize_aliased_regs(GenerationState &state,
                        dst_name);
         state.fmt_line(buf,
                        indent,
-                       "scratch_{}.alloc_from_bank({});",
+                       "scratch_{}.alloc({});",
                        reg_name,
                        state.target->reg_bank(reg));
         state.target->generate_copy(buf,
@@ -1615,7 +1615,7 @@ bool handle_end_of_block(GenerationState         &state,
                     state.target->reg_name_lower(reg));
                 state.fmt_line(buf,
                                4,
-                               "scratch_{}.alloc_from_bank({});",
+                               "scratch_{}.alloc({});",
                                state.target->reg_name_lower(reg),
                                state.target->reg_bank(reg));
 
@@ -1667,7 +1667,7 @@ bool handle_end_of_block(GenerationState         &state,
 
                 state.fmt_line(buf,
                                4,
-                               "scratch_{}.alloc_from_bank({});",
+                               "scratch_{}.alloc({});",
                                state.target->reg_name_lower(reg),
                                state.target->reg_bank(reg));
                 info->ty      = ValueInfo::SCRATCHREG;
@@ -1733,7 +1733,7 @@ bool handle_end_of_block(GenerationState         &state,
 
                 state.fmt_line(buf,
                                4,
-                               "scratch_{}.alloc_from_bank({});",
+                               "scratch_{}.alloc({});",
                                state.target->reg_name_lower(reg),
                                state.target->reg_bank(reg));
                 std::string src_name;

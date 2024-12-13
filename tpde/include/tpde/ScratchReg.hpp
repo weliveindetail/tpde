@@ -20,12 +20,16 @@ struct CompilerBase<Adaptor, Derived, Config>::ScratchReg {
     ScratchReg &operator=(const ScratchReg &) = delete;
     ScratchReg &operator=(ScratchReg &&) noexcept;
 
-    AsmReg               alloc_specific(AsmReg reg) noexcept;
-    [[nodiscard]] AsmReg alloc_gp() noexcept;
-    AsmReg               alloc_from_bank(u8 bank) noexcept;
+    AsmReg alloc_specific(AsmReg reg) noexcept;
 
-    [[nodiscard]] AsmReg alloc_from_bank_excluding(u8  bank,
-                                                   u64 exclusion_mask) noexcept;
+    AsmReg alloc_gp() noexcept { return alloc(Config::GP_BANK); }
+
+    /// Allocate register in the specified bank, optionally excluding certain
+    /// non-fixed registers. Spilling can be disabled for spill code to avoid
+    /// recursion; if spilling is disabled, the allocation can fail.
+    AsmReg alloc(u8 bank,
+                 u64 exclusion_mask = 0,
+                 bool spill_if_needed = true) noexcept;
 
     void reset() noexcept;
 };
@@ -78,35 +82,24 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::ScratchReg::alloc_gp() noexcept {
-    return alloc_from_bank_excluding(Config::GP_BANK, 0);
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::ScratchReg::alloc_from_bank(
-        const u8 bank) noexcept {
-    return alloc_from_bank_excluding(bank, 0);
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::ScratchReg::
-        alloc_from_bank_excluding(u8 bank, u64 exclusion_mask) noexcept {
+    CompilerBase<Adaptor, Derived, Config>::ScratchReg::alloc(
+        u8 bank, u64 exclusion_mask, bool spill_if_needed) noexcept {
     auto &reg_file = compiler->register_file;
     if (!cur_reg.invalid()) {
         if (bank == reg_file.reg_bank(cur_reg)
             && (exclusion_mask & (1ull << cur_reg.id())) == 0) {
             return cur_reg;
         }
-        reg_file.unmark_fixed(cur_reg);
-        reg_file.unmark_used(cur_reg);
-        cur_reg = AsmReg::make_invalid();
+        reset();
     }
 
     // TODO(ts): try to first find a non callee-saved/clobbered register...
     auto reg = reg_file.find_first_free_excluding(bank, exclusion_mask);
     if (reg.invalid()) {
+        if (!spill_if_needed) {
+            return AsmReg::make_invalid();
+        }
+
         // TODO(ts): use clock here?
         reg = reg_file.find_first_nonfixed_excluding(bank, exclusion_mask);
         if (reg.invalid()) {

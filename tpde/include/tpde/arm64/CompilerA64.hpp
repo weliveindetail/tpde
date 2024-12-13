@@ -666,7 +666,7 @@ void CallingConv::handle_func_args(
         }
 
         const auto reg =
-            stack_off_scratch.alloc_from_bank_excluding(0, arg_regs_mask());
+            stack_off_scratch.alloc(Config::GP_BANK, arg_regs_mask());
         compiler->func_arg_stack_add_off = compiler->assembler.text_cur_off();
         compiler->func_arg_stack_add_reg = reg;
         ASMC(compiler, ADDxi, reg, DA_SP, 0);
@@ -692,7 +692,7 @@ void CallingConv::handle_func_args(
             auto       arg_ref = compiler->result_ref_lazy(arg, 0);
             // TODO: multiple arguments?
             const auto res_reg =
-                ptr_scratch.alloc_from_bank_excluding(0, arg_regs_mask());
+                ptr_scratch.alloc(Config::GP_BANK, arg_regs_mask());
             ASMC(compiler, ADDxi, res_reg, stack_reg, frame_off);
             compiler->set_value(arg_ref, ptr_scratch);
 
@@ -745,7 +745,7 @@ void CallingConv::handle_func_args(
 
                     AsmReg dst = ap.fixed_assignment()
                                      ? AsmReg{ap.full_reg_id()}
-                                     : scratch.alloc_from_bank(bank);
+                                     : scratch.alloc(bank);
                     if (size <= 1) {
                         ASMC(compiler, LDRBu, dst, stack_reg, frame_off);
                     } else if (size <= 2) {
@@ -774,7 +774,7 @@ void CallingConv::handle_func_args(
 
                     AsmReg dst = ap.fixed_assignment()
                                      ? AsmReg{ap.full_reg_id()}
-                                     : scratch.alloc_from_bank(bank);
+                                     : scratch.alloc(bank);
                     if (size <= 4) {
                         ASMC(compiler, LDRsu, dst, stack_reg, frame_off);
                     } else if (size <= 8) {
@@ -1530,17 +1530,27 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_reg(
     assert(util::align_up(frame_off, size) == frame_off);
 
     u32        off       = frame_off;
+    u32 fp_mod = 0;
     auto       addr_base = AsmReg{AsmReg::FP};
     ScratchReg scratch{derived()};
     if ((size == 1 && frame_off > 4095) || (size == 2 && frame_off > 8190)
         || (size == 4 && frame_off > 16380) || (size == 8 && frame_off > 32760)
         || (size == 16 && frame_off > 65520)) [[unlikely]] {
-        // need to calculate this explicitely
-        auto tmp = scratch.alloc_gp();
-        materialize_constant(frame_off, 0, 4, tmp);
-        ASM(ADDx_uxtw, tmp, DA_GP(29), tmp, 0);
-        off       = 0;
-        addr_base = tmp;
+        // We cannot encode the offset in the store instruction.
+        auto tmp = scratch.alloc(Config::GP_BANK, 0, /*spill_if_needed=*/false);
+        if (tmp.valid()) {
+            materialize_constant(frame_off, 0, 4, tmp);
+            ASM(ADDx_uxtw, tmp, DA_GP(29), tmp, 0);
+            off = 0;
+            addr_base = tmp;
+        } else {
+            fp_mod = off & ~u32{0xfff};
+            while (off >= 0x1000) {
+                u32 step = off > 0xff'f000 ? 0xff'f000 : off & 0xff'f000;
+                ASM(ADDxi, DA_GP(29), DA_GP(29), step);
+                off -= step;
+            }
+        }
     }
 
     this->assembler.text_ensure_space(4);
@@ -1553,16 +1563,21 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_reg(
         case 8: ASMNC(STRxu, reg, addr_base, off); break;
         default: assert(0); __builtin_unreachable();
         }
-        return;
+    } else {
+        switch (size) {
+        case 4: ASMNC(STRsu, reg, addr_base, off); break;
+        case 8: ASMNC(STRdu, reg, addr_base, off); break;
+        case 16: ASMNC(STRqu, reg, addr_base, off); break;
+        case 1: assert(0);
+        case 2: assert(0);
+        default: assert(0); __builtin_unreachable();
+        }
     }
 
-    switch (size) {
-    case 4: ASMNC(STRsu, reg, addr_base, off); break;
-    case 8: ASMNC(STRdu, reg, addr_base, off); break;
-    case 16: ASMNC(STRqu, reg, addr_base, off); break;
-    case 1: assert(0);
-    case 2: assert(0);
-    default: assert(0); __builtin_unreachable();
+    while (fp_mod) [[unlikely]] {
+        u32 step = fp_mod > 0xff'f000 ? 0xff'f000 : fp_mod & 0xff'f000;
+        ASM(SUBxi, DA_GP(29), DA_GP(29), step);
+        fp_mod -= step;
     }
 }
 
@@ -1709,7 +1724,7 @@ template <IRAdaptor Adaptor,
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     ValuePartRef &val_ref, ScratchReg &dst) noexcept {
     assert(val_ref.is_const);
-    materialize_constant(val_ref, dst.alloc_from_bank(val_ref.state.c.bank));
+    materialize_constant(val_ref, dst.alloc(val_ref.state.c.bank));
 }
 
 template <IRAdaptor Adaptor,

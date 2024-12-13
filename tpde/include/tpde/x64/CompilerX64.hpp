@@ -600,7 +600,7 @@ void CallingConv::handle_func_args(
             ScratchReg ptr_scratch{compiler};
             auto       arg_ref = compiler->result_ref_lazy(arg, 0);
             const auto res_reg =
-                ptr_scratch.alloc_from_bank_excluding(0, arg_regs_mask());
+                ptr_scratch.alloc(Config::GP_BANK, arg_regs_mask());
             ASMC(compiler,
                  LEA64rm,
                  res_reg,
@@ -664,7 +664,7 @@ void CallingConv::handle_func_args(
                         ap.set_modified(true);
                     } else {
                         ScratchReg scratch{compiler};
-                        auto       tmp_reg = scratch.alloc_from_bank(1);
+                        auto tmp_reg = scratch.alloc(Config::FP_BANK);
                         compiler->load_from_stack(tmp_reg, -frame_off, size);
                         compiler->spill_reg(tmp_reg, ap.frame_off(), size);
                     }
@@ -1545,7 +1545,7 @@ template <IRAdaptor Adaptor,
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     ValuePartRef &val_ref, ScratchReg &dst) noexcept {
     assert(val_ref.is_const);
-    materialize_constant(val_ref, dst.alloc_from_bank(val_ref.state.c.bank));
+    materialize_constant(val_ref, dst.alloc(val_ref.state.c.bank));
 }
 
 template <IRAdaptor Adaptor,
@@ -1580,7 +1580,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     assert(bank == 1);
     if (size == 4) {
         ScratchReg tmp{derived()};
-        auto       tmp_reg = tmp.alloc_from_bank(0);
+        auto tmp_reg = tmp.alloc_gp();
         ASM(MOV32ri, tmp_reg, const_u64);
         if (has_cpu_feats(CPU_AVX)) {
             ASM(VMOVD_G2Xrr, dst, tmp_reg);
@@ -1592,7 +1592,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
 
     if (size == 8) {
         ScratchReg tmp{derived()};
-        auto       tmp_reg = tmp.alloc_from_bank(0);
+        auto tmp_reg = tmp.alloc_gp();
         ASM(MOV64ri, tmp_reg, const_u64);
         if (has_cpu_feats(CPU_AVX)) {
             ASM(VMOVQ_G2Xrr, dst, tmp_reg);

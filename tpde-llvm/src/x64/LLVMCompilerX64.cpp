@@ -298,7 +298,7 @@ void LLVMCompilerX64::ext_int(
                 ASM(AND64rr, dst, src);
             } else {
                 ScratchReg tmp{this};
-                AsmReg     tmp_reg = tmp.alloc_from_bank(0);
+                AsmReg tmp_reg = tmp.alloc_gp();
                 ASM(MOV64ri, tmp_reg, (uint64_t{1} << from) - 1);
                 ASM(AND64rr, dst, tmp_reg);
             }
@@ -335,7 +335,7 @@ LLVMCompilerX64::ScratchReg LLVMCompilerX64::ext_int(AsmOperand op,
                                                      unsigned   to) noexcept {
     ScratchReg scratch{this};
     AsmReg     src = op.as_reg_try_salvage(this, scratch, 0);
-    ext_int(scratch.alloc_from_bank(0), src, sign, from, to);
+    ext_int(scratch.alloc_gp(), src, sign, from, to);
     return scratch;
 }
 
@@ -957,7 +957,7 @@ bool LLVMCompilerX64::handle_intrin(IRValueRef         inst_idx,
         const auto src_reg = this->val_as_reg(src_ref, scratch1);
         const auto dst_reg = this->val_as_reg(dst_ref, scratch2);
 
-        const auto tmp_reg = scratch3.alloc_from_bank(1);
+        const auto tmp_reg = scratch3.alloc(1);
         ASM(SSE_MOVDQUrm, tmp_reg, FE_MEM(src_reg, 0, FE_NOREG, 0));
         ASM(SSE_MOVDQUmr, FE_MEM(dst_reg, 0, FE_NOREG, 0), tmp_reg);
 

@@ -426,7 +426,7 @@ typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
     if (is_imm()) {
         const auto &data = std::get<Immediate>(state);
         ScratchReg  dst{compiler->derived()};
-        const auto  dst_reg = dst.alloc_from_bank(data.bank);
+        const auto  dst_reg = dst.alloc(data.bank);
         compiler->derived()->materialize_constant(
             data.const_bytes, data.bank, data.size, dst_reg);
         state = std::move(dst);
@@ -554,7 +554,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::try_salvage(
         return true;
     }
 
-    dst_scratch.alloc_from_bank(bank);
+    dst_scratch.alloc(bank);
     return false;
 }
 
@@ -695,7 +695,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
     }
 
     const auto alloc_backup = [this, &backup_reg, &scratch, reg, bank]() {
-        const auto bak_reg    = backup_reg.scratch.alloc_from_bank(bank);
+        const auto bak_reg    = backup_reg.scratch.alloc(bank);
         auto      &reg_file   = derived()->register_file;
         auto      &assignment = reg_file.assignments[reg.id()];
         backup_reg.local_idx  = assignment.local_idx;
@@ -719,7 +719,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
             auto &op_scratch = std::get<ScratchReg>(op);
             if (op_scratch.cur_reg == reg) {
                 scratch = std::move(op_scratch);
-                op_scratch.alloc_from_bank(bank);
+                op_scratch.alloc(bank);
                 ASMD(MOV64rr, op_scratch.cur_reg, reg);
                 return;
             }
@@ -756,7 +756,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                 if (std::holds_alternative<ScratchReg>(expr.base)) {
                     auto &op_scratch = std::get<ScratchReg>(expr.base);
                     scratch          = std::move(op_scratch);
-                    op_scratch.alloc_from_bank(bank);
+                    op_scratch.alloc(bank);
                     ASMD(MOV64rr, op_scratch.cur_reg, reg);
                 } else {
                     alloc_backup();
@@ -768,7 +768,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                 if (std::holds_alternative<ScratchReg>(expr.index)) {
                     auto &op_scratch = std::get<ScratchReg>(expr.index);
                     scratch          = std::move(op_scratch);
-                    op_scratch.alloc_from_bank(bank);
+                    op_scratch.alloc(bank);
                     ASMD(MOV64rr, op_scratch.cur_reg, reg);
                 } else {
                     alloc_backup();
