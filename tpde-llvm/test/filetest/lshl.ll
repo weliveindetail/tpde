@@ -468,8 +468,7 @@ define i128 @shl_i128_3(i128 %0) {
 ; ARM64-NEXT:    lsl x3, x0, #3
 ; ARM64-NEXT:    lsr x0, x0, #61
 ; ARM64-NEXT:    orr x1, x0, x2
-; ARM64-NEXT:    mov x4, x3
-; ARM64-NEXT:    mov x0, x4
+; ARM64-NEXT:    mov x0, x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -558,8 +557,7 @@ define i128 @shl_i128_128(i128 %0) {
 ; ARM64-NEXT:    lsr x3, x0, #0
 ; ARM64-NEXT:    lsr x0, x0, #0
 ; ARM64-NEXT:    orr x1, x0, x2
-; ARM64-NEXT:    mov x4, x3
-; ARM64-NEXT:    mov x0, x4
+; ARM64-NEXT:    mov x0, x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret

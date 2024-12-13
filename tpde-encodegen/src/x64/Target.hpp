@@ -25,6 +25,14 @@ struct EncodingTargetX64 : EncodingTarget {
         llvm::MachineInstr                 &inst,
         llvm::SmallVectorImpl<MICandidate> &candidates) override;
 
+    std::optional<std::pair<unsigned, unsigned>>
+        is_move(const llvm::MachineInstr &mi) override {
+        if (!mi.isMoveReg() || mi.hasImplicitDef()) {
+            return std::nullopt;
+        }
+        return std::make_pair(0, 1);
+    }
+
     bool reg_is_gp(const llvm::Register reg) const {
         const auto *target_reg_info = func->getSubtarget().getRegisterInfo();
 

@@ -39,8 +39,7 @@ define void @cmpxchg_mono_mono(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    mov x3, x1
 ; ARM64-NEXT:    cas x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
-; ARM64-NEXT:    mov x0, x3
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -83,8 +82,7 @@ define void @cmpxchg_acq_mono(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    mov x3, x1
 ; ARM64-NEXT:    casa x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
-; ARM64-NEXT:    mov x0, x3
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -126,8 +124,7 @@ define void @cmpxchg_acq_acq(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    mov x3, x1
 ; ARM64-NEXT:    casa x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
-; ARM64-NEXT:    mov x0, x3
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -170,8 +167,7 @@ define void @cmpxchg_rel_mono(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    mov x3, x1
 ; ARM64-NEXT:    casl x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
-; ARM64-NEXT:    mov x0, x3
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -213,8 +209,7 @@ define void @cmpxchg_rel_acq(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    mov x3, x1
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
-; ARM64-NEXT:    mov x0, x3
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -257,8 +252,7 @@ define void @cmpxchg_acqrel_mono(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    mov x3, x1
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
-; ARM64-NEXT:    mov x0, x3
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -300,8 +294,7 @@ define void @cmpxchg_acqrel_acq(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    mov x3, x1
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
-; ARM64-NEXT:    mov x0, x3
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -344,8 +337,7 @@ define void @cmpxchg_seqcst_mono(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    mov x3, x1
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
-; ARM64-NEXT:    mov x0, x3
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -387,8 +379,7 @@ define void @cmpxchg_seqcst_acq(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    mov x3, x1
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
-; ARM64-NEXT:    mov x0, x3
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -428,8 +419,7 @@ define void @cmpxchg_seqcst_seqcst(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    mov x3, x1
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
-; ARM64-NEXT:    mov x0, x3
-; ARM64-NEXT:    cset w1, eq
+; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret

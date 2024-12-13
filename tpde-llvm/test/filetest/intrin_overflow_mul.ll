@@ -684,10 +684,9 @@ define i64 @smul_i64_0(i64 %0, i64 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mul x2, x0, x1
 ; ARM64-NEXT:    smulh x0, x0, x1
-; ARM64-NEXT:    mov x1, x2
 ; ARM64-NEXT:    cmp x0, x2, asr #63
-; ARM64-NEXT:    cset w3, ne
-; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    cset w1, ne
+; ARM64-NEXT:    mov x0, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -726,10 +725,9 @@ define i1 @smul_i64_1(i64 %0, i64 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mul x2, x0, x1
 ; ARM64-NEXT:    smulh x0, x0, x1
-; ARM64-NEXT:    mov x1, x2
 ; ARM64-NEXT:    cmp x0, x2, asr #63
-; ARM64-NEXT:    cset w3, ne
-; ARM64-NEXT:    mov w0, w3
+; ARM64-NEXT:    cset w1, ne
+; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret

@@ -76,6 +76,9 @@ struct EncodingTarget {
     virtual void get_inst_candidates(llvm::MachineInstr &,
                                      llvm::SmallVectorImpl<MICandidate> &) {}
 
+    virtual std::optional<std::pair<unsigned, unsigned>>
+        is_move(const llvm::MachineInstr &mi) = 0;
+
     virtual unsigned         reg_id_from_mc_reg(llvm::MCRegister)    = 0;
     virtual std::string_view reg_name_lower(unsigned id)             = 0;
     virtual unsigned         reg_bank(unsigned id)                   = 0;

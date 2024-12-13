@@ -1271,4 +1271,24 @@ void EncodingTargetArm64::get_inst_candidates(
     }
 }
 
+std::optional<std::pair<unsigned, unsigned>>
+    EncodingTargetArm64::is_move(const llvm::MachineInstr &mi) {
+    const llvm::LLVMTargetMachine &TM = mi.getMF()->getTarget();
+    llvm::StringRef name = TM.getMCInstrInfo()->getName(mi.getOpcode());
+    if (name != "ORRXrs") {
+        return std::nullopt;
+    }
+    if (mi.getOperand(3).getImm()) {
+        return std::nullopt;
+    }
+    const auto &tri = *mi.getMF()->getRegInfo().getTargetRegisterInfo();
+    if (tri.getName(mi.getOperand(1).getReg()) != "XZR"sv) {
+        return std::nullopt;
+    }
+    if (tri.getName(mi.getOperand(2).getReg()) == "XZR"sv) {
+        return std::nullopt;
+    }
+    return std::make_pair(0, 2);
+}
+
 } // namespace tpde_encgen::arm64

@@ -268,12 +268,11 @@ bool generate_inst(std::string        &buf,
     (void)state;
 
     // check if this is a move
-    if (inst->isMoveReg()) {
-        if (!inst->hasImplicitDef()) {
-            // move without side-effects, e.g. zero-extension
-            return handle_move(
-                buf, state, *inst->uses().begin(), *inst->defs().begin());
-        }
+    if (auto move_ops = state.target->is_move(*inst)) {
+        // move without side-effects, e.g. zero-extension
+        auto &dst_op = inst->getOperand(move_ops->first);
+        auto &src_op = inst->getOperand(move_ops->second);
+        return handle_move(buf, state, src_op, dst_op);
     }
 
     if (inst->isTerminator()) {
@@ -2148,7 +2147,7 @@ bool encode_prepass(llvm::MachineFunction *func, GenerationState &state) {
                 continue;
             }
 
-            if (inst.isMoveReg() || inst.isTerminator() || inst.isPseudo()
+            if (inst.isTerminator() || inst.isPseudo()
                 || state.target->inst_should_be_skipped(inst)) {
                 continue;
             }

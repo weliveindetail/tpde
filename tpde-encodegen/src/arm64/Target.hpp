@@ -24,6 +24,9 @@ struct EncodingTargetArm64 : EncodingTarget {
         llvm::MachineInstr                 &inst,
         llvm::SmallVectorImpl<MICandidate> &candidates) override;
 
+    std::optional<std::pair<unsigned, unsigned>>
+        is_move(const llvm::MachineInstr &mi) override;
+
     bool reg_is_gp(const llvm::Register reg) const {
         const auto *target_reg_info = func->getSubtarget().getRegisterInfo();
 
@@ -85,7 +88,7 @@ struct EncodingTargetArm64 : EncodingTarget {
         if (bank == 0) {
             char size_char = size <= 4 ? 'w' : 'x';
             std::format_to(std::back_inserter(buf),
-                           "{:>{}}ASM(MOV{}, {}, {});\n",
+                           "{:>{}}ASMD(MOV{}, {}, {});\n",
                            "",
                            indent,
                            size_char,
