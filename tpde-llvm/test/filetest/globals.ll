@@ -56,6 +56,59 @@ entry:
   ret i32 %0
 }
 
+define i32 @load_basic_int_twice() {
+; X64-LABEL: load_basic_int_twice>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    lea rax, <load_basic_int_twice+0x13>
+; X64-NEXT:     R_X86_64_PC32 basic_int-0x4
+; X64-NEXT:    mov eax, dword ptr [rax]
+; X64-NEXT:    lea rcx, <load_basic_int_twice+0x1c>
+; X64-NEXT:     R_X86_64_PC32 basic_int-0x4
+; X64-NEXT:    mov ecx, dword ptr [rcx]
+; X64-NEXT:    lea eax, [rax + rcx]
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop
+;
+; ARM64-LABEL: load_basic_int_twice>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    adrp x0, 0x0 <load_basic_int>
+; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21 basic_int
+; ARM64-NEXT:    add x0, x0, #0x0
+; ARM64-NEXT:     R_AARCH64_ADD_ABS_LO12_NC basic_int
+; ARM64-NEXT:    ldr w0, [x0]
+; ARM64-NEXT:    adrp x1, 0x0 <load_basic_int>
+; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21 basic_int
+; ARM64-NEXT:    add x1, x1, #0x0
+; ARM64-NEXT:     R_AARCH64_ADD_ABS_LO12_NC basic_int
+; ARM64-NEXT:    ldr w1, [x1]
+; ARM64-NEXT:    add w1, w1, w0
+; ARM64-NEXT:    mov w0, w1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %l0 = load i32, ptr @basic_int
+  %l1 = load i32, ptr @basic_int
+  %sum = add i32 %l0, %l1
+  ret i32 %sum
+}
+
 define ptr @load_func_ptr() {
 ; X64-LABEL: load_func_ptr>:
 ; X64:         push rbp
