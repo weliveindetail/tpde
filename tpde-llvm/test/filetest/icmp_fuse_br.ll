@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde_llvm --target=x86_64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-
+; RUN: tpde_llvm --target=aarch64 %s | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
 
 define i8 @icmp_eq_i8_0_br(i8 %0) {
 ; X64-LABEL: icmp_eq_i8_0_br>:
@@ -28,6 +28,33 @@ define i8 @icmp_eq_i8_0_br(i8 %0) {
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    nop dword ptr [rax]
+;
+; ARM64-LABEL: icmp_eq_i8_0_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x0
+; ARM64-NEXT:    b.ne 0x70 <icmp_eq_i8_0_br+0x70>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp eq i8 %0, 0
     br i1 %1, label %block1, label %block2
@@ -57,6 +84,32 @@ define i8 @icmp_eq_i32_0_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_eq_i32_0_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x0
+; ARM64-NEXT:    b.ne 0x11c <icmp_eq_i32_0_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp eq i32 %0, 0
     br i1 %1, label %block1, label %block2
@@ -86,6 +139,32 @@ define i8 @icmp_ne_i32_0_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_ne_i32_0_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x0
+; ARM64-NEXT:    b.eq 0x1bc <icmp_ne_i32_0_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp ne i32 %0, 0
     br i1 %1, label %block1, label %block2
@@ -114,6 +193,32 @@ define i8 @icmp_ne_i64_0_br(i64 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+;
+; ARM64-LABEL: icmp_ne_i64_0_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp x0, #0x0
+; ARM64-NEXT:    b.eq 0x25c <icmp_ne_i64_0_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp ne i64 %0, 0
     br i1 %1, label %block1, label %block2
@@ -145,6 +250,33 @@ define i8 @icmp_eq_i8_1_br(i8 %0) {
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    nop dword ptr [rax]
+;
+; ARM64-LABEL: icmp_eq_i8_1_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    uxtb w0, w0
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    b.ne 0x300 <icmp_eq_i8_1_br+0x70>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp eq i8 %0, 1
     br i1 %1, label %block1, label %block2
@@ -174,6 +306,32 @@ define i8 @icmp_eq_i32_1_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_eq_i32_1_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    b.ne 0x3ac <icmp_eq_i32_1_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp eq i32 %0, 1
     br i1 %1, label %block1, label %block2
@@ -203,6 +361,32 @@ define i8 @icmp_ne_i32_1_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_ne_i32_1_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    b.eq 0x44c <icmp_ne_i32_1_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp ne i32 %0, 1
     br i1 %1, label %block1, label %block2
@@ -233,6 +417,32 @@ define i8 @icmp_ugt_i32_1_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_ugt_i32_1_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    b.ls 0x4ec <icmp_ugt_i32_1_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp ugt i32 %0, 1
     br i1 %1, label %block1, label %block2
@@ -262,6 +472,32 @@ define i8 @icmp_uge_i32_1_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_uge_i32_1_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    b.lo 0x58c <icmp_uge_i32_1_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp uge i32 %0, 1
     br i1 %1, label %block1, label %block2
@@ -291,6 +527,32 @@ define i8 @icmp_ult_i32_1_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_ult_i32_1_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    b.hs 0x62c <icmp_ult_i32_1_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp ult i32 %0, 1
     br i1 %1, label %block1, label %block2
@@ -320,6 +582,32 @@ define i8 @icmp_ule_i32_1_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_ule_i32_1_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    b.hi 0x6cc <icmp_ule_i32_1_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp ule i32 %0, 1
     br i1 %1, label %block1, label %block2
@@ -349,6 +637,32 @@ define i8 @icmp_sgt_i32_1_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_sgt_i32_1_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    b.le 0x76c <icmp_sgt_i32_1_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp sgt i32 %0, 1
     br i1 %1, label %block1, label %block2
@@ -378,6 +692,32 @@ define i8 @icmp_sge_i32_1_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_sge_i32_1_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    b.lt 0x80c <icmp_sge_i32_1_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp sge i32 %0, 1
     br i1 %1, label %block1, label %block2
@@ -407,6 +747,32 @@ define i8 @icmp_slt_i32_1_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_slt_i32_1_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    b.ge 0x8ac <icmp_slt_i32_1_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp slt i32 %0, 1
     br i1 %1, label %block1, label %block2
@@ -436,6 +802,32 @@ define i8 @icmp_sle_i32_1_br(i32 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop
+;
+; ARM64-LABEL: icmp_sle_i32_1_br>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x1
+; ARM64-NEXT:    b.gt 0x94c <icmp_sle_i32_1_br+0x6c>
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp sle i32 %0, 1
     br i1 %1, label %block1, label %block2
@@ -473,6 +865,37 @@ define i8 @icmp_eq_i32_0_br_no_salvage(i32 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+;
+; ARM64-LABEL: icmp_eq_i32_0_br_no_salvage>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    str x19, [sp, #0x10]
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    cmp w0, #0x0
+; ARM64-NEXT:    cset w19, eq
+; ARM64-NEXT:    tst w19, #0x1
+; ARM64-NEXT:    b.eq 0x9f8 <icmp_eq_i32_0_br_no_salvage+0x78>
+; ARM64-NEXT:    ubfx w19, w19, #0, #1
+; ARM64-NEXT:    mov w0, w19
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    ldr x19, [sp, #0x10]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    ldr x19, [sp, #0x10]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     %1 = icmp eq i32 %0, 0
     br i1 %1, label %block1, label %block2
