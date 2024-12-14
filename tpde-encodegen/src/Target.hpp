@@ -33,12 +33,13 @@ struct MICandidate {
         //     shifted left by 3 bits
         // };
         unsigned    op_idx;
-        std::string cond_str;
+        std::string func;
+        std::string args;
 
         Cond() : op_idx(0) {}
 
-        Cond(unsigned op_idx, std::string cond_str)
-            : op_idx(op_idx), cond_str(cond_str) {}
+        Cond(unsigned op_idx, std::string func, std::string args)
+            : op_idx(op_idx), func(func), args(args) {}
     };
 
     using Generator = std::function<void(llvm::raw_ostream           &os,
@@ -49,9 +50,12 @@ struct MICandidate {
 
     MICandidate(Generator generator) : conds(), generator(generator) {}
 
-    MICandidate(unsigned op_idx, std::string cond_str, Generator generator)
+    MICandidate(unsigned op_idx,
+                std::string func,
+                std::string args,
+                Generator generator)
         : conds({
-              Cond{op_idx, std::move(cond_str)}
+              Cond{op_idx, func, args}
     }),
           generator(generator) {}
 

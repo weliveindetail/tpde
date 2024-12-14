@@ -32,7 +32,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                                        LLVMCompilerBase,
                                        CompilerConfig>;
 
-    struct EncodeImm : EncCompiler::AsmOperand::Immediate {
+    struct EncodeImm : GenericValuePart::Immediate {
         explicit EncodeImm(const u32 value)
             : Immediate{.const_u64 = value, .bank = 0, .size = 4} {}
 
@@ -85,8 +85,10 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
 
     void ext_int(
         AsmReg dst, AsmReg src, bool sign, unsigned from, unsigned to) noexcept;
-    ScratchReg
-        ext_int(AsmOperand op, bool sign, unsigned from, unsigned to) noexcept;
+    ScratchReg ext_int(GenericValuePart op,
+                       bool sign,
+                       unsigned from,
+                       unsigned to) noexcept;
 
     void create_frem_calls(IRValueRef     lhs,
                            IRValueRef     rhs,
@@ -107,7 +109,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
     void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
     GenericValuePart resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
-    AsmOperand::Expr create_addr_for_alloca(u32 ref_idx) noexcept;
+    GenericValuePart create_addr_for_alloca(u32 ref_idx) noexcept;
 
     void switch_emit_cmp(ScratchReg &scratch,
                          AsmReg      cmp_reg,
@@ -137,11 +139,11 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                        llvm::Instruction *,
                        llvm::Function *) noexcept;
 
-    bool handle_overflow_intrin_128(OverflowOp  op,
-                                    AsmOperand  lhs_lo,
-                                    AsmOperand  lhs_hi,
-                                    AsmOperand  rhs_lo,
-                                    AsmOperand  rhs_hi,
+    bool handle_overflow_intrin_128(OverflowOp op,
+                                    GenericValuePart lhs_lo,
+                                    GenericValuePart lhs_hi,
+                                    GenericValuePart rhs_lo,
+                                    GenericValuePart rhs_hi,
                                     ScratchReg &res_lo,
                                     ScratchReg &res_hi,
                                     ScratchReg &res_of) noexcept;
@@ -309,12 +311,12 @@ void LLVMCompilerArm64::ext_int(
     }
 }
 
-LLVMCompilerArm64::ScratchReg LLVMCompilerArm64::ext_int(AsmOperand op,
-                                                         bool       sign,
-                                                         unsigned   from,
+LLVMCompilerArm64::ScratchReg LLVMCompilerArm64::ext_int(GenericValuePart op,
+                                                         bool sign,
+                                                         unsigned from,
                                                          unsigned to) noexcept {
     ScratchReg scratch{this};
-    AsmReg     src = op.as_reg_try_salvage(this, scratch, 0);
+    AsmReg src = gval_as_reg_reuse(op, scratch);
     ext_int(scratch.alloc_gp(), src, sign, from, to);
     return scratch;
 }
@@ -671,8 +673,8 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef         inst_idx,
     }
 
     ScratchReg scratch1{this}, scratch2{this};
-    AsmOperand lhs_op = std::move(lhs);
-    AsmOperand rhs_op = std::move(rhs);
+    GenericValuePart lhs_op = std::move(lhs);
+    GenericValuePart rhs_op = std::move(rhs);
 
     if (int_width != 32 && int_width != 64) {
         unsigned ext_bits = tpde::util::align_up(int_width, 32);
@@ -683,7 +685,7 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef         inst_idx,
         }
     }
 
-    const auto lhs_reg = lhs_op.as_reg(this);
+    const auto lhs_reg = gval_as_reg(lhs_op);
 
     if (rhs_op.is_imm()) {
         u64 imm = rhs_op.imm().const_u64;
@@ -694,17 +696,17 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef         inst_idx,
         }
         if (int_width <= 32) {
             if (!ASMIF(CMPwi, lhs_reg, imm)) {
-                const auto rhs_reg = rhs_op.as_reg(this);
+                const auto rhs_reg = gval_as_reg(rhs_op);
                 ASM(CMPw, lhs_reg, rhs_reg);
             }
         } else {
             if (!ASMIF(CMPxi, lhs_reg, imm)) {
-                const auto rhs_reg = rhs_op.as_reg(this);
+                const auto rhs_reg = gval_as_reg(rhs_op);
                 ASM(CMPx, lhs_reg, rhs_reg);
             }
         }
     } else {
-        const auto rhs_reg = rhs_op.as_reg(this);
+        const auto rhs_reg = gval_as_reg(rhs_op);
         if (int_width <= 32) {
             ASM(CMPw, lhs_reg, rhs_reg);
         } else {
@@ -787,14 +789,11 @@ LLVMCompilerArm64::GenericValuePart
     return addr;
 }
 
-tpde_encodegen::EncodeCompiler<LLVMAdaptor,
-                               LLVMCompilerArm64,
-                               LLVMCompilerBase,
-                               CompilerConfig>::AsmOperand::Expr
+LLVMCompilerArm64::GenericValuePart
     LLVMCompilerArm64::create_addr_for_alloca(u32 ref_idx) noexcept {
     const auto &info = this->variable_refs[ref_idx];
     assert(info.alloca);
-    return AsmOperand::Expr{AsmReg::R29, info.alloca_frame_off};
+    return GenericValuePart::Expr{AsmReg::R29, info.alloca_frame_off};
 }
 
 void LLVMCompilerArm64::switch_emit_cmp(ScratchReg  &scratch,
@@ -973,22 +972,22 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef         inst_idx,
 }
 
 bool LLVMCompilerArm64::handle_overflow_intrin_128(
-    OverflowOp  op,
-    AsmOperand  lhs_lo,
-    AsmOperand  lhs_hi,
-    AsmOperand  rhs_lo,
-    AsmOperand  rhs_hi,
+    OverflowOp op,
+    GenericValuePart lhs_lo,
+    GenericValuePart lhs_hi,
+    GenericValuePart rhs_lo,
+    GenericValuePart rhs_hi,
     ScratchReg &res_lo,
     ScratchReg &res_hi,
     ScratchReg &res_of) noexcept {
     switch (op) {
     case OverflowOp::uadd: {
-        AsmReg lhs_lo_reg = lhs_lo.as_reg_try_salvage(this, res_lo, 0);
-        AsmReg rhs_lo_reg = rhs_lo.as_reg_try_salvage(this, res_lo, 0);
+        AsmReg lhs_lo_reg = gval_as_reg_reuse(lhs_lo, res_lo);
+        AsmReg rhs_lo_reg = gval_as_reg_reuse(rhs_lo, res_lo);
         AsmReg res_lo_reg = res_lo.alloc_gp();
         ASM(ADDSx, res_lo_reg, lhs_lo_reg, rhs_lo_reg);
-        AsmReg lhs_hi_reg = lhs_hi.as_reg_try_salvage(this, res_hi, 0);
-        AsmReg rhs_hi_reg = rhs_hi.as_reg_try_salvage(this, res_hi, 0);
+        AsmReg lhs_hi_reg = gval_as_reg_reuse(lhs_hi, res_hi);
+        AsmReg rhs_hi_reg = gval_as_reg_reuse(rhs_hi, res_hi);
         AsmReg res_hi_reg = res_hi.alloc_gp();
         ASM(ADCSx, res_hi_reg, lhs_hi_reg, rhs_hi_reg);
         AsmReg res_of_reg = res_of.alloc_gp();
@@ -996,12 +995,12 @@ bool LLVMCompilerArm64::handle_overflow_intrin_128(
         return true;
     }
     case OverflowOp::sadd: {
-        AsmReg lhs_lo_reg = lhs_lo.as_reg_try_salvage(this, res_lo, 0);
-        AsmReg rhs_lo_reg = rhs_lo.as_reg_try_salvage(this, res_lo, 0);
+        AsmReg lhs_lo_reg = gval_as_reg_reuse(lhs_lo, res_lo);
+        AsmReg rhs_lo_reg = gval_as_reg_reuse(rhs_lo, res_lo);
         AsmReg res_lo_reg = res_lo.alloc_gp();
         ASM(ADDSx, res_lo_reg, lhs_lo_reg, rhs_lo_reg);
-        AsmReg lhs_hi_reg = lhs_hi.as_reg_try_salvage(this, res_hi, 0);
-        AsmReg rhs_hi_reg = rhs_hi.as_reg_try_salvage(this, res_hi, 0);
+        AsmReg lhs_hi_reg = gval_as_reg_reuse(lhs_hi, res_hi);
+        AsmReg rhs_hi_reg = gval_as_reg_reuse(rhs_hi, res_hi);
         AsmReg res_hi_reg = res_hi.alloc_gp();
         ASM(ADCSx, res_hi_reg, lhs_hi_reg, rhs_hi_reg);
         AsmReg res_of_reg = res_of.alloc_gp();
@@ -1010,12 +1009,12 @@ bool LLVMCompilerArm64::handle_overflow_intrin_128(
     }
 
     case OverflowOp::usub: {
-        AsmReg lhs_lo_reg = lhs_lo.as_reg_try_salvage(this, res_lo, 0);
-        AsmReg rhs_lo_reg = rhs_lo.as_reg_try_salvage(this, res_lo, 0);
+        AsmReg lhs_lo_reg = gval_as_reg_reuse(lhs_lo, res_lo);
+        AsmReg rhs_lo_reg = gval_as_reg_reuse(rhs_lo, res_lo);
         AsmReg res_lo_reg = res_lo.alloc_gp();
         ASM(SUBSx, res_lo_reg, lhs_lo_reg, rhs_lo_reg);
-        AsmReg lhs_hi_reg = lhs_hi.as_reg_try_salvage(this, res_hi, 0);
-        AsmReg rhs_hi_reg = rhs_hi.as_reg_try_salvage(this, res_hi, 0);
+        AsmReg lhs_hi_reg = gval_as_reg_reuse(lhs_hi, res_hi);
+        AsmReg rhs_hi_reg = gval_as_reg_reuse(rhs_hi, res_hi);
         AsmReg res_hi_reg = res_hi.alloc_gp();
         ASM(SBCSx, res_hi_reg, lhs_hi_reg, rhs_hi_reg);
         AsmReg res_of_reg = res_of.alloc_gp();
@@ -1023,12 +1022,12 @@ bool LLVMCompilerArm64::handle_overflow_intrin_128(
         return true;
     }
     case OverflowOp::ssub: {
-        AsmReg lhs_lo_reg = lhs_lo.as_reg_try_salvage(this, res_lo, 0);
-        AsmReg rhs_lo_reg = rhs_lo.as_reg_try_salvage(this, res_lo, 0);
+        AsmReg lhs_lo_reg = gval_as_reg_reuse(lhs_lo, res_lo);
+        AsmReg rhs_lo_reg = gval_as_reg_reuse(rhs_lo, res_lo);
         AsmReg res_lo_reg = res_lo.alloc_gp();
         ASM(SUBSx, res_lo_reg, lhs_lo_reg, rhs_lo_reg);
-        AsmReg lhs_hi_reg = lhs_hi.as_reg_try_salvage(this, res_hi, 0);
-        AsmReg rhs_hi_reg = rhs_hi.as_reg_try_salvage(this, res_hi, 0);
+        AsmReg lhs_hi_reg = gval_as_reg_reuse(lhs_hi, res_hi);
+        AsmReg rhs_hi_reg = gval_as_reg_reuse(rhs_hi, res_hi);
         AsmReg res_hi_reg = res_hi.alloc_gp();
         ASM(SBCSx, res_hi_reg, lhs_hi_reg, rhs_hi_reg);
         AsmReg res_of_reg = res_of.alloc_gp();

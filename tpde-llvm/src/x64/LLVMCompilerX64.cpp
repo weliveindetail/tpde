@@ -32,7 +32,7 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                                        LLVMCompilerBase,
                                        CompilerConfig>;
 
-    struct EncodeImm : EncCompiler::AsmOperand::Immediate {
+    struct EncodeImm : GenericValuePart::Immediate {
         explicit EncodeImm(const u32 value)
             : Immediate{.const_u64 = value, .bank = 0, .size = 4} {}
 
@@ -85,8 +85,10 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
 
     void ext_int(
         AsmReg dst, AsmReg src, bool sign, unsigned from, unsigned to) noexcept;
-    ScratchReg
-        ext_int(AsmOperand op, bool sign, unsigned from, unsigned to) noexcept;
+    ScratchReg ext_int(GenericValuePart op,
+                       bool sign,
+                       unsigned from,
+                       unsigned to) noexcept;
 
     void create_frem_calls(IRValueRef     lhs,
                            IRValueRef     rhs,
@@ -107,7 +109,7 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
     void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
     GenericValuePart resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
-    AsmOperand::Expr create_addr_for_alloca(u32 ref_idx) noexcept;
+    GenericValuePart create_addr_for_alloca(u32 ref_idx) noexcept;
 
     void switch_emit_cmp(ScratchReg &scratch,
                          AsmReg      cmp_reg,
@@ -137,11 +139,11 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                        llvm::Instruction *,
                        llvm::Function *) noexcept;
 
-    bool handle_overflow_intrin_128(OverflowOp  op,
-                                    AsmOperand  lhs_lo,
-                                    AsmOperand  lhs_hi,
-                                    AsmOperand  rhs_lo,
-                                    AsmOperand  rhs_hi,
+    bool handle_overflow_intrin_128(OverflowOp op,
+                                    GenericValuePart lhs_lo,
+                                    GenericValuePart lhs_hi,
+                                    GenericValuePart rhs_lo,
+                                    GenericValuePart rhs_hi,
                                     ScratchReg &res_lo,
                                     ScratchReg &res_hi,
                                     ScratchReg &res_of) noexcept;
@@ -328,12 +330,12 @@ void LLVMCompilerX64::ext_int(
     }
 }
 
-LLVMCompilerX64::ScratchReg LLVMCompilerX64::ext_int(AsmOperand op,
-                                                     bool       sign,
-                                                     unsigned   from,
-                                                     unsigned   to) noexcept {
+LLVMCompilerX64::ScratchReg LLVMCompilerX64::ext_int(GenericValuePart op,
+                                                     bool sign,
+                                                     unsigned from,
+                                                     unsigned to) noexcept {
     ScratchReg scratch{this};
-    AsmReg     src = op.as_reg_try_salvage(this, scratch, 0);
+    AsmReg src = gval_as_reg_reuse(op, scratch);
     ext_int(scratch.alloc_gp(), src, sign, from, to);
     return scratch;
 }
@@ -685,8 +687,8 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef         inst_idx,
         jump = swap_jump(jump);
     }
 
-    AsmOperand lhs_op = std::move(lhs);
-    AsmOperand rhs_op = std::move(rhs);
+    GenericValuePart lhs_op = std::move(lhs);
+    GenericValuePart rhs_op = std::move(rhs);
 
     if (int_width != 32 && int_width != 64) {
         unsigned ext_bits = tpde::util::align_up(int_width, 32);
@@ -694,26 +696,24 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef         inst_idx,
         if (!rhs_op.is_imm()) {
             rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
         } else if (is_signed) {
-            u64 mask  = (1ull << int_width) - 1;
-            u64 shift = 64 - int_width;
-            rhs_op.imm().const_u64 =
-                ((i64)((rhs_op.imm().const_u64 & mask) << shift)) >> shift;
+            rhs_op =
+                EncodeImm{u64(tpde::util::sext(rhs_op.imm64(), int_width))};
         }
     }
 
-    const auto lhs_reg = lhs_op.as_reg(this);
+    const auto lhs_reg = gval_as_reg(lhs_op);
     if (int_width <= 32) {
-        if (rhs_op.encodeable_as_imm32_sext()) {
-            ASM(CMP32ri, lhs_reg, rhs_op.imm().const_u64);
+        if (rhs_op.is_imm()) {
+            ASM(CMP32ri, lhs_reg, i32(rhs_op.imm64()));
         } else {
-            const auto rhs_reg = rhs_op.as_reg(this);
+            const auto rhs_reg = gval_as_reg(rhs_op);
             ASM(CMP32rr, lhs_reg, rhs_reg);
         }
     } else {
-        if (rhs_op.encodeable_as_imm32_sext()) {
-            ASM(CMP64ri, lhs_reg, rhs_op.imm().const_u64);
+        if (rhs_op.is_imm() && i32(rhs_op.imm64()) == i64(rhs_op.imm64())) {
+            ASM(CMP64ri, lhs_reg, rhs_op.imm64());
         } else {
-            const auto rhs_reg = rhs_op.as_reg(this);
+            const auto rhs_reg = gval_as_reg(rhs_op);
             ASM(CMP64rr, lhs_reg, rhs_reg);
         }
     }
@@ -792,14 +792,11 @@ LLVMCompilerX64::GenericValuePart
     return addr;
 }
 
-tpde_encodegen::EncodeCompiler<LLVMAdaptor,
-                               LLVMCompilerX64,
-                               LLVMCompilerBase,
-                               CompilerConfig>::AsmOperand::Expr
+LLVMCompilerX64::GenericValuePart
     LLVMCompilerX64::create_addr_for_alloca(u32 ref_idx) noexcept {
     const auto &info = this->variable_refs[ref_idx];
     assert(info.alloca);
-    return AsmOperand::Expr{AsmReg::BP, -(i32)info.alloca_frame_off};
+    return GenericValuePart::Expr{AsmReg::BP, -(i32)info.alloca_frame_off};
 }
 
 void LLVMCompilerX64::switch_emit_cmp(ScratchReg  &scratch,
@@ -968,18 +965,18 @@ bool LLVMCompilerX64::handle_intrin(IRValueRef         inst_idx,
     }
 }
 
-bool LLVMCompilerX64::handle_overflow_intrin_128(OverflowOp  op,
-                                                 AsmOperand  lhs_lo,
-                                                 AsmOperand  lhs_hi,
-                                                 AsmOperand  rhs_lo,
-                                                 AsmOperand  rhs_hi,
+bool LLVMCompilerX64::handle_overflow_intrin_128(OverflowOp op,
+                                                 GenericValuePart lhs_lo,
+                                                 GenericValuePart lhs_hi,
+                                                 GenericValuePart rhs_lo,
+                                                 GenericValuePart rhs_hi,
                                                  ScratchReg &res_lo,
                                                  ScratchReg &res_hi,
                                                  ScratchReg &res_of) noexcept {
-    using EncodeFnTy     = bool (LLVMCompilerX64::*)(AsmOperand,
-                                                 AsmOperand,
-                                                 AsmOperand,
-                                                 AsmOperand,
+    using EncodeFnTy = bool (LLVMCompilerX64::*)(GenericValuePart,
+                                                 GenericValuePart,
+                                                 GenericValuePart,
+                                                 GenericValuePart,
                                                  ScratchReg &,
                                                  ScratchReg &,
                                                  ScratchReg &);

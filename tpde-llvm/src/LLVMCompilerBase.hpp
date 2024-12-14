@@ -1083,8 +1083,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ret(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     const IRValueRef load_idx, llvm::Instruction *inst) noexcept {
-    using AsmOperand = typename Derived::AsmOperand;
-
     auto *load = llvm::cast<llvm::LoadInst>(inst);
 
 
@@ -1092,7 +1090,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     // TODO(ts): if the ref-count is <= 1, then skip emitting the load as LLVM
     // does that, too. at least on ARM
 
-    const auto calc_ptr_op = [this, load]() -> AsmOperand {
+    const auto calc_ptr_op = [this, load]() -> GenericValuePart {
         auto ptr_ref =
             this->val_ref(llvm_val_idx(load->getPointerOperand()), 0);
         if (!ptr_ref.is_const && ptr_ref.assignment().variable_ref()) {
@@ -1106,7 +1104,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     };
 
     if (load->isAtomic()) {
-        using AsmOperand = typename Derived::AsmOperand;
         u32 width        = 64;
         if (load->getType()->isIntegerTy()) {
             width = load->getType()->getIntegerBitWidth();
@@ -1135,7 +1132,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
         }
 
         const auto order     = load->getOrdering();
-        using EncodeFnTy     = bool (Derived::*)(AsmOperand, ScratchReg &);
+        using EncodeFnTy = bool (Derived::*)(GenericValuePart, ScratchReg &);
         EncodeFnTy encode_fn = nullptr;
         if (order == llvm::AtomicOrdering::Monotonic) {
             switch (width) {
@@ -1280,7 +1277,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
         unsigned off = 0;
         for (unsigned i = 0; i < part_count; i++) {
             auto part_ref = this->result_ref_lazy(load_idx, i);
-            auto part_addr = typename Derived::AsmOperand::Expr{
+            auto part_addr = typename GenericValuePart::Expr{
                 ptr_reg, static_cast<tpde::i32>(off)};
             auto part_ty = part_descs[i].part.type;
             switch (part_ty) {
@@ -1335,14 +1332,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     const IRValueRef, llvm::Instruction *inst) noexcept {
-    using AsmOperand = typename Derived::AsmOperand;
     auto *store = llvm::cast<llvm::StoreInst>(inst);
     if (store->isAtomic()) {
         // TODO: atomic stores
         return false;
     }
 
-    const auto calc_ptr_op = [this, store]() -> AsmOperand {
+    const auto calc_ptr_op = [this, store]() -> GenericValuePart {
         auto ptr_ref =
             this->val_ref(llvm_val_idx(store->getPointerOperand()), 0);
         if (!ptr_ref.is_const && ptr_ref.assignment().variable_ref()) {
@@ -1465,7 +1461,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
         unsigned off = 0;
         for (unsigned i = 0; i < part_count; i++) {
             auto part_ref = this->val_ref(op_idx, i);
-            auto part_addr = typename Derived::AsmOperand::Expr{
+            auto part_addr = typename GenericValuePart::Expr{
                 ptr_reg, static_cast<tpde::i32>(off)};
             auto part_ty = part_descs[i].part.type;
             switch (part_ty) {
@@ -1516,10 +1512,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
-    IRValueRef         inst_idx,
+    IRValueRef inst_idx,
     llvm::Instruction *inst,
-    const IntBinaryOp  op) noexcept {
-    using AsmOperand = typename Derived::AsmOperand;
+    const IntBinaryOp op) noexcept {
     using EncodeImm  = typename Derived::EncodeImm;
 
     auto *inst_ty = inst->getType();
@@ -1560,10 +1555,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         ScratchReg scratch_low{derived()}, scratch_high{derived()};
 
 
-        std::array<bool (Derived::*)(AsmOperand,
-                                     AsmOperand,
-                                     AsmOperand,
-                                     AsmOperand,
+        std::array<bool (Derived::*)(GenericValuePart,
+                                     GenericValuePart,
+                                     GenericValuePart,
+                                     GenericValuePart,
                                      ScratchReg &,
                                      ScratchReg &),
                    10>
@@ -1691,25 +1686,24 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     assert(int_width <= 64);
 
     // encode functions for 32/64 bit operations
-    std::array<
-        std::array<bool (Derived::*)(AsmOperand, AsmOperand, ScratchReg &), 2>,
-        13>
-        encode_ptrs = {
-            {
-             {&Derived::encode_addi32, &Derived::encode_addi64},
-             {&Derived::encode_subi32, &Derived::encode_subi64},
-             {&Derived::encode_muli32, &Derived::encode_muli64},
-             {&Derived::encode_udivi32, &Derived::encode_udivi64},
-             {&Derived::encode_sdivi32, &Derived::encode_sdivi64},
-             {&Derived::encode_uremi32, &Derived::encode_uremi64},
-             {&Derived::encode_sremi32, &Derived::encode_sremi64},
-             {&Derived::encode_landi32, &Derived::encode_landi64},
-             {&Derived::encode_lori32, &Derived::encode_lori64},
-             {&Derived::encode_lxori32, &Derived::encode_lxori64},
-             {&Derived::encode_shli32, &Derived::encode_shli64},
-             {&Derived::encode_shri32, &Derived::encode_shri64},
-             {&Derived::encode_ashri32, &Derived::encode_ashri64},
-             }
+    using EncodeFnTy =
+        bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
+    std::array<std::array<EncodeFnTy, 2>, 13> encode_ptrs{
+        {
+         {&Derived::encode_addi32, &Derived::encode_addi64},
+         {&Derived::encode_subi32, &Derived::encode_subi64},
+         {&Derived::encode_muli32, &Derived::encode_muli64},
+         {&Derived::encode_udivi32, &Derived::encode_udivi64},
+         {&Derived::encode_sdivi32, &Derived::encode_sdivi64},
+         {&Derived::encode_uremi32, &Derived::encode_uremi64},
+         {&Derived::encode_sremi32, &Derived::encode_sremi64},
+         {&Derived::encode_landi32, &Derived::encode_landi64},
+         {&Derived::encode_lori32, &Derived::encode_lori64},
+         {&Derived::encode_lxori32, &Derived::encode_lxori64},
+         {&Derived::encode_shli32, &Derived::encode_shli64},
+         {&Derived::encode_shri32, &Derived::encode_shri64},
+         {&Derived::encode_ashri32, &Derived::encode_ashri64},
+         }
     };
 
     auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
@@ -1727,8 +1721,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     // TODO(ts): optimize div/rem by constant to a shift?
     const auto lhs_const = lhs.is_const;
     const auto rhs_const = rhs.is_const;
-    auto       lhs_op    = AsmOperand{std::move(lhs)};
-    auto       rhs_op    = AsmOperand{std::move(rhs)};
+    GenericValuePart lhs_op = std::move(lhs);
+    GenericValuePart rhs_op = std::move(rhs);
 
     unsigned ext_width = tpde::util::align_up(int_width, 32);
     if (ext_width != int_width
@@ -1781,8 +1775,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
     IRValueRef inst_idx, llvm::Instruction *inst, FloatBinaryOp op) noexcept {
-    using AsmOperand = typename Derived::AsmOperand;
-
     auto *inst_ty = inst->getType();
 
     if (inst_ty->isVectorTy()) {
@@ -1805,16 +1797,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
         return true;
     }
 
-    std::array<
-        std::array<bool (Derived::*)(AsmOperand, AsmOperand, ScratchReg &), 2>,
-        4>
-        encode_ptrs = {
-            {
-             {&Derived::encode_addf32, &Derived::encode_addf64},
-             {&Derived::encode_subf32, &Derived::encode_subf64},
-             {&Derived::encode_mulf32, &Derived::encode_mulf64},
-             {&Derived::encode_divf32, &Derived::encode_divf64},
-             }
+    using EncodeFnTy =
+        bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
+    std::array<std::array<EncodeFnTy, 2>, 4> encode_ptrs = {
+        {
+         {&Derived::encode_addf32, &Derived::encode_addf64},
+         {&Derived::encode_subf32, &Derived::encode_subf64},
+         {&Derived::encode_mulf32, &Derived::encode_mulf64},
+         {&Derived::encode_divf32, &Derived::encode_divf64},
+         }
     };
 
     auto       lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
@@ -1946,8 +1937,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
     IRValueRef inst_idx, llvm::Instruction *inst, const bool sign) noexcept {
-    using AsmOperand = typename Derived::AsmOperand;
-
     auto *src_val   = inst->getOperand(0);
     auto *dst_ty = inst->getType();
     auto  bit_width = src_val->getType()->getIntegerBitWidth();
@@ -1958,7 +1947,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
 
     const auto dst_double = dst_ty->isDoubleTy();
 
-    AsmOperand src_op      = this->val_ref(llvm_val_idx(src_val), 0);
+    GenericValuePart src_op = this->val_ref(llvm_val_idx(src_val), 0);
     auto       res_ref     = this->result_ref_lazy(inst_idx, 0);
     auto       res_scratch = ScratchReg{derived()};
 
@@ -2247,17 +2236,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_value(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
-    using AsmOperand = typename Derived::AsmOperand;
-
     auto *cmpxchg = llvm::cast<llvm::AtomicCmpXchgInst>(inst);
 
     const auto succ_order = cmpxchg->getSuccessOrdering();
     const auto fail_order = cmpxchg->getFailureOrdering();
 
     // ptr, cmp, new_val, old_val, success
-    bool (Derived::*encode_ptr)(
-        AsmOperand, AsmOperand, AsmOperand, ScratchReg &, ScratchReg &) =
-        nullptr;
+    bool (Derived::*encode_ptr)(GenericValuePart,
+                                GenericValuePart,
+                                GenericValuePart,
+                                ScratchReg &,
+                                ScratchReg &) = nullptr;
 
     if (succ_order == llvm::AtomicOrdering::Monotonic) {
         assert(fail_order == llvm::AtomicOrdering::Monotonic);
@@ -2634,8 +2623,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
-    using AsmOperand = typename Derived::AsmOperand;
-
     auto *cmp    = llvm::cast<llvm::FCmpInst>(inst);
     auto      *cmp_ty    = cmp->getOperand(0)->getType();
     const auto pred      = cmp->getPredicate();
@@ -2734,7 +2721,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
 
     const auto is_double = cmp_ty->isDoubleTy();
 
-    using EncodeFnTy = bool (Derived::*)(AsmOperand, AsmOperand, ScratchReg &);
+    using EncodeFnTy =
+        bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
     using Pred       = llvm::CmpInst::Predicate;
 
 // disable Wpedantic here since these are compiler extensions
@@ -2777,8 +2765,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
     };
 #pragma GCC diagnostic pop
 
-    AsmOperand lhs_op = this->val_ref(llvm_val_idx(cmp->getOperand(0)), 0);
-    AsmOperand rhs_op = this->val_ref(llvm_val_idx(cmp->getOperand(1)), 0);
+    GenericValuePart lhs_op =
+        this->val_ref(llvm_val_idx(cmp->getOperand(0)), 0);
+    GenericValuePart rhs_op =
+        this->val_ref(llvm_val_idx(cmp->getOperand(1)), 0);
     ScratchReg res_scratch{derived()};
     auto       res_ref = this->result_ref_lazy(inst_idx, 0);
 
@@ -3213,10 +3203,9 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
-    IRValueRef         inst_idx,
+    IRValueRef inst_idx,
     llvm::Instruction *inst,
-    llvm::Function    *intrin) noexcept {
-    using AsmOperand     = typename Derived::AsmOperand;
+    llvm::Function *intrin) noexcept {
     const auto intrin_id = intrin->getIntrinsicID();
 
     switch (intrin_id) {
@@ -3397,7 +3386,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
             return false;
         }
 
-        auto op = AsmOperand{this->val_ref(llvm_val_idx(val), 0)};
+        GenericValuePart op = this->val_ref(llvm_val_idx(val), 0);
         if (width != 32 && width != 64) {
             unsigned dst_width = tpde::util::align_up(width, 32);
             op = derived()->ext_int(std::move(op), true, width, dst_width);
@@ -3415,8 +3404,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     }
     case llvm::Intrinsic::ptrmask: {
         // ptrmask is just an integer and.
-        AsmOperand lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
-        AsmOperand rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+        GenericValuePart lhs =
+            this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        GenericValuePart rhs =
+            this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
         auto       res = this->result_ref_lazy(inst_idx, 0);
         auto       res_scratch = ScratchReg{derived()};
         derived()->encode_landi64(std::move(lhs), std::move(rhs), res_scratch);
@@ -3445,7 +3436,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
             return false;
         }
 
-        using EncodeFnTy = bool (Derived::*)(AsmOperand, ScratchReg &);
+        using EncodeFnTy = bool (Derived::*)(GenericValuePart, ScratchReg &);
         static constexpr std::array<EncodeFnTy, 4> encode_fns = {
             &Derived::encode_bswapi16,
             &Derived::encode_bswapi32,
@@ -3697,9 +3688,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
     if (test & cond) {                                                         \
         if (is_double) {                                                       \
             /* note that the std::move(res_scratch) here creates a new         \
-             * ScratchReg that manages the register inside the AsmOperand and  \
-             * res_scratch becomes invalid by the time the encode function is  \
-             * entered */                                                      \
+             * ScratchReg that manages the register inside the                 \
+             * GenericValuePart and res_scratch becomes invalid by the time    \
+             * the encode function is entered */                               \
             derived()->encode_is_fpclass_##name##_double(                      \
                 std::move(res_scratch), op_ref, res_scratch);                  \
         } else {                                                               \
@@ -3726,8 +3717,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
     IRValueRef inst_idx, llvm::Instruction *inst, OverflowOp op) noexcept {
-    using AsmOperand = typename Derived::AsmOperand;
-
     auto *llvm_lhs = inst->getOperand(0);
     auto *llvm_rhs = inst->getOperand(1);
 
@@ -3740,8 +3729,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
         auto rhs_ref = this->val_ref(llvm_val_idx(llvm_rhs), 0);
         lhs_ref.inc_ref_count();
         rhs_ref.inc_ref_count();
-        AsmOperand lhs_op_high = this->val_ref(llvm_val_idx(llvm_lhs), 1);
-        AsmOperand rhs_op_high = this->val_ref(llvm_val_idx(llvm_rhs), 1);
+        GenericValuePart lhs_op_high = this->val_ref(llvm_val_idx(llvm_lhs), 1);
+        GenericValuePart rhs_op_high = this->val_ref(llvm_val_idx(llvm_rhs), 1);
         ScratchReg res_val{derived()}, res_val_high{derived()},
             res_of{derived()};
 
@@ -3780,8 +3769,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
         return false;
     }
 
-    using EncodeFnTy =
-        bool (Derived::*)(AsmOperand, AsmOperand, ScratchReg &, ScratchReg &);
+    using EncodeFnTy = bool (Derived::*)(
+        GenericValuePart, GenericValuePart, ScratchReg &, ScratchReg &);
     std::array<std::array<EncodeFnTy, 4>, 6> encode_fns = {
         {
          {&Derived::encode_of_add_u8,
@@ -3813,8 +3802,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
 
     EncodeFnTy encode_fn = encode_fns[static_cast<u32>(op)][width_idx];
 
-    AsmOperand lhs_op = this->val_ref(llvm_val_idx(llvm_lhs), 0);
-    AsmOperand rhs_op = this->val_ref(llvm_val_idx(llvm_rhs), 0);
+    GenericValuePart lhs_op = this->val_ref(llvm_val_idx(llvm_lhs), 0);
+    GenericValuePart rhs_op = this->val_ref(llvm_val_idx(llvm_rhs), 0);
     ScratchReg res_val{derived()}, res_of{derived()};
 
     if (!(derived()->*encode_fn)(

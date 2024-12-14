@@ -523,10 +523,14 @@ bool generate_inst(std::string        &buf,
                     skip = true;
                     break;
                 }
+                const auto &op_name = state.value_map[reg_id].operand_name;
+
                 std::string opt =
-                    std::format("{}.{}",
-                                state.value_map[reg_id].operand_name,
-                                cond_entry.cond_str);
+                    std::format("{}({}{}{})",
+                                cond_entry.func,
+                                op_name,
+                                cond_entry.args.size() ? ", " : "",
+                                cond_entry.args);
                 auto        cond = std::format("cond{}", state.num_conds++);
                 std::string cond_decl = std::format("auto {} = {};", cond, opt);
 
@@ -726,11 +730,12 @@ bool generate_inst(std::string        &buf,
                     // TODO(ts): try to salvage the register if possible
                     // register should be allocated if we come into here
                     copy_src = std::format("op{}_tmp", use.getOperandNo());
-                    state.fmt_line(buf,
-                                   8,
-                                   "AsmReg op{}_tmp = {}.as_reg(this);",
-                                   use.getOperandNo(),
-                                   reg_info.operand_name);
+                    state.fmt_line(
+                        buf,
+                        8,
+                        "AsmReg op{}_tmp = derived()->gval_as_reg({});",
+                        use.getOperandNo(),
+                        reg_info.operand_name);
                 } else if (orig_reg_id != resolved_reg_id) {
                     // Copy alias into implicit (fixed) register
                     copy_src = std::format(
@@ -793,12 +798,11 @@ bool generate_inst(std::string        &buf,
                         state.fmt_line(
                             buf,
                             8,
-                            "AsmReg {} = {}.as_reg_try_salvage(this, "
-                            "scratch_{}, {});",
+                            "AsmReg {} = derived()->gval_as_reg_reuse({}, "
+                            "scratch_{});",
                             op_name,
                             reg_info.operand_name,
-                            def_reg_name,
-                            def_bank);
+                            def_reg_name);
                         handled = true;
                         break;
                     }
@@ -806,7 +810,7 @@ bool generate_inst(std::string        &buf,
                 if (!handled) {
                     state.fmt_line(buf,
                                    8,
-                                   "AsmReg {} = {}.as_reg(this);",
+                                   "AsmReg {} = derived()->gval_as_reg({});",
                                    op_name,
                                    reg_info.operand_name);
                 }
@@ -918,7 +922,7 @@ bool generate_inst(std::string        &buf,
                                    reg_info.operand_name);
                     std::format_to(
                         std::back_inserter(buf),
-                        "{:>{}}{}.try_salvage_or_materialize(this, "
+                        "{:>{}}try_salvage_or_materialize({}, "
                         "scratch_{}, {}, {});\n",
                         "",
                         8,
@@ -971,7 +975,7 @@ bool generate_inst(std::string        &buf,
                         state.target->reg_bank(def_resolved_reg_id));
                     std::format_to(std::back_inserter(buf),
                                    "{:>{}}AsmReg inst{}_op{}_tmp = "
-                                   "{}.as_reg(this);\n",
+                                   "derived()->gval_as_reg({});\n",
                                    "",
                                    8,
                                    inst_id,
@@ -1702,7 +1706,7 @@ bool handle_end_of_block(GenerationState         &state,
                 // up codegen with fixed regs
                 state.fmt_line(buf,
                                4,
-                               "{}.try_salvage_or_materialize(this, "
+                               "try_salvage_or_materialize({}, "
                                "scratch_{}, {}, {});",
                                info->operand_name,
                                state.target->reg_name_lower(reg),
@@ -1750,7 +1754,7 @@ bool handle_end_of_block(GenerationState         &state,
                         state.target->reg_name_lower(aliased_reg_id));
                     state.fmt_line(buf,
                                    4,
-                                   "AsmReg {} = {}.as_reg(this);",
+                                   "AsmReg {} = derived()->gval_as_reg({});",
                                    src_name,
                                    alias_info.operand_name);
                 } else {
@@ -2043,7 +2047,7 @@ bool handle_terminator(std::string        &buf,
 
                     state.fmt_line(ret_buf,
                                    4,
-                                   "{}.try_salvage_or_materialize(this, "
+                                   "try_salvage_or_materialize({}, "
                                    "result_{}, {}, {});",
                                    info->operand_name,
                                    idx,
@@ -2544,7 +2548,8 @@ bool create_encode_function(llvm::MachineFunction *func,
         } else {
             first = false;
         }
-        std::format_to(std::back_inserter(func_decl), "AsmOperand {}", param);
+        std::format_to(
+            std::back_inserter(func_decl), "GenericValuePart {}", param);
     }
 
     if (state.num_ret_regs == -1) {

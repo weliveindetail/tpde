@@ -38,15 +38,16 @@ void EncodingTargetX64::get_inst_candidates(
             unsigned sc = has_idx ? mi.getOperand(memop_start + 1).getImm() : 0;
             std::string_view idx  = has_idx ? "FE_AX" : "FE_NOREG";
             auto             off  = mi.getOperand(memop_start + 3).getImm();
-            auto             cond = std::format(
-                "encodeable_with(FE_MEM(FE_NOREG, {}, {}, {}))", sc, idx, off);
+            auto cond =
+                std::format("FE_MEM(FE_NOREG, {}, {}, {})", sc, idx, off);
 
             candidates.emplace_back(
-                MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext()"},
-                MICandidate::Cond{(unsigned)memop_start, cond},
+                MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext", ""},
+                MICandidate::Cond{
+                    (unsigned)memop_start, "encodeable_with", cond},
                 [has_idx, mnem, memop_start, replop_idx](
-                    llvm::raw_ostream           &os,
-                    const llvm::MachineInstr    &mi,
+                    llvm::raw_ostream &os,
+                    const llvm::MachineInstr &mi,
                     std::span<const std::string> ops) {
                     os << "    ASMD(" << mnem;
                     unsigned reg_idx = 0;
@@ -92,15 +93,15 @@ void EncodingTargetX64::get_inst_candidates(
             && mi.getOperand(memop_start + 1).getImm() == 1
             && mi.getOperand(memop_start + 3).isImm()) {
             auto off  = mi.getOperand(memop_start + 3).getImm();
-            auto cond = std::format(
-                "encodeable_with(FE_MEM(FE_AX, 0, FE_NOREG, {}))", off);
+            auto cond = std::format("FE_MEM(FE_AX, 0, FE_NOREG, {})", off);
 
             candidates.emplace_back(
-                MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext()"},
-                MICandidate::Cond{(unsigned)memop_start + 2, cond},
+                MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext", ""},
+                MICandidate::Cond{
+                    (unsigned)memop_start + 2, "encodeable_with", cond},
                 [mnem, memop_start, replop_idx](
-                    llvm::raw_ostream           &os,
-                    const llvm::MachineInstr    &mi,
+                    llvm::raw_ostream &os,
+                    const llvm::MachineInstr &mi,
                     std::span<const std::string> ops) {
                     os << "    ASMD(" << mnem;
                     unsigned reg_idx = 0;
@@ -136,9 +137,10 @@ void EncodingTargetX64::get_inst_candidates(
         }
         candidates.emplace_back(
             replop_idx,
-            "encodeable_as_imm32_sext()",
-            [mnem, replop_idx, memop_start](llvm::raw_ostream           &os,
-                                            const llvm::MachineInstr    &mi,
+            "encodeable_as_imm32_sext",
+            "",
+            [mnem, replop_idx, memop_start](llvm::raw_ostream &os,
+                                            const llvm::MachineInstr &mi,
                                             std::span<const std::string> ops) {
                 os << "    ASMD(" << mnem;
                 unsigned         reg_idx = 0;
@@ -205,12 +207,13 @@ void EncodingTargetX64::get_inst_candidates(
             });
     };
     const auto handle_memrepl = [&](std::string_view mnem,
-                                    unsigned         replop_idx) {
+                                    unsigned replop_idx) {
         candidates.emplace_back(
             replop_idx,
-            "encodeable_as_mem()",
-            [mnem, replop_idx](llvm::raw_ostream           &os,
-                               const llvm::MachineInstr    &mi,
+            "encodeable_as_mem",
+            "",
+            [mnem, replop_idx](llvm::raw_ostream &os,
+                               const llvm::MachineInstr &mi,
                                std::span<const std::string> ops) {
                 os << "    ASMD(" << mnem;
                 unsigned reg_idx = 0;
@@ -245,15 +248,16 @@ void EncodingTargetX64::get_inst_candidates(
             unsigned sc = has_idx ? mi.getOperand(memop_start + 1).getImm() : 0;
             std::string_view idx  = has_idx ? "FE_AX" : "FE_NOREG";
             auto             off  = mi.getOperand(memop_start + 3).getImm();
-            auto             cond = std::format(
-                "encodeable_with(FE_MEM(FE_NOREG, {}, {}, {}))", sc, idx, off);
+            auto cond =
+                std::format("FE_MEM(FE_NOREG, {}, {}, {})", sc, idx, off);
 
             candidates.emplace_back(
                 memop_start,
+                "encodeable_with",
                 cond,
                 [has_idx, mnem, memop_start, extra_ops](
-                    llvm::raw_ostream           &os,
-                    const llvm::MachineInstr    &mi,
+                    llvm::raw_ostream &os,
+                    const llvm::MachineInstr &mi,
                     std::span<const std::string> ops) {
                     os << "    ASMD(" << mnem;
                     unsigned reg_idx = 0;
@@ -296,15 +300,15 @@ void EncodingTargetX64::get_inst_candidates(
             && mi.getOperand(memop_start + 1).getImm() == 1
             && mi.getOperand(memop_start + 3).isImm()) {
             auto off  = mi.getOperand(memop_start + 3).getImm();
-            auto cond = std::format(
-                "encodeable_with(FE_MEM(FE_AX, 0, FE_NOREG, {}))", off);
+            auto cond = std::format("FE_MEM(FE_AX, 0, FE_NOREG, {})", off);
 
             candidates.emplace_back(
                 memop_start + 2,
+                "encodeable_with",
                 cond,
                 [mnem, memop_start, extra_ops](
-                    llvm::raw_ostream           &os,
-                    const llvm::MachineInstr    &mi,
+                    llvm::raw_ostream &os,
+                    const llvm::MachineInstr &mi,
                     std::span<const std::string> ops) {
                     os << "    ASMD(" << mnem;
                     unsigned reg_idx = 0;

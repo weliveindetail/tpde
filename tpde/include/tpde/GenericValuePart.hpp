@@ -144,14 +144,23 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
         return std::holds_alternative<Expr>(state);
     }
 
-    [[nodiscard]] Immediate &imm() noexcept {
+    [[nodiscard]] bool is_imm() const noexcept {
+        return std::holds_alternative<Immediate>(state);
+    }
+
+    [[nodiscard]] const Immediate &imm() const noexcept {
         return std::get<Immediate>(state);
+    }
+
+    [[nodiscard]] u64 imm64() const noexcept {
+        assert(is_imm() && imm().size <= 8);
+        return imm().const_u64;
     }
 
     [[nodiscard]] ValuePartRef &val_ref() noexcept {
         return std::get<ValuePartRef>(state);
     }
 
-    void reset() noexcept;
+    void reset() noexcept { state = std::monostate{}; }
 };
 } // namespace tpde

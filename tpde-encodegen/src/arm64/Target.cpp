@@ -66,15 +66,15 @@ void EncodingTargetArm64::get_inst_candidates(
 
     const auto handle_mem_imm = [&](std::string_view mnem,
                                     std::string_view mnemu,
-                                    unsigned         shift) {
-        auto cond1 = std::format("encodeable_with_mem_uoff12(this, {:#x}, {})",
-                                 mi.getOperand(2).getImm() << shift,
-                                 shift);
+                                    unsigned shift) {
+        auto cond1 =
+            std::format("{:#x}, {}", mi.getOperand(2).getImm() << shift, shift);
         candidates.emplace_back(
             1,
+            "encodeable_with_mem_uoff12",
             cond1,
-            [mnem](llvm::raw_ostream           &os,
-                   const llvm::MachineInstr    &mi,
+            [mnem](llvm::raw_ostream &os,
+                   const llvm::MachineInstr &mi,
                    std::span<const std::string> ops) {
                 os << "    ASMD(" << mnem << ", ";
                 if (mi.getOperand(0).isImm()) {
@@ -88,12 +88,12 @@ void EncodingTargetArm64::get_inst_candidates(
         (void)mnemu;
     };
     const auto handle_shift_imm = [&](std::string_view mnem) {
-        auto cond = std::format("encodeable_as_imm()");
         candidates.emplace_back(
             2,
-            cond,
-            [mnem](llvm::raw_ostream           &os,
-                   const llvm::MachineInstr    &mi,
+            "encodeable_as_imm",
+            "",
+            [mnem](llvm::raw_ostream &os,
+                   const llvm::MachineInstr &mi,
                    std::span<const std::string> ops) {
                 os << "    ASMD(" << mnem;
                 for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n;
@@ -104,12 +104,12 @@ void EncodingTargetArm64::get_inst_candidates(
             });
     };
     const auto handle_arith_imm = [&](std::string_view mnem) {
-        auto cond = std::format("encodeable_as_immarith()");
         candidates.emplace_back(
             2,
-            cond,
-            [mnem](llvm::raw_ostream           &os,
-                   const llvm::MachineInstr    &mi,
+            "encodeable_as_immarith",
+            "",
+            [mnem](llvm::raw_ostream &os,
+                   const llvm::MachineInstr &mi,
                    std::span<const std::string> ops) {
                 auto dst = format_reg(mi.getOperand(0), ops[0]);
                 auto src = format_reg(mi.getOperand(1), ops[1]);
@@ -121,9 +121,10 @@ void EncodingTargetArm64::get_inst_candidates(
         }
         candidates.emplace_back(
             1,
-            cond,
-            [mnem](llvm::raw_ostream           &os,
-                   const llvm::MachineInstr    &mi,
+            "encodeable_as_immarith",
+            "",
+            [mnem](llvm::raw_ostream &os,
+                   const llvm::MachineInstr &mi,
                    std::span<const std::string> ops) {
                 auto dst = format_reg(mi.getOperand(0), ops[0]);
                 auto src = format_reg(mi.getOperand(2), ops[2]);

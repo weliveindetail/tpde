@@ -973,9 +973,7 @@ define i128 @load_i128_alloca() {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    add x0, x29, #0xa0
-; ARM64-NEXT:    ldp x1, x2, [x0]
-; ARM64-NEXT:    mov x0, x1
-; ARM64-NEXT:    mov x1, x2
+; ARM64-NEXT:    ldp x0, x1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret

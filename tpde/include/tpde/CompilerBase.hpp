@@ -318,7 +318,14 @@ struct CompilerBase {
 
     void salvage_reg_for_values(ValuePartRef &to, ValuePartRef &from) noexcept;
 
+    /// Get generic value part into a single register, evaluating expressions
+    /// and materializing immediates as required.
     AsmReg gval_as_reg(GenericValuePart &gv) noexcept;
+
+    /// Like gval_as_reg; if the GenericValuePart owns a reusable register
+    /// (either a ScratchReg, possibly due to materialization, or a reusable
+    /// ValuePartRef), store it in dst.
+    AsmReg gval_as_reg_reuse(GenericValuePart &gv, ScratchReg &dst) noexcept;
 
     // TODO(ts): switch to a branch_spill_before naming style?
     typename RegisterFile::RegBitSet spill_before_branch() noexcept;
@@ -1176,6 +1183,24 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     }
     assert(0);
     return AsmReg::make_invalid();
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::AsmReg
+    CompilerBase<Adaptor, Derived, Config>::gval_as_reg_reuse(
+        GenericValuePart &gv, ScratchReg &dst) noexcept {
+    AsmReg reg = gval_as_reg(gv);
+    if (dst.cur_reg.invalid()) {
+        if (auto *scratch = std::get_if<ScratchReg>(&gv.state)) {
+            dst = std::move(*scratch);
+        } else if (auto *val_ref = std::get_if<ValuePartRef>(&gv.state)) {
+            if (val_ref->can_salvage()) {
+                dst.alloc_specific(val_ref->salvage());
+                assert(dst.cur_reg == reg && "salvaging unsuccessful");
+            }
+        }
+    }
+    return reg;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

@@ -53,195 +53,34 @@ struct EncodeCompiler {
     using ScratchReg   = typename CompilerA64::ScratchReg;
     using AsmReg       = typename CompilerA64::AsmReg;
     using ValuePartRef = typename CompilerA64::ValuePartRef;
+    using GenericValuePart = typename CompilerA64::GenericValuePart;
     using Assembler    = typename CompilerA64::Assembler;
     using Label        = typename Assembler::Label;
     using ValLocalIdx  = typename CompilerA64::ValLocalIdx;
     using SymRef       = typename Assembler::SymRef;
 
-    struct AsmOperand {
-        struct Expr {
-            std::variant<AsmReg, ScratchReg> base;
-            std::variant<AsmReg, ScratchReg> index;
-            i64                              scale;
-            i64                              disp;
-
-            explicit Expr()
-                : base{AsmReg::make_invalid()}, scale{0}, disp{0} {}
-
-            explicit Expr(AsmReg base, i64 disp = 0)
-                : base(base), scale(0), disp(disp) {}
-
-            explicit Expr(ScratchReg &&base, i64 disp = 0)
-                : base(std::move(base)), scale(0), disp(disp) {}
-
-            AsmReg base_reg() const noexcept {
-                if (std::holds_alternative<AsmReg>(base)) {
-                    return std::get<AsmReg>(base);
-                }
-                return std::get<ScratchReg>(base).cur_reg;
+    std::optional<u64> encodeable_as_imm(GenericValuePart &gv) const noexcept {
+        if (gv.is_imm() && gv.imm().size <= 8) {
+            return gv.imm().const_u64;
+        }
+        return std::nullopt;
+    }
+    std::optional<u64> encodeable_as_immarith(GenericValuePart &gv) const noexcept {
+        if (gv.is_imm() && gv.imm().size <= 8) {
+            u64 val = gv.imm().const_u64;
+            val     = static_cast<i64>(val) < 0 ? -val : val;
+            if ((val & 0xfff) == val || (val & 0xff'f000) == val) {
+                return gv.imm().const_u64;
             }
-
-            [[nodiscard]] bool has_base() const noexcept {
-                if (std::holds_alternative<AsmReg>(base)) {
-                    return std::get<AsmReg>(base).valid();
-                }
-                return true;
-            }
-
-            AsmReg index_reg() const noexcept {
-                assert(scale != 0 && "index_reg() called on invalid index");
-                assert((scale != 1 || has_base()) &&
-                       "Expr with unscaled index must have base");
-                if (std::holds_alternative<AsmReg>(index)) {
-                    return std::get<AsmReg>(index);
-                }
-                return std::get<ScratchReg>(index).cur_reg;
-            }
-
-            [[nodiscard]] bool has_index() const noexcept { return scale != 0; }
-        };
-
-        struct Immediate {
-            union {
-                u64                const_u64;
-                std::array<u8, 64> const_bytes;
-            };
-
-            u32 bank, size;
-        };
-
-        // TODO(ts): evaluate the use of std::variant
-        // TODO(ts): I don't like the ValuePartRefs but we also don't want to
-        // force all the operands into registers at the start of the encoding...
-        std::variant<std::monostate,
-                     ValuePartRef,
-                     ValuePartRef *,
-                     ScratchReg,
-                     Expr,
-                     Immediate>
-            state;
-
-        AsmOperand() = default;
-
-        AsmOperand(AsmOperand &) = delete;
-
-        AsmOperand(AsmOperand &&other) noexcept {
-            state       = std::move(other.state);
-            other.state = std::monostate{};
         }
+        return std::nullopt;
+    }
+    std::optional<std::pair<AsmReg, u64>> encodeable_with_mem_uoff12(GenericValuePart &gv, u64 off, unsigned shift) noexcept;
 
-        AsmOperand &operator=(const AsmOperand &) noexcept = delete;
-
-        AsmOperand &operator=(AsmOperand &&other) noexcept {
-            if (this == &other) {
-                return *this;
-            }
-            state       = std::move(other.state);
-            other.state = std::monostate{};
-            return *this;
-        }
-
-        // ReSharper disable CppNonExplicitConvertingConstructor
-        // NOLINTBEGIN(*-explicit-constructor)
-
-        // reg can't be overwritten
-        AsmOperand(AsmReg reg) noexcept : state{Expr(reg)} {}
-
-        // no salvaging
-        AsmOperand(const ScratchReg &reg) noexcept {
-            assert(!reg.cur_reg.invalid());
-            state = Expr(reg.cur_reg);
-        }
-
-        // salvaging
-        AsmOperand(ScratchReg &&reg) noexcept {
-            assert(!reg.cur_reg.invalid());
-            state = std::move(reg);
-        }
-
-        // no salvaging
-        AsmOperand(ValuePartRef &ref) noexcept {
-            if (ref.is_const) {
-                state = Immediate{.const_bytes = ref.state.c.const_data,
-                                  .bank        = ref.state.c.bank,
-                                  .size        = ref.state.c.size};
-                return;
-            }
-            // TODO(ts): check if it is a variable_ref/frame_ptr and then
-            // turning it into an Address?
-            state = &ref;
-        }
-
-        // salvaging
-        AsmOperand(ValuePartRef &&ref) noexcept {
-            if (ref.is_const) {
-                state = Immediate{.const_bytes = ref.state.c.const_data,
-                                  .bank        = ref.state.c.bank,
-                                  .size        = ref.state.c.size};
-                return;
-            }
-            state = std::move(ref);
-        }
-
-        AsmOperand(Expr &&expr) noexcept {
-            state = std::move(expr);
-        }
-
-        AsmOperand(Immediate imm) noexcept { state = imm; }
-
-        // NOLINTEND(*-explicit-constructor)
-        // ReSharper restore CppNonExplicitConvertingConstructor
-
-        [[nodiscard]] bool is_expr() const noexcept {
-            return std::holds_alternative<Expr>(state);
-        }
-
-        [[nodiscard]] bool is_imm() const noexcept {
-            return std::holds_alternative<Immediate>(state);
-        }
-
-        [[nodiscard]] const Immediate &imm() const noexcept {
-            return std::get<Immediate>(state);
-        }
-
-        [[nodiscard]] ValuePartRef &val_ref() noexcept {
-            return std::get<ValuePartRef>(state);
-        }
-
-        std::optional<u64> encodeable_as_imm() const noexcept {
-            if (is_imm() && imm().size <= 8) {
-                return imm().const_u64;
-            }
-            return std::nullopt;
-        }
-        std::optional<u64> encodeable_as_immarith() const noexcept {
-            if (is_imm() && imm().size <= 8) {
-                u64 val = imm().const_u64;
-                val     = static_cast<i64>(val) < 0 ? -val : val;
-                if ((val & 0xfff) == val || (val & 0xff'f000) == val) {
-                    return imm().const_u64;
-                }
-            }
-            return std::nullopt;
-        }
-        std::optional<std::pair<AsmReg, u64>> encodeable_with_mem_uoff12(EncodeCompiler *compiler, u64 off, unsigned shift) noexcept;
-
-        AsmReg as_reg(EncodeCompiler *compiler) noexcept;
-        bool   try_salvage(ScratchReg &, u8 bank) noexcept;
-        AsmReg as_reg_try_salvage(EncodeCompiler *, ScratchReg &, u8 bank) noexcept;
-        void   try_salvage_or_materialize(EncodeCompiler *compiler,
-                                                 ScratchReg     &dst_scratch,
-                                                 u8              bank,
-                                                 u32             size) noexcept;
-        // compatibility
-        bool          try_salvage(AsmReg &, ScratchReg &, u8 bank) noexcept;
-        void          try_salvage_or_materialize(EncodeCompiler *compiler,
-                                                 AsmReg         &dst_reg,
-                                                 ScratchReg     &dst_scratch,
-                                                 u8              bank,
-                                                 u32             size) noexcept;
-        void          reset() noexcept;
-    };
+    void   try_salvage_or_materialize(GenericValuePart &gv,
+                                             ScratchReg     &dst_scratch,
+                                             u8              bank,
+                                             u32             size) noexcept;
 
     CompilerA64 *derived() noexcept {
         return static_cast<CompilerA64 *>(static_cast<Derived *>(this));
@@ -261,7 +100,7 @@ struct EncodeCompiler {
 
     void scratch_alloc_specific(AsmReg                              reg,
                                 ScratchReg                         &scratch,
-                                std::initializer_list<AsmOperand *> operands,
+                                std::initializer_list<GenericValuePart *> operands,
                                 FixedRegBackup &backup_reg) noexcept;
 
     void scratch_check_fixed_backup(ScratchReg     &scratch,
@@ -289,9 +128,9 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy,
           typename Config>
-std::optional<std::pair<typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg, u64>> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
-    encodeable_with_mem_uoff12(EncodeCompiler<Adaptor, Derived, BaseTy, Config> *compiler, u64 off, unsigned shift) noexcept {
-    Expr *expr = std::get_if<Expr>(&state);
+std::optional<std::pair<typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg, u64>> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
+    encodeable_with_mem_uoff12(GenericValuePart &gv, u64 off, unsigned shift) noexcept {
+    auto *expr = std::get_if<typename GenericValuePart::Expr>(&gv.state);
     if (!expr || !expr->has_base()) {
         return std::nullopt;
     }
@@ -312,7 +151,7 @@ std::optional<std::pair<typename EncodeCompiler<Adaptor, Derived, BaseTy, Config
         return std::nullopt;
     }
 
-    ScratchReg scratch{compiler->derived()};
+    ScratchReg scratch{derived()};
     AsmReg base_reg = expr->base_reg();
     AsmReg index_reg = expr->index_reg();
     if (std::holds_alternative<ScratchReg>(expr->base)) {
@@ -324,13 +163,13 @@ std::optional<std::pair<typename EncodeCompiler<Adaptor, Derived, BaseTy, Config
     }
     const auto scale_shift = __builtin_ctzl(expr->scale);
     AsmReg dst = scratch.cur_reg;
-    ASMC(compiler->derived(), ADDx_lsl, dst, base_reg, index_reg, scale_shift);
+    ASMD(ADDx_lsl, dst, base_reg, index_reg, scale_shift);
     if (expr->disp != 0) {
         expr->base = std::move(scratch);
         expr->index = AsmReg::make_invalid();
         expr->scale = 0;
     } else {
-        state = std::move(scratch);
+        gv.state = std::move(scratch);
     }
 
     return std::make_pair(dst, res_off);
@@ -341,248 +180,16 @@ template <typename Adaptor,
           template <typename, typename, typename>
           class BaseTy,
           typename Config>
-typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
-    EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::as_reg(
-        EncodeCompiler<Adaptor, Derived, BaseTy, Config> *compiler) noexcept {
-    if (std::holds_alternative<ScratchReg>(state)) {
-        return std::get<ScratchReg>(state).cur_reg;
-    }
-    if (std::holds_alternative<ValuePartRef>(state)) {
-        auto      &val_ref = std::get<ValuePartRef>(state);
-        const auto reg     = val_ref.alloc_reg();
-        val_ref.lock();
-        return reg;
-    }
-    if (std::holds_alternative<ValuePartRef *>(state)) {
-        auto      &val_ref = *std::get<ValuePartRef *>(state);
-        const auto reg     = val_ref.alloc_reg();
-        val_ref.lock();
-        return reg;
-    }
-    if (is_imm()) {
-        const auto &data = std::get<Immediate>(state);
-        ScratchReg  dst{compiler->derived()};
-        const auto  dst_reg = dst.alloc(data.bank);
-        compiler->derived()->materialize_constant(
-            data.const_bytes, data.bank, data.size, dst_reg);
-        state = std::move(dst);
-        return dst_reg;
-    }
-    Expr *expr = std::get_if<Expr>(&state);
-    if (!expr) {
-        // TODO(ts): allow mem operands with scratchreg param?
-        assert(0);
-        exit(1);
-    }
-
-    if (expr->has_base() && !expr->has_index() && expr->disp == 0) {
-        return expr->base_reg();
-    }
-
-    ScratchReg scratch{compiler->derived()};
-    if (!expr->has_base() && !expr->has_index()) {
-        AsmReg dst = scratch.alloc_gp();
-        compiler->derived()->materialize_constant(expr->disp, 0, 8, dst);
-        expr->disp = 0;
-    } else if (!expr->has_base() && expr->has_index()) {
-        AsmReg index_reg = expr->index_reg();
-        if (std::holds_alternative<ScratchReg>(expr->index)) {
-            scratch = std::move(std::get<ScratchReg>(expr->index));
-        } else {
-            (void)scratch.alloc_gp();
-        }
-        AsmReg dst = scratch.cur_reg;
-        if ((expr->scale & (expr->scale - 1)) == 0) {
-            const auto shift = __builtin_ctzl(expr->scale);
-            ASMC(compiler->derived(), LSLxi, dst, index_reg, shift);
-        } else {
-            ScratchReg scratch2{compiler->derived()};
-            AsmReg tmp2 = scratch2.alloc_gp();
-            compiler->derived()->materialize_constant(expr->scale, 0, 8, tmp2);
-            ASMC(compiler->derived(), MULx, dst, index_reg, tmp2);
-        }
-    } else if (expr->has_base() && expr->has_index()) {
-        AsmReg base_reg = expr->base_reg();
-        AsmReg index_reg = expr->index_reg();
-        if (std::holds_alternative<ScratchReg>(expr->base)) {
-            scratch = std::move(std::get<ScratchReg>(expr->base));
-        } else if (std::holds_alternative<ScratchReg>(expr->index)) {
-            scratch = std::move(std::get<ScratchReg>(expr->index));
-        } else {
-            (void)scratch.alloc_gp();
-        }
-        AsmReg dst = scratch.cur_reg;
-        if ((expr->scale & (expr->scale - 1)) == 0) {
-            const auto shift = __builtin_ctzl(expr->scale);
-            ASMC(compiler->derived(), ADDx_lsl, dst, base_reg, index_reg, shift);
-        } else {
-            ScratchReg scratch2{compiler->derived()};
-            AsmReg tmp2 = scratch2.alloc_gp();
-            compiler->derived()->materialize_constant(expr->scale, 0, 8, tmp2);
-            ASMC(compiler->derived(), MULx, tmp2, index_reg, tmp2);
-            ASMC(compiler->derived(), ADDx, dst, base_reg, tmp2);
-        }
-    } else if (expr->has_base() && !expr->has_index()) {
-        AsmReg base_reg = expr->base_reg();
-        if (std::holds_alternative<ScratchReg>(expr->base)) {
-            scratch = std::move(std::get<ScratchReg>(expr->base));
-        } else {
-            (void)scratch.alloc_gp();
-        }
-        AsmReg dst = scratch.cur_reg;
-        if (ASMIFC(compiler->derived(), ADDxi, dst, base_reg, expr->disp)) {
-            expr->disp = 0;
-        } else {
-            ASMC(compiler->derived(), MOVx, dst, base_reg);
-        }
-    } else {
-        assert(0);
-    }
-
-    AsmReg dst = scratch.cur_reg;
-    if (expr->disp != 0) {
-        if (!ASMIFC(compiler->derived(), ADDxi, dst, dst, expr->disp)) {
-            ScratchReg scratch2{compiler->derived()};
-            AsmReg tmp2 = scratch2.alloc_gp();
-            compiler->derived()->materialize_constant(expr->disp, 0, 8, tmp2);
-            ASMC(compiler->derived(), ADDx, dst, dst, tmp2);
-        }
-    }
-
-    state = std::move(scratch);
-    return dst;
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>
-bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::try_salvage(
-    ScratchReg &dst_scratch, const u8 bank) noexcept {
-    if (!dst_scratch.cur_reg.invalid()) {
-        return false;
-    }
-
-    if (std::holds_alternative<ScratchReg>(state)) {
-        assert(std::get<ScratchReg>(state).compiler->register_file.reg_bank(
-                   std::get<ScratchReg>(state).cur_reg)
-               == bank);
-        dst_scratch = std::move(std::get<ScratchReg>(state));
-        state       = std::monostate{};
-        return true;
-    } else if (std::holds_alternative<ValuePartRef>(state)) {
-        auto &ref = std::get<ValuePartRef>(state);
-        assert(ref.bank() == bank);
-        if (ref.can_salvage()) {
-            auto reg = ref.salvage();
-            dst_scratch.alloc_specific(reg);
-            return true;
-        }
-        // dst = std::get<ValuePartRef>(state).alloc_reg();
-        // return;
-    } else if (std::holds_alternative<Immediate>(state)) {
-        this->as_reg(static_cast<Derived *>(dst_scratch.compiler));
-        assert(std::holds_alternative<ScratchReg>(state));
-        assert(std::get<ScratchReg>(state).compiler->register_file.reg_bank(
-                   std::get<ScratchReg>(state).cur_reg)
-               == bank);
-
-        dst_scratch = std::move(std::get<ScratchReg>(state));
-        state       = std::monostate{};
-        return true;
-    }
-
-    (void)bank;
-    return false;
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>
-typename EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmReg
-    EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
-    as_reg_try_salvage(EncodeCompiler *compiler,
-                       ScratchReg &dst_scratch,
-                       u8 bank) noexcept {
-    if (try_salvage(dst_scratch, bank)) {
-        return dst_scratch.cur_reg;
-    }
-    return as_reg(compiler);
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>
-bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::try_salvage(
-    AsmReg &dst_reg, ScratchReg &dst_scratch, const u8 bank) noexcept {
-    const auto res = try_salvage(dst_scratch, bank);
-    dst_reg        = dst_scratch.cur_reg;
-    return res;
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>
-void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
-    try_salvage_or_materialize(EncodeCompiler *compiler,
-                               AsmReg         &dst_reg,
+void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
+    try_salvage_or_materialize(GenericValuePart &gv,
                                ScratchReg     &dst_scratch,
                                u8              bank,
                                u32             size) noexcept {
-    try_salvage_or_materialize(compiler, dst_scratch, bank, size);
-    dst_reg = dst_scratch.cur_reg;
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>
-void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
-    try_salvage_or_materialize(EncodeCompiler *compiler,
-                               ScratchReg     &dst_scratch,
-                               u8              bank,
-                               u32             size) noexcept {
-    if (!this->try_salvage(dst_scratch, bank)) {
+    AsmReg reg = derived()->gval_as_reg_reuse(gv, dst_scratch);
+    if (dst_scratch.cur_reg.invalid()) {
         dst_scratch.alloc(bank);
-        if (bank == 0) {
-            if (std::holds_alternative<Immediate>(state)) {
-                const auto &data = std::get<Immediate>(state);
-                compiler->derived()->materialize_constant(data.const_bytes,
-                                                          data.bank,
-                                                          data.size,
-                                                          dst_scratch.cur_reg);
-                return;
-            }
-
-            AsmReg val = this->as_reg(compiler);
-            if (size <= 4) {
-                ASMC(compiler->derived(), MOVw, dst_scratch.cur_reg, val);
-            } else {
-                ASMC(compiler->derived(), MOVx, dst_scratch.cur_reg, val);
-            }
-        } else {
-            AsmReg val = this->as_reg(compiler);
-            ASMC(compiler->derived(), MOV8b, dst_scratch.cur_reg, val);
-        }
+        derived()->mov(dst_scratch.cur_reg, reg, size);
     }
-}
-
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename>
-          class BaseTy,
-          typename Config>
-void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
-    reset() noexcept {
-    state = std::monostate{};
 }
 
 template <typename Adaptor,
@@ -593,7 +200,7 @@ template <typename Adaptor,
 void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
     AsmReg                              reg,
     ScratchReg                         &scratch,
-    std::initializer_list<AsmOperand *> operands,
+    std::initializer_list<GenericValuePart *> operands,
     FixedRegBackup                     &backup_reg) noexcept {
     if (!derived()->register_file.is_fixed(reg)) [[likely]] {
         scratch.alloc_specific(reg);
@@ -663,8 +270,8 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
             continue;
         }
 
-        if (std::holds_alternative<typename AsmOperand::Expr>(op)) {
-            auto &expr = std::get<typename AsmOperand::Expr>(op);
+        if (std::holds_alternative<typename GenericValuePart::Expr>(op)) {
+            auto &expr = std::get<typename GenericValuePart::Expr>(op);
             if (expr.base_reg() == reg) {
                 if (std::holds_alternative<ScratchReg>(expr.base)) {
                     auto &op_scratch = std::get<ScratchReg>(expr.base);
