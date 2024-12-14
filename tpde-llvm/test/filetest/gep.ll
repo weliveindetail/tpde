@@ -3180,6 +3180,8 @@ define dso_local ptr @gep_array(ptr noundef %0) #0 {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x110
 ; X64-NEXT:    lea rax, [rbp - 0x100]
+; X64-NEXT:    mov rcx, rax
+; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    add rsp, 0x110
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -3198,6 +3200,8 @@ define dso_local ptr @gep_array(ptr noundef %0) #0 {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    add x0, x29, #0xb0
+; ARM64-NEXT:    mov x1, x0
+; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x180
 ; ARM64-NEXT:    ret

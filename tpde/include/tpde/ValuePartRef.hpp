@@ -461,7 +461,7 @@ bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::can_salvage(
         return false;
     }
 
-    if (!assignment().register_valid()) {
+    if (!assignment().register_valid() || assignment().variable_ref()) {
         return false;
     }
 
