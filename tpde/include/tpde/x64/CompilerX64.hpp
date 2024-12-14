@@ -934,7 +934,7 @@ u32 CallingConv::handle_call_args(
                     case 16: {
                         stack_off = util::align_up(stack_off, 16);
                         ASMC(compiler,
-                             SSE_MOVUPDmr,
+                             SSE_MOVAPDmr,
                              FE_MEM(FE_SP, 0, FE_NOREG, stack_off),
                              reg);
                         stack_off += 16;
@@ -1378,7 +1378,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::spill_reg(
     case 4: ASMNC(SSE_MOVD_X2Gmr, mem, reg); break;
     case 8: ASMNC(SSE_MOVQ_X2Gmr, mem, reg); break;
     case 16:
-        ASMNC(SSE_MOVUPDmr, mem, reg);
+        ASMNC(SSE_MOVAPDmr, mem, reg);
         break;
         // TODO(ts): 32/64 with feature flag?
     case 1: assert(0);
@@ -1428,7 +1428,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
     case 4: ASMNC(SSE_MOVD_G2Xrm, dst, mem); break;
     case 8: ASMNC(SSE_MOVQ_G2Xrm, dst, mem); break;
     case 16:
-        ASMNC(SSE_MOVUPDrm, dst, mem);
+        ASMNC(SSE_MOVAPDrm, dst, mem);
         break;
         // TODO(ts): 32/64 with feature flag?
     case 1: assert(0);
@@ -1474,19 +1474,19 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::mov(
         if (size <= 16) {
             if (dst.id() > AsmReg::XMM15 || src.id() > AsmReg::XMM15) {
                 assert(has_cpu_feats(CPU_AVX512F));
-                ASM(VMOVUPD128rr, dst, src);
+                ASM(VMOVAPD128rr, dst, src);
             } else {
-                ASM(SSE_MOVUPDrr, dst, src);
+                ASM(SSE_MOVAPDrr, dst, src);
             }
         } else if (size <= 32) {
             assert(has_cpu_feats(CPU_AVX));
             assert((dst.id() <= AsmReg::XMM15 && src.id() <= AsmReg::XMM15)
                    || has_cpu_feats(CPU_AVX512F));
-            ASM(VMOVUPD256rr, dst, src);
+            ASM(VMOVAPD256rr, dst, src);
         } else {
             assert(size <= 64);
             assert(has_cpu_feats(CPU_AVX512F));
-            ASM(VMOVUPD512rr, dst, src);
+            ASM(VMOVAPD512rr, dst, src);
         }
     } else if (dst.id() <= AsmReg::R15) {
         // gp<-xmm

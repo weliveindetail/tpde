@@ -422,10 +422,10 @@ define double @i37tof64(i37 %0) {
 ; X64-NEXT:     R_X86_64_PC32 -0x4
 ; X64-NEXT:    subpd xmm0, xmmword ptr <i37tof64+0x2e>
 ; X64-NEXT:     R_X86_64_PC32 -0x4
-; X64-NEXT:    movupd xmm1, xmm0
+; X64-NEXT:    movapd xmm1, xmm0
 ; X64-NEXT:    unpckhpd {{.*#+}} xmm1 = xmm1[1],xmm0[1]
 ; X64-NEXT:    addsd xmm1, xmm0
-; X64-NEXT:    movupd xmm0, xmm1
+; X64-NEXT:    movapd xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -466,10 +466,10 @@ define double @i64tof64(i64 %0) {
 ; X64-NEXT:     R_X86_64_PC32 -0x4
 ; X64-NEXT:    subpd xmm0, xmmword ptr <i64tof64+0x21>
 ; X64-NEXT:     R_X86_64_PC32 -0x4
-; X64-NEXT:    movupd xmm1, xmm0
+; X64-NEXT:    movapd xmm1, xmm0
 ; X64-NEXT:    unpckhpd {{.*#+}} xmm1 = xmm1[1],xmm0[1]
 ; X64-NEXT:    addsd xmm1, xmm0
-; X64-NEXT:    movupd xmm0, xmm1
+; X64-NEXT:    movapd xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret

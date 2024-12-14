@@ -188,7 +188,7 @@ define float @freeze_float_no_salvage(float %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    movupd xmm1, xmm0
+; X64-NEXT:    movapd xmm1, xmm0
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret

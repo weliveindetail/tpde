@@ -446,10 +446,10 @@ define float @extract_f32_ptr_0_no_salvage(ptr %0) {
 ; X64-NEXT:    sub rsp, 0x50
 ; X64-NEXT:    movss xmm0, dword ptr [rdi]
 ; X64-NEXT:    mov rax, qword ptr [rdi + 0x8]
-; X64-NEXT:    movupd xmm1, xmm0
+; X64-NEXT:    movapd xmm1, xmm0
 ; X64-NEXT:    movss dword ptr [rdi], xmm0
 ; X64-NEXT:    mov qword ptr [rdi + 0x8], rax
-; X64-NEXT:    movupd xmm0, xmm1
+; X64-NEXT:    movapd xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret

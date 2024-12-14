@@ -666,7 +666,7 @@ define void @insert_f32_ptr_1_nosalvage(ptr %0, ptr %1) {
 ; X64-NEXT:    sub rsp, 0x60
 ; X64-NEXT:    movss xmm0, dword ptr [rdi]
 ; X64-NEXT:    mov rax, qword ptr [rdi + 0x8]
-; X64-NEXT:    movupd xmm1, xmm0
+; X64-NEXT:    movapd xmm1, xmm0
 ; X64-NEXT:    movss dword ptr [rdi], xmm0
 ; X64-NEXT:    mov qword ptr [rdi + 0x8], rax
 ; X64-NEXT:    movss dword ptr [rdi], xmm1

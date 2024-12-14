@@ -176,9 +176,9 @@ define float @select_f32_reg(i1 %0, float %1, float %2) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    test dil, 0x1
 ; X64-NEXT:    je <L0>
-; X64-NEXT:    movupd xmm1, xmm0
+; X64-NEXT:    movapd xmm1, xmm0
 ; X64-NEXT:  <L0>:
-; X64-NEXT:    movupd xmm0, xmm1
+; X64-NEXT:    movapd xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -217,9 +217,9 @@ define double @select_f64_reg(i1 %0, double %1, double %2) {
 ; X64-NEXT:    sub rsp, 0x50
 ; X64-NEXT:    test dil, 0x1
 ; X64-NEXT:    je <L0>
-; X64-NEXT:    movupd xmm1, xmm0
+; X64-NEXT:    movapd xmm1, xmm0
 ; X64-NEXT:  <L0>:
-; X64-NEXT:    movupd xmm0, xmm1
+; X64-NEXT:    movapd xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
