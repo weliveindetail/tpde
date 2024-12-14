@@ -20,14 +20,15 @@ define i32 @load_basic_int() {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    lea rcx, <load_basic_int+0x13>
+; X64-NEXT:    lea rax, <load_basic_int+0x13>
 ; X64-NEXT:     R_X86_64_PC32 basic_int-0x4
-; X64-NEXT:    mov eax, dword ptr [rcx]
+; X64-NEXT:    mov ecx, dword ptr [rax]
+; X64-NEXT:    mov eax, ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: load_basic_int>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -42,11 +43,12 @@ define i32 @load_basic_int() {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x1, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x0, 0x0 <load_basic_int>
 ; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21 basic_int
-; ARM64-NEXT:    add x1, x1, #0x0
+; ARM64-NEXT:    add x0, x0, #0x0
 ; ARM64-NEXT:     R_AARCH64_ADD_ABS_LO12_NC basic_int
-; ARM64-NEXT:    ldr w0, [x1]
+; ARM64-NEXT:    ldr w1, [x0]
+; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -62,14 +64,14 @@ define ptr @load_func_ptr() {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    mov rcx, qword ptr <load_func_ptr+0x13>
+; X64-NEXT:    mov rax, qword ptr <load_func_ptr+0x13>
 ; X64-NEXT:     R_X86_64_GOTPCREL func_ptr-0x4
-; X64-NEXT:    mov rax, qword ptr [rcx]
+; X64-NEXT:    mov rcx, qword ptr [rax]
+; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: load_func_ptr>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -84,11 +86,12 @@ define ptr @load_func_ptr() {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x1, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x0, 0x0 <load_basic_int>
 ; ARM64-NEXT:     R_AARCH64_ADR_GOT_PAGE func_ptr
-; ARM64-NEXT:    ldr x1, [x1]
+; ARM64-NEXT:    ldr x0, [x0]
 ; ARM64-NEXT:     R_AARCH64_LD64_GOT_LO12_NC func_ptr
-; ARM64-NEXT:    ldr x0, [x1]
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret

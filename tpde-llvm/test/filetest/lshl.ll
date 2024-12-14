@@ -638,8 +638,8 @@ define void @shl_i64_no_salvage_reg(i64 %0, i64 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    lsl x2, x0, x1
-; ARM64-NEXT:    lsl x0, x0, x2
+; ARM64-NEXT:    lsl x1, x0, x1
+; ARM64-NEXT:    lsl x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -719,8 +719,8 @@ define void @shl_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    lsl x2, x0, x1
-; ARM64-NEXT:    lsl x0, x0, x2
+; ARM64-NEXT:    lsl x1, x0, x1
+; ARM64-NEXT:    lsl x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret

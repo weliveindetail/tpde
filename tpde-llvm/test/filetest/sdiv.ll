@@ -1126,8 +1126,8 @@ define i32 @sdiv_i32_no_salvage(i32 %0, i32 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sdiv w2, w0, w1
-; ARM64-NEXT:    sdiv w0, w0, w2
+; ARM64-NEXT:    sdiv w1, w0, w1
+; ARM64-NEXT:    sdiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -1168,8 +1168,8 @@ define i64 @sdiv_i64_no_salvage(i64 %0, i64 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sdiv x2, x0, x1
-; ARM64-NEXT:    sdiv x0, x0, x2
+; ARM64-NEXT:    sdiv x1, x0, x1
+; ARM64-NEXT:    sdiv x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret

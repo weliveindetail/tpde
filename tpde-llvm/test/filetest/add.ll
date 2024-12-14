@@ -1242,8 +1242,8 @@ define void @add_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
-; X64-NEXT:    lea rax, [rdi + rsi]
-; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    lea rsi, [rdi + rsi]
+; X64-NEXT:    lea rdi, [rdi + rsi]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -1399,8 +1399,8 @@ define void @add_i64_no_salvage_reg(i64 %0, i64 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
-; X64-NEXT:    lea rax, [rdi + rsi]
-; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    lea rsi, [rdi + rsi]
+; X64-NEXT:    lea rdi, [rdi + rsi]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret

@@ -263,8 +263,8 @@ define float @fadd_f32_no_salvage_imm(float %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    fmov s2, #1.00000000
-; ARM64-NEXT:    fadd s1, s0, s2
+; ARM64-NEXT:    fmov s1, #1.00000000
+; ARM64-NEXT:    fadd s1, s0, s1
 ; ARM64-NEXT:    fadd s0, s0, s1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -304,8 +304,8 @@ define float @fadd_f32_no_salvage_reg(float %0, float %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    fadd s2, s0, s1
-; ARM64-NEXT:    fadd s0, s0, s2
+; ARM64-NEXT:    fadd s1, s0, s1
+; ARM64-NEXT:    fadd s0, s0, s1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -346,8 +346,8 @@ define double @fadd_f64_no_salvage_imm(double %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    fmov d2, #1.00000000
-; ARM64-NEXT:    fadd d1, d0, d2
+; ARM64-NEXT:    fmov d1, #1.00000000
+; ARM64-NEXT:    fadd d1, d0, d1
 ; ARM64-NEXT:    fadd d0, d0, d1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
@@ -385,8 +385,8 @@ define double @fadd_f64_no_salvage_reg(double %0, double %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    fadd d2, d0, d1
-; ARM64-NEXT:    fadd d0, d0, d2
+; ARM64-NEXT:    fadd d1, d0, d1
+; ARM64-NEXT:    fadd d0, d0, d1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret

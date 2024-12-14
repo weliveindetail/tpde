@@ -493,7 +493,7 @@ bool EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::try_salvage(
         return true;
     }
 
-    dst_scratch.alloc(bank);
+    (void)bank;
     return false;
 }
 
@@ -551,6 +551,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::AsmOperand::
                                u8              bank,
                                u32             size) noexcept {
     if (!this->try_salvage(dst_scratch, bank)) {
+        dst_scratch.alloc(bank);
         if (bank == 0) {
             if (std::holds_alternative<Immediate>(state)) {
                 const auto &data = std::get<Immediate>(state);

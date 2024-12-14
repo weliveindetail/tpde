@@ -938,8 +938,8 @@ define void @udiv_i32_no_salvage(i32 %0, i32 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    udiv w2, w0, w1
-; ARM64-NEXT:    udiv w0, w0, w2
+; ARM64-NEXT:    udiv w1, w0, w1
+; ARM64-NEXT:    udiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -980,8 +980,8 @@ define void @udiv_i64_no_salvage(i64 %0, i64 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    udiv x2, x0, x1
-; ARM64-NEXT:    udiv x0, x0, x2
+; ARM64-NEXT:    udiv x1, x0, x1
+; ARM64-NEXT:    udiv x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
