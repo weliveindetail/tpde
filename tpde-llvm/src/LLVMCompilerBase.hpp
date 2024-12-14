@@ -189,7 +189,11 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     bool compile_inst(IRValueRef, InstRange) noexcept;
 
     bool   compile_ret(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_load_generic(IRValueRef,
+                              llvm::LoadInst *,
+                              GenericValuePart &&) noexcept;
     bool   compile_load(IRValueRef, llvm::Instruction *) noexcept;
+    bool compile_store_generic(llvm::StoreInst *, GenericValuePart &&) noexcept;
     bool   compile_store(IRValueRef, llvm::Instruction *) noexcept;
     bool   compile_int_binary_op(IRValueRef,
                                  llvm::Instruction *,
@@ -1081,27 +1085,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ret(
 }
 
 template <typename Adaptor, typename Derived, typename Config>
-bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
-    const IRValueRef load_idx, llvm::Instruction *inst) noexcept {
-    auto *load = llvm::cast<llvm::LoadInst>(inst);
-
-
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
+    const IRValueRef load_idx,
+    llvm::LoadInst *load,
+    GenericValuePart &&ptr_op) noexcept {
     auto res = this->result_ref_lazy(load_idx, 0);
     // TODO(ts): if the ref-count is <= 1, then skip emitting the load as LLVM
     // does that, too. at least on ARM
-
-    const auto calc_ptr_op = [this, load]() -> GenericValuePart {
-        auto ptr_ref =
-            this->val_ref(llvm_val_idx(load->getPointerOperand()), 0);
-        if (!ptr_ref.is_const && ptr_ref.assignment().variable_ref()) {
-            const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
-            if (this->variable_refs[ref_idx].alloca) {
-                return derived()->create_addr_for_alloca(ref_idx);
-            }
-        }
-
-        return std::move(ptr_ref);
-    };
 
     if (load->isAtomic()) {
         u32 width        = 64;
@@ -1162,7 +1152,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
         }
 
         ScratchReg res_scratch{derived()};
-        auto       ptr_op = calc_ptr_op();
         if (!(derived()->*encode_fn)(std::move(ptr_op), res_scratch)) {
             return false;
         }
@@ -1180,7 +1169,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     case i32:
     case i64: {
         assert(load->getType()->isIntegerTy());
-        auto       ptr_op    = calc_ptr_op();
         const auto bit_width = load->getType()->getIntegerBitWidth();
         switch (bit_width) {
         case 1:
@@ -1211,12 +1199,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
         break;
     }
     case ptr: {
-        auto ptr_op = calc_ptr_op();
         derived()->encode_loadi64(std::move(ptr_op), res_scratch);
         break;
     }
     case i128: {
-        auto       ptr_op = calc_ptr_op();
         ScratchReg res_scratch_high{derived()};
         res.inc_ref_count();
         auto res_high = this->result_ref_lazy(load_idx, 1);
@@ -1229,37 +1215,18 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     }
     case v32:
     case f32: {
-        auto ptr_op = calc_ptr_op();
         derived()->encode_loadf32(std::move(ptr_op), res_scratch);
         break;
     }
     case v64:
     case f64: {
-        auto ptr_op = calc_ptr_op();
         derived()->encode_loadf64(std::move(ptr_op), res_scratch);
         break;
     }
     case v128: {
-        auto ptr_op = calc_ptr_op();
         derived()->encode_loadv128(std::move(ptr_op), res_scratch);
         break;
     }
-#if 0
-    case v256: {
-        auto ptr_op = calc_ptr_op();
-        if (!derived()->encode_loadv256(std::move(ptr_op), res_scratch)) {
-            return false;
-        }
-        break;
-    }
-    case v512: {
-        auto ptr_op = calc_ptr_op();
-        if (!derived()->encode_loadv512(std::move(ptr_op), res_scratch)) {
-            return false;
-        }
-        break;
-    }
-#endif
     case complex: {
         res.reset_without_refcount();
 
@@ -1268,11 +1235,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
             &this->adaptor->complex_part_types[ty_idx + 1];
         unsigned part_count = part_descs[-1].num_parts;
 
-        auto ptr_ref =
-            this->val_ref(llvm_val_idx(load->getPointerOperand()), 0);
-        ScratchReg ptr_scratch{derived()};
-        auto ptr_reg = this->val_as_reg(ptr_ref, ptr_scratch);
-
+        // TODO: fuse expr; not easy, because we lose the GVP
+        AsmReg ptr_reg = this->gval_as_reg(ptr_op);
 
         unsigned off = 0;
         for (unsigned i = 0; i < part_count; i++) {
@@ -1330,31 +1294,33 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
 }
 
 template <typename Adaptor, typename Derived, typename Config>
-bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
-    const IRValueRef, llvm::Instruction *inst) noexcept {
-    auto *store = llvm::cast<llvm::StoreInst>(inst);
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
+    const IRValueRef load_idx, llvm::Instruction *inst) noexcept {
+    auto *load = llvm::cast<llvm::LoadInst>(inst);
+
+    auto ptr_ref = this->val_ref(llvm_val_idx(load->getPointerOperand()), 0);
+    if (!ptr_ref.is_const && ptr_ref.assignment().variable_ref()) {
+        const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
+        if (this->variable_refs[ref_idx].alloca) {
+            GenericValuePart addr = derived()->create_addr_for_alloca(ref_idx);
+            return compile_load_generic(load_idx, load, std::move(addr));
+        }
+    }
+
+    return compile_load_generic(load_idx, load, std::move(ptr_ref));
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
+    llvm::StoreInst *store, GenericValuePart &&ptr_op) noexcept {
     if (store->isAtomic()) {
         // TODO: atomic stores
         return false;
     }
 
-    const auto calc_ptr_op = [this, store]() -> GenericValuePart {
-        auto ptr_ref =
-            this->val_ref(llvm_val_idx(store->getPointerOperand()), 0);
-        if (!ptr_ref.is_const && ptr_ref.assignment().variable_ref()) {
-            const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
-            if (this->variable_refs[ref_idx].alloca) {
-                return derived()->create_addr_for_alloca(ref_idx);
-            }
-        }
-
-        return std::move(ptr_ref);
-    };
-
     const auto *op_val = store->getValueOperand();
     const auto  op_idx = llvm_val_idx(op_val);
     auto        op_ref = this->val_ref(op_idx, 0);
-
 
     switch (this->adaptor->values[op_idx].type) {
         using enum LLVMBasicValType;
@@ -1365,7 +1331,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     case i64: {
         assert(op_val->getType()->isIntegerTy());
         const auto bit_width = op_val->getType()->getIntegerBitWidth();
-        auto       ptr_op    = calc_ptr_op();
         switch (bit_width) {
         case 1:
         case 8:
@@ -1397,12 +1362,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
         break;
     }
     case ptr: {
-        auto ptr_op = calc_ptr_op();
         derived()->encode_storei64(std::move(ptr_op), std::move(op_ref));
         break;
     }
     case i128: {
-        auto ptr_op = calc_ptr_op();
         op_ref.inc_ref_count();
         auto op_ref_high = this->val_ref(op_idx, 1);
 
@@ -1412,39 +1375,18 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     }
     case v32:
     case f32: {
-        auto ptr_op = calc_ptr_op();
         derived()->encode_storef32(std::move(ptr_op), std::move(op_ref));
         break;
     }
     case v64:
     case f64: {
-        auto ptr_op = calc_ptr_op();
         derived()->encode_storef64(std::move(ptr_op), std::move(op_ref));
         break;
     }
     case v128: {
-        auto ptr_op = calc_ptr_op();
         derived()->encode_storev128(std::move(ptr_op), std::move(op_ref));
         break;
     }
-#if 0
-    case v256: {
-        auto ptr_op = calc_ptr_op();
-        if (!derived()->encode_storev256(std::move(ptr_op),
-                                         std::move(op_ref))) {
-            return false;
-        }
-        break;
-    }
-    case v512: {
-        auto ptr_op = calc_ptr_op();
-        if (!derived()->encode_storev512(std::move(ptr_op),
-                                         std::move(op_ref))) {
-            return false;
-        }
-        break;
-    }
-#endif
     case complex: {
         op_ref.reset_without_refcount();
 
@@ -1453,10 +1395,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
             &this->adaptor->complex_part_types[ty_idx + 1];
         unsigned part_count = part_descs[-1].num_parts;
 
-        auto ptr_ref =
-            this->val_ref(llvm_val_idx(store->getPointerOperand()), 0);
-        ScratchReg ptr_scratch{derived()};
-        auto ptr_reg = this->val_as_reg(ptr_ref, ptr_scratch);
+        // TODO: fuse expr; not easy, because we lose the GVP
+        AsmReg ptr_reg = this->gval_as_reg(ptr_op);
 
         unsigned off = 0;
         for (unsigned i = 0; i < part_count; i++) {
@@ -1506,8 +1446,28 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     default: assert(0); return false;
     }
 
-
     return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
+    const IRValueRef, llvm::Instruction *inst) noexcept {
+    auto *store = llvm::cast<llvm::StoreInst>(inst);
+    if (store->isAtomic()) {
+        // TODO: atomic stores
+        return false;
+    }
+
+    auto ptr_ref = this->val_ref(llvm_val_idx(store->getPointerOperand()), 0);
+    if (!ptr_ref.is_const && ptr_ref.assignment().variable_ref()) {
+        const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
+        if (this->variable_refs[ref_idx].alloca) {
+            GenericValuePart addr = derived()->create_addr_for_alloca(ref_idx);
+            return compile_store_generic(store, std::move(addr));
+        }
+    }
+
+    return compile_store_generic(store, std::move(ptr_ref));
 }
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -2603,7 +2563,20 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
     GenericValuePart addr = derived()->resolved_gep_to_addr(resolved);
 
-    // TODO(ts): fusing
+    if (gep->hasOneUser() && remaining.from != remaining.to) {
+        auto next_inst_idx = *remaining.from;
+        auto *next_val = this->adaptor->values[next_inst_idx].val;
+        if (auto *store = llvm::dyn_cast<llvm::StoreInst>(next_val);
+            store && store->getPointerOperand() == gep) {
+            this->adaptor->val_set_fused(next_inst_idx, true);
+            return compile_store_generic(store, std::move(addr));
+        }
+        if (auto *load = llvm::dyn_cast<llvm::LoadInst>(next_val);
+            load && load->getPointerOperand() == gep) {
+            this->adaptor->val_set_fused(next_inst_idx, true);
+            return compile_load_generic(next_inst_idx, load, std::move(addr));
+        }
+    }
 
     auto res_ref = this->result_ref_lazy(final_idx, 0);
 
