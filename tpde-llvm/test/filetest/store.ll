@@ -761,6 +761,44 @@ entry:
   ret void
 }
 
+define void @store_f32_const0(ptr %a) {
+; X64-LABEL: store_f32_const0>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    movd xmm0, eax
+; X64-NEXT:    movss dword ptr [rdi], xmm0
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+;
+; ARM64-LABEL: store_f32_const0>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov x1, #0x0 // =0
+; ARM64-NEXT:    fmov s0, w1
+; ARM64-NEXT:    str s0, [x0]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+entry:
+  store float 0.0, ptr %a
+  ret void
+}
 
 define void @store_f64(ptr %a, double %b) {
 ; X64-LABEL: store_f64>:
@@ -835,6 +873,44 @@ entry:
   ret void
 }
 
+define void @store_f64_const0(ptr %a) {
+; X64-LABEL: store_f64_const0>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    mov rax, 0x0
+; X64-NEXT:    movq xmm0, rax
+; X64-NEXT:    movsd qword ptr [rdi], xmm0
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+;
+; ARM64-LABEL: store_f64_const0>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov x1, #0x0 // =0
+; ARM64-NEXT:    fmov d0, x1
+; ARM64-NEXT:    str d0, [x0]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+entry:
+  store double 0.0, ptr %a
+  ret void
+}
 
 define void @store_i24(ptr %a, i24 %b) {
 ; X64-LABEL: store_i24>:
