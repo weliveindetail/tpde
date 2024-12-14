@@ -1679,6 +1679,15 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     }
 
     assert(bank == 1);
+    if (size <= 8 && const_u64 == 0) {
+        if (has_cpu_feats(CPU_AVX)) {
+            ASM(VPXOR128rrr, dst, dst, dst);
+        } else {
+            ASM(SSE_PXORrr, dst, dst);
+        }
+        return;
+    }
+
     if (size == 4) {
         ScratchReg tmp{derived()};
         auto tmp_reg = tmp.alloc_gp();

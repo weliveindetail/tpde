@@ -1843,7 +1843,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
 
     assert(bank == 1);
     if (size == 4) {
-        if (!ASMIF(FMOVsi, dst, std::bit_cast<float>((u32)const_u64))) {
+        if (ASMIF(FMOVsi, dst, std::bit_cast<float>((u32)const_u64))) {
+        } else if (ASMIF(MOVId, dst, static_cast<u32>(const_u64))) {
+        } else {
             ScratchReg scratch{derived()};
             const auto tmp = scratch.alloc_gp();
             this->assembler.text_ensure_space(5 * 4);
@@ -1859,7 +1861,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     }
 
     if (size == 8) {
-        if (!ASMIF(FMOVdi, dst, std::bit_cast<double>(const_u64))) {
+        if (ASMIF(FMOVdi, dst, std::bit_cast<double>(const_u64))) {
+        } else if (ASMIF(MOVId, dst, const_u64)) {
+        } else {
             ScratchReg scratch{derived()};
             const auto tmp = scratch.alloc_gp();
             this->assembler.text_ensure_space(5 * 4);

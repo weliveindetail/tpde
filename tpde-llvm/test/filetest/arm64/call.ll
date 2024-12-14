@@ -46,29 +46,23 @@ define void @call_take_12_fp128() {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sub sp, sp, #0x40
-; ARM64-NEXT:    mov x0, #0x0 // =0
-; ARM64-NEXT:    fmov d0, x0
+; ARM64-NEXT:    movi v0.8b, #0x0
 ; ARM64-NEXT:    movi v1.16b, #0x0
-; ARM64-NEXT:    mov x0, #0x0 // =0
-; ARM64-NEXT:    fmov d2, x0
+; ARM64-NEXT:    movi v2.8b, #0x0
 ; ARM64-NEXT:    movi v3.16b, #0x0
-; ARM64-NEXT:    mov x0, #0x0 // =0
-; ARM64-NEXT:    fmov d4, x0
+; ARM64-NEXT:    movi v4.8b, #0x0
 ; ARM64-NEXT:    movi v5.16b, #0x0
-; ARM64-NEXT:    mov x0, #0x0 // =0
-; ARM64-NEXT:    fmov d6, x0
+; ARM64-NEXT:    movi v6.8b, #0x0
 ; ARM64-NEXT:    movi v7.16b, #0x0
-; ARM64-NEXT:    mov x0, #0x0 // =0
-; ARM64-NEXT:    fmov d8, x0
+; ARM64-NEXT:    movi v8.8b, #0x0
 ; ARM64-NEXT:    str d8, [sp]
 ; ARM64-NEXT:    movi v8.16b, #0x0
 ; ARM64-NEXT:    str q8, [sp, #0x10]
-; ARM64-NEXT:    mov x0, #0x0 // =0
-; ARM64-NEXT:    fmov d8, x0
+; ARM64-NEXT:    movi v8.8b, #0x0
 ; ARM64-NEXT:    str d8, [sp, #0x20]
 ; ARM64-NEXT:    movi v8.16b, #0x0
 ; ARM64-NEXT:    str q8, [sp, #0x30]
-; ARM64-NEXT:    bl 0xfc <call_take_12_fp128+0x8c>
+; ARM64-NEXT:    bl 0xe4 <call_take_12_fp128+0x74>
 ; ARM64-NEXT:     R_AARCH64_CALL26 take_double_fp128
 ; ARM64-NEXT:    add sp, sp, #0x40
 ; ARM64-NEXT:    ldp x29, x30, [sp]
