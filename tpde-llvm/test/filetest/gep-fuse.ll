@@ -213,6 +213,8 @@ define i32 @load_i32_gep6(ptr %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: load_i32_gep6>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -237,5 +239,226 @@ define i32 @load_i32_gep6(ptr %a) {
   %load = load i32, ptr %gep, align 4
   ret i32 %load
 }
+
+define void @store_i32_gep1(i32 %v, ptr %a) {
+; X64-LABEL: store_i32_gep1>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    lea rsi, [rsi + 0x10]
+; X64-NEXT:    mov dword ptr [rsi], edi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: store_i32_gep1>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x1, x1, #0x10
+; ARM64-NEXT:    str w0, [x1]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %gep = getelementptr i32, ptr %a, i64 4
+  store i32 %v, ptr %gep, align 4
+  ret void
+}
+
+define void @store_i32_gep2(i32 %v, ptr %a) {
+; X64-LABEL: store_i32_gep2>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    lea rsi, [rsi + 0xd]
+; X64-NEXT:    mov dword ptr [rsi], edi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: store_i32_gep2>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x1, x1, #0xd
+; ARM64-NEXT:    str w0, [x1]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %gep = getelementptr i8, ptr %a, i64 13
+  store i32 %v, ptr %gep, align 4
+  ret void
+}
+
+define void @store_i32_gep3(i32 %v, ptr %a) {
+; X64-LABEL: store_i32_gep3>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    lea rsi, [rsi - 0x4]
+; X64-NEXT:    mov dword ptr [rsi], edi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: store_i32_gep3>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    sub x1, x1, #0x4
+; ARM64-NEXT:    str w0, [x1]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %gep = getelementptr i32, ptr %a, i64 -1
+  store i32 %v, ptr %gep, align 4
+  ret void
+}
+
+define void @store_i32_gep4(i32 %v, ptr %a) {
+; X64-LABEL: store_i32_gep4>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    lea rsi, [rsi - 0x400]
+; X64-NEXT:    mov dword ptr [rsi], edi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop dword ptr [rax]
+;
+; ARM64-LABEL: store_i32_gep4>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    sub x1, x1, #0x400
+; ARM64-NEXT:    str w0, [x1]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %gep = getelementptr i32, ptr %a, i64 -256
+  store i32 %v, ptr %gep, align 4
+  ret void
+}
+
+define void @store_i32_gep5(i32 %v, ptr %a) {
+; X64-LABEL: store_i32_gep5>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    lea rsi, [rsi + 0x2000]
+; X64-NEXT:    mov dword ptr [rsi], edi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop dword ptr [rax]
+;
+; ARM64-LABEL: store_i32_gep5>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x1, x1, #0x2, lsl #12 // =0x2000
+; ARM64-NEXT:    str w0, [x1]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %gep = getelementptr i32, ptr %a, i64 2048
+  store i32 %v, ptr %gep, align 4
+  ret void
+}
+
+define void @store_i32_gep6(i32 %v, ptr %a) {
+; X64-LABEL: store_i32_gep6>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    lea rsi, [rsi + 0x40000]
+; X64-NEXT:    mov dword ptr [rsi], edi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: store_i32_gep6>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x1, x1, #0x40, lsl #12 // =0x40000
+; ARM64-NEXT:    str w0, [x1]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %gep = getelementptr i32, ptr %a, i64 65536
+  store i32 %v, ptr %gep, align 4
+  ret void
+}
+
 ;; NOTE: These prefixes are unused and the list is autogenerated. Do not add tests below this line:
 ; CHECK: {{.*}}
