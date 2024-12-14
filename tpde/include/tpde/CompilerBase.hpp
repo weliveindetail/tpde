@@ -384,7 +384,9 @@ bool CompilerBase<Adaptor, Derived, Config>::compile() {
         derived()->define_func_idx(func, func_syms.size());
         if (adaptor->func_extern(func)) {
             func_syms.push_back(derived()->assembler.sym_add_undef(
-                adaptor->func_link_name(func), false));
+                adaptor->func_link_name(func),
+                false,
+                adaptor->func_has_weak_linkage(func)));
         } else {
             func_syms.push_back(derived()->assembler.sym_predef_func(
                 adaptor->func_link_name(func),

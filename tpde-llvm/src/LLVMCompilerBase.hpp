@@ -177,9 +177,10 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
     IRValueRef llvm_val_idx(const llvm::Value *) const noexcept;
     IRValueRef llvm_val_idx(const llvm::Instruction *) const noexcept;
 
-    SymRef get_or_create_sym_ref(SymRef          &sym,
+    SymRef get_or_create_sym_ref(SymRef &sym,
                                  std::string_view name,
-                                 bool             local = false) noexcept;
+                                 bool local = false,
+                                 bool weak = false) noexcept;
     SymRef global_sym(const llvm::GlobalValue *global) const noexcept;
 
     void setup_var_ref_assignments() noexcept;
@@ -481,18 +482,19 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
         // TODO(ts): we ignore weak linkage here, should emit a weak symbol for
         // it in the data section and place an undef symbol in the symbol
         // lookup
-        if (gv->hasInitializer()) {
-            auto sym = this->assembler.sym_predef_data(
-                gv->getName(),
-                gv->hasLocalLinkage() || gv->hasPrivateLinkage(),
-                gv->hasLinkOnceODRLinkage() || gv->hasCommonLinkage());
+        bool local = gv->hasLocalLinkage();
+        bool weak = gv->isWeakForLinker();
+        if (!gv->isDeclarationForLinker()) {
+            auto sym =
+                this->assembler.sym_predef_data(gv->getName(), local, weak);
 
             const auto idx = global_syms.size();
             global_syms.push_back(sym);
             global_sym_lookup.insert_or_assign(gv, std::make_pair(false, idx));
         } else {
             // TODO(ts): should we use getValueName here?
-            auto sym = this->assembler.sym_add_undef(gv->getName(), false);
+            auto sym =
+                this->assembler.sym_add_undef(gv->getName(), local, weak);
             const auto idx = global_syms.size();
             global_syms.push_back(sym);
             global_sym_lookup.insert_or_assign(gv, std::make_pair(false, idx));
@@ -501,8 +503,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
 
     for (auto it = llvm_mod.alias_begin(); it != llvm_mod.alias_end(); ++it) {
         const llvm::GlobalAlias *ga  = &*it;
-        const auto               sym = this->assembler.sym_add_undef(
-            ga->getName(), ga->hasLocalLinkage() || ga->hasPrivateLinkage());
+        bool local = ga->hasLocalLinkage();
+        bool weak = ga->isWeakForLinker();
+        const auto sym =
+            this->assembler.sym_add_undef(ga->getName(), local, weak);
         const auto idx = global_syms.size();
         global_syms.push_back(sym);
         global_sym_lookup.insert_or_assign(ga, std::make_pair(false, idx));
@@ -516,7 +520,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
     tpde::util::SmallVector<RelocInfo, 8> relocs;
     for (auto it = llvm_mod.global_begin(); it != llvm_mod.global_end(); ++it) {
         auto *gv = &*it;
-        if (!gv->hasInitializer()) {
+        if (gv->isDeclarationForLinker()) {
             continue;
         }
 
@@ -863,12 +867,12 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef
 template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
     LLVMCompilerBase<Adaptor, Derived, Config>::get_or_create_sym_ref(
-        SymRef &sym, std::string_view name, const bool local) noexcept {
+        SymRef &sym, std::string_view name, bool local, bool weak) noexcept {
     if (sym != Assembler::INVALID_SYM_REF) [[likely]] {
         return sym;
     }
 
-    sym = this->assembler.sym_add_undef(name, local);
+    sym = this->assembler.sym_add_undef(name, local, weak);
     return sym;
 }
 
@@ -901,8 +905,8 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
             variable_refs[v].val = v;
             variable_refs[v].alloca = false;
             variable_refs[v].local =
-                !llvm::dyn_cast<llvm::GlobalValue>(this->adaptor->values[v].val)
-                     ->hasExternalLinkage();
+                llvm::cast<llvm::GlobalValue>(this->adaptor->values[v].val)
+                    ->hasLocalLinkage();
             // assignments are initialized lazily in val_ref_special.
         }
     }
@@ -959,11 +963,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile() {
         auto dst_sym  = global_sym(ga);
         auto from_sym = global_sym(alias_target);
 
-        this->assembler.sym_copy(dst_sym,
-                                 from_sym,
-                                 ga->hasLocalLinkage()
-                                     || ga->hasPrivateLinkage(),
-                                 ga->hasLinkOnceODRLinkage());
+        this->assembler.sym_copy(
+            dst_sym, from_sym, ga->hasLocalLinkage(), ga->isWeakForLinker());
     }
 
     return true;

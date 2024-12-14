@@ -280,7 +280,8 @@ struct AssemblerElf {
 
   public:
     [[nodiscard]] SymRef sym_add_undef(std::string_view name,
-                                       bool             local = false);
+                                       bool local = false,
+                                       bool weak = false);
     void sym_copy(SymRef dst, SymRef src, bool local, bool weak) noexcept;
 
     [[nodiscard]] SymRef
@@ -454,9 +455,8 @@ void AssemblerElf<Derived>::end_func() noexcept {
 }
 
 template <typename Derived>
-typename AssemblerElf<Derived>::SymRef
-    AssemblerElf<Derived>::sym_add_undef(const std::string_view name,
-                                         const bool             local) {
+typename AssemblerElf<Derived>::SymRef AssemblerElf<Derived>::sym_add_undef(
+    const std::string_view name, const bool local, const bool weak) {
     size_t str_off = 0;
     if (!name.empty()) {
         str_off = strtab.size();
@@ -466,7 +466,10 @@ typename AssemblerElf<Derived>::SymRef
 
     u8 info;
     if (local) {
+        assert(!weak);
         info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
+    } else if (weak) {
+        info = ELF64_ST_INFO(STB_WEAK, STT_NOTYPE);
     } else {
         info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
     }

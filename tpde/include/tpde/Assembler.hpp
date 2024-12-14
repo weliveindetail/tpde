@@ -42,8 +42,8 @@ concept Assembler = requires(T a) {
     } -> std::same_as<typename T::SymRef>;
 
     /// Add an undefined symbol
-    /// args: name, local
-    { a.sym_add_undef(ARG(std::string_view), ARG(bool)) };
+    /// args: name, local, weak
+    { a.sym_add_undef(ARG(std::string_view), ARG(bool), ARG(bool)) };
 
 #ifdef TPDE_ASSERTS
     { a.func_was_ended() } -> std::same_as<bool>;

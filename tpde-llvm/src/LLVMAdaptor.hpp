@@ -240,18 +240,16 @@ struct LLVMAdaptor {
     }
 
     [[nodiscard]] static bool func_extern(const IRFuncRef func) noexcept {
-        return func->isDeclaration();
+        return func->isDeclarationForLinker();
     }
 
     [[nodiscard]] static bool func_only_local(const IRFuncRef func) noexcept {
-        auto link = func->getLinkage();
-        return (link == llvm::GlobalValue::InternalLinkage)
-               || (link == llvm::GlobalValue::PrivateLinkage);
+        return func->hasLocalLinkage();
     }
 
     [[nodiscard]] static bool
         func_has_weak_linkage(const IRFuncRef func) noexcept {
-        return func->getLinkage() == llvm::GlobalValue::LinkOnceODRLinkage;
+        return func->isWeakForLinker();
     }
 
     [[nodiscard]] bool cur_needs_unwind_info() const noexcept {
