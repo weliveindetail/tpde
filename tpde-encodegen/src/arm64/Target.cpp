@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #include "arm64/Target.hpp"
 
+#include <cstdint>
 #include <format>
 #include <string>
 #include <string_view>
@@ -921,6 +922,21 @@ void EncodingTargetArm64::get_inst_candidates(
         handle_default("CNT8b");
     } else if (Name == "UADDLVv8i8v") {
         handle_default("UADDLV8b");
+    } else if (Name == "BIFv16i8") {
+        handle_default("BIF16b");
+    } else if (Name == "FNEGv2f64") {
+        handle_default("FNEG2d");
+    } else if (Name == "MOVIv2d_ns") {
+        uint64_t imm = 0;
+        unsigned op = mi.getOperand(1).getImm();
+        for (int i = 0; i < 8; i++) {
+            imm |= op & (1 << i) ? 0xff << 8 * i : 0;
+        }
+        handle_noimm("MOVI2d", std::format(", {:#x}", imm));
+    } else if (Name == "MVNIv4i32") {
+        uint32_t byte = mi.getOperand(1).getImm();
+        uint64_t imm = ~(byte << mi.getOperand(2).getImm());
+        handle_noimm("MOVI2d", std::format(", {:#x}", imm | imm << 32));
 
     } else if (Name == "FMOVSWr") {
         handle_default("FMOVws");

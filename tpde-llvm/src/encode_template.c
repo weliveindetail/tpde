@@ -285,6 +285,9 @@ double TARGET_V1 fabsf64(double a) { return __builtin_fabs(a); }
 float TARGET_V1 fmaf32(float a, float b, float c) { return a * b + c; }
 double TARGET_V1 fmaf64(double a, double b, double c) { return a * b + c; }
 
+float TARGET_V1 copysignf32(float a, float b) { return __builtin_copysignf(a, b); }
+double TARGET_V1 copysignf64(double a, double b) { return __builtin_copysign(a, b); }
+
 // --------------------------
 // float conversions
 // --------------------------

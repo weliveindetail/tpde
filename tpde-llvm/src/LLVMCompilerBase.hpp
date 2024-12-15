@@ -3284,6 +3284,25 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         derived()->create_helper_call({&val, 1}, {&res_ref, 1}, sym);
         return true;
     }
+    case llvm::Intrinsic::copysign: {
+        auto *ty = inst->getType();
+        if (!ty->isFloatTy() && !ty->isDoubleTy()) {
+            return false;
+        }
+
+        auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+        auto rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+        auto res_ref = this->result_ref_lazy(inst_idx, 0);
+        ScratchReg res{derived()};
+
+        if (ty->isDoubleTy()) {
+            derived()->encode_copysignf64(std::move(lhs), std::move(rhs), res);
+        } else {
+            derived()->encode_copysignf32(std::move(lhs), std::move(rhs), res);
+        }
+        this->set_value(res_ref, res);
+        return true;
+    }
     case llvm::Intrinsic::fabs: {
         auto *val = inst->getOperand(0);
         auto *ty  = val->getType();
