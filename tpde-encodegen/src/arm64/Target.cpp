@@ -917,6 +917,11 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "UCVTFUXDri") {
         handle_default("UCVTFdx"); // TODO: correct?
 
+    } else if (Name == "CNTv8i8") {
+        handle_default("CNT8b");
+    } else if (Name == "UADDLVv8i8v") {
+        handle_default("UADDLV8b");
+
     } else if (Name == "FMOVSWr") {
         handle_default("FMOVws");
     } else if (Name == "FMOVDXr") {
@@ -1269,6 +1274,7 @@ void EncodingTargetArm64::get_inst_candidates(
     } else {
         llvm::errs() << "ERROR: unhandled instruction " << Name << "\n";
         assert(false);
+        exit(1);
     }
 }
 

@@ -901,6 +901,7 @@ void EncodingTargetX64::get_inst_candidates(
     if (candidates.size() == 0) {
         llvm::errs() << "ERROR: unhandled instruction " << Name << "\n";
         assert(false);
+        exit(1);
     }
 }
 

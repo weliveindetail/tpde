@@ -10,6 +10,7 @@
 #include <llvm/Support/TimeProfiler.h>
 
 #include "tpde/CompilerBase.hpp"
+#include "tpde/util/misc.hpp"
 
 #include "LLVMAdaptor.hpp"
 
@@ -3426,6 +3427,33 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         }
 
         auto res_ref = this->result_ref_lazy(inst_idx, 0);
+        this->set_value(res_ref, res);
+        return true;
+    }
+    case llvm::Intrinsic::ctpop: {
+        auto *val = inst->getOperand(0);
+        if (!val->getType()->isIntegerTy()) {
+            return false;
+        }
+        const auto width = val->getType()->getIntegerBitWidth();
+        if (width > 64) {
+            return false;
+        }
+
+        GenericValuePart op = this->val_ref(llvm_val_idx(val), 0);
+        if (width % 32) {
+            unsigned tgt_width = tpde::util::align_up(width, 32);
+            op = derived()->ext_int(std::move(op), false, width, tgt_width);
+        }
+
+        ScratchReg res{derived()};
+        if (width <= 32) {
+            derived()->encode_ctpopi32(std::move(op), res);
+        } else {
+            derived()->encode_ctpopi64(std::move(op), res);
+        }
+
+        ValuePartRef res_ref = this->result_ref_lazy(inst_idx, 0);
         this->set_value(res_ref, res);
         return true;
     }

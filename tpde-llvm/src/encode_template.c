@@ -183,6 +183,9 @@ u32 TARGET_V1 bswapi32(u32 a) { return __builtin_bswap32(a); }
 u64 TARGET_V1 bswapi48(u64 a) { return __builtin_bswap64(a) >> 16; }
 u64 TARGET_V1 bswapi64(u64 a) { return __builtin_bswap64(a); }
 
+u32 TARGET_V1 ctpopi32(u32 a) { return __builtin_popcount(a); }
+u64 TARGET_V1 ctpopi64(u64 a) { return __builtin_popcountll(a); }
+
 u32 TARGET_V1 cttzi32_zero_poison(u32 a) { return __builtin_ctz(a); }
 u64 TARGET_V1 cttzi64_zero_poison(u64 a) { return __builtin_ctzll(a); }
 
