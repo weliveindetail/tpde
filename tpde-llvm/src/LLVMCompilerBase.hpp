@@ -513,6 +513,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
         global_sym_lookup.insert_or_assign(ga, std::make_pair(false, idx));
     }
 
+    if (!llvm_mod.ifunc_empty()) {
+        TPDE_LOG_ERR("ifuncs are not supported");
+        return false;
+    }
+
     // since the adaptor exposes all functions in the module to TPDE,
     // all function symbols are already added
 
@@ -3114,9 +3119,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
             if (C->getType()->getArrayNumElements() == 0) {
                 this->assembler.except_add_empty_spec_action(i == 0);
             } else {
-                llvm::errs() << "Exception filters with non-zero length arrays "
-                                "not supported\n";
-                assert(0); // not supported rn
+                TPDE_LOG_ERR("Exception filters with non-zero length arrays "
+                             "not supported");
                 return false;
             }
         }
@@ -3630,15 +3634,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         return true;
     }
     default: {
-        if (derived()->handle_intrin(inst_idx, inst, intrin)) {
-            return true;
-        }
-
-        std::string buf{};
-        auto        os = llvm::raw_string_ostream{buf};
-        intrin->print(os);
-        llvm::errs() << "Unknown intrinsic:\n" << buf << '\n';
-        return false;
+        return derived()->handle_intrin(inst_idx, inst, intrin);
     }
     }
 }

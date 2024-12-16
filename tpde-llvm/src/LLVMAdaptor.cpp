@@ -9,8 +9,11 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/TimeProfiler.h>
+#include <llvm/Support/raw_ostream.h>
+#include <utility>
 
 #include "base.hpp"
+#include "tpde/base.hpp"
 #include "tpde/util/misc.hpp"
 
 namespace tpde_llvm {
@@ -184,6 +187,10 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
                 if (!cst || llvm::isa<llvm::GlobalValue>(cst)) {
                     continue;
                 }
+                if (cst->getType()->isVectorTy()) {
+                    TPDE_LOG_ERR("vector constants are unsupported");
+                    func_unsupported = true;
+                }
                 auto [repl, ins_begin] = fixup_constant(cst, ins_before);
                 if (repl) {
                     phi.setIncomingValueForBlock(inst->getParent(), repl);
@@ -207,6 +214,10 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
                 continue;
             }
 
+            if (cst->getType()->isVectorTy()) {
+                TPDE_LOG_ERR("vector constants are unsupported");
+                func_unsupported = true;
+            }
             if (auto [repl, ins_begin] = fixup_constant(cst, inst); repl) {
                 inst->setOperand(it.index(), repl);
                 if (!restart_from) {
@@ -251,8 +262,9 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
     return nullptr;
 }
 
-void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
+bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     cur_func = function;
+    func_unsupported = false;
 
     TPDE_LOG_DBG("Compiling func: {}",
                  static_cast<std::string_view>(function->getName()));
@@ -395,6 +407,8 @@ void LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     if (profile_time) {
         llvm::timeTraceProfilerEnd(time_entry);
     }
+
+    return !func_unsupported;
 }
 
 void LLVMAdaptor::reset() noexcept {
@@ -446,9 +460,7 @@ namespace {
         if (bit_width == 128) {
             return LLVMBasicValType::i128;
         }
-        TPDE_LOG_ERR("Encountered unsupported integer bit width {}", bit_width);
-        assert(0);
-        exit(1);
+        return LLVMBasicValType::invalid;
     }
     case llvm::Type::PointerTyID: return LLVMBasicValType::ptr;
     case llvm::Type::FixedVectorTyID: {
@@ -457,13 +469,10 @@ namespace {
         case 32: return LLVMBasicValType::v32;
         case 64: return LLVMBasicValType::v64;
         case 128: return LLVMBasicValType::v128;
-        case 256: return LLVMBasicValType::v256;
-        case 512: return LLVMBasicValType::v512;
-        default:
-            assert(0);
-            TPDE_LOG_ERR("Encountered unsupported integer bit width {}",
-                         bit_width);
-            exit(1);
+        // Supporting vectors needs more thought in general.
+        // case 256: return LLVMBasicValType::v256;
+        // case 512: return LLVMBasicValType::v512;
+        default: return LLVMBasicValType::invalid;
         }
     }
     default: return LLVMBasicValType::invalid;
@@ -539,12 +548,13 @@ std::pair<unsigned, unsigned>
         }
         return std::make_pair(size, align);
     }
-    default:
-        llvm::errs() << "Type: " << *type << "\n";
-        llvm::errs() << std::format("\nEncountered unsupported TypeID {}\n",
-                                    static_cast<uint8_t>(type_id));
-        assert(0);
-        exit(1);
+    default: {
+        std::string type_name;
+        llvm::raw_string_ostream(type_name) << *type;
+        TPDE_LOG_ERR("unsupported type: {}", type_name);
+        func_unsupported = true;
+        return std::make_pair(0, 1);
+    }
     }
 }
 
@@ -598,7 +608,7 @@ std::pair<unsigned, unsigned>
     }
 
     assert(0 && "out-of-range part index?");
-    exit(1);
+    return std::make_pair(0, 0);
 }
 
 } // end namespace tpde_llvm

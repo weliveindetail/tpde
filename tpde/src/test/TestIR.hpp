@@ -650,7 +650,7 @@ struct TestIRAdaptor {
 
     void end_compile() const noexcept {}
 
-    void switch_func(IRFuncRef func) noexcept {
+    bool switch_func(IRFuncRef func) noexcept {
         cur_func = static_cast<u32>(func);
 
         highest_local_val_idx = 0;
@@ -662,6 +662,7 @@ struct TestIRAdaptor {
         if (highest_local_val_idx > 0) {
             --highest_local_val_idx;
         }
+        return true;
     }
 
     void reset() { highest_local_val_idx = 0; }

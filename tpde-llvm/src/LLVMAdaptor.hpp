@@ -140,6 +140,7 @@ struct LLVMAdaptor {
     tpde::util::SmallVector<u32, 16> initial_stack_slot_indices;
 
     llvm::Function *cur_func                          = nullptr;
+    bool func_unsupported = false;
     bool            globals_init                      = false;
     bool            func_has_dynamic_alloca           = false;
     u32             global_idx_end                    = 0;
@@ -558,7 +559,7 @@ struct LLVMAdaptor {
                                             llvm::Instruction *inst);
 
   public:
-    void switch_func(const IRFuncRef function) noexcept;
+    bool switch_func(const IRFuncRef function) noexcept;
 
     void reset() noexcept;
 

@@ -350,8 +350,9 @@ concept IRAdaptor = requires(T a) {
     /// The compilation was finished
     { a.end_compile() };
 
-    /// The compiler is now compiling the specified function
-    { a.switch_func(ARG(typename T::IRFuncRef)) };
+    /// The compiler is now compiling the specified function. Return false if
+    /// compiling this function is not supported.
+    { a.switch_func(ARG(typename T::IRFuncRef)) } -> std::convertible_to<bool>;
 
     /// The compiler is being resetted. If there is any data remaining that
     /// would cause problems with recompiling it should be cleared

@@ -1822,7 +1822,9 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     // reset per-func data
     analyzer.reset();
 
-    adaptor->switch_func(func);
+    if (!adaptor->switch_func(func)) {
+        return false;
+    }
     derived()->analysis_start();
     analyzer.switch_func(func);
     derived()->analysis_end();
