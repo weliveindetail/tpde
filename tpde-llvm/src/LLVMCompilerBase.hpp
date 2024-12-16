@@ -2707,7 +2707,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
     constexpr u32 F               = Pred::FIRST_FCMP_PREDICATE;
     EncodeFnTy encode_fns[Pred::LAST_FCMP_PREDICATE - Pred::FIRST_FCMP_PREDICATE
                           + 1][2] = {
-        [Pred::FCMP_FALSE - F] = {                        nullptr,nullptr                                                                  },
+        [Pred::FCMP_FALSE - F] = {                        nullptr, nullptr},
         [Pred::FCMP_TRUE - F]  = {                        nullptr, nullptr},
         [Pred::FCMP_OEQ - F]   = {&Derived::encode_fcmp_oeq_float,
                                   &Derived::encode_fcmp_oeq_double        },
@@ -2814,6 +2814,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
             if (arg_ref.can_salvage()) {
                 scratch.alloc_specific(arg_ref.salvage());
             } else if (!arg_ref.is_const) {
+                arg_ref.unlock();
                 arg_ref.reload_into_specific_fixed(this, scratch.alloc_gp());
                 cmp_reg = scratch.cur_reg;
             }
