@@ -270,8 +270,7 @@ define void @xor_i64_fffffffffff1ffff(i64 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #-0xe0001 // =-917505
-; ARM64-NEXT:    eor x1, x1, x0
+; ARM64-NEXT:    eor x0, x0, #0xfffffffffff1ffff
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -354,8 +353,7 @@ define void @xor_i37_3(i37 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x3 // =3
-; ARM64-NEXT:    eor x1, x1, x0
+; ARM64-NEXT:    eor x0, x0, #0x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -414,8 +412,7 @@ define void @xor_i128_3(i128 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov w2, #0x0 // =0
 ; ARM64-NEXT:    eor x2, x2, x1
-; ARM64-NEXT:    mov x3, #0x3 // =3
-; ARM64-NEXT:    eor x3, x3, x0
+; ARM64-NEXT:    eor x0, x0, #0x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -445,10 +442,8 @@ define void @xor_i128_30000000000000003(i128 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x2, #0x3 // =3
-; ARM64-NEXT:    eor x2, x2, x1
-; ARM64-NEXT:    mov x3, #0x3 // =3
-; ARM64-NEXT:    eor x3, x3, x0
+; ARM64-NEXT:    eor x2, x1, #0x3
+; ARM64-NEXT:    eor x0, x0, #0x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -480,8 +475,7 @@ define void @xor_i128_90000000000000003(i128 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x2, #0x9 // =9
 ; ARM64-NEXT:    eor x2, x2, x1
-; ARM64-NEXT:    mov x3, #0x3 // =3
-; ARM64-NEXT:    eor x3, x3, x0
+; ARM64-NEXT:    eor x0, x0, #0x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -575,8 +569,7 @@ define void @xor_i64_no_salvage_imm(i64 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x3 // =3
-; ARM64-NEXT:    eor x1, x1, x0
+; ARM64-NEXT:    eor x1, x0, #0x3
 ; ARM64-NEXT:    eor x1, x1, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
@@ -640,8 +633,7 @@ define void @xor_i37_no_salvage_imm(i37 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x3 // =3
-; ARM64-NEXT:    eor x1, x1, x0
+; ARM64-NEXT:    eor x1, x0, #0x3
 ; ARM64-NEXT:    eor x1, x1, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
@@ -709,8 +701,7 @@ define void @xor_i128_no_salvage_imm(i128 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov w2, #0x0 // =0
 ; ARM64-NEXT:    eor x2, x2, x1
-; ARM64-NEXT:    mov x3, #0x3 // =3
-; ARM64-NEXT:    eor x3, x3, x0
+; ARM64-NEXT:    eor x3, x0, #0x3
 ; ARM64-NEXT:    eor x4, x2, x1
 ; ARM64-NEXT:    eor x3, x3, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]

@@ -75,6 +75,16 @@ struct EncodeCompiler {
         }
         return std::nullopt;
     }
+    std::optional<u64> encodeable_as_immlogical(GenericValuePart &gv, bool inv) const noexcept {
+        if (gv.is_imm() && gv.imm().size == 8) {
+            u64 imm = gv.imm().const_u64 ^ (inv ? ~u64{0} : 0);
+            if (gv.imm().size == 8 && de64_ANDxi(DA_GP(0), DA_GP(0), imm))
+                return imm;
+            if (gv.imm().size <= 4 && de64_ANDwi(DA_GP(0), DA_GP(0), imm))
+                return imm;
+        }
+        return std::nullopt;
+    }
     std::optional<std::pair<AsmReg, u64>> encodeable_with_mem_uoff12(GenericValuePart &gv, u64 off, unsigned shift) noexcept;
 
     void   try_salvage_or_materialize(GenericValuePart &gv,

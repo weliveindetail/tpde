@@ -133,6 +133,35 @@ void EncodingTargetArm64::get_inst_candidates(
                    << ops[1] << ");\n";
             });
     };
+    const auto handle_logical_imm = [&](std::string_view mnem, bool inv) {
+        candidates.emplace_back(
+            2,
+            "encodeable_as_immlogical",
+            inv ? "true" : "false",
+            [mnem](llvm::raw_ostream &os,
+                   const llvm::MachineInstr &mi,
+                   std::span<const std::string> ops) {
+                auto dst = format_reg(mi.getOperand(0), ops[0]);
+                auto src = format_reg(mi.getOperand(1), ops[1]);
+                os << "    ASMD(" << mnem << ", " << dst << ", " << src << ", "
+                   << ops[2] << ");\n";
+            });
+        if (inv) {
+            return;
+        }
+        candidates.emplace_back(
+            1,
+            "encodeable_as_immlogical",
+            "false",
+            [mnem](llvm::raw_ostream &os,
+                   const llvm::MachineInstr &mi,
+                   std::span<const std::string> ops) {
+                auto dst = format_reg(mi.getOperand(0), ops[0]);
+                auto src = format_reg(mi.getOperand(2), ops[2]);
+                os << "    ASMD(" << mnem << ", " << dst << ", " << src << ", "
+                   << ops[1] << ");\n";
+            });
+    };
     const auto handle_default = [&](std::string_view mnem,
                                     std::string      extra_ops = "") {
         candidates.emplace_back([mnem,
@@ -695,116 +724,148 @@ void EncodingTargetArm64::get_inst_candidates(
     } else if (Name == "CLSXr") {
         handle_default("CLSx");
     } else if (Name == "ANDWrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ANDw_lsl", "ANDw_lsr", "ANDw_asr", "ANDw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ANDwi", false);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ANDXrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ANDx_lsl", "ANDx_lsr", "ANDx_asr", "ANDx_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ANDxi", false);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
     } else if (Name == "ORRWrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ORRw_lsl", "ORRw_lsr", "ORRw_asr", "ORRw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ORRwi", false);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ORRXrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ORRx_lsl", "ORRx_lsr", "ORRx_asr", "ORRx_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ORRxi", false);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
     } else if (Name == "EORWrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "EORw_lsl", "EORw_lsr", "EORw_asr", "EORw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("EORwi", false);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "EORXrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "EORx_lsl", "EORx_lsr", "EORx_asr", "EORx_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("EORxi", false);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
     } else if (Name == "ANDSWrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ANDSw_lsl", "ANDSw_lsr", "ANDSw_asr", "ANDSw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ANDSwi", false);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ANDSXrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ANDSx_lsl", "ANDSx_lsr", "ANDSx_asr", "ANDSx_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ANDSxi", false);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
     } else if (Name == "BICWrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "BICw_lsl", "BICw_lsr", "BICw_asr", "BICw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ANDwi", true);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "BICXrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "BICx_lsl", "BICx_lsr", "BICx_asr", "BICx_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ANDxi", true);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
     } else if (Name == "ORNWrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ORNw_lsl", "ORNw_lsr", "ORNw_asr", "ORNw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ORRwi", true);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "ORNXrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "ORNx_lsl", "ORNx_lsr", "ORNx_asr", "ORNx_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ORRxi", true);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
     } else if (Name == "EONWrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "EONw_lsl", "EONw_lsr", "EONw_asr", "EONw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("EORwi", true);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "EONXrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "EONx_lsl", "EONx_lsr", "EONx_asr", "EONx_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("EORxi", true);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
     } else if (Name == "BICSWrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "BICSw_lsl", "BICSw_lsr", "BICSw_asr", "BICSw_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ANDSwi", true);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
     } else if (Name == "BICSXrs") {
-        // TODO: Handle logical immediates
         // TODO: Handle expr with only a shifted index if imm==0
         std::array<std::string_view, 4> mnems{
             "BICSx_lsl", "BICSx_lsr", "BICSx_asr", "BICSx_ror"};
         unsigned imm = mi.getOperand(3).getImm();
+        if (imm == 0) { // TODO: apply shift to immediate?
+            handle_logical_imm("ANDSxi", true);
+        }
         handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
 
     } else if (Name == "CCMPWr") {

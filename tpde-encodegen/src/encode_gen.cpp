@@ -519,11 +519,13 @@ bool generate_inst(std::string        &buf,
                     inst->getOperand(cond_entry.op_idx);
                 auto reg_id =
                     state.target->reg_id_from_mc_reg(cond_op.getReg());
-                if (state.value_map[reg_id].ty != ValueInfo::ASM_OPERAND) {
+                auto value_map_it = state.value_map.find(reg_id);
+                if (value_map_it == state.value_map.end()
+                    || value_map_it->second.ty != ValueInfo::ASM_OPERAND) {
                     skip = true;
                     break;
                 }
-                const auto &op_name = state.value_map[reg_id].operand_name;
+                const auto &op_name = value_map_it->second.operand_name;
 
                 std::string opt =
                     std::format("{}({}{}{})",
