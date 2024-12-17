@@ -1297,7 +1297,7 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
 
         auto *hdr         = sec_hdr(sec_idx(".fini_array"));
         hdr->sh_name      = sec_off(".fini_array");
-        hdr->sh_type      = SHT_INIT_ARRAY;
+        hdr->sh_type      = SHT_FINI_ARRAY;
         hdr->sh_flags     = SHF_ALLOC | SHF_WRITE;
         hdr->sh_offset    = sh_off;
         hdr->sh_size      = size;
