@@ -25,14 +25,6 @@ define void @mul_i8_1(i8 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0x1 // =1
 ; ARM64-NEXT:    mul w1, w1, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -63,14 +55,6 @@ define void @mul_i8_-1(i8 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0xff // =255
 ; ARM64-NEXT:    mul w1, w1, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -98,14 +82,6 @@ define void @mul_i8_i8(i8 %0, i8 %1) {
 ; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mul w1, w1, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -135,14 +111,6 @@ define void @mul_i16_1(i16 %0) {
 ; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0x1 // =1
 ; ARM64-NEXT:    mul w1, w1, w0
@@ -174,14 +142,6 @@ define void @mul_i16_-1(i16 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0xffff // =65535
 ; ARM64-NEXT:    mul w1, w1, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -209,14 +169,6 @@ define void @mul_i16_i16(i16 %0, i16 %1) {
 ; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mul w1, w1, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -246,14 +198,6 @@ define void @mul_i32_1(i32 %0) {
 ; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0x1 // =1
 ; ARM64-NEXT:    mul w1, w1, w0
@@ -285,14 +229,6 @@ define void @mul_i32_-1(i32 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0xffffffff // =4294967295
 ; ARM64-NEXT:    mul w1, w1, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -320,14 +256,6 @@ define void @mul_i32_i32(i32 %0, i32 %1) {
 ; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mul w1, w1, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -358,14 +286,6 @@ define void @mul_i37_1(i37 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0x1 // =1
 ; ARM64-NEXT:    mul x1, x1, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -395,14 +315,6 @@ define void @mul_i37_-1(i37 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0x1fffffffff // =137438953471
 ; ARM64-NEXT:    mul x1, x1, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -430,14 +342,6 @@ define void @mul_i37_i37(i37 %0, i37 %1) {
 ; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mul x1, x1, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -467,14 +371,6 @@ define void @mul_i64_1(i64 %0) {
 ; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0x1 // =1
 ; ARM64-NEXT:    mul x1, x1, x0
@@ -506,14 +402,6 @@ define void @mul_i64_-1(i64 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #-0x1 // =-1
 ; ARM64-NEXT:    mul x1, x1, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -541,14 +429,6 @@ define void @mul_i64_i64(i64 %0, i64 %1) {
 ; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mul x1, x1, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -586,14 +466,6 @@ define void @mul_i128_1(i128 %0) {
 ; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x2, #0x1 // =1
 ; ARM64-NEXT:    umulh x3, x2, x0
@@ -637,14 +509,6 @@ define void @mul_i128_1_reorder(i128 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x2, #0x1 // =1
 ; ARM64-NEXT:    umulh x3, x2, x0
 ; ARM64-NEXT:    madd x3, x2, x1, x3
@@ -685,14 +549,6 @@ define void @mul_i128_1001_1002(i128 %0) {
 ; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x2, #0x1002 // =4098
 ; ARM64-NEXT:    umulh x3, x2, x0
@@ -736,14 +592,6 @@ define void @mul_i128_i128(i128 %0, i128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    umulh x4, x2, x0
 ; ARM64-NEXT:    madd x4, x2, x1, x4
 ; ARM64-NEXT:    madd x5, x3, x0, x4
@@ -785,14 +633,6 @@ define void @mul_i128_salvage_imm(i128 %0) {
 ; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x2, #0x1 // =1
 ; ARM64-NEXT:    umulh x3, x2, x0
@@ -836,14 +676,6 @@ define void @mul_i128_salvage_reg(i128 %0, i128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    umulh x4, x2, x0
 ; ARM64-NEXT:    madd x4, x2, x1, x4
 ; ARM64-NEXT:    madd x5, x3, x0, x4
@@ -876,14 +708,6 @@ define void @mul_i64_no_salvage_imm(i64 %0) {
 ; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0x1 // =1
 ; ARM64-NEXT:    mul x1, x1, x0
@@ -918,14 +742,6 @@ define void @mul_i64_no_salvage_reg(i64 %0, i64 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mul x1, x1, x0
 ; ARM64-NEXT:    mul x1, x1, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -957,14 +773,6 @@ define void @mul_i37_no_salvage_imm(i37 %0) {
 ; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0x3 // =3
 ; ARM64-NEXT:    mul x1, x1, x0
@@ -998,14 +806,6 @@ define void @mul_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mul x1, x1, x0
 ; ARM64-NEXT:    mul x1, x1, x0
@@ -1057,14 +857,6 @@ define void @mul_i128_no_salvage_imm_1(i128 %0) {
 ; ARM64:         sub sp, sp, #0xd0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x2, #0x1 // =1
 ; ARM64-NEXT:    umulh x3, x2, x0
@@ -1124,14 +916,6 @@ define void @mul_i128_no_salvage_imm_1001_1002(i128 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x2, #0x1002 // =4098
 ; ARM64-NEXT:    umulh x3, x2, x0
 ; ARM64-NEXT:    madd x3, x2, x1, x3
@@ -1188,14 +972,6 @@ define void @mul_i128_no_salvage_reg(i128 %0, i128 %1) {
 ; ARM64:         sub sp, sp, #0xd0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    umulh x4, x2, x0
 ; ARM64-NEXT:    madd x4, x2, x1, x4

@@ -449,10 +449,8 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
     // prevent issues with exception handling
     u64 fixed_assignment_nonallocatable_mask =
         create_bitmask({AsmReg::R0, AsmReg::R1});
-    u32 func_start_off = 0u, func_reg_save_off = 0u, func_reg_save_alloc = 0u,
-        func_reg_restore_alloc     = 0u;
-    /// Offset to the `sub sp, sp, XXX` instruction that sets up the frame
-    u32    frame_size_setup_offset = 0u;
+    u32 func_start_off = 0u, func_prologue_alloc = 0u,
+        func_reg_restore_alloc = 0u;
     /// Offset to the `add sp, sp, XXX` instruction that the argument handling
     /// uses to access stack arguments if needed
     u32    func_arg_stack_add_off  = ~0u;
@@ -1208,16 +1206,13 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::
     scalar_arg_count = vec_arg_count = 0xFFFF'FFFF;
     func_arg_stack_add_off           = ~0u;
 
-    // placeholder for later
-    frame_size_setup_offset = this->assembler.text_cur_off();
-    ASM(SUBxi, DA_SP, DA_SP, 0);
-    ASM(STPx, DA_GP(29), DA_GP(30), DA_SP, 0);
-    ASM(MOV_SPx, DA_GP(29), DA_SP);
-
+    // We don't actually generate the prologue here and merely allocate space
+    // for it. Right now, we don't know which callee-saved registers will be
+    // used. While we could pad with nops, we later move the beginning of the
+    // function so that small functions don't have to execute 9 nops.
+    // See finish_func.
     const CallingConv call_conv = derived()->cur_calling_convention();
     {
-        func_reg_save_off = this->assembler.text_cur_off();
-
         u32  reg_save_size = 0u;
         bool pending       = false;
         u32  last_bank     = 0;
@@ -1240,9 +1235,11 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::
         if (pending) {
             reg_save_size += 4;
         }
-        this->assembler.text_ensure_space(reg_save_size);
-        this->assembler.text_write_ptr += reg_save_size;
-        func_reg_save_alloc             = reg_save_size;
+
+        // Reserve space for sub sp, stp x29/x30, and mov x29, sp.
+        func_prologue_alloc = reg_save_size + 12;
+        this->assembler.text_ensure_space(func_prologue_alloc);
+        this->assembler.text_write_ptr += func_prologue_alloc;
         // ldp needs the same number of instructions as stp
         func_reg_restore_alloc          = reg_save_size;
     }
@@ -1283,31 +1280,39 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
         stack_reg = DA_GP(29);
     }
 
+    auto final_frame_size = util::align_up(this->stack.frame_size, 16);
+    if (final_frame_size > 4095) {
+        // round up to 4k since SUB cannot encode immediates greater than 4095
+        final_frame_size = util::align_up(final_frame_size, 4096);
+        assert(final_frame_size < 16 * 1024 * 1024);
+    }
+
     {
-        u32 *write_ptr = reinterpret_cast<u32 *>(
-            this->assembler.sec_text.data.data() + func_reg_save_off);
+        util::SmallVector<u32, 16> prologue;
+        prologue.push_back(de64_SUBxi(DA_SP, DA_SP, final_frame_size));
+        prologue.push_back(de64_STPx(DA_GP(29), DA_GP(30), DA_SP, 0));
+        prologue.push_back(de64_MOV_SPx(DA_GP(29), DA_SP));
+
         AsmReg last_reg     = AsmReg::make_invalid();
-        u32    frame_off    = 16;
-        u32    inst_written = 0;
+        u32 frame_off = 16;
         for (auto reg : util::BitSetIterator{saved_regs}) {
             if (last_reg.valid()) {
                 const auto reg_bank = this->register_file.reg_bank(AsmReg{reg});
                 const auto last_bank = this->register_file.reg_bank(last_reg);
                 if (reg_bank == last_bank) {
                     if (reg_bank == 0) {
-                        *write_ptr++ = de64_STPx(
-                            last_reg, AsmReg{reg}, stack_reg, frame_off);
+                        prologue.push_back(de64_STPx(
+                            last_reg, AsmReg{reg}, stack_reg, frame_off));
                     } else {
-                        *write_ptr++ = de64_STPd(
-                            last_reg, AsmReg{reg}, stack_reg, frame_off);
+                        prologue.push_back(de64_STPd(
+                            last_reg, AsmReg{reg}, stack_reg, frame_off));
                     }
-                    ++inst_written;
                     frame_off += 16;
                     last_reg   = AsmReg::make_invalid();
                 } else {
                     assert(last_bank == 0 && reg_bank == 1);
-                    *write_ptr++ = de64_STRxu(last_reg, stack_reg, frame_off);
-                    ++inst_written;
+                    prologue.push_back(
+                        de64_STRxu(last_reg, stack_reg, frame_off));
                     frame_off += 8;
                     last_reg   = AsmReg{reg};
                 }
@@ -1319,31 +1324,32 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
 
         if (last_reg.valid()) {
             if (this->register_file.reg_bank(last_reg) == 0) {
-                *write_ptr++ = de64_STRxu(last_reg, stack_reg, frame_off);
+                prologue.push_back(de64_STRxu(last_reg, stack_reg, frame_off));
             } else {
-                *write_ptr++ = de64_STRdu(last_reg, stack_reg, frame_off);
+                prologue.push_back(de64_STRdu(last_reg, stack_reg, frame_off));
             }
-            ++inst_written;
         }
 
-        // fill the rest with NOPs
-        const auto nop_count = (func_reg_save_alloc / 4) - inst_written;
+        assert(prologue.size() * sizeof(u32) <= func_prologue_alloc);
+
+        // Pad with NOPs so that func_prologue_alloc - prologue.size() is a
+        // multiple if 16 (the function alignment).
+        const auto nop_count = (func_prologue_alloc / 4 - prologue.size()) % 4;
         const auto nop       = de64_NOP();
         for (auto i = 0u; i < nop_count; ++i) {
-            *write_ptr++ = nop;
+            prologue.push_back(nop);
         }
+
+        // Shrink function at the beginning
+        func_start_off +=
+            util::align_down(func_prologue_alloc - prologue.size() * 4, 16);
+        this->assembler.sym_ptr(this->assembler.cur_func)->st_value =
+            func_start_off;
+        std::memcpy(this->assembler.sec_text.data.data() + func_start_off,
+                    prologue.data(),
+                    prologue.size() * sizeof(u32));
     }
 
-    auto final_frame_size = util::align_up(this->stack.frame_size, 16);
-    if (final_frame_size > 4095) {
-        // round up to 4k since SUB cannot encode immediates greater than 4095
-        final_frame_size = util::align_up(final_frame_size, 4096);
-        assert(final_frame_size < 16 * 1024 * 1024);
-    }
-
-    *reinterpret_cast<u32 *>(this->assembler.sec_text.data.data()
-                             + frame_size_setup_offset) =
-        de64_SUBxi(DA_SP, DA_SP, final_frame_size);
     if (func_arg_stack_add_off != ~0u) {
         *reinterpret_cast<u32 *>(this->assembler.sec_text.data.data()
                                  + func_arg_stack_add_off) =

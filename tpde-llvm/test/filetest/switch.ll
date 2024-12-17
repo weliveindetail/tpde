@@ -27,16 +27,8 @@ define i32 @empty_switch(i32 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    b 0x34 <empty_switch+0x34>
-; ARM64-NEXT:    b 0x38 <empty_switch+0x38>
+; ARM64-NEXT:    b 0x34 <empty_switch+0x14>
+; ARM64-NEXT:    b 0x38 <empty_switch+0x18>
 ; ARM64-NEXT:    mov x0, #0xffffffff // =4294967295
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -102,25 +94,17 @@ define i32 @basic_switch(i32 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    cmp w0, #0x0
-; ARM64-NEXT:    b.eq 0xc0 <basic_switch+0x50>
+; ARM64-NEXT:    b.eq 0xc0 <basic_switch+0x30>
 ; ARM64-NEXT:    cmp w0, #0x1
-; ARM64-NEXT:    b.eq 0xc4 <basic_switch+0x54>
+; ARM64-NEXT:    b.eq 0xc4 <basic_switch+0x34>
 ; ARM64-NEXT:    cmp w0, #0x2
-; ARM64-NEXT:    b.eq 0xc8 <basic_switch+0x58>
-; ARM64-NEXT:    b 0xbc <basic_switch+0x4c>
-; ARM64-NEXT:    b 0x168 <basic_switch+0xf8>
-; ARM64-NEXT:    b 0xcc <basic_switch+0x5c>
-; ARM64-NEXT:    b 0x100 <basic_switch+0x90>
-; ARM64-NEXT:    b 0x134 <basic_switch+0xc4>
+; ARM64-NEXT:    b.eq 0xc8 <basic_switch+0x38>
+; ARM64-NEXT:    b 0xbc <basic_switch+0x2c>
+; ARM64-NEXT:    b 0x168 <basic_switch+0xd8>
+; ARM64-NEXT:    b 0xcc <basic_switch+0x3c>
+; ARM64-NEXT:    b 0x100 <basic_switch+0x70>
+; ARM64-NEXT:    b 0x134 <basic_switch+0xa4>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -311,36 +295,28 @@ define i32 @switch_table(i32 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    cmp w0, #0x4
-; ARM64-NEXT:    b.eq 0x21c <switch_table+0x7c>
-; ARM64-NEXT:    b.hi 0x1f8 <switch_table+0x58>
+; ARM64-NEXT:    b.eq 0x21c <switch_table+0x5c>
+; ARM64-NEXT:    b.hi 0x1f8 <switch_table+0x38>
 ; ARM64-NEXT:    cmp w0, #0x0
-; ARM64-NEXT:    b.eq 0x210 <switch_table+0x70>
+; ARM64-NEXT:    b.eq 0x210 <switch_table+0x50>
 ; ARM64-NEXT:    cmp w0, #0x1
-; ARM64-NEXT:    b.eq 0x214 <switch_table+0x74>
+; ARM64-NEXT:    b.eq 0x214 <switch_table+0x54>
 ; ARM64-NEXT:    cmp w0, #0x2
-; ARM64-NEXT:    b.eq 0x218 <switch_table+0x78>
-; ARM64-NEXT:    b 0x20c <switch_table+0x6c>
+; ARM64-NEXT:    b.eq 0x218 <switch_table+0x58>
+; ARM64-NEXT:    b 0x20c <switch_table+0x4c>
 ; ARM64-NEXT:    cmp w0, #0x5
-; ARM64-NEXT:    b.eq 0x220 <switch_table+0x80>
+; ARM64-NEXT:    b.eq 0x220 <switch_table+0x60>
 ; ARM64-NEXT:    cmp w0, #0x6
-; ARM64-NEXT:    b.eq 0x224 <switch_table+0x84>
-; ARM64-NEXT:    b 0x20c <switch_table+0x6c>
-; ARM64-NEXT:    b 0x360 <switch_table+0x1c0>
-; ARM64-NEXT:    b 0x228 <switch_table+0x88>
-; ARM64-NEXT:    b 0x25c <switch_table+0xbc>
-; ARM64-NEXT:    b 0x290 <switch_table+0xf0>
-; ARM64-NEXT:    b 0x2c4 <switch_table+0x124>
-; ARM64-NEXT:    b 0x2f8 <switch_table+0x158>
-; ARM64-NEXT:    b 0x32c <switch_table+0x18c>
+; ARM64-NEXT:    b.eq 0x224 <switch_table+0x64>
+; ARM64-NEXT:    b 0x20c <switch_table+0x4c>
+; ARM64-NEXT:    b 0x360 <switch_table+0x1a0>
+; ARM64-NEXT:    b 0x228 <switch_table+0x68>
+; ARM64-NEXT:    b 0x25c <switch_table+0x9c>
+; ARM64-NEXT:    b 0x290 <switch_table+0xd0>
+; ARM64-NEXT:    b 0x2c4 <switch_table+0x104>
+; ARM64-NEXT:    b 0x2f8 <switch_table+0x138>
+; ARM64-NEXT:    b 0x32c <switch_table+0x16c>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -488,36 +464,28 @@ define i32 @switch_table2(i32 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    cmp w0, #0x7
-; ARM64-NEXT:    b.eq 0x41c <switch_table2+0x7c>
-; ARM64-NEXT:    b.hi 0x3f8 <switch_table2+0x58>
+; ARM64-NEXT:    b.eq 0x41c <switch_table2+0x5c>
+; ARM64-NEXT:    b.hi 0x3f8 <switch_table2+0x38>
 ; ARM64-NEXT:    cmp w0, #0x3
-; ARM64-NEXT:    b.eq 0x410 <switch_table2+0x70>
+; ARM64-NEXT:    b.eq 0x410 <switch_table2+0x50>
 ; ARM64-NEXT:    cmp w0, #0x4
-; ARM64-NEXT:    b.eq 0x414 <switch_table2+0x74>
+; ARM64-NEXT:    b.eq 0x414 <switch_table2+0x54>
 ; ARM64-NEXT:    cmp w0, #0x5
-; ARM64-NEXT:    b.eq 0x418 <switch_table2+0x78>
-; ARM64-NEXT:    b 0x40c <switch_table2+0x6c>
+; ARM64-NEXT:    b.eq 0x418 <switch_table2+0x58>
+; ARM64-NEXT:    b 0x40c <switch_table2+0x4c>
 ; ARM64-NEXT:    cmp w0, #0x8
-; ARM64-NEXT:    b.eq 0x420 <switch_table2+0x80>
+; ARM64-NEXT:    b.eq 0x420 <switch_table2+0x60>
 ; ARM64-NEXT:    cmp w0, #0x9
-; ARM64-NEXT:    b.eq 0x424 <switch_table2+0x84>
-; ARM64-NEXT:    b 0x40c <switch_table2+0x6c>
-; ARM64-NEXT:    b 0x560 <switch_table2+0x1c0>
-; ARM64-NEXT:    b 0x428 <switch_table2+0x88>
-; ARM64-NEXT:    b 0x45c <switch_table2+0xbc>
-; ARM64-NEXT:    b 0x490 <switch_table2+0xf0>
-; ARM64-NEXT:    b 0x4c4 <switch_table2+0x124>
-; ARM64-NEXT:    b 0x4f8 <switch_table2+0x158>
-; ARM64-NEXT:    b 0x52c <switch_table2+0x18c>
+; ARM64-NEXT:    b.eq 0x424 <switch_table2+0x64>
+; ARM64-NEXT:    b 0x40c <switch_table2+0x4c>
+; ARM64-NEXT:    b 0x560 <switch_table2+0x1a0>
+; ARM64-NEXT:    b 0x428 <switch_table2+0x68>
+; ARM64-NEXT:    b 0x45c <switch_table2+0x9c>
+; ARM64-NEXT:    b 0x490 <switch_table2+0xd0>
+; ARM64-NEXT:    b 0x4c4 <switch_table2+0x104>
+; ARM64-NEXT:    b 0x4f8 <switch_table2+0x138>
+; ARM64-NEXT:    b 0x52c <switch_table2+0x16c>
 ; ARM64-NEXT:    mov x0, #0x3 // =3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -657,33 +625,25 @@ define i32 @switch_binsearch(i32 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    cmp w0, #0x3
-; ARM64-NEXT:    b.eq 0x610 <switch_binsearch+0x70>
-; ARM64-NEXT:    b.hi 0x5f0 <switch_binsearch+0x50>
+; ARM64-NEXT:    b.eq 0x610 <switch_binsearch+0x50>
+; ARM64-NEXT:    b.hi 0x5f0 <switch_binsearch+0x30>
 ; ARM64-NEXT:    cmp w0, #0x1
-; ARM64-NEXT:    b.eq 0x608 <switch_binsearch+0x68>
+; ARM64-NEXT:    b.eq 0x608 <switch_binsearch+0x48>
 ; ARM64-NEXT:    cmp w0, #0x2
-; ARM64-NEXT:    b.eq 0x60c <switch_binsearch+0x6c>
-; ARM64-NEXT:    b 0x604 <switch_binsearch+0x64>
+; ARM64-NEXT:    b.eq 0x60c <switch_binsearch+0x4c>
+; ARM64-NEXT:    b 0x604 <switch_binsearch+0x44>
 ; ARM64-NEXT:    cmp w0, #0x64
-; ARM64-NEXT:    b.eq 0x614 <switch_binsearch+0x74>
+; ARM64-NEXT:    b.eq 0x614 <switch_binsearch+0x54>
 ; ARM64-NEXT:    cmp w0, #0x65
-; ARM64-NEXT:    b.eq 0x618 <switch_binsearch+0x78>
-; ARM64-NEXT:    b 0x604 <switch_binsearch+0x64>
-; ARM64-NEXT:    b 0x720 <switch_binsearch+0x180>
-; ARM64-NEXT:    b 0x61c <switch_binsearch+0x7c>
-; ARM64-NEXT:    b 0x650 <switch_binsearch+0xb0>
-; ARM64-NEXT:    b 0x684 <switch_binsearch+0xe4>
-; ARM64-NEXT:    b 0x6b8 <switch_binsearch+0x118>
-; ARM64-NEXT:    b 0x6ec <switch_binsearch+0x14c>
+; ARM64-NEXT:    b.eq 0x618 <switch_binsearch+0x58>
+; ARM64-NEXT:    b 0x604 <switch_binsearch+0x44>
+; ARM64-NEXT:    b 0x720 <switch_binsearch+0x160>
+; ARM64-NEXT:    b 0x61c <switch_binsearch+0x5c>
+; ARM64-NEXT:    b 0x650 <switch_binsearch+0x90>
+; ARM64-NEXT:    b 0x684 <switch_binsearch+0xc4>
+; ARM64-NEXT:    b 0x6b8 <switch_binsearch+0xf8>
+; ARM64-NEXT:    b 0x6ec <switch_binsearch+0x12c>
 ; ARM64-NEXT:    mov x0, #0x1 // =1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -786,24 +746,16 @@ define i32 @switch_i32_noreuse(i32 %p) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str x19, [sp, #0x10]
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov w19, w0
 ; ARM64-NEXT:    mov w0, w19
 ; ARM64-NEXT:    cmp w0, #0x1
-; ARM64-NEXT:    b.eq 0x7b0 <switch_i32_noreuse+0x50>
+; ARM64-NEXT:    b.eq 0x7b0 <switch_i32_noreuse+0x30>
 ; ARM64-NEXT:    cmp w0, #0x2
-; ARM64-NEXT:    b.eq 0x7b4 <switch_i32_noreuse+0x54>
-; ARM64-NEXT:    b 0x7ac <switch_i32_noreuse+0x4c>
-; ARM64-NEXT:    b 0x820 <switch_i32_noreuse+0xc0>
-; ARM64-NEXT:    b 0x7b8 <switch_i32_noreuse+0x58>
-; ARM64-NEXT:    b 0x7ec <switch_i32_noreuse+0x8c>
+; ARM64-NEXT:    b.eq 0x7b4 <switch_i32_noreuse+0x34>
+; ARM64-NEXT:    b 0x7ac <switch_i32_noreuse+0x2c>
+; ARM64-NEXT:    b 0x820 <switch_i32_noreuse+0xa0>
+; ARM64-NEXT:    b 0x7b8 <switch_i32_noreuse+0x38>
+; ARM64-NEXT:    b 0x7ec <switch_i32_noreuse+0x6c>
 ; ARM64-NEXT:    mov x0, #0x1 // =1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -882,24 +834,16 @@ define i64 @switch_i64_noreuse(i64 %p) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str x19, [sp, #0x10]
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x19, x0
 ; ARM64-NEXT:    mov x0, x19
 ; ARM64-NEXT:    cmp x0, #0x1
-; ARM64-NEXT:    b.eq 0x8b0 <switch_i64_noreuse+0x50>
+; ARM64-NEXT:    b.eq 0x8b0 <switch_i64_noreuse+0x30>
 ; ARM64-NEXT:    cmp x0, #0x2
-; ARM64-NEXT:    b.eq 0x8b4 <switch_i64_noreuse+0x54>
-; ARM64-NEXT:    b 0x8ac <switch_i64_noreuse+0x4c>
-; ARM64-NEXT:    b 0x920 <switch_i64_noreuse+0xc0>
-; ARM64-NEXT:    b 0x8b8 <switch_i64_noreuse+0x58>
-; ARM64-NEXT:    b 0x8ec <switch_i64_noreuse+0x8c>
+; ARM64-NEXT:    b.eq 0x8b4 <switch_i64_noreuse+0x34>
+; ARM64-NEXT:    b 0x8ac <switch_i64_noreuse+0x2c>
+; ARM64-NEXT:    b 0x920 <switch_i64_noreuse+0xa0>
+; ARM64-NEXT:    b 0x8b8 <switch_i64_noreuse+0x38>
+; ARM64-NEXT:    b 0x8ec <switch_i64_noreuse+0x6c>
 ; ARM64-NEXT:    mov x0, #0x1 // =1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]

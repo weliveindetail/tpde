@@ -35,15 +35,7 @@ define i32 @load_basic_int() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x0, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21 basic_int
 ; ARM64-NEXT:    add x0, x0, #0x0
 ; ARM64-NEXT:     R_AARCH64_ADD_ABS_LO12_NC basic_int
@@ -80,15 +72,7 @@ define i32 @load_basic_int_twice() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x0, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21 basic_int
 ; ARM64-NEXT:    add x0, x0, #0x0
 ; ARM64-NEXT:     R_AARCH64_ADD_ABS_LO12_NC basic_int
@@ -126,15 +110,7 @@ define ptr @load_func_ptr() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x0, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_GOT_PAGE func_ptr
 ; ARM64-NEXT:    ldr x0, [x0]
 ; ARM64-NEXT:     R_AARCH64_LD64_GOT_LO12_NC func_ptr
@@ -169,15 +145,7 @@ define void @store_global_ptr(ptr %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x1, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x1, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_GOT_PAGE global_ptr
 ; ARM64-NEXT:    ldr x1, [x1]
 ; ARM64-NEXT:     R_AARCH64_LD64_GOT_LO12_NC global_ptr
@@ -210,15 +178,7 @@ define ptr @get_global() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x0, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21 basic_int
 ; ARM64-NEXT:    add x0, x0, #0x0
 ; ARM64-NEXT:     R_AARCH64_ADD_ABS_LO12_NC basic_int
@@ -249,15 +209,7 @@ define ptr @get_func1() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x0, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_GOT_PAGE func_ptr
 ; ARM64-NEXT:    ldr x0, [x0]
 ; ARM64-NEXT:     R_AARCH64_LD64_GOT_LO12_NC func_ptr
@@ -288,15 +240,7 @@ define ptr @get_func2() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x0, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_GOT_PAGE some_func
 ; ARM64-NEXT:    ldr x0, [x0]
 ; ARM64-NEXT:     R_AARCH64_LD64_GOT_LO12_NC some_func
@@ -328,19 +272,11 @@ define {ptr, ptr} @get_struct1() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x0, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_GOT_PAGE func_ptr
 ; ARM64-NEXT:    ldr x0, [x0]
 ; ARM64-NEXT:     R_AARCH64_LD64_GOT_LO12_NC func_ptr
-; ARM64-NEXT:    adrp x1, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x1, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21 basic_int
 ; ARM64-NEXT:    add x1, x1, #0x0
 ; ARM64-NEXT:     R_AARCH64_ADD_ABS_LO12_NC basic_int
@@ -370,19 +306,11 @@ define {ptr, ptr} @get_struct2() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x0, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_GOT_PAGE some_func
 ; ARM64-NEXT:    ldr x0, [x0]
 ; ARM64-NEXT:     R_AARCH64_LD64_GOT_LO12_NC some_func
-; ARM64-NEXT:    adrp x1, 0x0 <load_basic_int>
+; ARM64-NEXT:    adrp x1, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_GOT_PAGE get_struct2
 ; ARM64-NEXT:    ldr x1, [x1]
 ; ARM64-NEXT:     R_AARCH64_LD64_GOT_LO12_NC get_struct2

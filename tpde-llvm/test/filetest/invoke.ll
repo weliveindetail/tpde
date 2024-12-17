@@ -50,14 +50,6 @@ define i32 @invoke_manyargs() personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sub sp, sp, #0x10
 ; ARM64-NEXT:    mov x0, #0x1 // =1
 ; ARM64-NEXT:    mov x1, #0x2 // =2
@@ -71,7 +63,7 @@ define i32 @invoke_manyargs() personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    str x8, [sp]
 ; ARM64-NEXT:    mov x8, #0xa // =10
 ; ARM64-NEXT:    str x8, [sp, #0x8]
-; ARM64-NEXT:    bl 0x64 <invoke_manyargs+0x64>
+; ARM64-NEXT:    bl 0x64 <invoke_manyargs+0x44>
 ; ARM64-NEXT:     R_AARCH64_CALL26 mayThrow
 ; ARM64-NEXT:    add sp, sp, #0x10
 ; ARM64-NEXT:    mov w0, #0x0 // =0
@@ -80,7 +72,7 @@ define i32 @invoke_manyargs() personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
-; ARM64-NEXT:    bl 0xa4 <invoke_manyargs+0xa4>
+; ARM64-NEXT:    bl 0xa4 <invoke_manyargs+0x84>
 ; ARM64-NEXT:     R_AARCH64_CALL26 _Unwind_Resume
 ; ARM64-NEXT:    udf #0x1
 entry:

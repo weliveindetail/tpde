@@ -11,15 +11,7 @@ define void @call_3_float() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x30 <call_3_float+0x30>
+; ARM64-NEXT:    bl 0x30 <call_3_float+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 ret_3_float
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -37,14 +29,6 @@ define void @call_take_12_fp128() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str d8, [sp, #0x10]
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sub sp, sp, #0x40
 ; ARM64-NEXT:    movi v0.8b, #0x0
 ; ARM64-NEXT:    movi v1.16b, #0x0
@@ -62,7 +46,7 @@ define void @call_take_12_fp128() {
 ; ARM64-NEXT:    str d8, [sp, #0x20]
 ; ARM64-NEXT:    movi v8.16b, #0x0
 ; ARM64-NEXT:    str q8, [sp, #0x30]
-; ARM64-NEXT:    bl 0xe4 <call_take_12_fp128+0x74>
+; ARM64-NEXT:    bl 0xe4 <call_take_12_fp128+0x54>
 ; ARM64-NEXT:     R_AARCH64_CALL26 take_double_fp128
 ; ARM64-NEXT:    add sp, sp, #0x40
 ; ARM64-NEXT:    ldp x29, x30, [sp]

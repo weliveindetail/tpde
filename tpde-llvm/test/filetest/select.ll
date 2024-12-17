@@ -26,14 +26,6 @@ define i32 @select_i32_reg(i1 %0, i32 %1, i32 %2) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
 ; ARM64-NEXT:    csel w2, w2, w1, eq
 ; ARM64-NEXT:    mov w0, w2
@@ -65,14 +57,6 @@ define i64 @select_i64_reg(i1 %0, i64 %1, i64 %2) {
 ; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
 ; ARM64-NEXT:    csel x2, x2, x1, eq
@@ -107,14 +91,6 @@ define ptr @select_ptr_reg(i1 %0, ptr %1, ptr %2) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
 ; ARM64-NEXT:    csel x2, x2, x1, eq
 ; ARM64-NEXT:    mov x0, x2
@@ -146,14 +122,6 @@ define i128 @select_i128_reg(i1 %0, i128 %1, i128 %2) {
 ; ARM64:         sub sp, sp, #0xe0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
 ; ARM64-NEXT:    csel x0, x4, x2, eq
@@ -189,14 +157,6 @@ define float @select_f32_reg(i1 %0, float %1, float %2) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
 ; ARM64-NEXT:    fcsel s1, s1, s0, eq
 ; ARM64-NEXT:    mov v0.16b, v1.16b
@@ -229,14 +189,6 @@ define double @select_f64_reg(i1 %0, double %1, double %2) {
 ; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
 ; ARM64-NEXT:    fcsel d1, d1, d0, eq
@@ -273,14 +225,6 @@ define %struct.i8_i64 @select_i8_i64_0(i1 %0, %struct.i8_i64 %1, %struct.i8_i64 
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
 ; ARM64-NEXT:    csel x0, x3, x1, eq
 ; ARM64-NEXT:    csel x4, x4, x2, eq
@@ -313,14 +257,6 @@ define %struct.i8_i64 @select_i8_i64_1(i1 %0, %struct.i8_i64 %1, %struct.i8_i64 
 ; ARM64:         sub sp, sp, #0xe0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
 ; ARM64-NEXT:    csel x0, x1, x3, eq

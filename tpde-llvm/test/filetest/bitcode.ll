@@ -19,22 +19,14 @@ define void @empty() {
 ; X64-NEXT: add rsp, 0x30
 ; X64-NEXT: pop rbp
 ; X64-NEXT: ret
-; ARM64:    sub sp, sp, #0xa0
-; ARM64:    stp x29, x30, [sp]
-; ARM64:    mov x29, sp
-; ARM64:    nop
-; ARM64:    nop
-; ARM64:    nop
-; ARM64:    nop
-; ARM64:    nop
-; ARM64:    nop
-; ARM64:    nop
-; ARM64:    nop
-; ARM64:    nop
-; ARM64:    ldp x29, x30, [sp]
-; ARM64:    add sp, sp, #0xa0
-; ARM64:    ret
-; ARM64:     ...
+; ARM64-NEXT:    sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
   entry:
     ret void
 }

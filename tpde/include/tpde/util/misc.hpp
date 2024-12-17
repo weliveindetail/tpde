@@ -10,6 +10,13 @@
 namespace tpde::util {
 
 template <typename T>
+constexpr T align_down(T val, std::type_identity_t<T> align) {
+    // align must be a power of two
+    assert((align & (align - 1)) == 0);
+    return val & ~(align - 1);
+}
+
+template <typename T>
 constexpr T align_up(T val, std::type_identity_t<T> align) {
     // align must be a power of two
     assert((align & (align - 1)) == 0);
