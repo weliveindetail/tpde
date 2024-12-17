@@ -188,6 +188,7 @@ struct AssemblerElf {
     DataSection sec_except_table;
 
     struct ExceptCallSiteInfo {
+        /// Start offset *in section* (not inside function)
         u64 start;
         u64 len;
         u32 pad_label_or_off;
@@ -218,8 +219,7 @@ struct AssemblerElf {
     /// Is the objective(heh) to generate an object file or to map into memory?
     bool   generating_object;
     /// The current function
-    SymRef cur_func     = INVALID_SYM_REF;
-    u32    cur_func_off = 0;
+    SymRef cur_func = INVALID_SYM_REF;
 
 #ifdef TPDE_ASSERTS
     bool currently_in_func = false;
@@ -414,7 +414,6 @@ void AssemblerElf<Derived>::start_func(
     text_align(16);
     auto *elf_sym     = sym_ptr(func);
     elf_sym->st_value = text_cur_off();
-    cur_func_off      = text_cur_off();
 
     if (personality_func_addr != cur_personality_func_addr) {
         assert(
@@ -430,14 +429,6 @@ void AssemblerElf<Derived>::start_func(
     except_type_info_table.clear();
     except_spec_table.clear();
     except_action_table.resize(2); // cleanup entry
-
-    if (cur_personality_func_addr != INVALID_SYM_REF) {
-        // llvm's default behavior is to let exceptions propagate
-        // through generated code without any handling if there is no invoke so
-        // we mimick that
-        except_call_site_table.push_back(ExceptCallSiteInfo{
-            .start = 0, .len = 0, .pad_label_or_off = ~0u, .action_entry = 0});
-    }
 
 #ifdef TPDE_ASSERTS
     currently_in_func = true;
@@ -1585,29 +1576,34 @@ void AssemblerElf<Derived>::except_encode_func() noexcept {
 
     // encode the call sites first, otherwise we can't write the header
     except_encoded_call_sites.clear();
+    except_encoded_call_sites.reserve(16 * except_call_site_table.size());
 
-    if (except_call_site_table.back().len == 0) {
-        // make the last call site span the remainder of the function so that
-        // exceptions can unwind through it
-        auto &entry = except_call_site_table.back();
-        assert(!entry.pad_label_or_off); // this should have been replaced by
-                                         // the backend at this point
-        assert(!entry.action_entry);
-        entry.len = (text_cur_off() - cur_func_off) - entry.start;
-        if (entry.len == 0) {
-            except_call_site_table.pop_back();
-        }
-    }
+    const auto *sym = sym_ptr(cur_func);
+    u64 fn_start = sym->st_value;
+    u64 fn_end = fn_start + sym->st_size;
+    u64 cur = fn_start;
     for (auto &info : except_call_site_table) {
-        eh_write_uleb(except_encoded_call_sites, info.start);
+        if (info.start > cur) {
+            // Encode padding entry
+            eh_write_uleb(except_encoded_call_sites, cur - fn_start);
+            eh_write_uleb(except_encoded_call_sites, info.start - cur);
+            eh_write_uleb(except_encoded_call_sites, 0);
+            eh_write_uleb(except_encoded_call_sites, 0);
+        }
+        eh_write_uleb(except_encoded_call_sites, info.start - fn_start);
         eh_write_uleb(except_encoded_call_sites, info.len);
-        eh_write_uleb(except_encoded_call_sites, info.pad_label_or_off);
-        const auto cur_off = text_cur_off();
-        (void)cur_off;
-        assert(info.pad_label_or_off < (cur_off - cur_func_off));
-        eh_write_uleb(
-            except_encoded_call_sites,
-            info.action_entry); // the offset is correctly set at insertion
+        assert((info.pad_label_or_off - fn_start) < (fn_end - fn_start));
+        eh_write_uleb(except_encoded_call_sites,
+                      info.pad_label_or_off - fn_start);
+        eh_write_uleb(except_encoded_call_sites, info.action_entry);
+        cur = info.start + info.len;
+    }
+    if (cur < fn_end) {
+        // Add padding until the end of the function
+        eh_write_uleb(except_encoded_call_sites, cur - fn_start);
+        eh_write_uleb(except_encoded_call_sites, fn_end - cur);
+        eh_write_uleb(except_encoded_call_sites, 0);
+        eh_write_uleb(except_encoded_call_sites, 0);
     }
 
     // zero-terminate
@@ -1668,40 +1664,13 @@ void AssemblerElf<Derived>::except_add_call_site(
     const u32  len,
     const u32  landing_pad_id,
     const bool is_cleanup) noexcept {
-    auto info = ExceptCallSiteInfo{
-        .start            = text_off - cur_func_off,
-        .len              = len,
+    except_call_site_table.push_back(ExceptCallSiteInfo{
+        .start = text_off,
+        .len = len,
         .pad_label_or_off = landing_pad_id,
         .action_entry =
-            (is_cleanup ? 0
-                        : static_cast<u32>(except_action_table.size()) + 1)};
-
-    if (except_call_site_table.back().start == info.start) {
-        // replace the current end of the call-site table if we have
-        // back-to-back call sites
-        auto &entry = except_call_site_table.back();
-        assert(!entry.len);
-        assert(entry.pad_label_or_off == ~0u);
-        assert(!entry.action_entry);
-
-        entry = info;
-    } else {
-        if (except_call_site_table.back().len == 0) {
-            // set the length of the padding call-site
-            auto &entry = except_call_site_table.back();
-            assert(entry.pad_label_or_off == ~0u);
-            assert(!entry.action_entry);
-            entry.len = info.start - entry.start;
-        }
-        except_call_site_table.push_back(info);
-    }
-
-    // add padding call-site
-    except_call_site_table.push_back(
-        ExceptCallSiteInfo{.start            = info.start + info.len,
-                           .len              = 0,
-                           .pad_label_or_off = ~0u,
-                           .action_entry     = 0});
+            (is_cleanup ? 0 : static_cast<u32>(except_action_table.size()) + 1),
+    });
 }
 
 template <typename Derived>

@@ -1359,10 +1359,8 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
                        // have a landing pad
                 continue;
             }
-            info.pad_label_or_off =
-                this->assembler.label_offset(
-                    static_cast<Assembler::Label>(info.pad_label_or_off))
-                - func_start_off;
+            info.pad_label_or_off = this->assembler.label_offset(
+                static_cast<Assembler::Label>(info.pad_label_or_off));
         }
     } else {
         assert(this->assembler.except_call_site_table.empty());
