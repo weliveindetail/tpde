@@ -13,659 +13,640 @@
 namespace tpde::test {
 
 struct TestIR {
-    struct Value {
-        enum class Type : u8 {
-            normal,
-            arg,
-            alloca,
-            phi,
-            ret,
-            br,
-            condbr,
-            call,
-        };
-
-        enum class Op : u8 {
-            none,
-            add,
-            sub
-        };
-        inline static constexpr const char *OP_NAMES[] = {"none", "add", "sub"};
-
-        std::string name;
-        u32         local_idx = 0;
-        Type        type;
-        Op          op                     = Op::none;
-        bool        force_fixed_assignment = false;
-
-        union {
-            u32 alloca_size;
-            u32 op_count = 0;
-        };
-
-        union {
-            u32 alloca_align = 0;
-            u32 call_func_idx;
-        };
-
-        u32 op_begin_idx = 0, op_end_idx = 0;
+  struct Value {
+    enum class Type : u8 {
+      normal,
+      arg,
+      alloca,
+      phi,
+      ret,
+      br,
+      condbr,
+      call,
     };
 
-    struct Block {
-        std::string name;
-        u32         succ_begin_idx = 0, succ_end_idx = 0;
-        u32         inst_begin_idx = 0, inst_end_idx = 0;
-        bool        has_sibling = false;
-        u32         block_info = 0, block_info2 = 0;
+    enum class Op : u8 {
+      none,
+      add,
+      sub
+    };
+    inline static constexpr const char *OP_NAMES[] = {"none", "add", "sub"};
+
+    std::string name;
+    u32 local_idx = 0;
+    Type type;
+    Op op = Op::none;
+    bool force_fixed_assignment = false;
+
+    union {
+      u32 alloca_size;
+      u32 op_count = 0;
     };
 
-    struct Function {
-        std::string name;
-        bool        declaration     = false;
-        bool        local_only      = false;
-        bool        has_call        = false;
-        u32         block_begin_idx = 0, block_end_idx = 0;
-        u32         arg_begin_idx = 0, arg_end_idx = 0;
+    union {
+      u32 alloca_align = 0;
+      u32 call_func_idx;
     };
 
-    std::vector<Value>    values;
-    std::vector<u32>      value_operands;
-    std::vector<Block>    blocks;
-    std::vector<u32>      block_succs;
-    std::vector<Function> functions;
+    u32 op_begin_idx = 0, op_end_idx = 0;
+  };
 
-    struct PendingBlockEntry {
-        enum class Type : u8 {
-            succ,
-            value,
-        };
-        Type type;
+  struct Block {
+    std::string name;
+    u32 succ_begin_idx = 0, succ_end_idx = 0;
+    u32 inst_begin_idx = 0, inst_end_idx = 0;
+    bool has_sibling = false;
+    u32 block_info = 0, block_info2 = 0;
+  };
 
-        union {
-            u32 block_idx;
-            u32 value_idx;
-        };
+  struct Function {
+    std::string name;
+    bool declaration = false;
+    bool local_only = false;
+    bool has_call = false;
+    u32 block_begin_idx = 0, block_end_idx = 0;
+    u32 arg_begin_idx = 0, arg_end_idx = 0;
+  };
 
-        union {
-            u32 succ_idx;
-            u32 op_idx;
-        };
+  std::vector<Value> values;
+  std::vector<u32> value_operands;
+  std::vector<Block> blocks;
+  std::vector<u32> block_succs;
+  std::vector<Function> functions;
+
+  struct PendingBlockEntry {
+    enum class Type : u8 {
+      succ,
+      value,
+    };
+    Type type;
+
+    union {
+      u32 block_idx;
+      u32 value_idx;
     };
 
-    struct BodyParseState {
-        u32                                       func_idx;
-        u32                                       cur_block;
-        bool                                      block_finished;
-        bool                                      block_finished_phis;
-        std::unordered_map<std::string_view, u32> value_map;
-        std::unordered_map<std::string_view, u32> block_map;
-        std::unordered_map<std::string_view, std::vector<std::pair<u32, u32>>>
-            pending_value_resolves;
-        std::unordered_map<std::string_view, std::vector<PendingBlockEntry>>
-            pending_block_resolves;
-        // val_idx
-        std::unordered_map<std::string_view, std::vector<u32>>
-            *pending_call_resolves;
+    union {
+      u32 succ_idx;
+      u32 op_idx;
     };
+  };
 
-    [[nodiscard]] bool parse_ir(std::string_view text) noexcept;
-    [[nodiscard]] bool
-                       parse_func(std::string_view                     &text,
-                                  std::unordered_set<std::string_view> &func_names,
-                                  std::unordered_map<std::string_view, std::vector<u32>>
-                                      &pending_call_resolves) noexcept;
-    [[nodiscard]] bool parse_func_body(std::string_view body,
-                                       BodyParseState  &parse_state) noexcept;
-    [[nodiscard]] bool parse_body_line(std::string_view line,
-                                       BodyParseState  &parse_state) noexcept;
-    [[nodiscard]] bool parse_value_line(std::string_view line,
-                                        BodyParseState  &parse_state) noexcept;
+  struct BodyParseState {
+    u32 func_idx;
+    u32 cur_block;
+    bool block_finished;
+    bool block_finished_phis;
+    std::unordered_map<std::string_view, u32> value_map;
+    std::unordered_map<std::string_view, u32> block_map;
+    std::unordered_map<std::string_view, std::vector<std::pair<u32, u32>>>
+        pending_value_resolves;
+    std::unordered_map<std::string_view, std::vector<PendingBlockEntry>>
+        pending_block_resolves;
+    // val_idx
+    std::unordered_map<std::string_view, std::vector<u32>>
+        *pending_call_resolves;
+  };
 
-    [[nodiscard]] bool parse_block(std::string_view line,
-                                   BodyParseState  &parse_state,
-                                   bool             is_entry) noexcept;
+  [[nodiscard]] bool parse_ir(std::string_view text) noexcept;
+  [[nodiscard]] bool
+      parse_func(std::string_view &text,
+                 std::unordered_set<std::string_view> &func_names,
+                 std::unordered_map<std::string_view, std::vector<u32>>
+                     &pending_call_resolves) noexcept;
+  [[nodiscard]] bool parse_func_body(std::string_view body,
+                                     BodyParseState &parse_state) noexcept;
+  [[nodiscard]] bool parse_body_line(std::string_view line,
+                                     BodyParseState &parse_state) noexcept;
+  [[nodiscard]] bool parse_value_line(std::string_view line,
+                                      BodyParseState &parse_state) noexcept;
 
-    static void remove_whitespace(std::string_view &text) noexcept;
-    [[nodiscard]] static std::string_view
-        get_line(std::string_view text) noexcept;
-    [[nodiscard]] static std::string_view
-        parse_name(std::string_view &text) noexcept;
+  [[nodiscard]] bool parse_block(std::string_view line,
+                                 BodyParseState &parse_state,
+                                 bool is_entry) noexcept;
 
-    void dump_debug() const noexcept;
-    void print() const noexcept;
+  static void remove_whitespace(std::string_view &text) noexcept;
+  [[nodiscard]] static std::string_view
+      get_line(std::string_view text) noexcept;
+  [[nodiscard]] static std::string_view
+      parse_name(std::string_view &text) noexcept;
+
+  void dump_debug() const noexcept;
+  void print() const noexcept;
 };
 
 struct TestIRAdaptor {
-    TestIR *ir;
+  TestIR *ir;
 
-    explicit TestIRAdaptor(TestIR *ir) : ir(ir) {}
+  explicit TestIRAdaptor(TestIR *ir) : ir(ir) {}
 
-    enum class IRValueRef : u32 {
+  enum class IRValueRef : u32 {
+  };
+
+  /*constexpr friend bool operator<(const IRValueRef &lhs,
+                                  const IRValueRef &rhs) {
+      return static_cast<u32>(lhs) < static_cast<u32>(rhs);
+  }*/
+
+  enum class IRBlockRef : u32 {
+  };
+  enum class IRFuncRef : u32 {
+  };
+
+  static constexpr IRValueRef INVALID_VALUE_REF = static_cast<IRValueRef>(~0u);
+  static constexpr IRBlockRef INVALID_BLOCK_REF = static_cast<IRBlockRef>(~0u);
+  static constexpr IRFuncRef INVALID_FUNC_REF = static_cast<IRFuncRef>(~0u);
+
+  static constexpr bool TPDE_PROVIDES_HIGHEST_VAL_IDX = true;
+  u32 highest_local_val_idx;
+
+  static constexpr bool TPDE_LIVENESS_VISIT_ARGS = true;
+
+  [[nodiscard]] u32 func_count() const noexcept {
+    return static_cast<u32>(ir->functions.size());
+  }
+
+  auto funcs() const noexcept {
+    struct Range {
+      struct Iter {
+        u32 val;
+
+        Iter &operator++() {
+          ++val;
+          return *this;
+        }
+
+        bool operator!=(const Iter &other) const noexcept {
+          return other.val != val;
+        }
+
+        IRFuncRef operator*() const noexcept {
+          return static_cast<IRFuncRef>(val);
+        }
+      };
+
+      u32 func_count;
+
+      [[nodiscard]] Iter begin() const noexcept { return Iter{0}; }
+
+      [[nodiscard]] Iter end() const noexcept { return Iter{func_count}; }
     };
 
-    /*constexpr friend bool operator<(const IRValueRef &lhs,
-                                    const IRValueRef &rhs) {
-        return static_cast<u32>(lhs) < static_cast<u32>(rhs);
-    }*/
+    return Range{.func_count = static_cast<u32>(ir->functions.size())};
+  }
 
-    enum class IRBlockRef : u32 {
-    };
-    enum class IRFuncRef : u32 {
-    };
+  [[nodiscard]] auto funcs_to_compile() const noexcept { return funcs(); }
 
-    static constexpr IRValueRef INVALID_VALUE_REF =
-        static_cast<IRValueRef>(~0u);
-    static constexpr IRBlockRef INVALID_BLOCK_REF =
-        static_cast<IRBlockRef>(~0u);
-    static constexpr IRFuncRef INVALID_FUNC_REF = static_cast<IRFuncRef>(~0u);
+  [[nodiscard]] std::string_view
+      func_link_name(const IRFuncRef func) const noexcept {
+    return ir->functions[static_cast<u32>(func)].name;
+  }
 
-    static constexpr bool TPDE_PROVIDES_HIGHEST_VAL_IDX = true;
-    u32                   highest_local_val_idx;
+  [[nodiscard]] bool func_extern(const IRFuncRef func) const noexcept {
+    return ir->functions[static_cast<u32>(func)].declaration;
+  }
 
-    static constexpr bool TPDE_LIVENESS_VISIT_ARGS = true;
+  [[nodiscard]] bool func_only_local(const IRFuncRef func) const noexcept {
+    return ir->functions[static_cast<u32>(func)].local_only;
+  }
 
-    [[nodiscard]] u32 func_count() const noexcept {
-        return static_cast<u32>(ir->functions.size());
-    }
+  [[nodiscard]] bool func_has_weak_linkage(const IRFuncRef) const noexcept {
+    return false;
+  }
 
-    auto funcs() const noexcept {
-        struct Range {
-            struct Iter {
-                u32 val;
+  u32 cur_func;
 
-                Iter &operator++() {
-                    ++val;
-                    return *this;
-                }
+  [[nodiscard]] bool cur_needs_unwind_info() const noexcept { return false; }
 
-                bool operator!=(const Iter &other) const noexcept {
-                    return other.val != val;
-                }
+  [[nodiscard]] bool cur_is_vararg() const noexcept { return false; }
 
-                IRFuncRef operator*() const noexcept {
-                    return static_cast<IRFuncRef>(val);
-                }
-            };
+  [[nodiscard]] u32 cur_highest_val_idx() const noexcept {
+    return highest_local_val_idx;
+  }
 
-            u32 func_count;
+  [[nodiscard]] IRFuncRef cur_personality_func() const noexcept {
+    return INVALID_FUNC_REF;
+  }
 
-            [[nodiscard]] Iter begin() const noexcept { return Iter{0}; }
+  [[nodiscard]] auto cur_args() const noexcept {
+    struct Range {
+      const u32 beg, last;
 
-            [[nodiscard]] Iter end() const noexcept { return Iter{func_count}; }
-        };
+      struct Iter {
+        u32 val;
 
-        return Range{.func_count = static_cast<u32>(ir->functions.size())};
-    }
-
-    [[nodiscard]] auto funcs_to_compile() const noexcept { return funcs(); }
-
-    [[nodiscard]] std::string_view
-        func_link_name(const IRFuncRef func) const noexcept {
-        return ir->functions[static_cast<u32>(func)].name;
-    }
-
-    [[nodiscard]] bool func_extern(const IRFuncRef func) const noexcept {
-        return ir->functions[static_cast<u32>(func)].declaration;
-    }
-
-    [[nodiscard]] bool func_only_local(const IRFuncRef func) const noexcept {
-        return ir->functions[static_cast<u32>(func)].local_only;
-    }
-
-    [[nodiscard]] bool func_has_weak_linkage(const IRFuncRef) const noexcept {
-        return false;
-    }
-
-    u32 cur_func;
-
-    [[nodiscard]] bool cur_needs_unwind_info() const noexcept { return false; }
-
-    [[nodiscard]] bool cur_is_vararg() const noexcept { return false; }
-
-    [[nodiscard]] u32 cur_highest_val_idx() const noexcept {
-        return highest_local_val_idx;
-    }
-
-    [[nodiscard]] IRFuncRef cur_personality_func() const noexcept {
-        return INVALID_FUNC_REF;
-    }
-
-    [[nodiscard]] auto cur_args() const noexcept {
-        struct Range {
-            const u32 beg, last;
-
-            struct Iter {
-                u32 val;
-
-                Iter &operator++() {
-                    ++val;
-                    return *this;
-                }
-
-                bool operator!=(const Iter &other) const noexcept {
-                    return other.val != val;
-                }
-
-                IRValueRef operator*() const noexcept {
-                    return static_cast<IRValueRef>(val);
-                }
-            };
-
-            [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
-
-            [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
-        };
-
-        const auto &func = ir->functions[cur_func];
-        return Range{.beg = func.arg_begin_idx, .last = func.arg_end_idx};
-    }
-
-    [[nodiscard]] static bool cur_arg_is_byval(u32) noexcept { return false; }
-
-    [[nodiscard]] static u32 cur_arg_byval_align(u32) noexcept { return 0; }
-
-    [[nodiscard]] static u32 cur_arg_byval_size(u32) noexcept { return 0; }
-
-    [[nodiscard]] static bool cur_arg_is_sret(u32) noexcept { return false; }
-
-    [[nodiscard]] auto cur_static_allocas() const noexcept {
-        struct Range {
-            const TestIR *self;
-            const u32     val_idx_beg, val_idx_end;
-
-            struct Iter {
-                const TestIR *self;
-                u32           val, val_idx_end;
-
-                Iter &operator++() noexcept {
-                    if (val == val_idx_end) {
-                        return *this;
-                    }
-
-                    while (val != val_idx_end) {
-                        ++val;
-
-                        if (self->values[val].type
-                            == TestIR::Value::Type::alloca) {
-                            break;
-                        }
-                    }
-                    return *this;
-                }
-
-                bool operator!=(const Iter &other) const noexcept {
-                    assert(other.self == self);
-                    assert(other.val_idx_end == val_idx_end);
-                    return other.val != val;
-                }
-
-                IRValueRef operator*() const noexcept {
-                    return static_cast<IRValueRef>(val);
-                }
-            };
-
-            [[nodiscard]] Iter begin() const noexcept {
-                return Iter{.self        = self,
-                            .val         = val_idx_beg,
-                            .val_idx_end = val_idx_end};
-            }
-
-            [[nodiscard]] Iter end() const noexcept {
-                return Iter{.self        = self,
-                            .val         = val_idx_end,
-                            .val_idx_end = val_idx_end};
-            }
-        };
-
-        const auto &entry = ir->blocks[ir->functions[cur_func].block_begin_idx];
-        assert(ir->functions[cur_func].block_begin_idx
-               != ir->functions[cur_func].block_end_idx);
-
-        u32 first_alloca = entry.inst_begin_idx;
-        while (first_alloca != entry.inst_end_idx) {
-            if (ir->values[first_alloca].type == TestIR::Value::Type::alloca) {
-                break;
-            }
-            ++first_alloca;
+        Iter &operator++() {
+          ++val;
+          return *this;
         }
-        return Range{ir, first_alloca, entry.inst_end_idx};
-    }
 
-    [[nodiscard]] static bool cur_has_dynamic_alloca() noexcept {
-        return false;
-    }
-
-    [[nodiscard]] IRBlockRef cur_entry_block() const noexcept {
-        const auto &func = ir->functions[cur_func];
-        assert(ir->functions[cur_func].block_begin_idx
-               != ir->functions[cur_func].block_end_idx);
-
-        return static_cast<IRBlockRef>(func.block_begin_idx);
-    }
-
-    [[nodiscard]] IRBlockRef
-        block_sibling(const IRBlockRef block) const noexcept {
-        if (ir->blocks[static_cast<u32>(block)].has_sibling) {
-            return static_cast<IRBlockRef>(static_cast<u32>(block) + 1);
-        } else {
-            return INVALID_BLOCK_REF;
+        bool operator!=(const Iter &other) const noexcept {
+          return other.val != val;
         }
-    }
 
-    [[nodiscard]] auto block_succs(const IRBlockRef block) const noexcept {
-        struct Range {
-            const u32 *beg, *last;
+        IRValueRef operator*() const noexcept {
+          return static_cast<IRValueRef>(val);
+        }
+      };
 
-            struct Iter {
-                const u32 *val;
+      [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
 
-                Iter &operator++() {
-                    ++val;
-                    return *this;
-                }
-
-                bool operator!=(const Iter &other) const noexcept {
-                    return other.val != val;
-                }
-
-                IRBlockRef operator*() const noexcept {
-                    return static_cast<IRBlockRef>(*val);
-                }
-            };
-
-            [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
-
-            [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
-        };
-
-        const auto &info = ir->blocks[static_cast<u32>(block)];
-        const auto *data = ir->block_succs.data();
-        return Range{data + info.succ_begin_idx, data + info.succ_end_idx};
-    }
-
-    struct BlockInstRange {
-        const u32 beg, last;
-
-        struct Iter {
-            u32 val;
-
-            Iter &operator++() {
-                ++val;
-                return *this;
-            }
-
-            bool operator!=(const Iter &other) const noexcept {
-                return other.val != val;
-            }
-
-            IRValueRef operator*() const noexcept {
-                return static_cast<IRValueRef>(val);
-            }
-        };
-
-        [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
-
-        [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
+      [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
     };
 
-    using IRInstIter = BlockInstRange::Iter;
+    const auto &func = ir->functions[cur_func];
+    return Range{.beg = func.arg_begin_idx, .last = func.arg_end_idx};
+  }
 
-    [[nodiscard]] auto block_values(const IRBlockRef block) const noexcept {
-        const auto &info = ir->blocks[static_cast<u32>(block)];
-        return BlockInstRange{info.inst_begin_idx, info.inst_end_idx};
-    }
+  [[nodiscard]] static bool cur_arg_is_byval(u32) noexcept { return false; }
 
-    [[nodiscard]] auto block_phis(const IRBlockRef block) const noexcept {
-        struct Range {
-            const TestIR *self;
-            const u32     val_idx_beg, val_idx_end;
+  [[nodiscard]] static u32 cur_arg_byval_align(u32) noexcept { return 0; }
 
-            struct Iter {
-                const TestIR *self;
-                u32           val, val_idx_end;
+  [[nodiscard]] static u32 cur_arg_byval_size(u32) noexcept { return 0; }
 
-                Iter &operator++() noexcept {
-                    if (val == val_idx_end) {
-                        return *this;
-                    }
+  [[nodiscard]] static bool cur_arg_is_sret(u32) noexcept { return false; }
 
-                    while (val != val_idx_end) {
-                        ++val;
+  [[nodiscard]] auto cur_static_allocas() const noexcept {
+    struct Range {
+      const TestIR *self;
+      const u32 val_idx_beg, val_idx_end;
 
-                        if (self->values[val].type
-                            == TestIR::Value::Type::phi) {
-                            break;
-                        } else {
-                            val = val_idx_end;
-                            break;
-                        }
-                    }
-                    return *this;
-                }
+      struct Iter {
+        const TestIR *self;
+        u32 val, val_idx_end;
 
-                bool operator!=(const Iter &other) const noexcept {
-                    assert(other.self == self);
-                    assert(other.val_idx_end == val_idx_end);
-                    return other.val != val;
-                }
+        Iter &operator++() noexcept {
+          if (val == val_idx_end) {
+            return *this;
+          }
 
-                IRValueRef operator*() const noexcept {
-                    return static_cast<IRValueRef>(val);
-                }
-            };
+          while (val != val_idx_end) {
+            ++val;
 
-            [[nodiscard]] Iter begin() const noexcept {
-                return Iter{.self        = self,
-                            .val         = val_idx_beg,
-                            .val_idx_end = val_idx_end};
+            if (self->values[val].type == TestIR::Value::Type::alloca) {
+              break;
             }
-
-            [[nodiscard]] Iter end() const noexcept {
-                return Iter{.self        = self,
-                            .val         = val_idx_end,
-                            .val_idx_end = val_idx_end};
-            }
-        };
-
-        const auto &info = ir->blocks[static_cast<u32>(block)];
-        if (info.inst_begin_idx == info.inst_end_idx
-            || ir->values[info.inst_begin_idx].type
-                   != TestIR::Value::Type::phi) {
-            return Range{ir, info.inst_end_idx, info.inst_end_idx};
-        } else {
-            return Range{ir, info.inst_begin_idx, info.inst_end_idx};
+          }
+          return *this;
         }
-    }
 
-    [[nodiscard]] u32 block_info(IRBlockRef block) const noexcept {
-        return ir->blocks[static_cast<u32>(block)].block_info;
-    }
-
-    void block_set_info(IRBlockRef block, u32 value) noexcept {
-        ir->blocks[static_cast<u32>(block)].block_info = value;
-    }
-
-    [[nodiscard]] u32 block_info2(IRBlockRef block) const noexcept {
-        return ir->blocks[static_cast<u32>(block)].block_info2;
-    }
-
-    void block_set_info2(IRBlockRef block, u32 value) noexcept {
-        ir->blocks[static_cast<u32>(block)].block_info2 = value;
-    }
-
-    [[nodiscard]] std::string_view
-        block_fmt_ref(IRBlockRef block) const noexcept {
-        return ir->blocks[static_cast<u32>(block)].name;
-    }
-
-    [[nodiscard]] std::string_view
-        value_fmt_ref(IRValueRef val) const noexcept {
-        return ir->values[static_cast<u32>(val)].name;
-    }
-
-    [[nodiscard]] u32 val_local_idx(IRValueRef val) {
-        assert(static_cast<u32>(val) >= ir->functions[cur_func].arg_begin_idx);
-        return static_cast<u32>(val) - ir->functions[cur_func].arg_begin_idx;
-    }
-
-    [[nodiscard]] auto val_operands(IRValueRef val) {
-        struct Range {
-            bool       is_phi;
-            const u32 *beg, *last;
-
-            struct Iter {
-                bool       is_phi;
-                const u32 *val;
-
-                Iter &operator++() {
-                    if (is_phi) {
-                        val += 2;
-                    } else {
-                        ++val;
-                    }
-                    return *this;
-                }
-
-                bool operator!=(const Iter &other) const noexcept {
-                    return other.val != val;
-                }
-
-                IRValueRef operator*() const noexcept {
-                    return static_cast<IRValueRef>(*val);
-                }
-            };
-
-            [[nodiscard]] Iter begin() const noexcept {
-                return Iter{is_phi, beg};
-            }
-
-            [[nodiscard]] Iter end() const noexcept {
-                return Iter{is_phi, last};
-            }
-        };
-
-        const auto &info = ir->values[static_cast<u32>(val)];
-        const auto *data = ir->value_operands.data();
-        if (info.type == TestIR::Value::Type::phi) {
-            return Range(
-                true, data + info.op_begin_idx + 1, data + info.op_end_idx + 1);
-        } else if (info.type == TestIR::Value::Type::normal
-                   || info.type == TestIR::Value::Type::ret
-                   || info.type == TestIR::Value::Type::call) {
-            return Range(
-                false, data + info.op_begin_idx, data + info.op_end_idx);
-        } else if (info.type == TestIR::Value::Type::condbr) {
-            return Range(
-                false, data + info.op_begin_idx, data + info.op_begin_idx + 1);
-        } else {
-            return Range{false, nullptr, nullptr};
+        bool operator!=(const Iter &other) const noexcept {
+          assert(other.self == self);
+          assert(other.val_idx_end == val_idx_end);
+          return other.val != val;
         }
-    }
 
-    [[nodiscard]] bool
-        val_ignore_in_liveness_analysis(IRValueRef value) const noexcept {
-        return ir->values[static_cast<u32>(value)].type
-               == TestIR::Value::Type::alloca;
-    }
-
-    [[nodiscard]] bool val_produces_result(IRValueRef value) const noexcept {
-        switch (ir->values[static_cast<u32>(value)].type) {
-            using enum TestIR::Value::Type;
-        case normal: [[fallthrough]];
-        case arg: [[fallthrough]];
-        case alloca: [[fallthrough]];
-        case phi: return true;
-        case ret: [[fallthrough]];
-        case br: [[fallthrough]];
-        case condbr: return false;
-        case call: return true;
+        IRValueRef operator*() const noexcept {
+          return static_cast<IRValueRef>(val);
         }
+      };
+
+      [[nodiscard]] Iter begin() const noexcept {
+        return Iter{
+            .self = self, .val = val_idx_beg, .val_idx_end = val_idx_end};
+      }
+
+      [[nodiscard]] Iter end() const noexcept {
+        return Iter{
+            .self = self, .val = val_idx_end, .val_idx_end = val_idx_end};
+      }
+    };
+
+    const auto &entry = ir->blocks[ir->functions[cur_func].block_begin_idx];
+    assert(ir->functions[cur_func].block_begin_idx !=
+           ir->functions[cur_func].block_end_idx);
+
+    u32 first_alloca = entry.inst_begin_idx;
+    while (first_alloca != entry.inst_end_idx) {
+      if (ir->values[first_alloca].type == TestIR::Value::Type::alloca) {
+        break;
+      }
+      ++first_alloca;
     }
+    return Range{ir, first_alloca, entry.inst_end_idx};
+  }
 
-    static bool val_fused(IRValueRef) noexcept { return false; }
+  [[nodiscard]] static bool cur_has_dynamic_alloca() noexcept { return false; }
 
-    [[nodiscard]] bool val_is_arg(IRValueRef value) const noexcept {
-        return ir->values[static_cast<u32>(value)].type
-               == TestIR::Value::Type::arg;
+  [[nodiscard]] IRBlockRef cur_entry_block() const noexcept {
+    const auto &func = ir->functions[cur_func];
+    assert(ir->functions[cur_func].block_begin_idx !=
+           ir->functions[cur_func].block_end_idx);
+
+    return static_cast<IRBlockRef>(func.block_begin_idx);
+  }
+
+  [[nodiscard]] IRBlockRef
+      block_sibling(const IRBlockRef block) const noexcept {
+    if (ir->blocks[static_cast<u32>(block)].has_sibling) {
+      return static_cast<IRBlockRef>(static_cast<u32>(block) + 1);
+    } else {
+      return INVALID_BLOCK_REF;
     }
+  }
 
-    [[nodiscard]] bool val_is_phi(IRValueRef value) const noexcept {
-        return ir->values[static_cast<u32>(value)].type
-               == TestIR::Value::Type::phi;
-    }
+  [[nodiscard]] auto block_succs(const IRBlockRef block) const noexcept {
+    struct Range {
+      const u32 *beg, *last;
 
-    [[nodiscard]] auto val_as_phi(IRValueRef value) const noexcept {
-        struct PHIRef {
-            const u32 *op_begin, *op_end;
+      struct Iter {
+        const u32 *val;
 
-            [[nodiscard]] u32 incoming_count() const noexcept {
-                return (op_end - op_begin) / 2;
-            }
-
-            [[nodiscard]] IRValueRef
-                incoming_val_for_slot(const u32 slot) const noexcept {
-                assert(slot < incoming_count());
-                return static_cast<IRValueRef>(*(op_begin + slot * 2 + 1));
-            }
-
-            [[nodiscard]] IRBlockRef
-                incoming_block_for_slot(const u32 slot) const noexcept {
-                assert(slot < incoming_count());
-                return static_cast<IRBlockRef>(*(op_begin + slot * 2));
-            }
-
-            [[nodiscard]] IRValueRef incoming_val_for_block(
-                const IRBlockRef block_ref) const noexcept {
-                const auto block = static_cast<u32>(block_ref);
-                for (auto *op = op_begin; op < op_end; op += 2) {
-                    if (*op == block) {
-                        return static_cast<IRValueRef>(*(op + 1));
-                    }
-                }
-
-                return INVALID_VALUE_REF;
-            }
-        };
-
-        const auto val_idx = static_cast<u32>(value);
-        assert(ir->values[val_idx].type == TestIR::Value::Type::phi);
-        const auto &info = ir->values[val_idx];
-        const auto *data = ir->value_operands.data();
-        return PHIRef{data + info.op_begin_idx, data + info.op_end_idx};
-    }
-
-    [[nodiscard]] u32 val_alloca_size(IRValueRef value) const noexcept {
-        const auto val_idx = static_cast<u32>(value);
-        assert(ir->values[val_idx].type == TestIR::Value::Type::alloca);
-        return ir->values[val_idx].alloca_size;
-    }
-
-    [[nodiscard]] u32 val_alloca_align(IRValueRef value) const noexcept {
-        const auto val_idx = static_cast<u32>(value);
-        assert(ir->values[val_idx].type == TestIR::Value::Type::alloca);
-        return ir->values[val_idx].alloca_align;
-    }
-
-    void start_compile() const noexcept {}
-
-    void end_compile() const noexcept {}
-
-    bool switch_func(IRFuncRef func) noexcept {
-        cur_func = static_cast<u32>(func);
-
-        highest_local_val_idx = 0;
-        const auto &info      = ir->functions[cur_func];
-        assert(info.block_begin_idx != info.block_end_idx);
-
-        highest_local_val_idx = ir->blocks[info.block_end_idx - 1].inst_end_idx
-                                - info.arg_begin_idx;
-        if (highest_local_val_idx > 0) {
-            --highest_local_val_idx;
+        Iter &operator++() {
+          ++val;
+          return *this;
         }
-        return true;
-    }
 
-    void reset() { highest_local_val_idx = 0; }
+        bool operator!=(const Iter &other) const noexcept {
+          return other.val != val;
+        }
+
+        IRBlockRef operator*() const noexcept {
+          return static_cast<IRBlockRef>(*val);
+        }
+      };
+
+      [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
+
+      [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
+    };
+
+    const auto &info = ir->blocks[static_cast<u32>(block)];
+    const auto *data = ir->block_succs.data();
+    return Range{data + info.succ_begin_idx, data + info.succ_end_idx};
+  }
+
+  struct BlockInstRange {
+    const u32 beg, last;
+
+    struct Iter {
+      u32 val;
+
+      Iter &operator++() {
+        ++val;
+        return *this;
+      }
+
+      bool operator!=(const Iter &other) const noexcept {
+        return other.val != val;
+      }
+
+      IRValueRef operator*() const noexcept {
+        return static_cast<IRValueRef>(val);
+      }
+    };
+
+    [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
+
+    [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
+  };
+
+  using IRInstIter = BlockInstRange::Iter;
+
+  [[nodiscard]] auto block_values(const IRBlockRef block) const noexcept {
+    const auto &info = ir->blocks[static_cast<u32>(block)];
+    return BlockInstRange{info.inst_begin_idx, info.inst_end_idx};
+  }
+
+  [[nodiscard]] auto block_phis(const IRBlockRef block) const noexcept {
+    struct Range {
+      const TestIR *self;
+      const u32 val_idx_beg, val_idx_end;
+
+      struct Iter {
+        const TestIR *self;
+        u32 val, val_idx_end;
+
+        Iter &operator++() noexcept {
+          if (val == val_idx_end) {
+            return *this;
+          }
+
+          while (val != val_idx_end) {
+            ++val;
+
+            if (self->values[val].type == TestIR::Value::Type::phi) {
+              break;
+            } else {
+              val = val_idx_end;
+              break;
+            }
+          }
+          return *this;
+        }
+
+        bool operator!=(const Iter &other) const noexcept {
+          assert(other.self == self);
+          assert(other.val_idx_end == val_idx_end);
+          return other.val != val;
+        }
+
+        IRValueRef operator*() const noexcept {
+          return static_cast<IRValueRef>(val);
+        }
+      };
+
+      [[nodiscard]] Iter begin() const noexcept {
+        return Iter{
+            .self = self, .val = val_idx_beg, .val_idx_end = val_idx_end};
+      }
+
+      [[nodiscard]] Iter end() const noexcept {
+        return Iter{
+            .self = self, .val = val_idx_end, .val_idx_end = val_idx_end};
+      }
+    };
+
+    const auto &info = ir->blocks[static_cast<u32>(block)];
+    if (info.inst_begin_idx == info.inst_end_idx ||
+        ir->values[info.inst_begin_idx].type != TestIR::Value::Type::phi) {
+      return Range{ir, info.inst_end_idx, info.inst_end_idx};
+    } else {
+      return Range{ir, info.inst_begin_idx, info.inst_end_idx};
+    }
+  }
+
+  [[nodiscard]] u32 block_info(IRBlockRef block) const noexcept {
+    return ir->blocks[static_cast<u32>(block)].block_info;
+  }
+
+  void block_set_info(IRBlockRef block, u32 value) noexcept {
+    ir->blocks[static_cast<u32>(block)].block_info = value;
+  }
+
+  [[nodiscard]] u32 block_info2(IRBlockRef block) const noexcept {
+    return ir->blocks[static_cast<u32>(block)].block_info2;
+  }
+
+  void block_set_info2(IRBlockRef block, u32 value) noexcept {
+    ir->blocks[static_cast<u32>(block)].block_info2 = value;
+  }
+
+  [[nodiscard]] std::string_view
+      block_fmt_ref(IRBlockRef block) const noexcept {
+    return ir->blocks[static_cast<u32>(block)].name;
+  }
+
+  [[nodiscard]] std::string_view value_fmt_ref(IRValueRef val) const noexcept {
+    return ir->values[static_cast<u32>(val)].name;
+  }
+
+  [[nodiscard]] u32 val_local_idx(IRValueRef val) {
+    assert(static_cast<u32>(val) >= ir->functions[cur_func].arg_begin_idx);
+    return static_cast<u32>(val) - ir->functions[cur_func].arg_begin_idx;
+  }
+
+  [[nodiscard]] auto val_operands(IRValueRef val) {
+    struct Range {
+      bool is_phi;
+      const u32 *beg, *last;
+
+      struct Iter {
+        bool is_phi;
+        const u32 *val;
+
+        Iter &operator++() {
+          if (is_phi) {
+            val += 2;
+          } else {
+            ++val;
+          }
+          return *this;
+        }
+
+        bool operator!=(const Iter &other) const noexcept {
+          return other.val != val;
+        }
+
+        IRValueRef operator*() const noexcept {
+          return static_cast<IRValueRef>(*val);
+        }
+      };
+
+      [[nodiscard]] Iter begin() const noexcept { return Iter{is_phi, beg}; }
+
+      [[nodiscard]] Iter end() const noexcept { return Iter{is_phi, last}; }
+    };
+
+    const auto &info = ir->values[static_cast<u32>(val)];
+    const auto *data = ir->value_operands.data();
+    if (info.type == TestIR::Value::Type::phi) {
+      return Range(
+          true, data + info.op_begin_idx + 1, data + info.op_end_idx + 1);
+    } else if (info.type == TestIR::Value::Type::normal ||
+               info.type == TestIR::Value::Type::ret ||
+               info.type == TestIR::Value::Type::call) {
+      return Range(false, data + info.op_begin_idx, data + info.op_end_idx);
+    } else if (info.type == TestIR::Value::Type::condbr) {
+      return Range(
+          false, data + info.op_begin_idx, data + info.op_begin_idx + 1);
+    } else {
+      return Range{false, nullptr, nullptr};
+    }
+  }
+
+  [[nodiscard]] bool
+      val_ignore_in_liveness_analysis(IRValueRef value) const noexcept {
+    return ir->values[static_cast<u32>(value)].type ==
+           TestIR::Value::Type::alloca;
+  }
+
+  [[nodiscard]] bool val_produces_result(IRValueRef value) const noexcept {
+    switch (ir->values[static_cast<u32>(value)].type) {
+      using enum TestIR::Value::Type;
+    case normal: [[fallthrough]];
+    case arg: [[fallthrough]];
+    case alloca: [[fallthrough]];
+    case phi: return true;
+    case ret: [[fallthrough]];
+    case br: [[fallthrough]];
+    case condbr: return false;
+    case call: return true;
+    }
+  }
+
+  static bool val_fused(IRValueRef) noexcept { return false; }
+
+  [[nodiscard]] bool val_is_arg(IRValueRef value) const noexcept {
+    return ir->values[static_cast<u32>(value)].type == TestIR::Value::Type::arg;
+  }
+
+  [[nodiscard]] bool val_is_phi(IRValueRef value) const noexcept {
+    return ir->values[static_cast<u32>(value)].type == TestIR::Value::Type::phi;
+  }
+
+  [[nodiscard]] auto val_as_phi(IRValueRef value) const noexcept {
+    struct PHIRef {
+      const u32 *op_begin, *op_end;
+
+      [[nodiscard]] u32 incoming_count() const noexcept {
+        return (op_end - op_begin) / 2;
+      }
+
+      [[nodiscard]] IRValueRef
+          incoming_val_for_slot(const u32 slot) const noexcept {
+        assert(slot < incoming_count());
+        return static_cast<IRValueRef>(*(op_begin + slot * 2 + 1));
+      }
+
+      [[nodiscard]] IRBlockRef
+          incoming_block_for_slot(const u32 slot) const noexcept {
+        assert(slot < incoming_count());
+        return static_cast<IRBlockRef>(*(op_begin + slot * 2));
+      }
+
+      [[nodiscard]] IRValueRef
+          incoming_val_for_block(const IRBlockRef block_ref) const noexcept {
+        const auto block = static_cast<u32>(block_ref);
+        for (auto *op = op_begin; op < op_end; op += 2) {
+          if (*op == block) {
+            return static_cast<IRValueRef>(*(op + 1));
+          }
+        }
+
+        return INVALID_VALUE_REF;
+      }
+    };
+
+    const auto val_idx = static_cast<u32>(value);
+    assert(ir->values[val_idx].type == TestIR::Value::Type::phi);
+    const auto &info = ir->values[val_idx];
+    const auto *data = ir->value_operands.data();
+    return PHIRef{data + info.op_begin_idx, data + info.op_end_idx};
+  }
+
+  [[nodiscard]] u32 val_alloca_size(IRValueRef value) const noexcept {
+    const auto val_idx = static_cast<u32>(value);
+    assert(ir->values[val_idx].type == TestIR::Value::Type::alloca);
+    return ir->values[val_idx].alloca_size;
+  }
+
+  [[nodiscard]] u32 val_alloca_align(IRValueRef value) const noexcept {
+    const auto val_idx = static_cast<u32>(value);
+    assert(ir->values[val_idx].type == TestIR::Value::Type::alloca);
+    return ir->values[val_idx].alloca_align;
+  }
+
+  void start_compile() const noexcept {}
+
+  void end_compile() const noexcept {}
+
+  bool switch_func(IRFuncRef func) noexcept {
+    cur_func = static_cast<u32>(func);
+
+    highest_local_val_idx = 0;
+    const auto &info = ir->functions[cur_func];
+    assert(info.block_begin_idx != info.block_end_idx);
+
+    highest_local_val_idx =
+        ir->blocks[info.block_end_idx - 1].inst_end_idx - info.arg_begin_idx;
+    if (highest_local_val_idx > 0) {
+      --highest_local_val_idx;
+    }
+    return true;
+  }
+
+  void reset() { highest_local_val_idx = 0; }
 };
 
 } // namespace tpde::test

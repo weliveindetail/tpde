@@ -9,19 +9,19 @@ concept IsTrue = (B == true);
 
 template <typename T>
 concept TC = requires(T a) {
-    { T::someBool } -> std::convertible_to<bool>;
+  { T::someBool } -> std::convertible_to<bool>;
 
-    requires IsTrue<T::someBool> || requires {
-        { a.someFunc() };
-    };
+  requires IsTrue<T::someBool> || requires {
+    { a.someFunc() };
+  };
 };
 
 struct Test {
-    using IRValueRef = uint64_t;
+  using IRValueRef = uint64_t;
 
-    static constexpr bool someBool = true;
+  static constexpr bool someBool = true;
 
-    // void someFunc() {}
+  // void someFunc() {}
 };
 
 static_assert(TC<Test>);

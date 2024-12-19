@@ -4,30 +4,31 @@
 
 ---
 BasedOnStyle: LLVM
-IndentWidth: 4
----
 Language: Cpp
 AlignArrayOfStructures: Right
+#AlignConsecutiveAssignments:
+#  Enabled: true
+#  AcrossEmptyLines: false
+#  AcrossComments: true
+#  AlignCompound: true
+#  # AlignFunctionPointers: false
+#  PadOperators: true
+#AlignConsecutiveBitFields: AcrossComments
+#AlignConsecutiveDeclarations: AcrossComments
+#AlignConsecutiveMacros: AcrossComments
 #AllowShortBlocksOnASingleLine: Empty
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortEnumsOnASingleLine: false
 AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: false
 BinPackParameters: false
-BreakBeforeBinaryOperators: NonAssignment
-CompactNamespaces: true
 IndentPPDirectives: BeforeHash
 IndentWrappedFunctionNames: true
 InsertBraces: true
 InsertNewlineAtEOF: true
 InsertTrailingCommas: Wrapped
-IntegerLiteralSeparator:
-  Binary: 4
-  Hex: 4
 KeepEmptyLinesAtTheStartOfBlocks: false
 LineEnding: LF
 MaxEmptyLinesToKeep: 2
 PackConstructorInitializers: NextLine
-SeparateDefinitionBlocks: Always
 SortUsingDeclarations: Lexicographic
-TabWidth: 4

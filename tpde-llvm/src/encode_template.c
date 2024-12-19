@@ -3,24 +3,24 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
 #if defined(__x86_64__)
-    #include <immintrin.h>
+  #include <immintrin.h>
 
-    #define TARGET_V1 __attribute__((target("arch=opteron")))
-    #define TARGET_V2 __attribute__((target("arch=x86-64-v2")))
-    #define TARGET_V3 __attribute__((target("arch=x86-64-v3")))
-    #define TARGET_V4 __attribute__((target("arch=x86-64-v4")))
+  #define TARGET_V1 __attribute__((target("arch=opteron")))
+  #define TARGET_V2 __attribute__((target("arch=x86-64-v2")))
+  #define TARGET_V3 __attribute__((target("arch=x86-64-v3")))
+  #define TARGET_V4 __attribute__((target("arch=x86-64-v4")))
 #elif defined(__aarch64__)
-    #include <arm_neon.h>
+  #include <arm_neon.h>
 
-    // ARMv8.0 lacks atomic instructions (would generate libcalls)
-    #define TARGET_V1 __attribute__((target("arch=armv8.1-a")))
+  // ARMv8.0 lacks atomic instructions (would generate libcalls)
+  #define TARGET_V1 __attribute__((target("arch=armv8.1-a")))
 #else
-#error "Unsupported architecture"
+  #error "Unsupported architecture"
 #endif
 
-#include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 typedef int8_t i8;
 typedef int16_t i16;
@@ -32,6 +32,8 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 typedef __uint128_t u128;
+
+// clang-format off
 
 // --------------------------
 // loads

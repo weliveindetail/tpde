@@ -22,467 +22,431 @@ namespace tpde_encgen::x64 {
 
 void EncodingTargetX64::get_inst_candidates(
     llvm::MachineInstr &mi, llvm::SmallVectorImpl<MICandidate> &candidates) {
-    const llvm::LLVMTargetMachine &TM   = mi.getMF()->getTarget();
-    const llvm::MCInstrInfo       &MCII = *TM.getMCInstrInfo();
-    const llvm::MCInstrDesc       &MCID = MCII.get(mi.getOpcode());
-    (void)MCID;
+  const llvm::LLVMTargetMachine &TM = mi.getMF()->getTarget();
+  const llvm::MCInstrInfo &MCII = *TM.getMCInstrInfo();
+  const llvm::MCInstrDesc &MCID = MCII.get(mi.getOpcode());
+  (void)MCID;
 
-    llvm::StringRef Name = MCII.getName(mi.getOpcode());
+  llvm::StringRef Name = MCII.getName(mi.getOpcode());
 
-    const auto handle_immrepl = [&](std::string_view mnem,
-                                    unsigned         replop_idx,
-                                    int              memop_start = -1) {
-        if (memop_start >= 0 && mi.getOperand(memop_start).getReg().isValid()
-            && mi.getOperand(memop_start + 3).isImm()) {
-            bool has_idx = mi.getOperand(memop_start + 2).getReg().isValid();
-            unsigned sc = has_idx ? mi.getOperand(memop_start + 1).getImm() : 0;
-            std::string_view idx  = has_idx ? "FE_AX" : "FE_NOREG";
-            auto             off  = mi.getOperand(memop_start + 3).getImm();
-            auto cond =
-                std::format("FE_MEM(FE_NOREG, {}, {}, {})", sc, idx, off);
+  const auto handle_immrepl = [&](std::string_view mnem,
+                                  unsigned replop_idx,
+                                  int memop_start = -1) {
+    if (memop_start >= 0 && mi.getOperand(memop_start).getReg().isValid() &&
+        mi.getOperand(memop_start + 3).isImm()) {
+      bool has_idx = mi.getOperand(memop_start + 2).getReg().isValid();
+      unsigned sc = has_idx ? mi.getOperand(memop_start + 1).getImm() : 0;
+      std::string_view idx = has_idx ? "FE_AX" : "FE_NOREG";
+      auto off = mi.getOperand(memop_start + 3).getImm();
+      auto cond = std::format("FE_MEM(FE_NOREG, {}, {}, {})", sc, idx, off);
 
-            candidates.emplace_back(
-                MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext", ""},
-                MICandidate::Cond{
-                    (unsigned)memop_start, "encodeable_with", cond},
-                [has_idx, mnem, memop_start, replop_idx](
-                    llvm::raw_ostream &os,
-                    const llvm::MachineInstr &mi,
-                    std::span<const std::string> ops) {
-                    os << "    ASMD(" << mnem;
-                    unsigned reg_idx = 0;
-                    for (unsigned i = 0, n = mi.getNumExplicitOperands();
-                         i != n;
-                         i++) {
-                        const auto &op = mi.getOperand(i);
-                        if (i == (unsigned)memop_start) {
-                            if (has_idx) { // Need to replace index register
-                                os << ", FE_MEM(" << ops[reg_idx] << ".base, "
-                                   << ops[reg_idx] << ".scale, "
-                                   << ops[reg_idx + 1] << ", " << ops[reg_idx]
-                                   << ".off)";
-                            } else {
-                                os << ", " << ops[reg_idx];
-                            }
-                            reg_idx += 3;
-                            i       += 4;
-                        } else if (i == replop_idx) {
-                            assert(op.isReg());
-                            os << ", " << ops[reg_idx++];
-                        } else if (op.isReg()) {
-                            if (op.isTied() && op.isUse()) {
-                                continue;
-                            }
-                            os << ", " << ops[reg_idx++];
-                        } else if (op.isImm()) {
-                            if (mnem.starts_with("CMOV")
-                                || mnem.starts_with("SET")) {
-                                continue;
-                            }
-                            os << ", " << op.getImm();
-                        }
-                    }
-                    os << ");\n";
-                });
-        }
-        // TODO: better code, less copy-paste, all cases, etc.
-        // Difficult, because at condition time, we don't know the operands.
-        if (memop_start >= 0
-            && mi.getOperand(memop_start + 0).getReg().isValid()
-            && mi.getOperand(memop_start + 2).getReg().isValid()
-            && mi.getOperand(memop_start + 1).getImm() == 1
-            && mi.getOperand(memop_start + 3).isImm()) {
-            auto off  = mi.getOperand(memop_start + 3).getImm();
-            auto cond = std::format("FE_MEM(FE_AX, 0, FE_NOREG, {})", off);
-
-            candidates.emplace_back(
-                MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext", ""},
-                MICandidate::Cond{
-                    (unsigned)memop_start + 2, "encodeable_with", cond},
-                [mnem, memop_start, replop_idx](
-                    llvm::raw_ostream &os,
-                    const llvm::MachineInstr &mi,
-                    std::span<const std::string> ops) {
-                    os << "    ASMD(" << mnem;
-                    unsigned reg_idx = 0;
-                    for (unsigned i = 0, n = mi.getNumExplicitOperands();
-                         i != n;
-                         i++) {
-                        const auto &op = mi.getOperand(i);
-                        if (i == (unsigned)memop_start) {
-                            os << ", FE_MEM(" << ops[reg_idx] << ", "
-                               << ops[reg_idx + 1] << ".scale, "
-                               << ops[reg_idx + 1] << ".idx, "
-                               << ops[reg_idx + 1] << ".off)";
-                            reg_idx += 3;
-                            i       += 4;
-                        } else if (i == replop_idx) {
-                            assert(op.isReg());
-                            os << ", " << ops[reg_idx++];
-                        } else if (op.isReg()) {
-                            if (op.isTied() && op.isUse()) {
-                                continue;
-                            }
-                            os << ", " << ops[reg_idx++];
-                        } else if (op.isImm()) {
-                            if (mnem.starts_with("CMOV")
-                                || mnem.starts_with("SET")) {
-                                continue;
-                            }
-                            os << ", " << op.getImm();
-                        }
-                    }
-                    os << ");\n";
-                });
-        }
-        candidates.emplace_back(
-            replop_idx,
-            "encodeable_as_imm32_sext",
-            "",
-            [mnem, replop_idx, memop_start](llvm::raw_ostream &os,
-                                            const llvm::MachineInstr &mi,
-                                            std::span<const std::string> ops) {
-                os << "    ASMD(" << mnem;
-                unsigned         reg_idx = 0;
-                std::string_view cp_sym  = "";
-                [[maybe_unused]] bool has_imm = false;
-                for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n;
-                     i++) {
-                    const auto &op = mi.getOperand(i);
-                    if (i == (unsigned)memop_start
-                        && mi.getOperand(i + 3).isCPI()) {
-                        // base is rip; idx is noreg
-                        cp_sym   = ops[reg_idx + 2];
-                        reg_idx += 3;
-                        i       += 4;
-                        os << ", FE_MEM(FE_IP, 0, FE_NOREG, 0)";
-                    } else if (i == (unsigned)memop_start) {
-                        std::string_view base =
-                            op.getReg().isValid() ? ops[reg_idx] : "FE_NOREG"sv;
-                        unsigned sc = mi.getOperand(i + 2).getReg().isValid()
-                                          ? mi.getOperand(i + 1).getImm()
-                                          : 0;
-                        std::string_view idx =
-                            mi.getOperand(i + 2).getReg().isValid()
-                                ? ops[reg_idx + 1]
-                                : "FE_NOREG"sv;
-                        auto off = mi.getOperand(i + 3).getImm();
-                        assert(!mi.getOperand(i + 4).getReg().isValid());
-                        reg_idx += 3;
-                        i       += 4;
-                        os << ", FE_MEM(" << base << ", " << sc << ", " << idx
-                           << ", " << off << ")";
-                    } else if (i == replop_idx) {
-                        assert(op.isReg());
-                        has_imm = true;
-                        os << ", " << ops[reg_idx++];
-                    } else if (op.isReg()) {
-                        if (op.isTied() && op.isUse()) {
-                            continue;
-                        }
-                        os << ", " << ops[reg_idx++];
-                    } else if (op.isImm()) {
-                        if (mnem.starts_with("CMOV")
-                            || mnem.starts_with("SET")) {
-                            continue;
-                        }
-                        has_imm = true;
-                        os << ", " << op.getImm();
-                    }
-                }
-                if (replop_idx
-                    >= mi.getNumExplicitOperands()) { // SHL etc. with CL
-                    has_imm = true;
-                    os << ", " << ops[reg_idx++];
-                }
-                os << ");\n";
-                if (!cp_sym.empty()) {
-                    assert(!has_imm && "CPI with imm unsupported!");
-                    os << "        "
-                          "derived()->assembler.reloc_text_pc32("
-                       << cp_sym
-                       << ", "
-                          "derived()->assembler.text_cur_off() - 4, -4);\n";
-                }
-            });
-    };
-    const auto handle_memrepl = [&](std::string_view mnem,
-                                    unsigned replop_idx) {
-        candidates.emplace_back(
-            replop_idx,
-            "encodeable_as_mem",
-            "",
-            [mnem, replop_idx](llvm::raw_ostream &os,
-                               const llvm::MachineInstr &mi,
-                               std::span<const std::string> ops) {
-                os << "    ASMD(" << mnem;
-                unsigned reg_idx = 0;
-                for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n;
-                     i++) {
-                    const auto &op = mi.getOperand(i);
-                    if (i == replop_idx) {
-                        assert(op.isReg());
-                        os << ", " << ops[reg_idx++];
-                    } else if (op.isReg()) {
-                        if (op.isTied() && op.isUse()) {
-                            continue;
-                        }
-                        os << ", " << ops[reg_idx++];
-                    } else if (op.isImm()) {
-                        if (mnem.starts_with("CMOV")
-                            || mnem.starts_with("SET")) {
-                            continue;
-                        }
-                        os << ", " << op.getImm();
-                    }
-                }
-                os << ");\n";
-            });
-    };
-    const auto handle_default = [&](std::string_view mnem,
-                                    int              memop_start = -1,
-                                    std::string_view extra_ops   = ""sv) {
-        if (memop_start >= 0 && mi.getOperand(memop_start).getReg().isValid()
-            && mi.getOperand(memop_start + 3).isImm()) {
-            bool has_idx = mi.getOperand(memop_start + 2).getReg().isValid();
-            unsigned sc = has_idx ? mi.getOperand(memop_start + 1).getImm() : 0;
-            std::string_view idx  = has_idx ? "FE_AX" : "FE_NOREG";
-            auto             off  = mi.getOperand(memop_start + 3).getImm();
-            auto cond =
-                std::format("FE_MEM(FE_NOREG, {}, {}, {})", sc, idx, off);
-
-            candidates.emplace_back(
-                memop_start,
-                "encodeable_with",
-                cond,
-                [has_idx, mnem, memop_start, extra_ops](
-                    llvm::raw_ostream &os,
-                    const llvm::MachineInstr &mi,
-                    std::span<const std::string> ops) {
-                    os << "    ASMD(" << mnem;
-                    unsigned reg_idx = 0;
-                    for (unsigned i = 0, n = mi.getNumExplicitOperands();
-                         i != n;
-                         i++) {
-                        const auto &op = mi.getOperand(i);
-                        if (i == (unsigned)memop_start) {
-                            if (has_idx) { // Need to replace index register
-                                os << ", FE_MEM(" << ops[reg_idx] << ".base, "
-                                   << ops[reg_idx] << ".scale, "
-                                   << ops[reg_idx + 1] << ", " << ops[reg_idx]
-                                   << ".off)";
-                            } else {
-                                os << ", " << ops[reg_idx];
-                            }
-                            reg_idx += 3;
-                            i       += 4;
-                        } else if (op.isReg()) {
-                            if (op.isTied() && op.isUse()) {
-                                continue;
-                            }
-                            os << ", " << ops[reg_idx++];
-                        } else if (op.isImm()) {
-                            if (mnem.starts_with("CMOV")
-                                || mnem.starts_with("SET")) {
-                                continue;
-                            }
-                            os << ", " << op.getImm();
-                        }
-                    }
-                    os << extra_ops << ");\n";
-                });
-        }
-        // TODO: better code, less copy-paste, all cases, etc.
-        // Difficult, because at condition time, we don't know the operands.
-        if (memop_start >= 0
-            && mi.getOperand(memop_start + 0).getReg().isValid()
-            && mi.getOperand(memop_start + 2).getReg().isValid()
-            && mi.getOperand(memop_start + 1).getImm() == 1
-            && mi.getOperand(memop_start + 3).isImm()) {
-            auto off  = mi.getOperand(memop_start + 3).getImm();
-            auto cond = std::format("FE_MEM(FE_AX, 0, FE_NOREG, {})", off);
-
-            candidates.emplace_back(
-                memop_start + 2,
-                "encodeable_with",
-                cond,
-                [mnem, memop_start, extra_ops](
-                    llvm::raw_ostream &os,
-                    const llvm::MachineInstr &mi,
-                    std::span<const std::string> ops) {
-                    os << "    ASMD(" << mnem;
-                    unsigned reg_idx = 0;
-                    for (unsigned i = 0, n = mi.getNumExplicitOperands();
-                         i != n;
-                         i++) {
-                        const auto &op = mi.getOperand(i);
-                        if (i == (unsigned)memop_start) {
-                            os << ", FE_MEM(" << ops[reg_idx] << ", "
-                               << ops[reg_idx + 1] << ".scale, "
-                               << ops[reg_idx + 1] << ".idx, "
-                               << ops[reg_idx + 1] << ".off)";
-                            reg_idx += 3;
-                            i       += 4;
-                        } else if (op.isReg()) {
-                            if (op.isTied() && op.isUse()) {
-                                continue;
-                            }
-                            os << ", " << ops[reg_idx++];
-                        } else if (op.isImm()) {
-                            if (mnem.starts_with("CMOV")
-                                || mnem.starts_with("SET")) {
-                                continue;
-                            }
-                            os << ", " << op.getImm();
-                        }
-                    }
-                    os << extra_ops << ");\n";
-                });
-        }
-        candidates.emplace_back([mnem, memop_start, extra_ops](
-                                    llvm::raw_ostream           &os,
-                                    const llvm::MachineInstr    &mi,
-                                    std::span<const std::string> ops) {
+      candidates.emplace_back(
+          MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext", ""},
+          MICandidate::Cond{(unsigned)memop_start, "encodeable_with", cond},
+          [has_idx, mnem, memop_start, replop_idx](
+              llvm::raw_ostream &os,
+              const llvm::MachineInstr &mi,
+              std::span<const std::string> ops) {
             os << "    ASMD(" << mnem;
-            unsigned         reg_idx = 0;
-            std::string_view cp_sym  = "";
-            [[maybe_unused]] bool has_imm = false;
+            unsigned reg_idx = 0;
             for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
-                const auto &op = mi.getOperand(i);
-                if (i == (unsigned)memop_start
-                    && mi.getOperand(i + 3).isCPI()) {
-                    // base is rip; idx is noreg
-                    cp_sym   = ops[reg_idx + 2];
-                    reg_idx += 3;
-                    i       += 4;
-                    os << ", FE_MEM(FE_IP, 0, FE_NOREG, 0)";
-                } else if (i == (unsigned)memop_start) {
-                    std::string_view base =
-                        op.getReg().isValid() ? ops[reg_idx] : "FE_NOREG"sv;
-                    unsigned sc = mi.getOperand(i + 2).getReg().isValid()
-                                      ? mi.getOperand(i + 1).getImm()
-                                      : 0;
-                    std::string_view idx =
-                        mi.getOperand(i + 2).getReg().isValid()
-                            ? ops[reg_idx + 1]
-                            : "FE_NOREG"sv;
-                    auto off = mi.getOperand(i + 3).getImm();
-                    assert(!mi.getOperand(i + 4).getReg().isValid());
-                    reg_idx += 3;
-                    i       += 4;
-                    os << ", FE_MEM(" << base << ", " << sc << ", " << idx
-                       << ", " << off << ")";
-                } else if (op.isReg()) {
-                    if (op.isTied() && op.isUse()) {
-                        continue;
-                    }
-                    os << ", " << ops[reg_idx++];
-                } else if (op.isImm()) {
-                    if (mnem.starts_with("CMOV") || mnem.starts_with("SET")) {
-                        continue;
-                    }
-                    has_imm = true;
-                    os << ", " << op.getImm();
+              const auto &op = mi.getOperand(i);
+              if (i == (unsigned)memop_start) {
+                if (has_idx) { // Need to replace index register
+                  os << ", FE_MEM(" << ops[reg_idx] << ".base, " << ops[reg_idx]
+                     << ".scale, " << ops[reg_idx + 1] << ", " << ops[reg_idx]
+                     << ".off)";
+                } else {
+                  os << ", " << ops[reg_idx];
                 }
+                reg_idx += 3;
+                i += 4;
+              } else if (i == replop_idx) {
+                assert(op.isReg());
+                os << ", " << ops[reg_idx++];
+              } else if (op.isReg()) {
+                if (op.isTied() && op.isUse()) {
+                  continue;
+                }
+                os << ", " << ops[reg_idx++];
+              } else if (op.isImm()) {
+                if (mnem.starts_with("CMOV") || mnem.starts_with("SET")) {
+                  continue;
+                }
+                os << ", " << op.getImm();
+              }
+            }
+            os << ");\n";
+          });
+    }
+    // TODO: better code, less copy-paste, all cases, etc.
+    // Difficult, because at condition time, we don't know the operands.
+    if (memop_start >= 0 && mi.getOperand(memop_start + 0).getReg().isValid() &&
+        mi.getOperand(memop_start + 2).getReg().isValid() &&
+        mi.getOperand(memop_start + 1).getImm() == 1 &&
+        mi.getOperand(memop_start + 3).isImm()) {
+      auto off = mi.getOperand(memop_start + 3).getImm();
+      auto cond = std::format("FE_MEM(FE_AX, 0, FE_NOREG, {})", off);
+
+      candidates.emplace_back(
+          MICandidate::Cond{replop_idx, "encodeable_as_imm32_sext", ""},
+          MICandidate::Cond{(unsigned)memop_start + 2, "encodeable_with", cond},
+          [mnem, memop_start, replop_idx](llvm::raw_ostream &os,
+                                          const llvm::MachineInstr &mi,
+                                          std::span<const std::string> ops) {
+            os << "    ASMD(" << mnem;
+            unsigned reg_idx = 0;
+            for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
+              const auto &op = mi.getOperand(i);
+              if (i == (unsigned)memop_start) {
+                os << ", FE_MEM(" << ops[reg_idx] << ", " << ops[reg_idx + 1]
+                   << ".scale, " << ops[reg_idx + 1] << ".idx, "
+                   << ops[reg_idx + 1] << ".off)";
+                reg_idx += 3;
+                i += 4;
+              } else if (i == replop_idx) {
+                assert(op.isReg());
+                os << ", " << ops[reg_idx++];
+              } else if (op.isReg()) {
+                if (op.isTied() && op.isUse()) {
+                  continue;
+                }
+                os << ", " << ops[reg_idx++];
+              } else if (op.isImm()) {
+                if (mnem.starts_with("CMOV") || mnem.starts_with("SET")) {
+                  continue;
+                }
+                os << ", " << op.getImm();
+              }
+            }
+            os << ");\n";
+          });
+    }
+    candidates.emplace_back(
+        replop_idx,
+        "encodeable_as_imm32_sext",
+        "",
+        [mnem, replop_idx, memop_start](llvm::raw_ostream &os,
+                                        const llvm::MachineInstr &mi,
+                                        std::span<const std::string> ops) {
+          os << "    ASMD(" << mnem;
+          unsigned reg_idx = 0;
+          std::string_view cp_sym = "";
+          [[maybe_unused]] bool has_imm = false;
+          for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
+            const auto &op = mi.getOperand(i);
+            if (i == (unsigned)memop_start && mi.getOperand(i + 3).isCPI()) {
+              // base is rip; idx is noreg
+              cp_sym = ops[reg_idx + 2];
+              reg_idx += 3;
+              i += 4;
+              os << ", FE_MEM(FE_IP, 0, FE_NOREG, 0)";
+            } else if (i == (unsigned)memop_start) {
+              std::string_view base =
+                  op.getReg().isValid() ? ops[reg_idx] : "FE_NOREG"sv;
+              unsigned sc = mi.getOperand(i + 2).getReg().isValid()
+                                ? mi.getOperand(i + 1).getImm()
+                                : 0;
+              std::string_view idx = mi.getOperand(i + 2).getReg().isValid()
+                                         ? ops[reg_idx + 1]
+                                         : "FE_NOREG"sv;
+              auto off = mi.getOperand(i + 3).getImm();
+              assert(!mi.getOperand(i + 4).getReg().isValid());
+              reg_idx += 3;
+              i += 4;
+              os << ", FE_MEM(" << base << ", " << sc << ", " << idx << ", "
+                 << off << ")";
+            } else if (i == replop_idx) {
+              assert(op.isReg());
+              has_imm = true;
+              os << ", " << ops[reg_idx++];
+            } else if (op.isReg()) {
+              if (op.isTied() && op.isUse()) {
+                continue;
+              }
+              os << ", " << ops[reg_idx++];
+            } else if (op.isImm()) {
+              if (mnem.starts_with("CMOV") || mnem.starts_with("SET")) {
+                continue;
+              }
+              has_imm = true;
+              os << ", " << op.getImm();
+            }
+          }
+          if (replop_idx >= mi.getNumExplicitOperands()) { // SHL etc. with CL
+            has_imm = true;
+            os << ", " << ops[reg_idx++];
+          }
+          os << ");\n";
+          if (!cp_sym.empty()) {
+            assert(!has_imm && "CPI with imm unsupported!");
+            os << "        "
+                  "derived()->assembler.reloc_text_pc32("
+               << cp_sym
+               << ", "
+                  "derived()->assembler.text_cur_off() - 4, -4);\n";
+          }
+        });
+  };
+  const auto handle_memrepl = [&](std::string_view mnem, unsigned replop_idx) {
+    candidates.emplace_back(
+        replop_idx,
+        "encodeable_as_mem",
+        "",
+        [mnem, replop_idx](llvm::raw_ostream &os,
+                           const llvm::MachineInstr &mi,
+                           std::span<const std::string> ops) {
+          os << "    ASMD(" << mnem;
+          unsigned reg_idx = 0;
+          for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
+            const auto &op = mi.getOperand(i);
+            if (i == replop_idx) {
+              assert(op.isReg());
+              os << ", " << ops[reg_idx++];
+            } else if (op.isReg()) {
+              if (op.isTied() && op.isUse()) {
+                continue;
+              }
+              os << ", " << ops[reg_idx++];
+            } else if (op.isImm()) {
+              if (mnem.starts_with("CMOV") || mnem.starts_with("SET")) {
+                continue;
+              }
+              os << ", " << op.getImm();
+            }
+          }
+          os << ");\n";
+        });
+  };
+  const auto handle_default = [&](std::string_view mnem,
+                                  int memop_start = -1,
+                                  std::string_view extra_ops = ""sv) {
+    if (memop_start >= 0 && mi.getOperand(memop_start).getReg().isValid() &&
+        mi.getOperand(memop_start + 3).isImm()) {
+      bool has_idx = mi.getOperand(memop_start + 2).getReg().isValid();
+      unsigned sc = has_idx ? mi.getOperand(memop_start + 1).getImm() : 0;
+      std::string_view idx = has_idx ? "FE_AX" : "FE_NOREG";
+      auto off = mi.getOperand(memop_start + 3).getImm();
+      auto cond = std::format("FE_MEM(FE_NOREG, {}, {}, {})", sc, idx, off);
+
+      candidates.emplace_back(
+          memop_start,
+          "encodeable_with",
+          cond,
+          [has_idx, mnem, memop_start, extra_ops](
+              llvm::raw_ostream &os,
+              const llvm::MachineInstr &mi,
+              std::span<const std::string> ops) {
+            os << "    ASMD(" << mnem;
+            unsigned reg_idx = 0;
+            for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
+              const auto &op = mi.getOperand(i);
+              if (i == (unsigned)memop_start) {
+                if (has_idx) { // Need to replace index register
+                  os << ", FE_MEM(" << ops[reg_idx] << ".base, " << ops[reg_idx]
+                     << ".scale, " << ops[reg_idx + 1] << ", " << ops[reg_idx]
+                     << ".off)";
+                } else {
+                  os << ", " << ops[reg_idx];
+                }
+                reg_idx += 3;
+                i += 4;
+              } else if (op.isReg()) {
+                if (op.isTied() && op.isUse()) {
+                  continue;
+                }
+                os << ", " << ops[reg_idx++];
+              } else if (op.isImm()) {
+                if (mnem.starts_with("CMOV") || mnem.starts_with("SET")) {
+                  continue;
+                }
+                os << ", " << op.getImm();
+              }
             }
             os << extra_ops << ");\n";
-            if (!cp_sym.empty()) {
-                assert(!has_imm && "CPI with imm unsupported!");
-                os << "        "
-                      "derived()->assembler.reloc_text_pc32("
-                   << cp_sym
-                   << ", "
-                      "derived()->assembler.text_cur_off() - 4, -4);\n";
+          });
+    }
+    // TODO: better code, less copy-paste, all cases, etc.
+    // Difficult, because at condition time, we don't know the operands.
+    if (memop_start >= 0 && mi.getOperand(memop_start + 0).getReg().isValid() &&
+        mi.getOperand(memop_start + 2).getReg().isValid() &&
+        mi.getOperand(memop_start + 1).getImm() == 1 &&
+        mi.getOperand(memop_start + 3).isImm()) {
+      auto off = mi.getOperand(memop_start + 3).getImm();
+      auto cond = std::format("FE_MEM(FE_AX, 0, FE_NOREG, {})", off);
+
+      candidates.emplace_back(
+          memop_start + 2,
+          "encodeable_with",
+          cond,
+          [mnem, memop_start, extra_ops](llvm::raw_ostream &os,
+                                         const llvm::MachineInstr &mi,
+                                         std::span<const std::string> ops) {
+            os << "    ASMD(" << mnem;
+            unsigned reg_idx = 0;
+            for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
+              const auto &op = mi.getOperand(i);
+              if (i == (unsigned)memop_start) {
+                os << ", FE_MEM(" << ops[reg_idx] << ", " << ops[reg_idx + 1]
+                   << ".scale, " << ops[reg_idx + 1] << ".idx, "
+                   << ops[reg_idx + 1] << ".off)";
+                reg_idx += 3;
+                i += 4;
+              } else if (op.isReg()) {
+                if (op.isTied() && op.isUse()) {
+                  continue;
+                }
+                os << ", " << ops[reg_idx++];
+              } else if (op.isImm()) {
+                if (mnem.starts_with("CMOV") || mnem.starts_with("SET")) {
+                  continue;
+                }
+                os << ", " << op.getImm();
+              }
             }
+            os << extra_ops << ");\n";
+          });
+    }
+    candidates.emplace_back(
+        [mnem, memop_start, extra_ops](llvm::raw_ostream &os,
+                                       const llvm::MachineInstr &mi,
+                                       std::span<const std::string> ops) {
+          os << "    ASMD(" << mnem;
+          unsigned reg_idx = 0;
+          std::string_view cp_sym = "";
+          [[maybe_unused]] bool has_imm = false;
+          for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
+            const auto &op = mi.getOperand(i);
+            if (i == (unsigned)memop_start && mi.getOperand(i + 3).isCPI()) {
+              // base is rip; idx is noreg
+              cp_sym = ops[reg_idx + 2];
+              reg_idx += 3;
+              i += 4;
+              os << ", FE_MEM(FE_IP, 0, FE_NOREG, 0)";
+            } else if (i == (unsigned)memop_start) {
+              std::string_view base =
+                  op.getReg().isValid() ? ops[reg_idx] : "FE_NOREG"sv;
+              unsigned sc = mi.getOperand(i + 2).getReg().isValid()
+                                ? mi.getOperand(i + 1).getImm()
+                                : 0;
+              std::string_view idx = mi.getOperand(i + 2).getReg().isValid()
+                                         ? ops[reg_idx + 1]
+                                         : "FE_NOREG"sv;
+              auto off = mi.getOperand(i + 3).getImm();
+              assert(!mi.getOperand(i + 4).getReg().isValid());
+              reg_idx += 3;
+              i += 4;
+              os << ", FE_MEM(" << base << ", " << sc << ", " << idx << ", "
+                 << off << ")";
+            } else if (op.isReg()) {
+              if (op.isTied() && op.isUse()) {
+                continue;
+              }
+              os << ", " << ops[reg_idx++];
+            } else if (op.isImm()) {
+              if (mnem.starts_with("CMOV") || mnem.starts_with("SET")) {
+                continue;
+              }
+              has_imm = true;
+              os << ", " << op.getImm();
+            }
+          }
+          os << extra_ops << ");\n";
+          if (!cp_sym.empty()) {
+            assert(!has_imm && "CPI with imm unsupported!");
+            os << "        "
+                  "derived()->assembler.reloc_text_pc32("
+               << cp_sym
+               << ", "
+                  "derived()->assembler.text_cur_off() - 4, -4);\n";
+          }
         });
-    };
-    // xchg and xadd have their operands swapped in LLVM.
-    const auto handle_xchg_mem = [&](std::string_view mnem, int memop_start) {
-        // TODO: address candidate
-        candidates.emplace_back([mnem, memop_start](
-                                    llvm::raw_ostream           &os,
-                                    const llvm::MachineInstr    &mi,
-                                    std::span<const std::string> ops) {
-            std::string_view base =
-                mi.getOperand(memop_start).getReg().isValid() ? ops[1]
-                                                              : "FE_NOREG"sv;
-            unsigned sc = mi.getOperand(memop_start + 2).getReg().isValid()
-                              ? mi.getOperand(memop_start + 1).getImm()
-                              : 0;
-            std::string_view idx =
-                mi.getOperand(memop_start + 2).getReg().isValid()
-                    ? ops[2]
-                    : "FE_NOREG"sv;
-            auto off = mi.getOperand(memop_start + 3).getImm();
-            assert(!mi.getOperand(memop_start + 4).getReg().isValid());
+  };
+  // xchg and xadd have their operands swapped in LLVM.
+  const auto handle_xchg_mem = [&](std::string_view mnem, int memop_start) {
+    // TODO: address candidate
+    candidates.emplace_back([mnem,
+                             memop_start](llvm::raw_ostream &os,
+                                          const llvm::MachineInstr &mi,
+                                          std::span<const std::string> ops) {
+      std::string_view base =
+          mi.getOperand(memop_start).getReg().isValid() ? ops[1] : "FE_NOREG"sv;
+      unsigned sc = mi.getOperand(memop_start + 2).getReg().isValid()
+                        ? mi.getOperand(memop_start + 1).getImm()
+                        : 0;
+      std::string_view idx = mi.getOperand(memop_start + 2).getReg().isValid()
+                                 ? ops[2]
+                                 : "FE_NOREG"sv;
+      auto off = mi.getOperand(memop_start + 3).getImm();
+      assert(!mi.getOperand(memop_start + 4).getReg().isValid());
 
-            os << "    ASMD(" << mnem << ", FE_MEM(" << base << ", " << sc
-               << ", " << idx << ", " << off << "), " << ops[0] << ");\n";
-        });
-    };
+      os << "    ASMD(" << mnem << ", FE_MEM(" << base << ", " << sc << ", "
+         << idx << ", " << off << "), " << ops[0] << ");\n";
+    });
+  };
 
-    const auto handle_rm = [&](std::string_view llvm_mnem_r,
-                               std::string_view llvm_mnem_m,
-                               unsigned         memop_start,
-                               std::string_view fd_mnem_r,
-                               std::string_view fd_mnem_m) {
-        if (std::string_view(Name) == llvm_mnem_r) {
-            handle_memrepl(fd_mnem_m, memop_start);
-            handle_default(fd_mnem_r);
-        }
-        if (std::string_view(Name) == llvm_mnem_m) {
-            handle_default(fd_mnem_m, memop_start);
-        }
-    };
-    const auto handle_rmi = [&](std::string_view llvm_mnem_r,
-                                std::string_view llvm_mnem_m,
-                                std::string_view llvm_mnem_i,
-                                unsigned         replop_idx,
-                                std::string_view fd_mnem_r,
-                                std::string_view fd_mnem_m,
-                                std::string_view fd_mnem_i) {
-        if (std::string_view(Name) == llvm_mnem_r) {
-            handle_immrepl(fd_mnem_i, replop_idx);
-            handle_memrepl(fd_mnem_m, replop_idx);
-            handle_default(fd_mnem_r);
-        }
-        if (std::string_view(Name) == llvm_mnem_m) {
-            handle_default(fd_mnem_m, replop_idx);
-        }
-        if (std::string_view(Name) == llvm_mnem_i) {
-            handle_default(fd_mnem_i);
-        }
-    };
-    const auto handle_ri = [&](std::string_view llvm_mnem_r,
-                               std::string_view llvm_mnem_i,
-                               unsigned         replop_idx,
-                               unsigned         memop_start,
-                               std::string_view fd_mnem_r,
-                               std::string_view fd_mnem_i) {
-        if (std::string_view(Name) == llvm_mnem_r) {
-            handle_immrepl(fd_mnem_i, replop_idx, memop_start);
-            handle_default(fd_mnem_r, memop_start);
-        }
-        if (std::string_view(Name) == llvm_mnem_i) {
-            handle_default(fd_mnem_i, memop_start);
-        }
-    };
-    const auto handle_ri_shift = [&](std::string_view llvm_mnem_r,
-                                     std::string_view llvm_mnem_i,
-                                     unsigned         replop_idx,
-                                     unsigned         memop_start,
-                                     std::string_view fd_mnem_r,
-                                     std::string_view fd_mnem_i) {
-        if (std::string_view(Name) == llvm_mnem_r) {
-            handle_immrepl(fd_mnem_i, replop_idx, memop_start);
-            handle_default(fd_mnem_r, memop_start, ", FE_CX");
-        }
-        if (std::string_view(Name) == llvm_mnem_i) {
-            handle_default(fd_mnem_i, memop_start);
-        }
-    };
+  const auto handle_rm = [&](std::string_view llvm_mnem_r,
+                             std::string_view llvm_mnem_m,
+                             unsigned memop_start,
+                             std::string_view fd_mnem_r,
+                             std::string_view fd_mnem_m) {
+    if (std::string_view(Name) == llvm_mnem_r) {
+      handle_memrepl(fd_mnem_m, memop_start);
+      handle_default(fd_mnem_r);
+    }
+    if (std::string_view(Name) == llvm_mnem_m) {
+      handle_default(fd_mnem_m, memop_start);
+    }
+  };
+  const auto handle_rmi = [&](std::string_view llvm_mnem_r,
+                              std::string_view llvm_mnem_m,
+                              std::string_view llvm_mnem_i,
+                              unsigned replop_idx,
+                              std::string_view fd_mnem_r,
+                              std::string_view fd_mnem_m,
+                              std::string_view fd_mnem_i) {
+    if (std::string_view(Name) == llvm_mnem_r) {
+      handle_immrepl(fd_mnem_i, replop_idx);
+      handle_memrepl(fd_mnem_m, replop_idx);
+      handle_default(fd_mnem_r);
+    }
+    if (std::string_view(Name) == llvm_mnem_m) {
+      handle_default(fd_mnem_m, replop_idx);
+    }
+    if (std::string_view(Name) == llvm_mnem_i) {
+      handle_default(fd_mnem_i);
+    }
+  };
+  const auto handle_ri = [&](std::string_view llvm_mnem_r,
+                             std::string_view llvm_mnem_i,
+                             unsigned replop_idx,
+                             unsigned memop_start,
+                             std::string_view fd_mnem_r,
+                             std::string_view fd_mnem_i) {
+    if (std::string_view(Name) == llvm_mnem_r) {
+      handle_immrepl(fd_mnem_i, replop_idx, memop_start);
+      handle_default(fd_mnem_r, memop_start);
+    }
+    if (std::string_view(Name) == llvm_mnem_i) {
+      handle_default(fd_mnem_i, memop_start);
+    }
+  };
+  const auto handle_ri_shift = [&](std::string_view llvm_mnem_r,
+                                   std::string_view llvm_mnem_i,
+                                   unsigned replop_idx,
+                                   unsigned memop_start,
+                                   std::string_view fd_mnem_r,
+                                   std::string_view fd_mnem_i) {
+    if (std::string_view(Name) == llvm_mnem_r) {
+      handle_immrepl(fd_mnem_i, replop_idx, memop_start);
+      handle_default(fd_mnem_r, memop_start, ", FE_CX");
+    }
+    if (std::string_view(Name) == llvm_mnem_i) {
+      handle_default(fd_mnem_i, memop_start);
+    }
+  };
 
-    // clang-format off
+  // clang-format off
     handle_rm("MOVZX32rr8", "MOVZX32rm8", 1, "MOVZXr32r8", "MOVZXr32m8");
     handle_rm("MOVZX32rr16", "MOVZX32rm16", 1, "MOVZXr32r16", "MOVZXr32m16");
     handle_rm("MOVSX32rr8", "MOVSX32rm8", 1, "MOVSXr32r8", "MOVSXr32m8");
@@ -667,242 +631,242 @@ void EncodingTargetX64::get_inst_candidates(
     handle_rm("COMISDrr", "COMISDrm", 1, "SSE_COMISDrr", "SSE_COMISDrm");
     handle_rm("UCOMISSrr", "UCOMISSrm", 1, "SSE_UCOMISSrr", "SSE_UCOMISSrm");
     handle_rm("UCOMISDrr", "UCOMISDrm", 1, "SSE_UCOMISDrr", "SSE_UCOMISDrm");
-    // clang-format on
+  // clang-format on
 
-    if (Name == "LCMPXCHG64") {
-        handle_default("LOCK_CMPXCHG64mr", 0);
+  if (Name == "LCMPXCHG64") {
+    handle_default("LOCK_CMPXCHG64mr", 0);
 
-    } else if (Name == "VMOVAPSYrm") {
-        handle_default("VMOVAPS256rm", 1);
-    } else if (Name == "VMOVAPSZrm") {
-        handle_default("VMOVAPS512rm", 1);
-    } else if (Name == "MOVSSmr") {
-        handle_default("SSE_MOVSSmr", 0);
-    } else if (Name == "MOVSDmr") {
-        handle_default("SSE_MOVSDmr", 0);
-    } else if (Name == "MOVAPSmr") {
-        handle_default("SSE_MOVAPSmr", 0);
-    } else if (Name == "VMOVAPSYmr") {
-        handle_default("VMOVAPS256mr", 0);
-    } else if (Name == "VMOVAPSZmr") {
-        handle_default("VMOVAPS512mr", 0);
+  } else if (Name == "VMOVAPSYrm") {
+    handle_default("VMOVAPS256rm", 1);
+  } else if (Name == "VMOVAPSZrm") {
+    handle_default("VMOVAPS512rm", 1);
+  } else if (Name == "MOVSSmr") {
+    handle_default("SSE_MOVSSmr", 0);
+  } else if (Name == "MOVSDmr") {
+    handle_default("SSE_MOVSDmr", 0);
+  } else if (Name == "MOVAPSmr") {
+    handle_default("SSE_MOVAPSmr", 0);
+  } else if (Name == "VMOVAPSYmr") {
+    handle_default("VMOVAPS256mr", 0);
+  } else if (Name == "VMOVAPSZmr") {
+    handle_default("VMOVAPS512mr", 0);
 
-    } else if (Name == "CVTSD2SSrr") {
-        handle_memrepl("SSE_CVTSD2SSrm", 1);
-        handle_default("SSE_CVTSD2SSrr");
-    } else if (Name == "CVTSS2SDrr") {
-        handle_memrepl("SSE_CVTSS2SDrm", 1);
-        handle_default("SSE_CVTSS2SDrr");
-    } else if (Name == "CVTSI2SSrr") {
-        handle_memrepl("SSE_CVTSI2SS32rm", 1);
-        handle_default("SSE_CVTSI2SS32rr");
-    } else if (Name == "CVTSI2SDrr") {
-        handle_memrepl("SSE_CVTSI2SD32rm", 1);
-        handle_default("SSE_CVTSI2SD32rr");
-    } else if (Name == "CVTSI642SSrr") {
-        handle_memrepl("SSE_CVTSI2SS64rm", 1);
-        handle_default("SSE_CVTSI2SS64rr");
-    } else if (Name == "CVTSI642SDrr") {
-        handle_memrepl("SSE_CVTSI2SD64rm", 1);
-        handle_default("SSE_CVTSI2SD64rr");
-    } else if (Name == "CVTTSD2SIrr") {
-        handle_memrepl("SSE_CVTTSD2SI32rm", 1);
-        handle_default("SSE_CVTTSD2SI32rr");
-    } else if (Name == "CVTTSS2SIrr") {
-        handle_memrepl("SSE_CVTTSS2SI32rm", 1);
-        handle_default("SSE_CVTTSS2SI32rr");
-    } else if (Name == "CVTTSD2SI64rr") {
-        handle_memrepl("SSE_CVTTSD2SI64rm", 1);
-        handle_default("SSE_CVTTSD2SI64rr");
-    } else if (Name == "CVTTSS2SI64rr") {
-        handle_memrepl("SSE_CVTTSS2SI64rm", 1);
-        handle_default("SSE_CVTTSS2SI64rr");
-    } else if (Name == "CVTTSD2SI64rr_Int") {
-        handle_memrepl("SSE_CVTTSD2SI64rm", 1);
-        handle_default("SSE_CVTTSD2SI64rr");
-    } else if (Name == "CVTTSS2SI64rr_Int") {
-        handle_memrepl("SSE_CVTTSS2SI64rm", 1);
-        handle_default("SSE_CVTTSS2SI64rr");
-    } else if (Name == "MOV64toPQIrr") {
-        handle_default("SSE_MOVQ_G2Xrr");
-    } else if (Name == "MOVSS2DIrr") {
-        handle_default("SSE_MOVD_X2Grr");
-    } else if (Name == "MOVSDto64rr") {
-        handle_default("SSE_MOVQ_X2Grr");
-    } else if (Name == "PUNPCKLDQrm") {
-        handle_default("SSE_PUNPCKLDQrm", 2);
-    } else if (Name == "UNPCKHPDrr") {
-        handle_default("SSE_UNPCKHPDrr");
+  } else if (Name == "CVTSD2SSrr") {
+    handle_memrepl("SSE_CVTSD2SSrm", 1);
+    handle_default("SSE_CVTSD2SSrr");
+  } else if (Name == "CVTSS2SDrr") {
+    handle_memrepl("SSE_CVTSS2SDrm", 1);
+    handle_default("SSE_CVTSS2SDrr");
+  } else if (Name == "CVTSI2SSrr") {
+    handle_memrepl("SSE_CVTSI2SS32rm", 1);
+    handle_default("SSE_CVTSI2SS32rr");
+  } else if (Name == "CVTSI2SDrr") {
+    handle_memrepl("SSE_CVTSI2SD32rm", 1);
+    handle_default("SSE_CVTSI2SD32rr");
+  } else if (Name == "CVTSI642SSrr") {
+    handle_memrepl("SSE_CVTSI2SS64rm", 1);
+    handle_default("SSE_CVTSI2SS64rr");
+  } else if (Name == "CVTSI642SDrr") {
+    handle_memrepl("SSE_CVTSI2SD64rm", 1);
+    handle_default("SSE_CVTSI2SD64rr");
+  } else if (Name == "CVTTSD2SIrr") {
+    handle_memrepl("SSE_CVTTSD2SI32rm", 1);
+    handle_default("SSE_CVTTSD2SI32rr");
+  } else if (Name == "CVTTSS2SIrr") {
+    handle_memrepl("SSE_CVTTSS2SI32rm", 1);
+    handle_default("SSE_CVTTSS2SI32rr");
+  } else if (Name == "CVTTSD2SI64rr") {
+    handle_memrepl("SSE_CVTTSD2SI64rm", 1);
+    handle_default("SSE_CVTTSD2SI64rr");
+  } else if (Name == "CVTTSS2SI64rr") {
+    handle_memrepl("SSE_CVTTSS2SI64rm", 1);
+    handle_default("SSE_CVTTSS2SI64rr");
+  } else if (Name == "CVTTSD2SI64rr_Int") {
+    handle_memrepl("SSE_CVTTSD2SI64rm", 1);
+    handle_default("SSE_CVTTSD2SI64rr");
+  } else if (Name == "CVTTSS2SI64rr_Int") {
+    handle_memrepl("SSE_CVTTSS2SI64rm", 1);
+    handle_default("SSE_CVTTSS2SI64rr");
+  } else if (Name == "MOV64toPQIrr") {
+    handle_default("SSE_MOVQ_G2Xrr");
+  } else if (Name == "MOVSS2DIrr") {
+    handle_default("SSE_MOVD_X2Grr");
+  } else if (Name == "MOVSDto64rr") {
+    handle_default("SSE_MOVQ_X2Grr");
+  } else if (Name == "PUNPCKLDQrm") {
+    handle_default("SSE_PUNPCKLDQrm", 2);
+  } else if (Name == "UNPCKHPDrr") {
+    handle_default("SSE_UNPCKHPDrr");
 
-    } else if (Name == "INC8r") {
-        handle_default("INC8r");
-    } else if (Name == "INC16r") {
-        handle_default("INC16r");
-    } else if (Name == "INC32r") {
-        handle_default("INC32r");
-    } else if (Name == "INC64r") {
-        handle_default("INC64r");
-    } else if (Name == "DEC8r") {
-        handle_default("DEC8r");
-    } else if (Name == "DEC16r") {
-        handle_default("DEC16r");
-    } else if (Name == "DEC32r") {
-        handle_default("DEC32r");
-    } else if (Name == "DEC64r") {
-        handle_default("DEC64r");
-    } else if (Name == "BT16rr") {
-        // TODO(ts): need check for imm8
-        handle_default("BT16rr");
-    } else if (Name == "BT32rr") {
-        // TODO(ts): need check for imm8
-        handle_default("BT32rr");
-    } else if (Name == "BT64rr") {
-        // TODO(ts): need check for imm8
-        handle_default("BT64rr");
-    } else if (Name == "IMUL16rr") {
-        // TODO: for imm replacment, use rri encoding
-        handle_memrepl("IMUL16rm", 2);
-        handle_default("IMUL16rr");
-    } else if (Name == "IMUL32rr") {
-        // TODO: for imm replacment, use rri encoding
-        handle_memrepl("IMUL32rm", 2);
-        handle_default("IMUL32rr");
-    } else if (Name == "IMUL64rr") {
-        // TODO: for imm replacment, use rri encoding
-        handle_memrepl("IMUL64rm", 2);
-        handle_default("IMUL64rr");
-    } else if (Name == "IMUL32rri") {
-        handle_memrepl("IMUL32rmi", 1);
-        handle_default("IMUL32rri");
-    } else if (Name == "IMUL64rri") {
-        handle_memrepl("IMUL64rmi", 1);
-        handle_default("IMUL64rri");
-    } else if (Name == "NEG8r") {
-        handle_default("NEG8r");
-    } else if (Name == "NEG16r") {
-        handle_default("NEG16r");
-    } else if (Name == "NEG32r") {
-        handle_default("NEG32r");
-    } else if (Name == "NEG64r") {
-        handle_default("NEG64r");
-    } else if (Name == "NOT8r") {
-        handle_default("NOT8r");
-    } else if (Name == "NOT16r") {
-        handle_default("NOT16r");
-    } else if (Name == "NOT32r") {
-        handle_default("NOT32r");
-    } else if (Name == "NOT64r") {
-        handle_default("NOT64r");
-    } else if (Name == "BSWAP32r") {
-        handle_default("BSWAP32r");
-    } else if (Name == "BSWAP64r") {
-        handle_default("BSWAP64r");
-    } else if (Name == "CWD") {
-        handle_default("CWD");
-    } else if (Name == "CDQ") {
-        handle_default("CDQ");
-    } else if (Name == "CQO") {
-        handle_default("CQO");
-    } else if (Name == "LEA64_32r") {
-        handle_default("LEA32rm", 1);
-    } else if (Name == "LEA64r") {
-        handle_default("LEA64rm", 1);
+  } else if (Name == "INC8r") {
+    handle_default("INC8r");
+  } else if (Name == "INC16r") {
+    handle_default("INC16r");
+  } else if (Name == "INC32r") {
+    handle_default("INC32r");
+  } else if (Name == "INC64r") {
+    handle_default("INC64r");
+  } else if (Name == "DEC8r") {
+    handle_default("DEC8r");
+  } else if (Name == "DEC16r") {
+    handle_default("DEC16r");
+  } else if (Name == "DEC32r") {
+    handle_default("DEC32r");
+  } else if (Name == "DEC64r") {
+    handle_default("DEC64r");
+  } else if (Name == "BT16rr") {
+    // TODO(ts): need check for imm8
+    handle_default("BT16rr");
+  } else if (Name == "BT32rr") {
+    // TODO(ts): need check for imm8
+    handle_default("BT32rr");
+  } else if (Name == "BT64rr") {
+    // TODO(ts): need check for imm8
+    handle_default("BT64rr");
+  } else if (Name == "IMUL16rr") {
+    // TODO: for imm replacment, use rri encoding
+    handle_memrepl("IMUL16rm", 2);
+    handle_default("IMUL16rr");
+  } else if (Name == "IMUL32rr") {
+    // TODO: for imm replacment, use rri encoding
+    handle_memrepl("IMUL32rm", 2);
+    handle_default("IMUL32rr");
+  } else if (Name == "IMUL64rr") {
+    // TODO: for imm replacment, use rri encoding
+    handle_memrepl("IMUL64rm", 2);
+    handle_default("IMUL64rr");
+  } else if (Name == "IMUL32rri") {
+    handle_memrepl("IMUL32rmi", 1);
+    handle_default("IMUL32rri");
+  } else if (Name == "IMUL64rri") {
+    handle_memrepl("IMUL64rmi", 1);
+    handle_default("IMUL64rri");
+  } else if (Name == "NEG8r") {
+    handle_default("NEG8r");
+  } else if (Name == "NEG16r") {
+    handle_default("NEG16r");
+  } else if (Name == "NEG32r") {
+    handle_default("NEG32r");
+  } else if (Name == "NEG64r") {
+    handle_default("NEG64r");
+  } else if (Name == "NOT8r") {
+    handle_default("NOT8r");
+  } else if (Name == "NOT16r") {
+    handle_default("NOT16r");
+  } else if (Name == "NOT32r") {
+    handle_default("NOT32r");
+  } else if (Name == "NOT64r") {
+    handle_default("NOT64r");
+  } else if (Name == "BSWAP32r") {
+    handle_default("BSWAP32r");
+  } else if (Name == "BSWAP64r") {
+    handle_default("BSWAP64r");
+  } else if (Name == "CWD") {
+    handle_default("CWD");
+  } else if (Name == "CDQ") {
+    handle_default("CDQ");
+  } else if (Name == "CQO") {
+    handle_default("CQO");
+  } else if (Name == "LEA64_32r") {
+    handle_default("LEA32rm", 1);
+  } else if (Name == "LEA64r") {
+    handle_default("LEA64rm", 1);
 
-    } else if (Name == "XCHG8rm") {
-        handle_xchg_mem("XCHG8mr", 2);
-    } else if (Name == "XCHG16rm") {
-        handle_xchg_mem("XCHG16mr", 2);
-    } else if (Name == "XCHG32rm") {
-        handle_xchg_mem("XCHG32mr", 2);
-    } else if (Name == "XCHG64rm") {
-        handle_xchg_mem("XCHG64mr", 2);
-    } else if (Name == "LCMPXCHG8") {
-        handle_default("LOCK_CMPXCHG8mr", 0);
-    } else if (Name == "LCMPXCHG16") {
-        handle_default("LOCK_CMPXCHG16mr", 0);
-    } else if (Name == "LCMPXCHG32") {
-        handle_default("LOCK_CMPXCHG32mr", 0);
-    } else if (Name == "LCMPXCHG64") {
-        handle_default("LOCK_CMPXCHG64mr", 0);
-    } else if (Name == "LXADD8") {
-        handle_xchg_mem("LOCK_XADD8mr", 2);
-    } else if (Name == "LXADD16") {
-        handle_xchg_mem("LOCK_XADD16mr", 2);
-    } else if (Name == "LXADD32") {
-        handle_xchg_mem("LOCK_XADD32mr", 2);
-    } else if (Name == "LXADD64") {
-        handle_xchg_mem("LOCK_XADD64mr", 2);
+  } else if (Name == "XCHG8rm") {
+    handle_xchg_mem("XCHG8mr", 2);
+  } else if (Name == "XCHG16rm") {
+    handle_xchg_mem("XCHG16mr", 2);
+  } else if (Name == "XCHG32rm") {
+    handle_xchg_mem("XCHG32mr", 2);
+  } else if (Name == "XCHG64rm") {
+    handle_xchg_mem("XCHG64mr", 2);
+  } else if (Name == "LCMPXCHG8") {
+    handle_default("LOCK_CMPXCHG8mr", 0);
+  } else if (Name == "LCMPXCHG16") {
+    handle_default("LOCK_CMPXCHG16mr", 0);
+  } else if (Name == "LCMPXCHG32") {
+    handle_default("LOCK_CMPXCHG32mr", 0);
+  } else if (Name == "LCMPXCHG64") {
+    handle_default("LOCK_CMPXCHG64mr", 0);
+  } else if (Name == "LXADD8") {
+    handle_xchg_mem("LOCK_XADD8mr", 2);
+  } else if (Name == "LXADD16") {
+    handle_xchg_mem("LOCK_XADD16mr", 2);
+  } else if (Name == "LXADD32") {
+    handle_xchg_mem("LOCK_XADD32mr", 2);
+  } else if (Name == "LXADD64") {
+    handle_xchg_mem("LOCK_XADD64mr", 2);
 
-    } else if (Name == "SETCCr") {
-        std::array<std::string_view, 16> cond_codes = {"SETO8r",
-                                                       "SETNO8r",
-                                                       "SETC8r",
-                                                       "SETNC8r",
-                                                       "SETZ8r",
-                                                       "SETNZ8r",
-                                                       "SETBE8r",
-                                                       "SETA8r",
-                                                       "SETS8r",
-                                                       "SETNS8r",
-                                                       "SETP8r",
-                                                       "SETNP8r",
-                                                       "SETL8r",
-                                                       "SETGE8r",
-                                                       "SETLE8r",
-                                                       "SETG8r"};
-        handle_default(cond_codes[mi.getOperand(1).getImm()]);
-    } else if (Name == "CMOV32rr") {
-        std::array<std::string_view, 16> cond_codes = {"CMOVO32rr",
-                                                       "CMOVNO32rr",
-                                                       "CMOVC32rr",
-                                                       "CMOVNC32rr",
-                                                       "CMOVZ32rr",
-                                                       "CMOVNZ32rr",
-                                                       "CMOVBE32rr",
-                                                       "CMOVA32rr",
-                                                       "CMOVS32rr",
-                                                       "CMOVNS32rr",
-                                                       "CMOVP32rr",
-                                                       "CMOVNP32rr",
-                                                       "CMOVL32rr",
-                                                       "CMOVGE32rr",
-                                                       "CMOVLE32rr",
-                                                       "CMOVG32rr"};
-        handle_default(cond_codes[mi.getOperand(3).getImm()]);
-    } else if (Name == "CMOV64rr") {
-        std::array<std::string_view, 16> cond_codes = {"CMOVO64rr",
-                                                       "CMOVNO64rr",
-                                                       "CMOVC64rr",
-                                                       "CMOVNC64rr",
-                                                       "CMOVZ64rr",
-                                                       "CMOVNZ64rr",
-                                                       "CMOVBE64rr",
-                                                       "CMOVA64rr",
-                                                       "CMOVS64rr",
-                                                       "CMOVNS64rr",
-                                                       "CMOVP64rr",
-                                                       "CMOVNP64rr",
-                                                       "CMOVL64rr",
-                                                       "CMOVGE64rr",
-                                                       "CMOVLE64rr",
-                                                       "CMOVG64rr"};
-        handle_default(cond_codes[mi.getOperand(3).getImm()]);
+  } else if (Name == "SETCCr") {
+    std::array<std::string_view, 16> cond_codes = {"SETO8r",
+                                                   "SETNO8r",
+                                                   "SETC8r",
+                                                   "SETNC8r",
+                                                   "SETZ8r",
+                                                   "SETNZ8r",
+                                                   "SETBE8r",
+                                                   "SETA8r",
+                                                   "SETS8r",
+                                                   "SETNS8r",
+                                                   "SETP8r",
+                                                   "SETNP8r",
+                                                   "SETL8r",
+                                                   "SETGE8r",
+                                                   "SETLE8r",
+                                                   "SETG8r"};
+    handle_default(cond_codes[mi.getOperand(1).getImm()]);
+  } else if (Name == "CMOV32rr") {
+    std::array<std::string_view, 16> cond_codes = {"CMOVO32rr",
+                                                   "CMOVNO32rr",
+                                                   "CMOVC32rr",
+                                                   "CMOVNC32rr",
+                                                   "CMOVZ32rr",
+                                                   "CMOVNZ32rr",
+                                                   "CMOVBE32rr",
+                                                   "CMOVA32rr",
+                                                   "CMOVS32rr",
+                                                   "CMOVNS32rr",
+                                                   "CMOVP32rr",
+                                                   "CMOVNP32rr",
+                                                   "CMOVL32rr",
+                                                   "CMOVGE32rr",
+                                                   "CMOVLE32rr",
+                                                   "CMOVG32rr"};
+    handle_default(cond_codes[mi.getOperand(3).getImm()]);
+  } else if (Name == "CMOV64rr") {
+    std::array<std::string_view, 16> cond_codes = {"CMOVO64rr",
+                                                   "CMOVNO64rr",
+                                                   "CMOVC64rr",
+                                                   "CMOVNC64rr",
+                                                   "CMOVZ64rr",
+                                                   "CMOVNZ64rr",
+                                                   "CMOVBE64rr",
+                                                   "CMOVA64rr",
+                                                   "CMOVS64rr",
+                                                   "CMOVNS64rr",
+                                                   "CMOVP64rr",
+                                                   "CMOVNP64rr",
+                                                   "CMOVL64rr",
+                                                   "CMOVGE64rr",
+                                                   "CMOVLE64rr",
+                                                   "CMOVG64rr"};
+    handle_default(cond_codes[mi.getOperand(3).getImm()]);
 
-    } else if (Name == "PREFETCHNTA") {
-        handle_default("PREFETCHNTAm", 0);
-    } else if (Name == "PREFETCHT2") {
-        handle_default("PREFETCHT2m", 0);
-    } else if (Name == "PREFETCHT1") {
-        handle_default("PREFETCHT1m", 0);
-    } else if (Name == "PREFETCHT0") {
-        handle_default("PREFETCHT0m", 0);
-    }
+  } else if (Name == "PREFETCHNTA") {
+    handle_default("PREFETCHNTAm", 0);
+  } else if (Name == "PREFETCHT2") {
+    handle_default("PREFETCHT2m", 0);
+  } else if (Name == "PREFETCHT1") {
+    handle_default("PREFETCHT1m", 0);
+  } else if (Name == "PREFETCHT0") {
+    handle_default("PREFETCHT0m", 0);
+  }
 
-    if (candidates.size() == 0) {
-        llvm::errs() << "ERROR: unhandled instruction " << Name << "\n";
-        assert(false);
-        exit(1);
-    }
+  if (candidates.size() == 0) {
+    llvm::errs() << "ERROR: unhandled instruction " << Name << "\n";
+    assert(false);
+    exit(1);
+  }
 }
 
 } // namespace tpde_encgen::x64
