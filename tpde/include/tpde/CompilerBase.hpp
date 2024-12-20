@@ -1670,7 +1670,9 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
   while (handled_count != nodes.size()) {
     if (ready_indices.empty()) {
       // need to break a cycle
-      auto cur_idx = *waiting_nodes.first_set();
+      auto cur_idx_opt = waiting_nodes.first_set();
+      assert(cur_idx_opt);
+      auto cur_idx = *cur_idx_opt;
       assert(nodes[cur_idx].ref_count == 1);
       assert(cur_tmp_val == Adaptor::INVALID_VALUE_REF);
 
@@ -1724,6 +1726,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
 
       nodes[cur_idx].ref_count = 0;
       ready_indices.push_back(cur_idx);
+      waiting_nodes.mark_unset(cur_idx);
     }
 
     for (u32 i = 0; i < ready_indices.size(); ++i) {
