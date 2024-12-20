@@ -7,6 +7,7 @@
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Support/Casting.h>
 #include <llvm/Support/TimeProfiler.h>
 
 #include "tpde/CompilerBase.hpp"
@@ -323,6 +324,10 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
 
     for (unsigned idx : indices) {
       if (!const_val) {
+        break;
+      }
+      if (auto *cda = llvm::dyn_cast<llvm::ConstantDataArray>(const_val)) {
+        const_val = cda->getElementAsConstant(idx);
         break;
       }
       auto *agg = llvm::dyn_cast<llvm::ConstantAggregate>(const_val);
