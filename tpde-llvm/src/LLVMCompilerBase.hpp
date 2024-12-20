@@ -3313,6 +3313,55 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     this->set_value(res_ref, res);
     return true;
   }
+  case llvm::Intrinsic::umin:
+  case llvm::Intrinsic::umax:
+  case llvm::Intrinsic::smin:
+  case llvm::Intrinsic::smax: {
+    auto *ty = inst->getType();
+    if (!ty->isIntegerTy()) {
+      return false;
+    }
+    const auto width = ty->getIntegerBitWidth();
+    if (width > 64) {
+      return false;
+    }
+
+    GenericValuePart lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    GenericValuePart rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    if (width != 32 && width != 64) {
+      unsigned dst_width = tpde::util::align_up(width, 32);
+      lhs = derived()->ext_int(std::move(lhs), true, width, dst_width);
+      rhs = derived()->ext_int(std::move(rhs), true, width, dst_width);
+    }
+
+    ScratchReg res{derived()};
+    auto res_ref = this->result_ref_lazy(inst_idx, 0);
+    using EncodeFnTy =
+        bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
+    EncodeFnTy encode_fn = nullptr;
+    if (width <= 32) {
+      switch (intrin_id) {
+      case llvm::Intrinsic::umin: encode_fn = &Derived::encode_umini32; break;
+      case llvm::Intrinsic::umax: encode_fn = &Derived::encode_umaxi32; break;
+      case llvm::Intrinsic::smin: encode_fn = &Derived::encode_smini32; break;
+      case llvm::Intrinsic::smax: encode_fn = &Derived::encode_smaxi32; break;
+      default: __builtin_unreachable();
+      }
+    } else {
+      switch (intrin_id) {
+      case llvm::Intrinsic::umin: encode_fn = &Derived::encode_umini64; break;
+      case llvm::Intrinsic::umax: encode_fn = &Derived::encode_umaxi64; break;
+      case llvm::Intrinsic::smin: encode_fn = &Derived::encode_smini64; break;
+      case llvm::Intrinsic::smax: encode_fn = &Derived::encode_smaxi64; break;
+      default: __builtin_unreachable();
+      }
+    }
+    if (!(derived()->*encode_fn)(std::move(lhs), std::move(rhs), res)) {
+      return false;
+    }
+    this->set_value(res_ref, res);
+    return true;
+  }
   case llvm::Intrinsic::ptrmask: {
     // ptrmask is just an integer and.
     GenericValuePart lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);

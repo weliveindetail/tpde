@@ -180,6 +180,15 @@ u128 TARGET_V1 ashri128_ge64(i128 a, u64 amt) {
     return a >> (64 + (amt % 64));
 }
 
+u32 TARGET_V1 smini32(u32 a, u32 b) { return (i32)a < (i32)b ? a : b; }
+u64 TARGET_V1 smini64(u64 a, u64 b) { return (i64)a < (i64)b ? a : b; }
+u32 TARGET_V1 umini32(u32 a, u32 b) { return a < b ? a : b; }
+u64 TARGET_V1 umini64(u64 a, u64 b) { return a < b ? a : b; }
+u32 TARGET_V1 smaxi32(u32 a, u32 b) { return (i32)a > (i32)b ? a : b; }
+u64 TARGET_V1 smaxi64(u64 a, u64 b) { return (i64)a > (i64)b ? a : b; }
+u32 TARGET_V1 umaxi32(u32 a, u32 b) { return a > b ? a : b; }
+u64 TARGET_V1 umaxi64(u64 a, u64 b) { return a > b ? a : b; }
+
 u16 TARGET_V1 bswapi16(u16 a) { return __builtin_bswap16(a); }
 u32 TARGET_V1 bswapi32(u32 a) { return __builtin_bswap32(a); }
 u64 TARGET_V1 bswapi48(u64 a) { return __builtin_bswap64(a) >> 16; }
