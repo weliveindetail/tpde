@@ -199,6 +199,17 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
         }
       }
     }
+
+    // We might have inserted before the cmp, which would get compiled twice
+    // now. Therefore, remove the assigned value number.
+    if (restart_from && ins_before != inst) {
+      auto ins_before_idx = inst_lookup_idx(ins_before);
+      assert(values.size() == ins_before_idx + 1);
+      values.resize(ins_before_idx);
+#ifndef NDEBUG
+      value_lookup.erase(ins_before);
+#endif
+    }
   }
 
   // Check operands for constants; PHI nodes are handled by predecessors.
@@ -246,6 +257,7 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
   val_idx_for_inst(inst) = val_idx;
 
 #ifndef NDEBUG
+  assert(!value_lookup.contains(inst));
   value_lookup.insert_or_assign(inst, val_idx);
 #endif
   auto [ty, complex_part_idx] = val_basic_type_uncached(inst, false);

@@ -53,7 +53,9 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
             .compiler = compiler,
             .locked = false
         }
-    }, is_const(false) {}
+    }, is_const(false) {
+    assert(assignment().variable_ref() || state.v.assignment->references_left);
+  }
 
   ValuePartRef(u64 const_u64, u32 bank, u32 size) noexcept : state { .c = ConstantData { .const_u64 = const_u64, .bank = bank, .size = size } }, is_const(true) {
     assert(size <= 8);
