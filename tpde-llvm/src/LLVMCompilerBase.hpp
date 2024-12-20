@@ -6,6 +6,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TimeProfiler.h>
@@ -3107,6 +3108,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     IRValueRef inst_idx,
     llvm::Instruction *inst,
     llvm::Function *intrin) noexcept {
+  auto *intrinsic = llvm::cast<llvm::IntrinsicInst>(inst);
   const auto intrin_id = intrin->getIntrinsicID();
 
   switch (intrin_id) {
@@ -3121,14 +3123,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
     return true;
   case llvm::Intrinsic::assume:
-    // reference counting
-    this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
-    return true;
   case llvm::Intrinsic::lifetime_start:
   case llvm::Intrinsic::lifetime_end:
+  case llvm::Intrinsic::invariant_start:
+  case llvm::Intrinsic::invariant_end:
     // reference counting
-    this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
-    this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    for (llvm::Value *arg : intrinsic->args()) {
+      this->val_ref(llvm_val_idx(arg), 0);
+    }
     return true;
   case llvm::Intrinsic::memcpy: {
     const auto dst = llvm_val_idx(inst->getOperand(0));

@@ -35,8 +35,8 @@ define void @free_intrinsics() {
   call void @llvm.dbg.declare(metadata ptr undef, metadata !0, metadata !DIExpression()), !dbg !8
   call void @llvm.dbg.value(metadata i64 undef, i64 undef, metadata !DIExpression(), metadata !DIExpression()), !dbg !8
   call void @llvm.dbg.label(metadata !2), !dbg !8
-; %a1 = call ptr @llvm.invariant.start.p0(i64 1, ptr undef)
-; call void @llvm.invariant.end.p0(ptr undef, i64 1, ptr undef)
+  %a1 = call ptr @llvm.invariant.start.p0(i64 1, ptr undef)
+  call void @llvm.invariant.end.p0(ptr undef, i64 1, ptr undef)
 ; %a2 = call ptr @llvm.launder.invariant.group.p0(ptr undef)
 ; %a3 = call ptr @llvm.strip.invariant.group.p0(ptr undef)
   %a4 = call i1 @llvm.is.constant.i32(i32 undef)
