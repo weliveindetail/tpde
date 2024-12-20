@@ -115,8 +115,8 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   /// Is the value part currently in the specified register?
   bool is_in_reg(AsmReg) const noexcept;
 
-  /// Allocate a register for the value part and reload from the stack if this
-  /// is desired
+  /// Allocate a register for the value part, reload from the stack if this is
+  /// desired, and lock the value into the register.
   AsmReg alloc_reg(bool reload = true) noexcept;
 
   /// Load the value into the specific register and update the assignment to
@@ -241,6 +241,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   }
 
   if (pa.register_valid()) {
+    lock();
     return AsmReg{pa.full_reg_id()};
   }
 
@@ -270,6 +271,10 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   auto ap = assignment();
   ap.set_full_reg_id(reg.id());
   ap.set_register_valid(true);
+
+  // We must lock the value here, otherwise, load_from_stack could evict the
+  // register again.
+  lock();
 
   if (reload) {
     if (ap.variable_ref()) {

@@ -804,9 +804,7 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
     return scratch.cur_reg;
   }
 
-  const auto reg = val_ref.alloc_reg(true);
-  val_ref.lock();
-  return reg;
+  return val_ref.alloc_reg(true);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -922,13 +920,13 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
       // can salvage
       arg.unlock();
       salvage_reg_for_values(res_ref, arg);
+      res_ref.lock();
     } else {
       const auto reg = res_ref.alloc_reg(false);
       arg.reload_into_specific_fixed(this, reg);
     }
   }
 
-  res_ref.lock();
   return res_ref;
 }
 
@@ -978,13 +976,13 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
       arg.unlock();
 
       salvage_reg_for_values(res_ref, arg);
+      res_ref.lock();
       lhs_reg = res_ref.cur_reg();
     } else {
       res_ref.alloc_reg(false);
     }
   }
 
-  res_ref.lock();
   return res_ref;
 }
 
@@ -1146,16 +1144,10 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     return std::get<ScratchReg>(gv.state).cur_reg;
   }
   if (std::holds_alternative<ValuePartRef>(gv.state)) {
-    auto &val_ref = std::get<ValuePartRef>(gv.state);
-    const auto reg = val_ref.alloc_reg();
-    val_ref.lock();
-    return reg;
+    return std::get<ValuePartRef>(gv.state).alloc_reg();
   }
   if (std::holds_alternative<ValuePartRef *>(gv.state)) {
-    auto &val_ref = *std::get<ValuePartRef *>(gv.state);
-    const auto reg = val_ref.alloc_reg();
-    val_ref.lock();
-    return reg;
+    return std::get<ValuePartRef *>(gv.state)->alloc_reg();
   }
   if (auto *imm =
           std::get_if<typename GenericValuePart::Immediate>(&gv.state)) {
