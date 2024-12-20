@@ -1567,7 +1567,11 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
     auto phi_ref = adaptor->val_as_phi(node.val);
     auto incoming_val = phi_ref.incoming_val_for_block(cur_ref);
 
-    // TODO(ts): special handling for self-references?
+    // We don't need to do anything for self-referencing PHIs.
+    if (incoming_val == node.val) {
+      continue;
+    }
+
     auto it = std::lower_bound(nodes.begin(),
                                nodes.end(),
                                NodeEntry{.val = incoming_val},
