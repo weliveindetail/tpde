@@ -9,6 +9,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TimeProfiler.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "tpde/CompilerBase.hpp"
 #include "tpde/util/misc.hpp"
@@ -436,7 +437,9 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     }
   }
 
-  TPDE_LOG_ERR("Encountered unknown constant type");
+  std::string const_str;
+  llvm::raw_string_ostream(const_str) << *const_val;
+  TPDE_LOG_ERR("Encountered unknown constant type: {}", const_str);
   assert(0);
   exit(1);
 }
