@@ -2628,60 +2628,56 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
     return false;
   }
 
-  const auto is_double = cmp_ty->isDoubleTy();
-
   using EncodeFnTy =
       bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
-  using Pred = llvm::CmpInst::Predicate;
+  EncodeFnTy fn = nullptr;
 
-// disable Wpedantic here since these are compiler extensions
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-#pragma GCC diagnostic ignored "-Wc99-designator"
-  constexpr u32 F = Pred::FIRST_FCMP_PREDICATE;
-  EncodeFnTy encode_fns[Pred::LAST_FCMP_PREDICATE - Pred::FIRST_FCMP_PREDICATE +
-                        1][2] = {
-      [Pred::FCMP_FALSE - F] = {                        nullptr,nullptr                                                                },
-      [Pred::FCMP_TRUE - F] = {                        nullptr, nullptr},
-      [Pred::FCMP_OEQ - F] = {&Derived::encode_fcmp_oeq_float,
-                                &Derived::encode_fcmp_oeq_double        },
-      [Pred::FCMP_OGT - F] = {&Derived::encode_fcmp_ogt_float,
-                                &Derived::encode_fcmp_ogt_double        },
-      [Pred::FCMP_OGE - F] = {&Derived::encode_fcmp_oge_float,
-                                &Derived::encode_fcmp_oge_double        },
-      [Pred::FCMP_OLT - F] = {&Derived::encode_fcmp_olt_float,
-                                &Derived::encode_fcmp_olt_double        },
-      [Pred::FCMP_OLE - F] = {&Derived::encode_fcmp_ole_float,
-                                &Derived::encode_fcmp_ole_double        },
-      [Pred::FCMP_ONE - F] = {&Derived::encode_fcmp_one_float,
-                                &Derived::encode_fcmp_one_double        },
-      [Pred::FCMP_ORD - F] = {&Derived::encode_fcmp_ord_float,
-                                &Derived::encode_fcmp_ord_double        },
-      [Pred::FCMP_UEQ - F] = {&Derived::encode_fcmp_ueq_float,
-                                &Derived::encode_fcmp_ueq_double        },
-      [Pred::FCMP_UGT - F] = {&Derived::encode_fcmp_ugt_float,
-                                &Derived::encode_fcmp_ugt_double        },
-      [Pred::FCMP_UGE - F] = {&Derived::encode_fcmp_uge_float,
-                                &Derived::encode_fcmp_uge_double        },
-      [Pred::FCMP_ULT - F] = {&Derived::encode_fcmp_ult_float,
-                                &Derived::encode_fcmp_ult_double        },
-      [Pred::FCMP_ULE - F] = {&Derived::encode_fcmp_ule_float,
-                                &Derived::encode_fcmp_ule_double        },
-      [Pred::FCMP_UNE - F] = {&Derived::encode_fcmp_une_float,
-                                &Derived::encode_fcmp_une_double        },
-      [Pred::FCMP_UNO - F] = {&Derived::encode_fcmp_uno_float,
-                                &Derived::encode_fcmp_uno_double        },
-  };
-#pragma GCC diagnostic pop
+  if (cmp_ty->isFloatTy()) {
+    switch (pred) {
+      using enum llvm::CmpInst::Predicate;
+    case FCMP_OEQ: fn = &Derived::encode_fcmp_oeq_float; break;
+    case FCMP_OGT: fn = &Derived::encode_fcmp_ogt_float; break;
+    case FCMP_OGE: fn = &Derived::encode_fcmp_oge_float; break;
+    case FCMP_OLT: fn = &Derived::encode_fcmp_olt_float; break;
+    case FCMP_OLE: fn = &Derived::encode_fcmp_ole_float; break;
+    case FCMP_ONE: fn = &Derived::encode_fcmp_one_float; break;
+    case FCMP_ORD: fn = &Derived::encode_fcmp_ord_float; break;
+    case FCMP_UEQ: fn = &Derived::encode_fcmp_ueq_float; break;
+    case FCMP_UGT: fn = &Derived::encode_fcmp_ugt_float; break;
+    case FCMP_UGE: fn = &Derived::encode_fcmp_uge_float; break;
+    case FCMP_ULT: fn = &Derived::encode_fcmp_ult_float; break;
+    case FCMP_ULE: fn = &Derived::encode_fcmp_ule_float; break;
+    case FCMP_UNE: fn = &Derived::encode_fcmp_une_float; break;
+    case FCMP_UNO: fn = &Derived::encode_fcmp_uno_float; break;
+    default: TPDE_UNREACHABLE("invalid fcmp predicate");
+    }
+  } else {
+    switch (pred) {
+      using enum llvm::CmpInst::Predicate;
+    case FCMP_OEQ: fn = &Derived::encode_fcmp_oeq_double; break;
+    case FCMP_OGT: fn = &Derived::encode_fcmp_ogt_double; break;
+    case FCMP_OGE: fn = &Derived::encode_fcmp_oge_double; break;
+    case FCMP_OLT: fn = &Derived::encode_fcmp_olt_double; break;
+    case FCMP_OLE: fn = &Derived::encode_fcmp_ole_double; break;
+    case FCMP_ONE: fn = &Derived::encode_fcmp_one_double; break;
+    case FCMP_ORD: fn = &Derived::encode_fcmp_ord_double; break;
+    case FCMP_UEQ: fn = &Derived::encode_fcmp_ueq_double; break;
+    case FCMP_UGT: fn = &Derived::encode_fcmp_ugt_double; break;
+    case FCMP_UGE: fn = &Derived::encode_fcmp_uge_double; break;
+    case FCMP_ULT: fn = &Derived::encode_fcmp_ult_double; break;
+    case FCMP_ULE: fn = &Derived::encode_fcmp_ule_double; break;
+    case FCMP_UNE: fn = &Derived::encode_fcmp_une_double; break;
+    case FCMP_UNO: fn = &Derived::encode_fcmp_uno_double; break;
+    default: TPDE_UNREACHABLE("invalid fcmp predicate");
+    }
+  }
 
   GenericValuePart lhs_op = this->val_ref(llvm_val_idx(cmp->getOperand(0)), 0);
   GenericValuePart rhs_op = this->val_ref(llvm_val_idx(cmp->getOperand(1)), 0);
   ScratchReg res_scratch{derived()};
   auto res_ref = this->result_ref_lazy(inst_idx, 0);
 
-  if (!(derived()->*encode_fns[pred - Pred::FIRST_FCMP_PREDICATE]
-                              [is_double ? 1 : 0])(
-          std::move(lhs_op), std::move(rhs_op), res_scratch)) {
+  if (!(derived()->*fn)(std::move(lhs_op), std::move(rhs_op), res_scratch)) {
     return false;
   }
 
