@@ -6,9 +6,6 @@ cmake_minimum_required(VERSION 3.23)
 
 project(tpde2)
 
-# TODO(ae): Remove workaround when upstream Disarm gets CMake support
-file(COPY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/deps/disarm-CMakeLists.txt ${CMAKE_CURRENT_SOURCE_DIR}/deps/disarm/CMakeLists.txt ONLY_IF_DIFFERENT)
-
 # TODO(ae): use target_compile_features(cxx_std_20)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
