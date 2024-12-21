@@ -36,6 +36,11 @@
   #define TPDE_LOG_ERR(...)
 #endif
 
+#ifndef NDEBUG
+  #define TPDE_UNREACHABLE(msg) assert(0 && (msg))
+#else
+  #define TPDE_UNREACHABLE(msg) __builtin_unreachable()
+#endif
 
 namespace tpde {
 // NOTE(ts): someone's gonna hate me...

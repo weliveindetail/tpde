@@ -226,6 +226,7 @@ struct CallingConv {
   [[nodiscard]] constexpr std::span<const AsmReg> arg_regs_gp() const noexcept {
     switch (ty) {
     case SYSV_CC: return SysV::arg_regs_gp;
+    default: TPDE_UNREACHABLE("invalid calling convention");
     }
   }
 
@@ -233,12 +234,14 @@ struct CallingConv {
       arg_regs_vec() const noexcept {
     switch (ty) {
     case SYSV_CC: return SysV::arg_regs_vec;
+    default: TPDE_UNREACHABLE("invalid calling convention");
     }
   }
 
   [[nodiscard]] constexpr std::span<const AsmReg> ret_regs_gp() const noexcept {
     switch (ty) {
     case SYSV_CC: return SysV::ret_regs_gp;
+    default: TPDE_UNREACHABLE("invalid calling convention");
     }
   }
 
@@ -246,6 +249,7 @@ struct CallingConv {
       ret_regs_vec() const noexcept {
     switch (ty) {
     case SYSV_CC: return SysV::ret_regs_vec;
+    default: TPDE_UNREACHABLE("invalid calling convention");
     }
   }
 
@@ -253,36 +257,42 @@ struct CallingConv {
       callee_saved_regs() const noexcept {
     switch (ty) {
     case SYSV_CC: return SysV::callee_saved_regs;
+    default: TPDE_UNREACHABLE("invalid calling convention");
     }
   }
 
   [[nodiscard]] constexpr u64 callee_saved_mask() const noexcept {
     switch (ty) {
     case SYSV_CC: return SysV::callee_saved_mask;
+    default: TPDE_UNREACHABLE("invalid calling convention");
     }
   }
 
   [[nodiscard]] constexpr u64 arg_regs_mask() const noexcept {
     switch (ty) {
     case SYSV_CC: return SysV::arg_regs_mask;
+    default: TPDE_UNREACHABLE("invalid calling convention");
     }
   }
 
   [[nodiscard]] constexpr u64 result_regs_mask() const noexcept {
     switch (ty) {
     case SYSV_CC: return SysV::result_regs_mask;
+    default: TPDE_UNREACHABLE("invalid calling convention");
     }
   }
 
   [[nodiscard]] constexpr u64 initial_free_regs() const noexcept {
     switch (ty) {
     case SYSV_CC: return SysV::initial_free_regs;
+    default: TPDE_UNREACHABLE("invalid calling convention");
     }
   }
 
   [[nodiscard]] constexpr std::optional<AsmReg> sret_reg() const noexcept {
     switch (ty) {
     case SYSV_CC: return AsmReg::R8;
+    default: TPDE_UNREACHABLE("invalid calling convention");
     }
   }
 

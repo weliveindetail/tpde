@@ -562,6 +562,7 @@ struct TestIRAdaptor {
     case br: [[fallthrough]];
     case condbr: return false;
     case call: return true;
+    default: TPDE_UNREACHABLE("invalid instruction type");
     }
   }
 

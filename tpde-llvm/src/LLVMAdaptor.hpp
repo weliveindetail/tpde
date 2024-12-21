@@ -12,6 +12,7 @@
 #include <tsl/hopscotch_map.h>
 
 #include "base.hpp"
+#include "tpde/base.hpp"
 #include "tpde/util/SmallVector.hpp"
 #include "tpde/util/misc.hpp"
 
@@ -636,10 +637,8 @@ private:
     case v512:
     case complex:
     case invalid:
-    case none: {
-      assert(0);
-      __builtin_unreachable();
-    }
+    case none:
+    default: TPDE_UNREACHABLE("invalid basic type");
     }
   }
 
@@ -662,10 +661,8 @@ private:
     case v512:
     case complex:
     case invalid:
-    case none: {
-      assert(0);
-      __builtin_unreachable();
-    }
+    case none:
+    default: TPDE_UNREACHABLE("invalid basic type");
     }
   }
 
@@ -688,11 +685,8 @@ private:
     case v256:
     case v512:
     case none:
-    case invalid: {
-      TPDE_LOG_ERR("basic_ty_part_count for value with invalid type");
-      assert(0);
-      exit(1);
-    }
+    case invalid:
+    default: TPDE_UNREACHABLE("invalid basic type");
     }
   }
 

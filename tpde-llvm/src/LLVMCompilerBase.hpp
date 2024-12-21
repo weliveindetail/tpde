@@ -828,6 +828,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_const_expr_to_data(
         }
       }
     }
+    return false;
   }
   default: {
     TPDE_LOG_ERR("Unknown constant expression in global initializer");

@@ -183,10 +183,8 @@ u8 LLVMCompilerX64::val_part_bank(const IRValueRef val_idx,
   case v512: return 1;
   case none:
   case invalid:
-  case complex: {
-    assert(0);
-    exit(1);
-  }
+  case complex:
+  default: TPDE_UNREACHABLE("invalid basic type");
   }
 }
 

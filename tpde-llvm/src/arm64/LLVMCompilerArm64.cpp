@@ -8,6 +8,7 @@
 #include "LLVMCompilerBase.hpp"
 #include "encode_template_arm64.hpp"
 #include "tpde/arm64/CompilerA64.hpp"
+#include "tpde/base.hpp"
 
 namespace tpde_llvm::arm64 {
 
@@ -184,10 +185,8 @@ u8 LLVMCompilerArm64::val_part_bank(const IRValueRef val_idx,
   case v512: return 1;
   case none:
   case invalid:
-  case complex: {
-    assert(0);
-    exit(1);
-  }
+  case complex:
+  default: TPDE_UNREACHABLE("invalid basic type");
   }
 }
 
