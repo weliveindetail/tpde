@@ -216,6 +216,9 @@ u32 TARGET_V1 ctlzi16(i16 a) { if ((u16)a == 0) { return 16; } else { return __b
 u32 TARGET_V1 ctlzi32(u32 a) { if (a == 0) { return 32; } else { return __builtin_clz(a); }}
 u64 TARGET_V1 ctlzi64(u64 a) { if (a == 0) { return 64; } else { return __builtin_clzll(a); }}
 
+u32 TARGET_V1 bitreversei32(u32 a) { return __builtin_bitreverse32(a); }
+u64 TARGET_V1 bitreversei64(u64 a) { return __builtin_bitreverse64(a); }
+
 // --------------------------
 // integer overflow
 // --------------------------

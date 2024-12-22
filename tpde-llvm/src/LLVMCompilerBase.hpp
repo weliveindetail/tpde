@@ -3533,6 +3533,39 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     this->set_value(res_ref, res);
     return true;
   }
+  case llvm::Intrinsic::bitreverse: {
+    auto *val = inst->getOperand(0);
+    if (!val->getType()->isIntegerTy()) {
+      return false;
+    }
+    const auto width = val->getType()->getIntegerBitWidth();
+    if (width > 64) {
+      return false;
+    }
+
+    GenericValuePart op = this->val_ref(llvm_val_idx(val), 0);
+    if (width % 32) {
+      using EncodeImm = typename Derived::EncodeImm;
+      ScratchReg shifted{this};
+      if (width < 32) {
+        derived()->encode_shli32(std::move(op), EncodeImm{32 - width}, shifted);
+      } else {
+        derived()->encode_shli64(std::move(op), EncodeImm{64 - width}, shifted);
+      }
+      op = std::move(shifted);
+    }
+
+    ScratchReg res{derived()};
+    if (width <= 32) {
+      derived()->encode_bitreversei32(std::move(op), res);
+    } else {
+      derived()->encode_bitreversei64(std::move(op), res);
+    }
+
+    ValuePartRef res_ref = this->result_ref_lazy(inst_idx, 0);
+    this->set_value(res_ref, res);
+    return true;
+  }
   case llvm::Intrinsic::prefetch: {
     auto ptr_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
 
