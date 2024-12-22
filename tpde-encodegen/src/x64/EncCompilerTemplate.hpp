@@ -245,7 +245,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
                                u8              bank,
                                u32             size) noexcept {
     AsmReg reg = derived()->gval_as_reg_reuse(gv, dst_scratch);
-    if (dst_scratch.cur_reg.invalid()) {
+    if (dst_scratch.cur_reg != reg) {
         dst_scratch.alloc(bank);
         derived()->mov(dst_scratch.cur_reg, reg, size);
     }

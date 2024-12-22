@@ -13,6 +13,7 @@
 #include <llvm/Support/raw_ostream.h>
 
 #include "tpde/CompilerBase.hpp"
+#include "tpde/base.hpp"
 #include "tpde/util/misc.hpp"
 
 #include "LLVMAdaptor.hpp"
@@ -3391,6 +3392,83 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     return compile_overflow_intrin(inst_idx, inst, OverflowOp::umul);
   case llvm::Intrinsic::smul_with_overflow:
     return compile_overflow_intrin(inst_idx, inst, OverflowOp::smul);
+  case llvm::Intrinsic::fshl:
+  case llvm::Intrinsic::fshr: {
+    if (!inst->getType()->isIntegerTy()) {
+      return false;
+    }
+    const auto width = inst->getType()->getIntegerBitWidth();
+    // Implementing non-powers-of-two is difficult, would require modulo of
+    // shift amount. Doesn't really occur in practice.
+    if (width != 8 && width != 16 && width != 32 && width != 64) {
+      return false;
+    }
+
+    auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    auto amt = this->val_ref(llvm_val_idx(inst->getOperand(2)), 0);
+    ScratchReg res{derived()};
+
+    // TODO: generate better code for constant amounts.
+    bool shift_left = intrin_id == llvm::Intrinsic::fshl;
+    if (inst->getOperand(0) == inst->getOperand(1)) {
+      // Better code for rotate.
+      using EncodeFnTy =
+          bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
+      EncodeFnTy fn = nullptr;
+      if (shift_left) {
+        switch (width) {
+        case 8: fn = &Derived::encode_roli8; break;
+        case 16: fn = &Derived::encode_roli16; break;
+        case 32: fn = &Derived::encode_roli32; break;
+        case 64: fn = &Derived::encode_roli64; break;
+        default: TPDE_UNREACHABLE("unreachable width");
+        }
+      } else {
+        switch (width) {
+        case 8: fn = &Derived::encode_rori8; break;
+        case 16: fn = &Derived::encode_rori16; break;
+        case 32: fn = &Derived::encode_rori32; break;
+        case 64: fn = &Derived::encode_rori64; break;
+        default: TPDE_UNREACHABLE("unreachable width");
+        }
+      }
+
+      if (!(derived()->*fn)(std::move(lhs), std::move(amt), res)) {
+        return false;
+      }
+    } else {
+      using EncodeFnTy = bool (Derived::*)(
+          GenericValuePart, GenericValuePart, GenericValuePart, ScratchReg &);
+      EncodeFnTy fn = nullptr;
+      if (shift_left) {
+        switch (width) {
+        case 8: fn = &Derived::encode_fshli8; break;
+        case 16: fn = &Derived::encode_fshli16; break;
+        case 32: fn = &Derived::encode_fshli32; break;
+        case 64: fn = &Derived::encode_fshli64; break;
+        default: TPDE_UNREACHABLE("unreachable width");
+        }
+      } else {
+        switch (width) {
+        case 8: fn = &Derived::encode_fshri8; break;
+        case 16: fn = &Derived::encode_fshri16; break;
+        case 32: fn = &Derived::encode_fshri32; break;
+        case 64: fn = &Derived::encode_fshri64; break;
+        default: TPDE_UNREACHABLE("unreachable width");
+        }
+      }
+
+      if (!(derived()->*fn)(
+              std::move(lhs), std::move(rhs), std::move(amt), res)) {
+        return false;
+      }
+    }
+
+    auto res_ref = this->result_ref_lazy(inst_idx, 0);
+    this->set_value(res_ref, res);
+    return true;
+  }
   case llvm::Intrinsic::bswap: {
     auto *val = inst->getOperand(0);
     if (!val->getType()->isIntegerTy()) {

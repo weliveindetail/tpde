@@ -180,6 +180,27 @@ u128 TARGET_V1 ashri128_ge64(i128 a, u64 amt) {
     return a >> (64 + (amt % 64));
 }
 
+// NB: UB if c is a multiple of the shift amount, but code seems ok.
+u8 TARGET_V1 fshli8(u8 a, u8 b, u8 c) { return a << (c%8) | b >> (8 - (c%8)); }
+u16 TARGET_V1 fshli16(u16 a, u16 b, u16 c) { return a << (c%16) | b >> (16 - (c%16)); }
+u32 TARGET_V1 fshli32(u32 a, u32 b, u32 c) { return a << (c%32) | b >> (32 - (c%32)); }
+u64 TARGET_V1 fshli64(u64 a, u64 b, u64 c) { return a << (c%64) | b >> (64 - (c%64)); }
+
+u8 TARGET_V1 fshri8(u8 a, u8 b, u8 c) { return b >> (c%8) | a << (8 - (c%8)); }
+u16 TARGET_V1 fshri16(u16 a, u16 b, u16 c) { return b >> (c%16) | a << (16 - (c%16)); }
+u32 TARGET_V1 fshri32(u32 a, u32 b, u32 c) { return b >> (c%32) | a << (32 - (c%32)); }
+u64 TARGET_V1 fshri64(u64 a, u64 b, u64 c) { return b >> (c%64) | a << (64 - (c%64)); }
+
+u8 TARGET_V1 roli8(u8 a, u8 c) { return c ? (a << (c&7) | a >> (8 - (c&7))) : a; }
+u16 TARGET_V1 roli16(u16 a, u16 c) { return c ? (a << (c&15) | a >> (16 - (c&15))) : a; }
+u32 TARGET_V1 roli32(u32 a, u32 c) { return c ? (a << (c&31) | a >> (32 - (c&31))) : a; }
+u64 TARGET_V1 roli64(u64 a, u64 c) { return c ? (a << (c&63) | a >> (64 - (c&63))) : a; }
+
+u8 TARGET_V1 rori8(u8 a, u8 c) { return c ? (a >> (c&7) | a << (8 - (c&7))) : a; }
+u16 TARGET_V1 rori16(u16 a, u16 c) { return c ? (a >> (c&15) | a << (16 - (c&15))) : a; }
+u32 TARGET_V1 rori32(u32 a, u32 c) { return c ? (a >> (c&31) | a << (32 - (c&31))) : a; }
+u64 TARGET_V1 rori64(u64 a, u64 c) { return c ? (a >> (c&63) | a << (64 - (c&63))) : a; }
+
 u32 TARGET_V1 smini32(u32 a, u32 b) { return (i32)a < (i32)b ? a : b; }
 u64 TARGET_V1 smini64(u64 a, u64 b) { return (i64)a < (i64)b ? a : b; }
 u32 TARGET_V1 umini32(u32 a, u32 b) { return a < b ? a : b; }
