@@ -18,7 +18,7 @@ if (MSVC)
 else ()
     add_compile_options(-Wall -Wextra -Wpedantic -Werror -Wno-error=deprecated-declarations)
     # disable RTTI and exceptions
-    add_compile_options(-fno-rtti -fno-exceptions)
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fno-rtti;-fno-exceptions>")
 
     # this is annoying
     add_compile_options(-Wno-missing-field-initializers)
