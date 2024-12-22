@@ -88,11 +88,11 @@ void EncodingTargetArm64::get_inst_candidates(
                                 });
         (void)mnemu;
       };
-  const auto handle_shift_imm = [&](std::string_view mnem) {
+  const auto handle_shift_imm = [&](std::string_view mnem, unsigned size) {
     candidates.emplace_back(
         2,
-        "encodeable_as_imm",
-        "",
+        "encodeable_as_shiftimm",
+        std::format("{}", size),
         [mnem](llvm::raw_ostream &os,
                const llvm::MachineInstr &mi,
                std::span<const std::string> ops) {
@@ -104,6 +104,10 @@ void EncodingTargetArm64::get_inst_candidates(
         });
   };
   const auto handle_arith_imm = [&](std::string_view mnem) {
+    // Cannot encode ADD/SUB with immediate and zero register as second operand.
+    if (format_reg(mi.getOperand(1), "") == "DA_ZR") {
+      return;
+    }
     candidates.emplace_back(2,
                             "encodeable_as_immarith",
                             "",
@@ -379,28 +383,28 @@ void EncodingTargetArm64::get_inst_candidates(
   } else if (Name == "BFMXri") {
     handle_default("BFMx");
   } else if (Name == "LSLVWr") {
-    handle_shift_imm("LSLwi");
+    handle_shift_imm("LSLwi", 32);
     handle_default("LSLVw");
   } else if (Name == "LSLVXr") {
-    handle_shift_imm("LSLxi");
+    handle_shift_imm("LSLxi", 64);
     handle_default("LSLVx");
   } else if (Name == "LSRVWr") {
-    handle_shift_imm("LSRwi");
+    handle_shift_imm("LSRwi", 32);
     handle_default("LSRVw");
   } else if (Name == "LSRVXr") {
-    handle_shift_imm("LSRxi");
+    handle_shift_imm("LSRxi", 64);
     handle_default("LSRVx");
   } else if (Name == "ASRVWr") {
-    handle_shift_imm("ASRwi");
+    handle_shift_imm("ASRwi", 32);
     handle_default("ASRVw");
   } else if (Name == "ASRVXr") {
-    handle_shift_imm("ASRxi");
+    handle_shift_imm("ASRxi", 64);
     handle_default("ASRVx");
   } else if (Name == "RORVWr") {
-    handle_shift_imm("RORwi");
+    handle_shift_imm("RORwi", 32);
     handle_default("RORVw");
   } else if (Name == "RORVXr") {
-    handle_shift_imm("RORxi");
+    handle_shift_imm("RORxi", 64);
     handle_default("RORVx");
   } else if (Name == "ADDWri") {
     unsigned imm = mi.getOperand(2).getImm();

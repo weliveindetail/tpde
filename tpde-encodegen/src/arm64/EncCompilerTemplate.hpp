@@ -59,9 +59,9 @@ struct EncodeCompiler {
     using ValLocalIdx  = typename CompilerA64::ValLocalIdx;
     using SymRef       = typename Assembler::SymRef;
 
-    std::optional<u64> encodeable_as_imm(GenericValuePart &gv) const noexcept {
+    std::optional<u64> encodeable_as_shiftimm(GenericValuePart &gv, unsigned size) const noexcept {
         if (gv.is_imm() && gv.imm().size <= 8) {
-            return gv.imm().const_u64;
+            return gv.imm().const_u64 & (size - 1);
         }
         return std::nullopt;
     }
