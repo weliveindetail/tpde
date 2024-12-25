@@ -706,8 +706,9 @@ private:
 public:
   /// Map insertvalue/extractvalue indices to parts. Returns (first part,
   /// last part (inclusive)).
-  std::pair<unsigned, unsigned> complex_part_for_index(IRValueRef val_idx,
-                                                       unsigned index);
+  std::pair<unsigned, unsigned>
+      complex_part_for_index(IRValueRef val_idx,
+                             llvm::ArrayRef<unsigned> search);
 };
 
 } // namespace tpde_llvm

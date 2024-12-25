@@ -690,20 +690,26 @@ std::pair<unsigned, unsigned>
 }
 
 std::pair<unsigned, unsigned>
-    LLVMAdaptor::complex_part_for_index(IRValueRef val_idx, unsigned index) {
+    LLVMAdaptor::complex_part_for_index(IRValueRef val_idx,
+                                        llvm::ArrayRef<unsigned> search) {
   assert(values[val_idx].type == LLVMBasicValType::complex);
   const auto ty_idx = values[val_idx].complex_part_tys_idx;
   const LLVMComplexPart *part_descs = &complex_part_types[ty_idx + 1];
   unsigned part_count = part_descs[-1].num_parts;
 
+  assert(search.size() > 0);
+
+  unsigned depth = 0;
   tpde::util::SmallVector<unsigned, 16> indices;
   unsigned first_part = -1u;
   for (unsigned i = 0; i < part_count; i++) {
     indices.resize(indices.size() + part_descs[i].part.nest_inc);
-    // TODO: support more than one index operand. Comparing this index
-    // vector with the operands should be sufficient.
-    if (indices[0] == index && first_part == -1u) {
-      first_part = i;
+    while (first_part == -1u && indices[depth] == search[depth]) {
+      if (depth + 1 < search.size()) {
+        depth++;
+      } else {
+        first_part = i;
+      }
     }
 
     indices.resize(indices.size() - part_descs[i].part.nest_dec);
@@ -711,7 +717,8 @@ std::pair<unsigned, unsigned>
       indices.back()++;
     }
 
-    if (indices.size() == 0 || indices[0] > index) {
+    if (first_part != -1u &&
+        (indices.size() <= depth || indices[depth] > search[depth])) {
       return std::make_pair(first_part, i);
     }
   }

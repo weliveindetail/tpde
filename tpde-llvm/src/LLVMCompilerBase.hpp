@@ -2067,15 +2067,10 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_value(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
   auto *extract = llvm::cast<llvm::ExtractValueInst>(inst);
-  if (extract->getNumIndices() != 1) {
-    return false;
-  }
-
   auto src_idx = llvm_val_idx(inst->getOperand(0));
 
-  const auto target_idx = extract->getIndices()[0];
   auto [first_part, last_part] =
-      this->adaptor->complex_part_for_index(src_idx, target_idx);
+      this->adaptor->complex_part_for_index(src_idx, extract->getIndices());
 
   for (unsigned i = first_part; i <= last_part; i++) {
     auto part_ref = this->val_ref(src_idx, i);
@@ -2106,17 +2101,12 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_value(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
   auto *insert = llvm::cast<llvm::InsertValueInst>(inst);
-  if (insert->getNumIndices() != 1) {
-    return false;
-  }
-
   auto agg_idx = llvm_val_idx(insert->getAggregateOperand());
   auto ins_idx = llvm_val_idx(insert->getInsertedValueOperand());
 
-  auto target_idx = insert->getIndices()[0];
   unsigned part_count = this->adaptor->val_part_count(agg_idx);
   auto [first_part, last_part] =
-      this->adaptor->complex_part_for_index(agg_idx, target_idx);
+      this->adaptor->complex_part_for_index(agg_idx, insert->getIndices());
 
   for (unsigned i = 0; i < part_count; i++) {
     ValuePartRef val_ref;

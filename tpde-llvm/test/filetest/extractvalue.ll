@@ -638,6 +638,7 @@ define i64 @params({i8, {i8, i8}, i8} %s, i64, [2 x i64] %a, [2 x i64] %b) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: params>:
 ; ARM64:         sub sp, sp, #0x120
@@ -694,6 +695,203 @@ define i64 @params({i8, {i8, i8}, i8} %s, i64, [2 x i64] %a, [2 x i64] %b) {
   %add5 = add i64 %add4, %b0
   %add6 = add i64 %add5, %b1
   ret i64 %add6
+}
+
+define void @extract_nested_1(ptr %p) {
+; X64-LABEL: extract_nested_1>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x48
+; X64-NEXT:    mov eax, dword ptr [rdi]
+; X64-NEXT:    mov ecx, dword ptr [rdi + 0x4]
+; X64-NEXT:    mov edx, dword ptr [rdi + 0x8]
+; X64-NEXT:    mov ebx, dword ptr [rdi + 0xc]
+; X64-NEXT:    mov dword ptr [rdi], eax
+; X64-NEXT:    add rsp, 0x48
+; X64-NEXT:    pop rbx
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop dword ptr [rax + rax]
+;
+; ARM64-LABEL: extract_nested_1>:
+; ARM64:         sub sp, sp, #0xd0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    ldr w1, [x0]
+; ARM64-NEXT:    ldr w2, [x0, #0x4]
+; ARM64-NEXT:    ldr w3, [x0, #0x8]
+; ARM64-NEXT:    ldr w4, [x0, #0xc]
+; ARM64-NEXT:    str w1, [x0]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %l = load {{i32, i32}, {i32, i32}}, ptr %p
+  %ev = extractvalue {{i32, i32}, {i32, i32}} %l, 0, 0
+  store i32 %ev, ptr %p
+  ret void
+}
+
+define void @extract_nested_2(ptr %p) {
+; X64-LABEL: extract_nested_2>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x48
+; X64-NEXT:    mov eax, dword ptr [rdi]
+; X64-NEXT:    mov ecx, dword ptr [rdi + 0x4]
+; X64-NEXT:    mov edx, dword ptr [rdi + 0x8]
+; X64-NEXT:    mov ebx, dword ptr [rdi + 0xc]
+; X64-NEXT:    mov dword ptr [rdi], ecx
+; X64-NEXT:    add rsp, 0x48
+; X64-NEXT:    pop rbx
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop dword ptr [rax + rax]
+;
+; ARM64-LABEL: extract_nested_2>:
+; ARM64:         sub sp, sp, #0xd0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    ldr w1, [x0]
+; ARM64-NEXT:    ldr w2, [x0, #0x4]
+; ARM64-NEXT:    ldr w3, [x0, #0x8]
+; ARM64-NEXT:    ldr w4, [x0, #0xc]
+; ARM64-NEXT:    str w2, [x0]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %l = load {{i32, i32}, {i32, i32}}, ptr %p
+  %ev = extractvalue {{i32, i32}, {i32, i32}} %l, 0, 1
+  store i32 %ev, ptr %p
+  ret void
+}
+
+define void @extract_nested_3(ptr %p) {
+; X64-LABEL: extract_nested_3>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x48
+; X64-NEXT:    mov eax, dword ptr [rdi]
+; X64-NEXT:    mov ecx, dword ptr [rdi + 0x4]
+; X64-NEXT:    mov edx, dword ptr [rdi + 0x8]
+; X64-NEXT:    mov ebx, dword ptr [rdi + 0xc]
+; X64-NEXT:    mov dword ptr [rdi], edx
+; X64-NEXT:    add rsp, 0x48
+; X64-NEXT:    pop rbx
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop dword ptr [rax + rax]
+;
+; ARM64-LABEL: extract_nested_3>:
+; ARM64:         sub sp, sp, #0xd0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    ldr w1, [x0]
+; ARM64-NEXT:    ldr w2, [x0, #0x4]
+; ARM64-NEXT:    ldr w3, [x0, #0x8]
+; ARM64-NEXT:    ldr w4, [x0, #0xc]
+; ARM64-NEXT:    str w3, [x0]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %l = load {{i32, i32}, {i32, i32}}, ptr %p
+  %ev = extractvalue {{i32, i32}, {i32, i32}} %l, 1, 0
+  store i32 %ev, ptr %p
+  ret void
+}
+
+define void @extract_nested_4(ptr %p) {
+; X64-LABEL: extract_nested_4>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x48
+; X64-NEXT:    mov eax, dword ptr [rdi]
+; X64-NEXT:    mov ecx, dword ptr [rdi + 0x4]
+; X64-NEXT:    mov edx, dword ptr [rdi + 0x8]
+; X64-NEXT:    mov ebx, dword ptr [rdi + 0xc]
+; X64-NEXT:    mov dword ptr [rdi], ebx
+; X64-NEXT:    add rsp, 0x48
+; X64-NEXT:    pop rbx
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop dword ptr [rax + rax]
+;
+; ARM64-LABEL: extract_nested_4>:
+; ARM64:         sub sp, sp, #0xd0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    ldr w1, [x0]
+; ARM64-NEXT:    ldr w2, [x0, #0x4]
+; ARM64-NEXT:    ldr w3, [x0, #0x8]
+; ARM64-NEXT:    ldr w4, [x0, #0xc]
+; ARM64-NEXT:    str w4, [x0]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %l = load {{i32, i32}, {i32, i32}}, ptr %p
+  %ev = extractvalue {{i32, i32}, {i32, i32}} %l, 1, 1
+  store i32 %ev, ptr %p
+  ret void
+}
+
+define void @extract_nested_5(ptr %p) {
+; X64-LABEL: extract_nested_5>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x58
+; X64-NEXT:    mov eax, dword ptr [rdi]
+; X64-NEXT:    mov ecx, dword ptr [rdi + 0x4]
+; X64-NEXT:    mov edx, dword ptr [rdi + 0x8]
+; X64-NEXT:    mov ebx, dword ptr [rdi + 0xc]
+; X64-NEXT:    mov esi, dword ptr [rdi + 0x10]
+; X64-NEXT:    mov r8d, dword ptr [rdi + 0x14]
+; X64-NEXT:    mov r9d, dword ptr [rdi + 0x18]
+; X64-NEXT:    mov dword ptr [rdi], esi
+; X64-NEXT:    mov dword ptr [rdi + 0x4], r8d
+; X64-NEXT:    add rsp, 0x58
+; X64-NEXT:    pop rbx
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: extract_nested_5>:
+; ARM64:         sub sp, sp, #0xd0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    ldr w1, [x0]
+; ARM64-NEXT:    ldr w2, [x0, #0x4]
+; ARM64-NEXT:    ldr w3, [x0, #0x8]
+; ARM64-NEXT:    ldr w4, [x0, #0xc]
+; ARM64-NEXT:    ldr w5, [x0, #0x10]
+; ARM64-NEXT:    ldr w6, [x0, #0x14]
+; ARM64-NEXT:    ldr w7, [x0, #0x18]
+; ARM64-NEXT:    str w5, [x0]
+; ARM64-NEXT:    str w6, [x0, #0x4]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+  %l = load {{i32, i32}, {[2 x {i32, i32}], i32}}, ptr %p
+  %ev = extractvalue {{i32, i32}, {[2 x {i32, i32}], i32}} %l, 1, 0, 1
+  store {i32, i32} %ev, ptr %p
+  ret void
 }
 
 ;; NOTE: These prefixes are unused and the list is autogenerated. Do not add tests below this line:
