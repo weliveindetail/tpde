@@ -44,6 +44,7 @@ define i32 @invoke_manyargs() personality ptr @__gxx_personality_v0 {
 ; X64-NEXT:    call <L1>
 ; X64-NEXT:     R_X86_64_PLT32 _Unwind_Resume-0x4
 ; X64-NEXT:    ud2
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: invoke_manyargs>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -75,6 +76,7 @@ define i32 @invoke_manyargs() personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    bl 0xa4 <invoke_manyargs+0x84>
 ; ARM64-NEXT:     R_AARCH64_CALL26 _Unwind_Resume
 ; ARM64-NEXT:    udf #0x1
+; ARM64-NEXT:     ...
 entry:
   %call = invoke i32 @mayThrow(i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10)
           to label %invoke.cont unwind label %lpad
@@ -87,5 +89,158 @@ lpad:
           cleanup
   resume { ptr, i32 } %0
 }
+
+define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
+; X64-LABEL: invoke_landingpad_phi>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    push r12
+; X64-NEXT:    push r13
+; X64-NEXT:    push r14
+; X64-NEXT:    nop
+; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    mov dword ptr [rbp - 0x2c], eax
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
+; X64-NEXT:  <L3>:
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    lea eax, [1*rax]
+; X64-NEXT:    mov ebx, eax
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    lea rax, [rax + 0x28]
+; X64-NEXT:    mov r12, rax
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    test al, 0x1
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    mov ecx, 0x0
+; X64-NEXT:    cmove eax, ecx
+; X64-NEXT:    mov r13d, eax
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    mov r14, rax
+; X64-NEXT:    mov ebx, ebx
+; X64-NEXT:    mov r12, qword ptr [r12]
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    shl eax, 0x0
+; X64-NEXT:    mov ebx, eax
+; X64-NEXT:    cmp r13d, 0x0
+; X64-NEXT:    mov r13d, 0x0
+; X64-NEXT:    setl r13b
+; X64-NEXT:    mov edi, 0x0
+; X64-NEXT:    mov esi, 0x0
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 foo-0x4
+; X64-NEXT:    mov r12, rax
+; X64-NEXT:    jmp <L1>
+; X64-NEXT:    mov ecx, 0x0
+; X64-NEXT:    mov qword ptr [rbp - 0x40], rcx
+; X64-NEXT:    jmp <L2>
+; X64-NEXT:  <L1>:
+; X64-NEXT:    mov dword ptr [rbp - 0x2c], ebx
+; X64-NEXT:    mov qword ptr [rbp - 0x38], r12
+; X64-NEXT:    jmp <L3>
+; X64-NEXT:  <L2>:
+; X64-NEXT:    mov edi, 0x0
+; X64-NEXT:    mov esi, 0x0
+; X64-NEXT:  <L4>:
+; X64-NEXT:    call <L4>
+; X64-NEXT:     R_X86_64_PLT32 _Unwind_Resume-0x4
+; X64-NEXT:    ud2
+;
+; ARM64-LABEL: invoke_landingpad_phi>:
+; ARM64:         sub sp, sp, #0xf0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    stp x19, x20, [x29, #0x10]
+; ARM64-NEXT:    stp x21, x22, [x29, #0x20]
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    str w0, [x29, #0xa0]
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    str x0, [x29, #0xa8]
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    add w0, w0, #0x0
+; ARM64-NEXT:    mov w19, w0
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    add x0, x0, #0x28
+; ARM64-NEXT:    mov x20, x0
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    tst w0, #0x1
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    csel w0, w0, w1, eq
+; ARM64-NEXT:    mov w21, w0
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    mov x22, x0
+; ARM64-NEXT:    ubfx x19, x19, #0, #32
+; ARM64-NEXT:    ldr x20, [x20]
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    lsr w0, w0, #0
+; ARM64-NEXT:    mov w19, w0
+; ARM64-NEXT:    cmp w21, #0x0
+; ARM64-NEXT:    cset w21, lt
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    bl 0x14c <invoke_landingpad_phi+0x8c>
+; ARM64-NEXT:     R_AARCH64_CALL26 foo
+; ARM64-NEXT:    str x0, [x29, #0xc8]
+; ARM64-NEXT:    b 0x164 <invoke_landingpad_phi+0xa4>
+; ARM64-NEXT:    mov w2, #0x0 // =0
+; ARM64-NEXT:    str x2, [x29, #0xb0]
+; ARM64-NEXT:    b 0x174 <invoke_landingpad_phi+0xb4>
+; ARM64-NEXT:    str w19, [x29, #0xa0]
+; ARM64-NEXT:    ldr x0, [x29, #0xc8]
+; ARM64-NEXT:    str x0, [x29, #0xa8]
+; ARM64-NEXT:    b 0xf0 <invoke_landingpad_phi+0x30>
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    bl 0x17c <invoke_landingpad_phi+0xbc>
+; ARM64-NEXT:     R_AARCH64_CALL26 _Unwind_Resume
+; ARM64-NEXT:    udf #0x1
+  br label %1
+
+1:                                                ; preds = %17, %0
+  %2 = phi i32 [ 0, %0 ], [ %14, %17 ]
+  %3 = phi ptr [ null, %0 ], [ %16, %17 ]
+  %4 = add i32 0, 0
+  %5 = getelementptr i8, ptr null, i64 40
+  %6 = select i1 false, i32 0, i32 0
+  br label %8
+
+7:                                                ; No predecessors!
+  br label %8
+
+8:                                                ; preds = %7, %1
+  %9 = phi ptr [ null, %1 ], [ null, %7 ]
+  %10 = zext i32 %4 to i64
+  br label %12
+
+11:                                               ; No predecessors!
+  invoke void null(ptr null)
+          to label %12 unwind label %18
+
+12:                                               ; preds = %11, %8
+  %13 = load ptr, ptr %5, align 8
+  %14 = shl i32 0, 0
+  %15 = icmp slt i32 %6, 0
+  %16 = invoke ptr @foo(i64 0, i32 0)
+          to label %17 unwind label %18
+
+17:                                               ; preds = %12
+  br label %1
+
+18:                                               ; preds = %12, %11
+  %19 = phi ptr [ null, %12 ], [ null, %11 ]
+  %20 = landingpad { ptr, i32 }
+          cleanup
+  resume { ptr, i32 } zeroinitializer
+}
+
+declare ptr @foo()
+
 ;; NOTE: These prefixes are unused and the list is autogenerated. Do not add tests below this line:
 ; CHECK: {{.*}}

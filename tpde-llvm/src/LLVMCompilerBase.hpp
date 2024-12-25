@@ -2941,9 +2941,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
 
     auto cur_block = this->analyzer.block_ref(this->cur_block_idx);
 
-    if (this->analyzer.block_ref(this->next_block()) == normal_block_ref) {
+    if (this->analyzer.block_ref(this->next_block()) == normal_block_ref &&
+        !unwind_block_has_phi) {
       // this block will handle the spilling for us, the value is not
-      // usable in unwind block
+      // usable in unwind block. Always spill if the unwind block has phi nodes,
+      // because the phi handling will modify the register states.
       return;
     }
 
@@ -2974,9 +2976,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
         // this is the call result...
         assert(ap.modified());
         ap.spill_if_needed(this);
-        ap.set_modified(false);
-
         spilled |= 1ull << ap.full_reg_id();
+        this->register_file.unmark_used(AsmReg{ap.full_reg_id()});
+        ap.set_register_valid(false);
       }
       if (!ap.has_next_part()) {
         break;
