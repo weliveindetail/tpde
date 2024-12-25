@@ -58,8 +58,11 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   }
 
   ValuePartRef(u64 const_u64, u32 bank, u32 size) noexcept : state { .c = ConstantData { .const_u64 = const_u64, .bank = bank, .size = size } }, is_const(true) {
-    assert(size <= 8);
+    assert(size <= state.c.const_data.size());
     assert(bank < Config::NUM_BANKS);
+    if (size > 8) {
+      std::memset(state.c.const_data.data() + 8, 0, size - 8);
+    }
   }
 
   ValuePartRef(std::span<const u8> data, u32 bank) noexcept : state { .c = ConstantData { .const_data{}, .bank = bank, .size = static_cast<u32>(data.size()) } }, is_const(true) {

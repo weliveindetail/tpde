@@ -1626,11 +1626,21 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
   }
 
   assert(bank == 1);
-  if (size <= 8 && const_u64 == 0) {
+  const auto high_u64 = reinterpret_cast<const u64 *>(data.data())[1];
+  if (const_u64 == 0 && (size <= 8 || (high_u64 == 0 && size <= 16))) {
     if (has_cpu_feats(CPU_AVX)) {
       ASM(VPXOR128rrr, dst, dst, dst);
     } else {
       ASM(SSE_PXORrr, dst, dst);
+    }
+    return;
+  }
+  const u64 ones = -u64{1};
+  if (const_u64 == ones && (size <= 8 || (high_u64 == ones && size <= 16))) {
+    if (has_cpu_feats(CPU_AVX)) {
+      ASM(VPCMPEQB128rrr, dst, dst, dst);
+    } else {
+      ASM(SSE_PCMPEQBrr, dst, dst);
     }
     return;
   }
@@ -1656,6 +1666,23 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     } else {
       ASM(SSE_MOVQ_G2Xrr, dst, tmp_reg);
     }
+    return;
+  }
+
+  if (size == 16) {
+    auto sym = this->assembler.sym_def_data("",
+                                            data,
+                                            16,
+                                            /*read_only=*/true,
+                                            /*relocatable=*/false,
+                                            /*local=*/true,
+                                            /*weak=*/false);
+    if (has_cpu_feats(CPU_AVX)) {
+      ASM(VMOVAPS128rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
+    } else {
+      ASM(SSE_MOVAPSrm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
+    }
+    this->assembler.reloc_text_got(sym, this->assembler.text_cur_off() - 4, -4);
     return;
   }
 

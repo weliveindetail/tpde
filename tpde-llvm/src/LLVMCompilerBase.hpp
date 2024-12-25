@@ -381,6 +381,14 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     return ValuePartRef(0, bank, size);
   }
 
+  if (auto *cdv = llvm::dyn_cast<llvm::ConstantDataVector>(const_val)) {
+    assert(part == 0 && "multi-part vector constants not implemented");
+    llvm::StringRef data = cdv->getRawDataValues();
+    std::span<const u8> span{reinterpret_cast<const u8 *>(data.data()),
+                             data.size()};
+    return ValuePartRef(span, Config::FP_BANK);
+  }
+
   if (llvm::isa<llvm::ConstantVector>(const_val)) {
     // TODO(ts): check how to handle this
     assert(0);
