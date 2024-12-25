@@ -2398,32 +2398,23 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
   } else {
     assert(std::holds_alternative<ValuePartRef>(target));
     auto &ref = std::get<ValuePartRef>(target);
-    assert(((1ull << AsmReg::R9) & (calling_conv.callee_saved_mask() |
-                                    calling_conv.arg_regs_mask())) == 0);
+    AsmReg reg;
     if (ref.is_const) {
+      assert(((1ull << AsmReg::R9) & (calling_conv.callee_saved_mask() |
+                                      calling_conv.arg_regs_mask())) == 0);
       this->register_file.clobbered |= (1ull << AsmReg::R9);
-      const auto reg = ref.reload_into_specific(derived(), AsmReg::R9);
-      ASM(BLR, reg);
+      reg = ref.reload_into_specific(derived(), AsmReg::R9);
     } else {
-      auto ap = ref.assignment();
-      if (ap.register_valid()) {
-        auto reg = AsmReg{ap.full_reg_id()};
-        ASM(BLR, reg);
-      } else {
-        this->register_file.clobbered |= (1ull << AsmReg::R9);
-        ref.reload_into_specific(derived(), AsmReg::R9);
-        ASM(BLR, DA_GP(9));
-      }
-
-      if (ap.register_valid() && ((1ull << ap.full_reg_id()) &
-                                  calling_conv.callee_saved_mask()) == 0) {
+      reg = ref.alloc_reg(/*reload=*/true);
+      if (((1ull << reg.id()) & calling_conv.callee_saved_mask()) == 0) {
         ref.spill();
         ref.unlock();
-        auto reg = AsmReg{ap.full_reg_id()};
         this->register_file.unmark_used(reg);
-        ap.set_register_valid(false);
+        ref.assignment().set_register_valid(false);
       }
     }
+
+    ASM(BLR, reg);
   }
 
   arg_regs.clear();
