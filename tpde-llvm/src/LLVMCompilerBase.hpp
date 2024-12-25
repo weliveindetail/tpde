@@ -7,6 +7,7 @@
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TimeProfiler.h>
@@ -3161,6 +3162,19 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     const auto sym = get_or_create_sym_ref(sym_memmove, "memmove");
     derived()->create_helper_call(args, {}, sym);
+    return true;
+  }
+  case llvm::Intrinsic::load_relative: {
+    if (!inst->getOperand(1)->getType()->isIntegerTy(64)) {
+      return false;
+    }
+
+    auto ptr = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto off = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    auto res_ref = this->result_ref_lazy(inst_idx, 0);
+    ScratchReg res{derived()};
+    derived()->encode_loadreli64(std::move(ptr), std::move(off), res);
+    this->set_value(res_ref, res);
     return true;
   }
   case llvm::Intrinsic::vaend: {

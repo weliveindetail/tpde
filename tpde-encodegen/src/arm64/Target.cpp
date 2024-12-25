@@ -346,6 +346,16 @@ void EncodingTargetArm64::get_inst_candidates(
   } else if (Name == "LDPWi") {
     // TODO: Handle expr with base+off, merge offsets
     handle_default("LDPw");
+  } else if (Name == "LDRSWroW") {
+    unsigned sign = mi.getOperand(3).getImm();
+    unsigned shift = mi.getOperand(4).getImm();
+    std::array<std::string_view, 2> mnems{"LDRSWxr_uxtw", "LDRSWxr_sxtw"};
+    handle_noimm(mnems[sign], std::format(", {}", shift));
+  } else if (Name == "LDRSWroX") {
+    unsigned sign = mi.getOperand(3).getImm();
+    unsigned shift = mi.getOperand(4).getImm();
+    std::array<std::string_view, 2> mnems{"LDRSWxr_lsl", "LDRSWxr_sxtx"};
+    handle_noimm(mnems[sign], std::format(", {}", shift));
   } else if (Name == "LDPXi") {
     // TODO: Handle expr with base+off, merge offsets
     handle_default("LDPx");

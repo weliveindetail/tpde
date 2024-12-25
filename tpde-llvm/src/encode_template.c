@@ -69,6 +69,9 @@ __m512 TARGET_V4 loadv512(__m512* ptr) { return *ptr; }
 uint64x2_t TARGET_V1 loadv128(uint64x2_t *ptr) { return *ptr; }
 #endif
 
+// llvm.load.relative intrinsic
+u8* loadreli64(u8 *ptr, i64 off) { return &ptr[*(i32 *)(ptr + off)]; }
+
 // --------------------------
 // stores
 // --------------------------
