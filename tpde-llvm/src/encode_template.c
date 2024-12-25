@@ -323,6 +323,9 @@ double TARGET_V1 fmaf64(double a, double b, double c) { return a * b + c; }
 float TARGET_V1 copysignf32(float a, float b) { return __builtin_copysignf(a, b); }
 double TARGET_V1 copysignf64(double a, double b) { return __builtin_copysign(a, b); }
 
+float TARGET_V1 sqrtf32(float a) { return __builtin_sqrtf(a); }
+double TARGET_V1 sqrtf64(double a) { return __builtin_sqrt(a); }
+
 // --------------------------
 // float conversions
 // --------------------------

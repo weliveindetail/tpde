@@ -620,6 +620,10 @@ void EncodingTargetX64::get_inst_candidates(
     handle_rm("CMPSDrri", "CMPSDrmi", 2, "SSE_CMPSDrri", "SSE_CMPSDrmi");
     handle_rm("CMPPSrri", "CMPPSrmi", 2, "SSE_CMPPSrri", "SSE_CMPPSrmi");
     handle_rm("CMPPDrri", "CMPPDrmi", 2, "SSE_CMPPDrri", "SSE_CMPPDrmi");
+    handle_rm("SQRTSSr", "SQRTSSm", 1, "SSE_SQRTSSrr", "SSE_SQRTSSrm");
+    handle_rm("SQRTSDr", "SQRTSDm", 1, "SSE_SQRTSDrr", "SSE_SQRTSDrm");
+    handle_rm("SQRTPSr", "SQRTPSm", 1, "SSE_SQRTPSrr", "SSE_SQRTPSrm");
+    handle_rm("SQRTPDr", "SQRTPDm", 1, "SSE_SQRTPDrr", "SSE_SQRTPDrm");
     handle_rm("ANDPSrr", "ANDPSrm", 2, "SSE_ANDPSrr", "SSE_ANDPSrm");
     handle_rm("ANDPDrr", "ANDPDrm", 2, "SSE_ANDPDrr", "SSE_ANDPDrm");
     handle_rm("XORPSrr", "XORPSrm", 2, "SSE_XORPSrr", "SSE_XORPSrm");

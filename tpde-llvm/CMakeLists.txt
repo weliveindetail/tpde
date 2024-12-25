@@ -56,7 +56,7 @@ if(TPDE_X64)
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
         COMMAND ${clang} -c -emit-llvm -ffreestanding -fcf-protection=none
-            -O3 -fomit-frame-pointer
+            -O3 -fomit-frame-pointer -fno-math-errno
             --target=x86_64 -march=x86-64-v4
             -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
             ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.c
@@ -92,7 +92,7 @@ if(TPDE_A64)
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
         COMMAND ${clang} -c -emit-llvm -ffreestanding -fcf-protection=none
-            -O3 -fomit-frame-pointer
+            -O3 -fomit-frame-pointer -fno-math-errno
             --target=aarch64 -march=armv8.1-a
             -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
             ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.c

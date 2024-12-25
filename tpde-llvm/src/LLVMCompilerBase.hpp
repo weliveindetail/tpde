@@ -3250,6 +3250,24 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     this->set_value(res_ref, res_scratch);
     return true;
   }
+  case llvm::Intrinsic::sqrt: {
+    auto *val = inst->getOperand(0);
+    auto *ty = val->getType();
+    if (!ty->isFloatTy() && !ty->isDoubleTy()) {
+      return false;
+    }
+
+    auto val_ref = this->val_ref(llvm_val_idx(val), 0);
+    auto res_ref = this->result_ref_lazy(inst_idx, 0);
+    ScratchReg res_scratch{derived()};
+    if (ty->isDoubleTy()) {
+      derived()->encode_sqrtf64(std::move(val_ref), res_scratch);
+    } else {
+      derived()->encode_sqrtf32(std::move(val_ref), res_scratch);
+    }
+    this->set_value(res_ref, res_scratch);
+    return true;
+  }
   case llvm::Intrinsic::fmuladd: {
     auto op1_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
     auto op2_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
