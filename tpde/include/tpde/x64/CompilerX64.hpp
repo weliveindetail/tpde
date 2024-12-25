@@ -282,7 +282,10 @@ struct CallingConv {
   u32 handle_call_args(
       CompilerX64<Adaptor, Derived, BaseTy, Config> *,
       std::span<typename CompilerX64<Adaptor, Derived, BaseTy, Config>::CallArg>
-          arguments) noexcept;
+          arguments,
+      util::SmallVector<
+          typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ScratchReg,
+          8> &arg_scratchs) noexcept;
 
   template <typename Adaptor,
             typename Derived,
@@ -749,7 +752,10 @@ template <typename Adaptor,
 u32 CallingConv::handle_call_args(
     CompilerX64<Adaptor, Derived, BaseTy, Config> *compiler,
     std::span<typename CompilerX64<Adaptor, Derived, BaseTy, Config>::CallArg>
-        arguments) noexcept {
+        arguments,
+    util::SmallVector<
+        typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ScratchReg,
+        8> &arg_scratchs) noexcept {
   using CallArg =
       typename CompilerX64<Adaptor, Derived, BaseTy, Config>::CallArg;
   using ScratchReg =
@@ -760,10 +766,6 @@ u32 CallingConv::handle_call_args(
 
   const auto gp_regs = arg_regs_gp();
   const auto xmm_regs = arg_regs_vec();
-
-  util::SmallVector<ScratchReg, 8> arg_scratchs;
-
-
   for (auto &arg : arguments) {
     if (arg.flag == CallArg::Flag::byval) {
       ScratchReg scratch1(compiler), scratch2(compiler);
@@ -1999,7 +2001,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     ASM(SUB64ri, FE_SP, stack_space_used);
   }
 
-  const auto vec_arg_count = calling_conv.handle_call_args(this, arguments);
+  util::SmallVector<ScratchReg, 8> arg_regs;
+  auto vec_arg_count = calling_conv.handle_call_args(this, arguments, arg_regs);
 
   u64 except_mask = 0;
   if (std::holds_alternative<ScratchReg>(target)) {
@@ -2009,6 +2012,9 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     if (ref.assignment().register_valid()) {
       except_mask = (1ull << ref.assignment().full_reg_id());
     }
+  }
+  for (const auto &reg : arg_regs) {
+    except_mask |= 1ull << reg.cur_reg.id();
   }
   spill_before_call(calling_conv, except_mask);
 
@@ -2066,6 +2072,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     }
   }
 
+  arg_regs.clear();
   vararg_scratch.reset();
 
   if (stack_space_used) {

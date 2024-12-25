@@ -320,7 +320,10 @@ struct CallingConv {
   u32 handle_call_args(
       CompilerA64<Adaptor, Derived, BaseTy, Config> *,
       std::span<typename CompilerA64<Adaptor, Derived, BaseTy, Config>::CallArg>
-          arguments) noexcept;
+          arguments,
+      util::SmallVector<
+          typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ScratchReg,
+          8> &arg_scratchs) noexcept;
 
   template <typename Adaptor,
             typename Derived,
@@ -891,7 +894,10 @@ template <typename Adaptor,
 u32 CallingConv::handle_call_args(
     CompilerA64<Adaptor, Derived, BaseTy, Config> *compiler,
     std::span<typename CompilerA64<Adaptor, Derived, BaseTy, Config>::CallArg>
-        arguments) noexcept {
+        arguments,
+    util::SmallVector<
+        typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ScratchReg,
+        8> &arg_scratchs) noexcept {
   using CallArg =
       typename CompilerA64<Adaptor, Derived, BaseTy, Config>::CallArg;
   using ScratchReg =
@@ -902,10 +908,6 @@ u32 CallingConv::handle_call_args(
 
   const auto gp_regs = arg_regs_gp();
   const auto vec_regs = arg_regs_vec();
-
-  util::SmallVector<ScratchReg, 8> arg_scratchs;
-
-
   for (auto &arg : arguments) {
     if (arg.flag == CallArg::Flag::byval) {
       ScratchReg scratch1(compiler), scratch2(compiler);
@@ -2362,7 +2364,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
     ASM(SUBxi, DA_SP, DA_SP, stack_space_used);
   }
 
-  calling_conv.handle_call_args(this, arguments);
+  // Make sure arguments are locked up to the call.
+  util::SmallVector<ScratchReg, 8> arg_regs;
+  calling_conv.handle_call_args(this, arguments, arg_regs);
 
   u64 except_mask = 0;
   if (std::holds_alternative<ScratchReg>(target)) {
@@ -2372,6 +2376,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
     if (ref.assignment().register_valid()) {
       except_mask = (1ull << ref.assignment().full_reg_id());
     }
+  }
+  for (const auto &reg : arg_regs) {
+    except_mask |= 1ull << reg.cur_reg.id();
   }
   spill_before_call(calling_conv, except_mask);
 
@@ -2418,6 +2425,8 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
       }
     }
   }
+
+  arg_regs.clear();
 
   if (stack_space_used) {
     ASM(ADDxi, DA_SP, DA_SP, stack_space_used);
