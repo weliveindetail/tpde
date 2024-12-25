@@ -88,7 +88,7 @@ define <4 x i32> @retv4i32_values() {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movaps xmm0, xmmword ptr <retv4i32_values+0x13>
-; X64-NEXT:     R_X86_64_GOTPCREL -0x4
+; X64-NEXT:     R_X86_64_PC32 -0x4
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -143,7 +143,7 @@ define <4 x i32> @retv4i32_mixedpoison() {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movaps xmm0, xmmword ptr <retv4i32_mixedpoison+0x13>
-; X64-NEXT:     R_X86_64_GOTPCREL -0x4
+; X64-NEXT:     R_X86_64_PC32 -0x4
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
