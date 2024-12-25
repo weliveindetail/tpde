@@ -129,6 +129,9 @@ endif()
 
 add_executable(tpde-llc tools/tpde-llc.cpp)
 target_link_libraries(tpde-llc PRIVATE tpde_llvm)
+# This is not really required, but is a simple way to make TPDE_LOGGING and
+# spdlog available, so that the wrapper can enable logging.
+target_link_libraries(tpde-llc PRIVATE tpde)
 
 # general deps directory (for args)
 target_include_directories(tpde-llc PRIVATE ../deps/)

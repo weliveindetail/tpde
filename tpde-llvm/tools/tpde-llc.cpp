@@ -17,6 +17,10 @@
 #include <iostream>
 #include <memory>
 
+#ifdef TPDE_LOGGING
+  #include <spdlog/spdlog.h>
+#endif
+
 #define ARGS_NOEXCEPT
 #include <args/args.hxx>
 
