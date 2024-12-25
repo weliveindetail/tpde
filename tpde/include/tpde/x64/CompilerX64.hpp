@@ -1671,7 +1671,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
 
   if (size == 16) {
     auto sym = this->assembler.sym_def_data("",
-                                            data,
+                                            {data.data(), size},
                                             16,
                                             /*read_only=*/true,
                                             /*relocatable=*/false,
@@ -1682,7 +1682,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     } else {
       ASM(SSE_MOVAPSrm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
     }
-    this->assembler.reloc_text_got(sym, this->assembler.text_cur_off() - 4, -4);
+    this->assembler.reloc_text_pc32(
+        sym, this->assembler.text_cur_off() - 4, -4);
     return;
   }
 

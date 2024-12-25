@@ -1859,7 +1859,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     const auto tmp = scratch.alloc_gp();
 
     auto sym = this->assembler.sym_def_data("",
-                                            data,
+                                            {data.data(), size},
                                             16,
                                             /*read_only=*/true,
                                             /*relocaatable=*/false,
