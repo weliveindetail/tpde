@@ -348,7 +348,7 @@ void EncodingTargetX64::get_inst_candidates(
                 continue;
               }
               has_imm = true;
-              os << ", " << op.getImm();
+              os << ", " << std::format("{:#x}", op.getImm());
             }
           }
           os << extra_ops << ");\n";
