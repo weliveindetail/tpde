@@ -541,6 +541,11 @@ public:
   static void end_compile() noexcept {}
 
 private:
+  /// Replace constant expressions with instructions. Returns pair of replaced
+  /// value and first inserted instruction.
+  std::pair<llvm::Value *, llvm::Instruction *>
+      fixup_constant(llvm::Constant *cst, llvm::Instruction *ins_before);
+
   /// Handle instruction during switch_func.
   /// retval = restart from instruction, or nullptr to continue
   llvm::Instruction *handle_inst_in_block(llvm::BasicBlock *block,
