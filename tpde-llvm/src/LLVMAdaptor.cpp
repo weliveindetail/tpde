@@ -6,9 +6,11 @@
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Support/Casting.h>
 #include <llvm/Support/TimeProfiler.h>
 #include <llvm/Support/raw_ostream.h>
 #include <utility>
@@ -30,9 +32,60 @@ std::pair<llvm::Value *, llvm::Instruction *>
     return {expr_inst, expr_inst};
   }
 
-  if (auto *agg = llvm::dyn_cast<llvm::ConstantAggregate>(cst)) {
-    bool is_vector = llvm::isa<llvm::ConstantVector>(cst);
+  if (auto *cv = llvm::dyn_cast<llvm::ConstantVector>(cst)) {
+    // TODO: optimize so that all supported constants are in a top-level
+    // ConstantDataVector. E.g., <poison, 0> could be replaced with zero.
+    llvm::Instruction *ins_begin = nullptr;
+    llvm::Type *el_ty = cv->getType()->getScalarType();
+    llvm::Constant *el_zero = llvm::Constant::getNullValue(el_ty);
 
+    llvm::SmallVector<llvm::Constant *> base;
+    llvm::SmallVector<llvm::Value *> repls;
+    for (auto it : llvm::enumerate(cv->operands())) {
+      auto *cst = llvm::cast<llvm::Constant>(it.value());
+      llvm::dbgs() << *cst << "\n";
+      if (llvm::isa<llvm::UndefValue, llvm::PoisonValue>(cst)) {
+        // replace undef/poison with zero
+        base.push_back(el_zero);
+      } else if (llvm::isa<llvm::ConstantData>(cst)) {
+        // other ConstantData (null pointer, int, fp) is fine
+        base.push_back(cst);
+      } else {
+        assert((llvm::isa<llvm::GlobalValue, llvm::ConstantExpr>(cst)) &&
+               "unexpected constant type in vector");
+        base.push_back(el_zero);
+        repls.resize(cv->getNumOperands());
+        if (auto [repl, inst] = fixup_constant(cst, ins_before); repl) {
+          repls[it.index()] = repl;
+          if (!ins_begin) {
+            ins_begin = inst;
+          }
+        } else {
+          repls[it.index()] = cst;
+        }
+      }
+    }
+
+    llvm::Value *repl = llvm::ConstantVector::get(base);
+    llvm::dbgs() << *repl << "\n";
+    assert(llvm::isa<llvm::ConstantDataVector>(repl));
+    if (repls.empty()) {
+      return {repl, nullptr};
+    }
+
+    llvm::Type *i32 = llvm::Type::getInt32Ty(context);
+    for (auto it : llvm::enumerate(repls)) {
+      auto *el = it.value() ? it.value() : cv->getOperand(it.index());
+      auto *idx_val = llvm::ConstantInt::get(i32, it.index());
+      repl = llvm::InsertElementInst::Create(repl, el, idx_val, "", ins_before);
+      if (!ins_begin) {
+        ins_begin = llvm::cast<llvm::Instruction>(repl);
+      }
+    }
+    return {repl, ins_begin};
+  }
+
+  if (auto *agg = llvm::dyn_cast<llvm::ConstantAggregate>(cst)) {
     llvm::Instruction *ins_begin = nullptr;
     llvm::SmallVector<llvm::Value *> repls;
     for (auto it : llvm::enumerate(agg->operands())) {
@@ -49,16 +102,10 @@ std::pair<llvm::Value *, llvm::Instruction *>
       // TODO: optimize so that all supported constants are in the
       // top-level constant?
       llvm::Value *repl = llvm::PoisonValue::get(cst->getType());
-      llvm::Type *i32 = llvm::Type::getInt32Ty(context);
       for (auto it : llvm::enumerate(repls)) {
         unsigned idx = it.index();
         auto *el = it.value() ? it.value() : agg->getOperand(idx);
-        if (is_vector) {
-          auto *iv = llvm::ConstantInt::get(i32, idx);
-          repl = llvm::InsertElementInst::Create(repl, el, iv, "", ins_before);
-        } else {
-          repl = llvm::InsertValueInst::Create(repl, el, {idx}, "", ins_before);
-        }
+        repl = llvm::InsertValueInst::Create(repl, el, {idx}, "", ins_before);
       }
       return {repl, ins_begin};
     }
@@ -187,7 +234,9 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
         auto [repl, ins_begin] = fixup_constant(cst, ins_before);
         if (repl) {
           phi.setIncomingValueForBlock(inst->getParent(), repl);
-          if (!restart_from) {
+          if (!ins_begin) {
+            block_constants.push_back(llvm::cast<llvm::Constant>(repl));
+          } else if (!restart_from) {
             restart_from = ins_begin;
           }
         } else if (!value_lookup.contains(cst)) {
@@ -220,7 +269,9 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
 
       if (auto [repl, ins_begin] = fixup_constant(cst, inst); repl) {
         inst->setOperand(it.index(), repl);
-        if (!restart_from) {
+        if (!ins_begin) {
+          block_constants.push_back(llvm::cast<llvm::Constant>(repl));
+        } else if (!restart_from) {
           restart_from = ins_begin;
         }
       } else if (!value_lookup.contains(cst)) {
