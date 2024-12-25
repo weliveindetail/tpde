@@ -43,7 +43,6 @@ std::pair<llvm::Value *, llvm::Instruction *>
     llvm::SmallVector<llvm::Value *> repls;
     for (auto it : llvm::enumerate(cv->operands())) {
       auto *cst = llvm::cast<llvm::Constant>(it.value());
-      llvm::dbgs() << *cst << "\n";
       if (llvm::isa<llvm::UndefValue, llvm::PoisonValue>(cst)) {
         // replace undef/poison with zero
         base.push_back(el_zero);
@@ -67,8 +66,8 @@ std::pair<llvm::Value *, llvm::Instruction *>
     }
 
     llvm::Value *repl = llvm::ConstantVector::get(base);
-    llvm::dbgs() << *repl << "\n";
-    assert(llvm::isa<llvm::ConstantDataVector>(repl));
+    // NB: this is likely a ConstantDataSequential, but could also be a
+    // ConstantAggregateZero or still a ConstantVector for weird types.
     if (repls.empty()) {
       return {repl, nullptr};
     }
