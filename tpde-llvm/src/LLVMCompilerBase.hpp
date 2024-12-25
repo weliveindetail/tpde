@@ -237,6 +237,9 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
   bool compile_overflow_intrin(IRValueRef,
                                llvm::Instruction *,
                                OverflowOp) noexcept;
+  bool compile_saturating_intrin(IRValueRef,
+                                 llvm::Instruction *,
+                                 OverflowOp) noexcept;
 
   bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept {
     return false;
@@ -3432,6 +3435,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     return compile_overflow_intrin(inst_idx, inst, OverflowOp::umul);
   case llvm::Intrinsic::smul_with_overflow:
     return compile_overflow_intrin(inst_idx, inst, OverflowOp::smul);
+  case llvm::Intrinsic::uadd_sat:
+    return compile_saturating_intrin(inst_idx, inst, OverflowOp::uadd);
+  case llvm::Intrinsic::sadd_sat:
+    return compile_saturating_intrin(inst_idx, inst, OverflowOp::sadd);
+  case llvm::Intrinsic::usub_sat:
+    return compile_saturating_intrin(inst_idx, inst, OverflowOp::usub);
+  case llvm::Intrinsic::ssub_sat:
+    return compile_saturating_intrin(inst_idx, inst, OverflowOp::ssub);
   case llvm::Intrinsic::fshl:
   case llvm::Intrinsic::fshr: {
     if (!inst->getType()->isIntegerTy()) {
@@ -3945,4 +3956,60 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
   res_ref_of.reset_without_refcount();
   return true;
 }
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_saturating_intrin(
+    IRValueRef inst_idx, llvm::Instruction *inst, OverflowOp op) noexcept {
+  auto *ty = inst->getType();
+  if (!ty->isIntegerTy()) {
+    return false;
+  }
+
+  const auto width = ty->getIntegerBitWidth();
+  u32 width_idx = 0;
+  switch (width) {
+  case 8: width_idx = 0; break;
+  case 16: width_idx = 1; break;
+  case 32: width_idx = 2; break;
+  case 64: width_idx = 3; break;
+  default: return false;
+  }
+
+  using EncodeFnTy =
+      bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
+  std::array<std::array<EncodeFnTy, 4>, 4> encode_fns{
+      {
+       {&Derived::encode_sat_add_u8,
+           &Derived::encode_sat_add_u16,
+           &Derived::encode_sat_add_u32,
+           &Derived::encode_sat_add_u64},
+       {&Derived::encode_sat_add_i8,
+           &Derived::encode_sat_add_i16,
+           &Derived::encode_sat_add_i32,
+           &Derived::encode_sat_add_i64},
+       {&Derived::encode_sat_sub_u8,
+           &Derived::encode_sat_sub_u16,
+           &Derived::encode_sat_sub_u32,
+           &Derived::encode_sat_sub_u64},
+       {&Derived::encode_sat_sub_i8,
+           &Derived::encode_sat_sub_i16,
+           &Derived::encode_sat_sub_i32,
+           &Derived::encode_sat_sub_i64},
+       }
+  };
+
+  EncodeFnTy encode_fn = encode_fns[static_cast<u32>(op)][width_idx];
+
+  GenericValuePart lhs_op = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+  GenericValuePart rhs_op = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+  ScratchReg res{derived()};
+  if (!(derived()->*encode_fn)(std::move(lhs_op), std::move(rhs_op), res)) {
+    return false;
+  }
+
+  auto res_ref_val = this->result_ref_lazy(inst_idx, 0);
+  this->set_value(res_ref_val, res);
+  return true;
+}
+
 } // namespace tpde_llvm

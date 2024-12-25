@@ -299,6 +299,27 @@ OF_OPS(128)
 #undef OF_OP_CC
 
 // --------------------------
+// saturating arithmetic
+// --------------------------
+
+u8 TARGET_V1 sat_add_u8(u8 a, u8 b) { u8 r; return __builtin_add_overflow(a, b, &r) ? UINT8_MAX : r; }
+u8 TARGET_V1 sat_sub_u8(u8 a, u8 b) { u8 r; return __builtin_sub_overflow(a, b, &r) ? 0 : r; }
+i8 TARGET_V1 sat_add_i8(i8 a, i8 b) { i8 r; return __builtin_add_overflow(a, b, &r) ? a < 0 ? INT8_MIN : INT8_MAX : r; }
+i8 TARGET_V1 sat_sub_i8(i8 a, i8 b) { i8 r; return __builtin_sub_overflow(a, b, &r) ? a < 0 ? INT8_MIN : INT8_MAX : r; }
+u16 TARGET_V1 sat_add_u16(u16 a, u16 b) { u16 r; return __builtin_add_overflow(a, b, &r) ? UINT16_MAX : r; }
+u16 TARGET_V1 sat_sub_u16(u16 a, u16 b) { u16 r; return __builtin_sub_overflow(a, b, &r) ? 0 : r; }
+i16 TARGET_V1 sat_add_i16(i16 a, i16 b) { i16 r; return __builtin_add_overflow(a, b, &r) ? a < 0 ? INT16_MIN : INT16_MAX : r; }
+i16 TARGET_V1 sat_sub_i16(i16 a, i16 b) { i16 r; return __builtin_sub_overflow(a, b, &r) ? a < 0 ? INT16_MIN : INT16_MAX : r; }
+u32 TARGET_V1 sat_add_u32(u32 a, u32 b) { u32 r; return __builtin_add_overflow(a, b, &r) ? UINT32_MAX : r; }
+u32 TARGET_V1 sat_sub_u32(u32 a, u32 b) { u32 r; return __builtin_sub_overflow(a, b, &r) ? 0 : r; }
+i32 TARGET_V1 sat_add_i32(i32 a, i32 b) { i32 r; return __builtin_add_overflow(a, b, &r) ? a < 0 ? INT32_MIN : INT32_MAX : r; }
+i32 TARGET_V1 sat_sub_i32(i32 a, i32 b) { i32 r; return __builtin_sub_overflow(a, b, &r) ? a < 0 ? INT32_MIN : INT32_MAX : r; }
+u64 TARGET_V1 sat_add_u64(u64 a, u64 b) { u64 r; return __builtin_add_overflow(a, b, &r) ? UINT64_MAX : r; }
+u64 TARGET_V1 sat_sub_u64(u64 a, u64 b) { u64 r; return __builtin_sub_overflow(a, b, &r) ? 0 : r; }
+i64 TARGET_V1 sat_add_i64(i64 a, i64 b) { i64 r; return __builtin_add_overflow(a, b, &r) ? a < 0 ? INT64_MIN : INT64_MAX : r; }
+i64 TARGET_V1 sat_sub_i64(i64 a, i64 b) { i64 r; return __builtin_sub_overflow(a, b, &r) ? a < 0 ? INT64_MIN : INT64_MAX : r; }
+
+// --------------------------
 // float arithmetic
 // --------------------------
 
