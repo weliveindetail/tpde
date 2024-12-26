@@ -358,7 +358,13 @@ public:
   u8 *text_ptr(u32 off) noexcept { return text_begin + off; }
 
   /// Make sure that text_write_ptr can be safely incremented by size
-  void text_ensure_space(u32 size) noexcept;
+  void text_ensure_space(u32 size) noexcept {
+    if (text_reserve_end - text_write_ptr < size) [[unlikely]] {
+      derived()->text_more_space(size);
+    }
+  }
+
+  void text_more_space(u32 size) noexcept;
 
   void reset() noexcept;
 
@@ -871,11 +877,7 @@ void AssemblerElf<Derived>::text_align_impl(u64 align) noexcept {
 }
 
 template <typename Derived>
-void AssemblerElf<Derived>::text_ensure_space(u32 size) noexcept {
-  if (text_reserve_end - text_write_ptr >= size) [[likely]] {
-    return;
-  }
-
+void AssemblerElf<Derived>::text_more_space(u32 size) noexcept {
   size = util::align_up(size, 16 * 1024);
   const size_t off = text_write_ptr - text_begin;
   DataSection &sec = get_section(current_section);

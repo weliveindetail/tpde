@@ -96,7 +96,7 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
 
 
   /// Make sure that text_write_ptr can be safely incremented by size
-  void text_ensure_space(u32 size) noexcept;
+  void text_more_space(u32 size) noexcept;
 
   void reset() noexcept;
 };
@@ -392,11 +392,7 @@ inline void AssemblerElfA64::eh_write_initial_cie_instrs() noexcept {
   eh_write_inst(dwarf::DW_CFA_def_cfa, dwarf::a64::DW_reg_sp, 0);
 }
 
-inline void AssemblerElfA64::text_ensure_space(u32 size) noexcept {
-  if (text_reserve_end - text_write_ptr >= size) [[likely]] {
-    return;
-  }
-
+inline void AssemblerElfA64::text_more_space(u32 size) noexcept {
   if (text_reserve_end - text_begin >= (128 * 1024 * 1024)) {
     // we do not support multiple text sections currently
     assert(0);
@@ -427,7 +423,7 @@ inline void AssemblerElfA64::text_ensure_space(u32 size) noexcept {
     last_cond_veneer_off = off;
   }
 
-  Base::text_ensure_space(size + veneer_size + 4);
+  Base::text_more_space(size + veneer_size + 4);
   if (veneer_size != 0) {
     *reinterpret_cast<u32 *>(text_ptr(cur_off)) = de64_B((4 + veneer_size) / 4);
     text_write_ptr += veneer_size + 4;
