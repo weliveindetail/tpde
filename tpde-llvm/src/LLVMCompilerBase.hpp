@@ -218,6 +218,8 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
   bool compile_bitcast(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_extract_value(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_insert_value(IRValueRef, llvm::Instruction *) noexcept;
+  bool compile_extract_element(IRValueRef, llvm::Instruction *) noexcept;
+  bool compile_insert_element(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_phi(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_freeze(IRValueRef, llvm::Instruction *) noexcept;
@@ -1019,6 +1021,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
   case llvm::Instruction::BitCast: return compile_bitcast(val_idx, i);
   case llvm::Instruction::ExtractValue: return compile_extract_value(val_idx, i);
   case llvm::Instruction::InsertValue: return compile_insert_value(val_idx, i);
+  case llvm::Instruction::ExtractElement: return compile_extract_element(val_idx, i);
+  case llvm::Instruction::InsertElement: return compile_insert_element(val_idx, i);
   case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(val_idx, i);
   case llvm::Instruction::PHI: return compile_phi(val_idx, i);
   case llvm::Instruction::Freeze: return compile_freeze(val_idx, i);
@@ -2132,6 +2136,130 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_value(
     if (i != part_count - 1) {
       res_ref.inc_ref_count();
     }
+  }
+
+  return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_element(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+  llvm::Value *src = inst->getOperand(0);
+  llvm::Value *index = inst->getOperand(1);
+  std::optional<unsigned> const_index;
+
+  if (auto *ci = llvm::dyn_cast<llvm::ConstantInt>(index)) {
+    const_index = ci->getZExtValue();
+    // TODO: give target the option to optimize for constant index.
+  }
+
+  auto *vec_ty = llvm::cast<llvm::FixedVectorType>(src->getType());
+  unsigned nelem = vec_ty->getNumElements();
+  assert((nelem & (nelem - 1)) == 0 && "vector nelem must be power of two");
+  assert(index->getType()->getIntegerBitWidth() >= 8);
+
+  ValuePartRef result = this->result_ref_lazy(inst_idx, 0);
+  unsigned part_size = result.assignment().part_size();
+
+  // We do the dynamic extract in the spill slot.
+  // First, copy value into the spill slot.
+  ValuePartRef vec_ref = this->val_ref(llvm_val_idx(src), 0);
+  vec_ref.spill();
+  vec_ref.unlock();
+
+  // Second, create address. Mask index, out-of-bounds access are just poison.
+  GenericValuePart addr = derived()->val_spill_slot(vec_ref);
+  auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
+  if (const_index) {
+    expr.disp += (*const_index & (nelem - 1)) * part_size;
+  } else {
+    ScratchReg idx_scratch{this};
+    derived()->encode_landi64(this->val_ref(llvm_val_idx(index), 0),
+                              typename Derived::EncodeImm{u64{nelem - 1}},
+                              idx_scratch);
+    assert(expr.scale == 0);
+    expr.scale = part_size;
+    expr.index = std::move(idx_scratch);
+  }
+
+  // Third, do the load.
+  ScratchReg scratch_res{this};
+  switch (this->adaptor->values[inst_idx].type) {
+    using enum LLVMBasicValType;
+  case i8: derived()->encode_loadi8(std::move(addr), scratch_res); break;
+  case i16: derived()->encode_loadi16(std::move(addr), scratch_res); break;
+  case i32: derived()->encode_loadi32(std::move(addr), scratch_res); break;
+  case i64:
+  case ptr: derived()->encode_loadi64(std::move(addr), scratch_res); break;
+  case f32: derived()->encode_loadf32(std::move(addr), scratch_res); break;
+  case f64: derived()->encode_loadf64(std::move(addr), scratch_res); break;
+  default: TPDE_UNREACHABLE("unexpected vector element type");
+  }
+  this->set_value(result, scratch_res);
+
+  return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+  llvm::Value *index = inst->getOperand(2);
+  std::optional<unsigned> const_index;
+
+  if (auto *ci = llvm::dyn_cast<llvm::ConstantInt>(index)) {
+    const_index = ci->getZExtValue();
+    // TODO: give target the option to optimize for constant index.
+  }
+
+  auto *vec_ty = llvm::cast<llvm::FixedVectorType>(inst->getType());
+  unsigned nelem = vec_ty->getNumElements();
+  assert((nelem & (nelem - 1)) == 0 && "vector nelem must be power of two");
+  assert(index->getType()->getIntegerBitWidth() >= 8);
+
+  auto ins_idx = llvm_val_idx(inst->getOperand(1));
+  ValuePartRef val = this->val_ref(ins_idx, 0);
+  ValuePartRef result = this->result_ref_lazy(inst_idx, 0);
+
+  unsigned frame_off = result.assignment().frame_off();
+  unsigned part_size = result.assignment().part_size();
+
+  // We do the dynamic insert in the spill slot of result.
+  // TODO: reuse spill slot of vec_ref if possible.
+
+  // First, copy value into the spill slot.
+  {
+    ValuePartRef vec_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    ScratchReg tmp{this};
+    AsmReg orig_reg = this->val_as_reg(vec_ref, tmp);
+    derived()->spill_reg(orig_reg, frame_off, part_size);
+  }
+
+  // Second, create address. Mask index, out-of-bounds access are just poison.
+  GenericValuePart addr = derived()->val_spill_slot(result);
+  auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
+  if (const_index) {
+    expr.disp += (*const_index & (nelem - 1)) * val.part_size();
+  } else {
+    ScratchReg idx_scratch{this};
+    derived()->encode_landi64(this->val_ref(llvm_val_idx(index), 0),
+                              typename Derived::EncodeImm{u64{nelem - 1}},
+                              idx_scratch);
+    assert(expr.scale == 0);
+    expr.scale = val.part_size();
+    expr.index = std::move(idx_scratch);
+  }
+
+  // Third, do the store.
+  switch (this->adaptor->values[ins_idx].type) {
+    using enum LLVMBasicValType;
+  case i8: derived()->encode_storei8(std::move(addr), std::move(val)); break;
+  case i16: derived()->encode_storei16(std::move(addr), std::move(val)); break;
+  case i32: derived()->encode_storei32(std::move(addr), std::move(val)); break;
+  case i64:
+  case ptr: derived()->encode_storei64(std::move(addr), std::move(val)); break;
+  case f32: derived()->encode_storef32(std::move(addr), std::move(val)); break;
+  case f64: derived()->encode_storef64(std::move(addr), std::move(val)); break;
+  default: TPDE_UNREACHABLE("unexpected vector element type");
   }
 
   return true;

@@ -467,6 +467,12 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
   void mov(AsmReg dst, AsmReg src, u32 size) noexcept;
 
+  GenericValuePart val_spill_slot(ValuePartRef &val_ref) noexcept {
+    const auto ap = val_ref.assignment();
+    assert(!ap.modified() && !ap.variable_ref());
+    return typename GenericValuePart::Expr(AsmReg::BP, -i64(ap.frame_off()));
+  }
+
   AsmReg gval_expr_as_reg(GenericValuePart &gv) noexcept;
 
   void materialize_constant(ValuePartRef &val_ref, AsmReg dst) noexcept;
