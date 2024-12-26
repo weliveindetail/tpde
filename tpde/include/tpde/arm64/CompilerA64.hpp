@@ -1332,14 +1332,13 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
         util::align_down(func_prologue_alloc - prologue.size() * 4, 16);
     this->assembler.sym_ptr(this->assembler.cur_func)->st_value =
         func_start_off;
-    std::memcpy(this->assembler.sec_text.data.data() + func_start_off,
+    std::memcpy(this->assembler.text_ptr(func_start_off),
                 prologue.data(),
                 prologue.size() * sizeof(u32));
   }
 
   if (func_arg_stack_add_off != ~0u) {
-    *reinterpret_cast<u32 *>(this->assembler.sec_text.data.data() +
-                             func_arg_stack_add_off) =
+    *reinterpret_cast<u32 *>(this->assembler.text_ptr(func_arg_stack_add_off)) =
         de64_ADDxi(func_arg_stack_add_reg, DA_SP, final_frame_size);
   }
 
@@ -1365,7 +1364,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     return;
   }
 
-  auto *text_data = this->assembler.sec_text.data.data();
+  auto *text_data = this->assembler.text_ptr(0);
   u32 first_ret_off = func_ret_offs[0];
   u32 ret_size = 0;
   {

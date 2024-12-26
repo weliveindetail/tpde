@@ -1127,7 +1127,7 @@ template <IRAdaptor Adaptor,
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
   const CallingConv conv = Base::derived()->cur_calling_convention();
 
-  auto *write_ptr = this->assembler.sec_text.data.data() + func_reg_save_off;
+  auto *write_ptr = this->assembler.text_ptr(func_reg_save_off);
   const u64 saved_regs =
       this->register_file.clobbered & conv.callee_saved_mask();
   u32 num_saved_regs = 0u;
@@ -1142,16 +1142,15 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
   // the stack space we used for the saved registers
   const auto final_frame_size =
       util::align_up(this->stack.frame_size, 16) - num_saved_regs * 8;
-  *reinterpret_cast<u32 *>(this->assembler.sec_text.data.data() +
-                           frame_size_setup_offset + 3) = final_frame_size;
+  *reinterpret_cast<u32 *>(
+      this->assembler.text_ptr(frame_size_setup_offset + 3)) = final_frame_size;
 #ifdef TPDE_ASSERTS
   FdInstr instr = {};
-  assert(
-      fd_decode(this->assembler.sec_text.data.data() + frame_size_setup_offset,
-                7,
-                64,
-                0,
-                &instr) == 7);
+  assert(fd_decode(this->assembler.text_ptr(frame_size_setup_offset),
+                   7,
+                   64,
+                   0,
+                   &instr) == 7);
   assert(FD_TYPE(&instr) == FDI_SUB);
   assert(FD_OP_TYPE(&instr, 0) == FD_OT_REG);
   assert(FD_OP_TYPE(&instr, 1) == FD_OT_IMM);
@@ -1161,8 +1160,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
 #endif
 
   // nop out the rest
-  const auto reg_save_end = this->assembler.sec_text.data.data() +
-                            func_reg_save_off + func_reg_save_alloc;
+  const auto reg_save_end =
+      this->assembler.text_ptr(func_reg_save_off + func_reg_save_alloc);
   assert(reg_save_end >= write_ptr);
   const u32 nop_len = reg_save_end - write_ptr;
   if (nop_len) {
@@ -1190,7 +1189,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     return;
   }
 
-  auto *text_data = this->assembler.sec_text.data.data();
+  auto *text_data = this->assembler.text_ptr(0);
   u32 first_ret_off = func_ret_offs[0];
   u32 ret_size = 0;
   u32 epilogue_size = 7 + 1 + 1 + func_reg_restore_alloc; // add + pop + ret
@@ -1898,8 +1897,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
         target_label, this->assembler.text_cur_off() - 4);
   } else {
     this->assembler.text_ensure_space(6);
-    auto *target = this->assembler.sec_text.data.data() +
-                   this->assembler.label_offset(target_label);
+    auto *target =
+        this->assembler.text_ptr(this->assembler.label_offset(target_label));
     switch (jmp) {
     case Jump::ja: ASMNC(JA, target); break;
     case Jump::jae: ASMNC(JNC, target); break;

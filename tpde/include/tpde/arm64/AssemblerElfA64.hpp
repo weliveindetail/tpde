@@ -239,7 +239,7 @@ inline void AssemblerElfA64::label_place(Label label) noexcept {
       assert(diff < 128 * 1024 * 1024);
       auto inst = de64_B(diff / 4);
       assert(inst != 0);
-      *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off) = inst;
+      *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) = inst;
       break;
     }
     case UnresolvedEntryKind::COND_BR: {
@@ -253,10 +253,9 @@ inline void AssemblerElfA64::label_place(Label label) noexcept {
         // we can write the offset into the instruction and don't need a
         // veneer
         const auto cur_inst =
-            *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off);
+            *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
         const auto new_inst = (cur_inst & 0xFF00'001F) | ((diff / 4) << 5);
-        *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off) =
-            new_inst;
+        *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) = new_inst;
 
         // if there was no veneer after this branch it is still present
         // in pendingCondBrs so we can remove it
@@ -271,8 +270,7 @@ inline void AssemblerElfA64::label_place(Label label) noexcept {
         assert(v.insts_used + 5 <= v.max_insts);
 
         const auto trampoline_off = v.off + (v.insts_used * sizeof(u32));
-        auto *w =
-            reinterpret_cast<u32 *>(sec_text.data.data() + trampoline_off);
+        auto *w = reinterpret_cast<u32 *>(text_ptr(trampoline_off));
         // ADR x16, [pc + 4*4]
         *w++ = de64_ADR(DA_GP(16), 0, 16);
         // LDR w17, [pc + 3*4]
@@ -284,11 +282,10 @@ inline void AssemblerElfA64::label_place(Label label) noexcept {
         *w = text_off - const_off;
 
         const auto cur_inst =
-            *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off);
+            *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
         const auto new_inst = (cur_inst & 0xFF00'001F) |
                               (((trampoline_off - entry.text_off) / 4) << 5);
-        *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off) =
-            new_inst;
+        *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) = new_inst;
 
         v.insts_used += 5;
       }
@@ -305,10 +302,9 @@ inline void AssemblerElfA64::label_place(Label label) noexcept {
         // we can write the offset into the instruction and don't need a
         // veneer
         const auto cur_inst =
-            *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off);
+            *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
         const auto new_inst = (cur_inst & 0xFF80'001F) | ((diff / 4) << 5);
-        *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off) =
-            new_inst;
+        *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) = new_inst;
 
         // if there was no veneer after this branch it is still present
         // in pendingCondBrs so we can remove it
@@ -324,8 +320,7 @@ inline void AssemblerElfA64::label_place(Label label) noexcept {
         assert(v.insts_used + 5 <= v.max_insts);
 
         const auto trampoline_off = v.off + (v.insts_used * sizeof(u32));
-        auto *w =
-            reinterpret_cast<u32 *>(sec_text.data.data() + trampoline_off);
+        auto *w = reinterpret_cast<u32 *>(text_ptr(trampoline_off));
         // ADR x16, [pc + 4*4]
         *w++ = de64_ADR(DA_GP(16), 0, 16);
         // LDR w17, [pc + 3*4]
@@ -337,21 +332,19 @@ inline void AssemblerElfA64::label_place(Label label) noexcept {
         *w = text_off - const_off;
 
         const auto cur_inst =
-            *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off);
+            *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
         const auto new_inst = (cur_inst & 0xFF00'001F) |
                               (((trampoline_off - entry.text_off) / 4) << 5);
-        *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off) =
-            new_inst;
+        *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) = new_inst;
 
         v.insts_used += 5;
       }
       break;
     }
     case UnresolvedEntryKind::JUMP_TABLE: {
-      const auto table_off =
-          *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off);
+      const auto table_off = *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
       const auto diff = (i32)text_off - (i32)table_off;
-      *reinterpret_cast<i32 *>(sec_text.data.data() + entry.text_off) = diff;
+      *reinterpret_cast<i32 *>(text_ptr(entry.text_off)) = diff;
       break;
     }
     }
@@ -446,18 +439,17 @@ inline void AssemblerElfA64::text_ensure_space(u32 size) noexcept {
     // need to reserve more space and jump over veneer
     size = util::align_up(size + veneer_size + 4, 16 * 1024);
     sec_text.data.resize(sec_text.data.size() + size);
-    auto *write = reinterpret_cast<u32 *>(sec_text.data.data() + cur_off);
+    auto *write = reinterpret_cast<u32 *>(text_ptr(cur_off));
     *write = de64_B((4 + veneer_size) / 4);
 
-
-    text_write_ptr = sec_text.data.data() + cur_off + 4 + veneer_size;
-    text_reserve_end = sec_text.data.data() + sec_text.data.size();
+    text_write_ptr = text_ptr(cur_off + 4 + veneer_size);
+    text_reserve_end = text_ptr(sec_text.data.size());
   } else {
     size = util::align_up(size, 16 * 1024);
     sec_text.data.resize(sec_text.data.size() + size);
 
-    text_write_ptr = sec_text.data.data() + cur_off;
-    text_reserve_end = sec_text.data.data() + sec_text.data.size();
+    text_write_ptr = text_ptr(cur_off);
+    text_reserve_end = text_ptr(sec_text.data.size());
   }
 }
 

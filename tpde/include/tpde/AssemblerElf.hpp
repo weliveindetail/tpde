@@ -356,7 +356,11 @@ public:
   void text_align_impl(u64 align) noexcept;
 
   /// \returns The current used space in the text section
-  [[nodiscard]] u32 text_cur_off() const noexcept;
+  [[nodiscard]] u32 text_cur_off() const noexcept {
+    return static_cast<u32>(text_write_ptr - sec_text.data.data());
+  }
+
+  u8 *text_ptr(u32 off) noexcept { return &sec_text.data[off]; }
 
   /// Make sure that text_write_ptr can be safely incremented by size
   void text_ensure_space(u32 size) noexcept;
@@ -889,11 +893,6 @@ void AssemblerElf<Derived>::text_align_impl(u64 align) noexcept {
 }
 
 template <typename Derived>
-u32 AssemblerElf<Derived>::text_cur_off() const noexcept {
-  return static_cast<u32>(text_write_ptr - sec_text.data.data());
-}
-
-template <typename Derived>
 void AssemblerElf<Derived>::text_ensure_space(u32 size) noexcept {
   if (text_reserve_end - text_write_ptr >= size) [[likely]] {
     return;
@@ -903,8 +902,8 @@ void AssemblerElf<Derived>::text_ensure_space(u32 size) noexcept {
   const size_t off = text_write_ptr - sec_text.data.data();
   sec_text.data.resize(sec_text.data.size() + size);
 
-  text_write_ptr = sec_text.data.data() + off;
-  text_reserve_end = sec_text.data.data() + sec_text.data.size();
+  text_write_ptr = text_ptr(off);
+  text_reserve_end = text_ptr(sec_text.data.size());
 }
 
 template <typename Derived>
@@ -1148,10 +1147,6 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
 
   for (size_t i = sec_count(); i < sections.size(); ++i) {
     DataSection &sec = sections[i];
-    if (sec.data.empty()) {
-      continue;
-    }
-
     sec.hdr.sh_offset = out.size();
     sec.hdr.sh_size = sec.data.size();
     *sec_hdr(i) = sec.hdr;

@@ -188,15 +188,14 @@ inline void AssemblerElfX64::label_place(Label label) noexcept {
     switch (unresolved_entry_kinds[cur_entry]) {
     case UnresolvedEntryKind::JMP_OR_MEM_DISP: {
       // fix the jump immediate
-      *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off) =
+      *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) =
           (text_off - entry.text_off) - 4;
       break;
     }
     case UnresolvedEntryKind::JUMP_TABLE: {
-      const auto table_off =
-          *reinterpret_cast<u32 *>(sec_text.data.data() + entry.text_off);
+      const auto table_off = *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
       const auto diff = (i32)text_off - (i32)table_off;
-      *reinterpret_cast<i32 *>(sec_text.data.data() + entry.text_off) = diff;
+      *reinterpret_cast<i32 *>(text_ptr(entry.text_off)) = diff;
       break;
     }
     }
