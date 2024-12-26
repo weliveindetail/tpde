@@ -180,6 +180,7 @@ struct AssemblerElf {
     std::vector<u32> relocs_to_patch;
 
     Elf64_Shdr hdr;
+    SymRef sym;
 
     DataSection() = default;
     DataSection(unsigned type, unsigned flags, unsigned name_off)
@@ -194,9 +195,16 @@ struct AssemblerElf {
   DataSection sec_text;
   u32 sec_bss_size = 0;
 
+  SecRef secref_rodata = INVALID_SEC_REF;
+  SecRef secref_relro = INVALID_SEC_REF;
+  SecRef secref_data = INVALID_SEC_REF;
+
+  SecRef secref_init_array = INVALID_SEC_REF;
+  SecRef secref_fini_array = INVALID_SEC_REF;
+
   /// Unwind Info
   DataSection sec_eh_frame;
-  DataSection sec_except_table;
+  SecRef secref_except_table = INVALID_SEC_REF;
 
   struct ExceptCallSiteInfo {
     /// Start offset *in section* (not inside function)
@@ -260,15 +268,12 @@ struct AssemblerElf {
     }
   };
 
-  static constexpr size_t RESERVED_SYM_COUNT = 3;
+  static constexpr size_t RESERVED_SYM_COUNT = 2;
 
   // TODO(ts): add option to emit multiple text sections (e.g. on ARM)
   static constexpr size_t TEXT_SYM_IDX = 1;
-  static constexpr size_t EXCEPT_TABLE_SYM_IDX = 2;
 
   static constexpr SymRef TEXT_SYM_REF = static_cast<SymRef>(TEXT_SYM_IDX);
-  static constexpr SymRef EXCEPT_TABLE_SYM_REF =
-      static_cast<SymRef>(EXCEPT_TABLE_SYM_IDX);
 
   explicit AssemblerElf(const bool generating_object)
       : generating_object(generating_object) {
@@ -288,21 +293,19 @@ protected:
   void end_func() noexcept;
   void init_special_symbols() noexcept;
 
+  DataSection &get_or_create_section(SecRef &ref,
+                                     unsigned rela_name,
+                                     unsigned type,
+                                     unsigned flags,
+                                     unsigned align,
+                                     bool with_rela = true) noexcept;
+
 public:
   DataSection &get_section(SecRef ref) noexcept {
     assert(ref != INVALID_SEC_REF);
     return sections[static_cast<u32>(ref)];
   }
 
-private:
-  SecRef secref_rodata = INVALID_SEC_REF;
-  SecRef secref_relro = INVALID_SEC_REF;
-  SecRef secref_data = INVALID_SEC_REF;
-
-  SecRef secref_init_array = INVALID_SEC_REF;
-  SecRef secref_fini_array = INVALID_SEC_REF;
-
-public:
   SecRef get_data_section(bool rodata, bool relro = false) noexcept;
   SecRef get_structor_section(bool init) noexcept;
 
@@ -629,9 +632,7 @@ constexpr static std::span<const char> SECTION_NAMES = {
     ".strtab\0"
     ".shstrtab\0"
     ".bss\0"
-    ".rela.text\0"
-    ".gcc_except_table\0"
-    ".rela.gcc_except_table\0"};
+    ".rela.text\0"};
 
 // TODO(ts): this is linux-specific, no?
 constexpr static std::span<const char> SHSTRTAB = {
@@ -708,20 +709,52 @@ consteval static u32 sec_count() {
 } // namespace elf
 
 template <typename Derived>
+typename AssemblerElf<Derived>::DataSection &
+    AssemblerElf<Derived>::get_or_create_section(SecRef &ref,
+                                                 unsigned rela_name,
+                                                 unsigned type,
+                                                 unsigned flags,
+                                                 unsigned align,
+                                                 bool with_rela) noexcept {
+  if (ref == INVALID_SEC_REF) [[unlikely]] {
+    ref = static_cast<SecRef>(sections.size());
+    const auto str_off = strtab.size();
+    if (with_rela) {
+      sections.push_back(DataSection(type, flags, rela_name + 5));
+      sections.push_back(DataSection(SHT_RELA, 0, rela_name));
+    } else {
+      sections.push_back(DataSection(type, flags, rela_name));
+    }
+
+    std::string_view name{elf::SHSTRTAB.data() + rela_name +
+                          (with_rela ? 5 : 0)};
+    strtab.insert(strtab.end(), name.begin(), name.end());
+    strtab.push_back('\0');
+
+    DataSection &sec = get_section(ref);
+    sec.hdr.sh_addralign = align;
+    sec.sym = static_cast<SymRef>(local_symbols.size());
+    local_symbols.push_back(Elf64_Sym{
+        .st_name = static_cast<Elf64_Word>(str_off),
+        .st_info = ELF64_ST_INFO(STB_LOCAL, STT_SECTION),
+        .st_other = STV_DEFAULT,
+        .st_shndx = static_cast<Elf64_Section>(ref),
+        .st_value = 0,
+        .st_size = 0,
+    });
+  }
+  return get_section(ref);
+}
+
+template <typename Derived>
 typename AssemblerElf<Derived>::SecRef
     AssemblerElf<Derived>::get_data_section(bool rodata, bool relro) noexcept {
   SecRef &secref = !rodata ? secref_data : relro ? secref_relro : secref_rodata;
-  if (secref == INVALID_SEC_REF) [[unlikely]] {
-    unsigned idx = sections.size();
-    unsigned off_r = !rodata ? elf::sec_off(".rela.data")
-                     : relro ? elf::sec_off(".rela.data.rel.ro")
-                             : elf::sec_off(".rela.rodata");
-    unsigned flags = SHF_ALLOC | (rodata ? 0 : SHF_WRITE);
-    sections.push_back(DataSection(SHT_PROGBITS, flags, off_r + 5));
-    sections[idx].hdr.sh_addralign = 16;
-    sections.push_back(DataSection(SHT_RELA, 0, off_r));
-    secref = static_cast<SecRef>(idx);
-  }
+  unsigned off_r = !rodata ? elf::sec_off(".rela.data")
+                   : relro ? elf::sec_off(".rela.data.rel.ro")
+                           : elf::sec_off(".rela.rodata");
+  unsigned flags = SHF_ALLOC | (rodata ? 0 : SHF_WRITE);
+  (void)get_or_create_section(secref, off_r, SHT_PROGBITS, flags, 16);
   return secref;
 }
 
@@ -730,19 +763,12 @@ typename AssemblerElf<Derived>::SecRef
     AssemblerElf<Derived>::get_structor_section(bool init) noexcept {
   // TODO: comdat, priorities
   SecRef &secref = init ? secref_init_array : secref_fini_array;
-  if (secref == INVALID_SEC_REF) [[unlikely]] {
-    unsigned idx = sections.size();
-    unsigned off_r = init ? elf::sec_off(".rela.init_array")
-                          : elf::sec_off(".rela.fini_array");
-    unsigned type = init ? SHT_INIT_ARRAY : SHT_FINI_ARRAY;
-    sections.push_back(DataSection(type, SHF_ALLOC | SHF_WRITE, off_r + 5));
-    sections[idx].hdr.sh_addralign = 8;
-    sections.push_back(DataSection(SHT_RELA, 0, off_r));
-    secref = static_cast<SecRef>(idx);
-  }
+  unsigned off_r = init ? elf::sec_off(".rela.init_array")
+                        : elf::sec_off(".rela.fini_array");
+  unsigned type = init ? SHT_INIT_ARRAY : SHT_FINI_ARRAY;
+  (void)get_or_create_section(secref, off_r, type, SHF_ALLOC | SHF_WRITE, 8);
   return secref;
 }
-
 
 template <typename Derived>
 void AssemblerElf<Derived>::init_special_symbols() noexcept {
@@ -758,20 +784,6 @@ void AssemblerElf<Derived>::init_special_symbols() noexcept {
     sym.st_info = ELF64_ST_INFO(STB_LOCAL, STT_SECTION);
     sym.st_other = STV_DEFAULT;
     sym.st_shndx = elf::sec_idx(".text");
-    sym.st_value = 0;
-    sym.st_size = 0;
-  }
-  {
-    std::string_view name = ".gcc_except_table";
-    const auto str_off = strtab.size();
-    strtab.insert(strtab.end(), name.begin(), name.end());
-    strtab.emplace_back('\0');
-
-    auto &sym = local_symbols[EXCEPT_TABLE_SYM_IDX];
-    sym.st_name = static_cast<Elf64_Word>(str_off);
-    sym.st_info = ELF64_ST_INFO(STB_LOCAL, STT_SECTION);
-    sym.st_other = STV_DEFAULT;
-    sym.st_shndx = elf::sec_idx(".gcc_except_table");
     sym.st_value = 0;
     sym.st_size = 0;
   }
@@ -939,8 +951,6 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
   obj_size +=
       sec_text.data.size() + sec_text.relocs.size() + sizeof(Elf64_Rela);
   obj_size += sec_eh_frame.data.size() + sec_eh_frame.relocs.size() +
-              sizeof(Elf64_Rela);
-  obj_size += sec_except_table.data.size() + sec_except_table.relocs.size() +
               sizeof(Elf64_Rela);
   for (const DataSection &sec : sections) {
     obj_size += sec.data.size() + sec.relocs.size() * sizeof(Elf64_Rela);
@@ -1136,30 +1146,6 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
   write_reloc_sec(
       sec_text, sec_idx(".rela.text"), sec_off(".rela.text"), sec_idx(".text"));
 
-  // .gcc_except_table
-  {
-    const auto size = util::align_up(sec_except_table.data.size(), 16);
-    const auto pad = size - sec_except_table.data.size();
-    const auto sh_off = out.size();
-    out.insert(
-        out.end(), sec_except_table.data.begin(), sec_except_table.data.end());
-    out.resize(out.size() + pad);
-
-    auto *hdr = sec_hdr(sec_idx(".gcc_except_table"));
-    hdr->sh_name = sec_off(".gcc_except_table");
-    hdr->sh_type = SHT_PROGBITS;
-    hdr->sh_flags = SHF_ALLOC;
-    hdr->sh_offset = sh_off;
-    hdr->sh_size = size;
-    hdr->sh_addralign = 8;
-  }
-
-  // .rela.gcc_except_table
-  write_reloc_sec(sec_except_table,
-                  sec_idx(".rela.gcc_except_table"),
-                  sec_off(".rela.gcc_except_table"),
-                  sec_idx(".gcc_except_table"));
-
   for (size_t i = sec_count(); i < sections.size(); ++i) {
     DataSection &sec = sections[i];
     if (sec.data.empty()) {
@@ -1177,6 +1163,8 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     if (i + 1 < sections.size() && sections[i + 1].hdr.sh_type == SHT_RELA) {
       write_reloc_sec(sec, i + 1, sections[i + 1].hdr.sh_name, i);
       ++i;
+    } else {
+      assert(sec.relocs.empty() && "relocations in section without .rela");
     }
   }
 
@@ -1430,8 +1418,14 @@ void AssemblerElf<Derived>::eh_write_fde_len(const u32 fde_off) noexcept {
   const u32 len = sec_eh_frame.data.size() - fde_off - sizeof(u32);
   *reinterpret_cast<u32 *>(sec_eh_frame.data.data() + fde_off) = len;
   if (cur_personality_func_addr != INVALID_SYM_REF) {
+    DataSection &except_table =
+        get_or_create_section(secref_except_table,
+                              elf::sec_off(".rela.gcc_except_table"),
+                              SHT_PROGBITS,
+                              SHF_ALLOC,
+                              8);
     derived()->reloc_eh_frame_pc32(
-        EXCEPT_TABLE_SYM_REF, fde_off + 17, sec_except_table.data.size());
+        except_table.sym, fde_off + 17, except_table.data.size());
   }
 }
 
@@ -1476,7 +1470,7 @@ void AssemblerElf<Derived>::except_encode_func() noexcept {
   except_encoded_call_sites.push_back(0);
   except_encoded_call_sites.push_back(0);
 
-  auto &except_table = sec_except_table.data;
+  auto &except_table = get_section(secref_except_table).data;
   // write the lsda (see
   // https://github.com/llvm/llvm-project/blob/main/libcxxabi/src/cxa_personality.cpp#L60)
   except_table.push_back(dwarf::DW_EH_PE_omit); // lpStartEncoding
@@ -1513,7 +1507,7 @@ void AssemblerElf<Derived>::except_encode_func() noexcept {
     // in reverse order since indices are negative
     size_t off = except_table.size() - sizeof(u32) * 2;
     for (auto sym : except_type_info_table) {
-      derived()->reloc_except_table_pc32(sym, off, 0);
+      derived()->reloc_pc32(secref_except_table, sym, off, 0);
       off -= sizeof(u32);
     }
 

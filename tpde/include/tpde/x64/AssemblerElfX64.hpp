@@ -82,7 +82,6 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
   }
 
   void reloc_eh_frame_pc32(SymRef target, u32 off, i32 addend) noexcept;
-  void reloc_except_table_pc32(SymRef target, u32 off, i32 addend) noexcept;
 
   void eh_write_initial_cie_instrs() noexcept;
 
@@ -264,11 +263,6 @@ inline void AssemblerElfX64::reloc_eh_frame_pc32(const SymRef target,
                                                  const u32 off,
                                                  const i32 addend) noexcept {
   reloc_sec(sec_eh_frame, target, R_X86_64_PC32, off, addend);
-}
-
-inline void AssemblerElfX64::reloc_except_table_pc32(
-    const SymRef target, const u32 off, const i32 addend) noexcept {
-  reloc_sec(sec_except_table, target, R_X86_64_PC32, off, addend);
 }
 
 inline void AssemblerElfX64::eh_write_initial_cie_instrs() noexcept {
