@@ -73,7 +73,9 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
   void reloc_text_pc32(SymRef sym, u32 text_imm32_off, i32 addend) noexcept;
   void reloc_text_got(SymRef sym, u32 text_imm32_off, i32 addend) noexcept;
 
-  void reloc_abs_init(SymRef target, bool init, u32 off, i32 addend) noexcept;
+  void reloc_abs(SecRef sec, SymRef target, u32 off, i32 addend) noexcept {
+    reloc_sec(sec, target, R_X86_64_64, off, addend);
+  }
 
   void reloc_data_abs(SymRef target,
                       bool read_only,
@@ -261,17 +263,6 @@ inline void AssemblerElfX64::reloc_text_got(const SymRef sym,
                                             const u32 text_imm32_off,
                                             const i32 addend) noexcept {
   reloc_text(sym, R_X86_64_GOTPCREL, text_imm32_off, addend);
-}
-
-inline void AssemblerElfX64::reloc_abs_init(const SymRef target,
-                                            const bool init,
-                                            const u32 off,
-                                            const i32 addend) noexcept {
-  if (init) {
-    reloc_sec(sec_init_array, target, R_X86_64_64, off, addend);
-  } else {
-    reloc_sec(sec_fini_array, target, R_X86_64_64, off, addend);
-  }
 }
 
 inline void AssemblerElfX64::reloc_data_abs(const SymRef target,

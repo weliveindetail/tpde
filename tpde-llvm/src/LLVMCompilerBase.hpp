@@ -579,27 +579,25 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
       }
 
       const auto is_ctor = (gv->getName() == "llvm.global_ctors");
-      u32 off;
-      // TODO(ts): this hardcodes the ELF assembler
       if (is_ctor) {
         std::sort(functions.begin(), functions.end(), [](auto &lhs, auto &rhs) {
           return lhs.second < rhs.second;
         });
-        auto &sec = this->assembler.sec_init_array;
-        off = sec.data.size();
-        sec.data.resize(sec.data.size() + functions.size() * sizeof(uint64_t));
       } else {
         std::sort(functions.begin(), functions.end(), [](auto &lhs, auto &rhs) {
           return lhs.second > rhs.second;
         });
-        auto &sec = this->assembler.sec_fini_array;
-        off = sec.data.size();
-        sec.data.resize(sec.data.size() + functions.size() * sizeof(uint64_t));
       }
 
+      // TODO(ts): this hardcodes the ELF assembler
+      auto secref = this->assembler.get_structor_section(is_ctor);
+      auto &sec = this->assembler.get_section(secref);
+      u32 off = sec.data.size();
+      sec.data.resize(sec.data.size() + functions.size() * sizeof(u64));
+
       for (auto i = 0u; i < functions.size(); ++i) {
-        this->assembler.reloc_abs_init(
-            functions[i].first, is_ctor, off + i * sizeof(u64), 0);
+        this->assembler.reloc_abs(
+            secref, functions[i].first, off + i * sizeof(u64), 0);
       }
       continue;
     }

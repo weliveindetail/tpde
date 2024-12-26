@@ -84,7 +84,9 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
   // relocs
   void reloc_text_call(SymRef target, u32 off) noexcept;
 
-  void reloc_abs_init(SymRef target, bool init, u32 off, i32 addend) noexcept;
+  void reloc_abs(SecRef sec, SymRef target, u32 off, i32 addend) noexcept {
+    reloc_sec(sec, target, R_AARCH64_ABS64, off, addend);
+  }
 
   void reloc_data_abs(SymRef target,
                       bool read_only,
@@ -394,17 +396,6 @@ inline void
 inline void AssemblerElfA64::reloc_text_call(const SymRef target,
                                              const u32 off) noexcept {
   reloc_text(target, R_AARCH64_CALL26, off, 0);
-}
-
-inline void AssemblerElfA64::reloc_abs_init(const SymRef target,
-                                            const bool init,
-                                            const u32 off,
-                                            const i32 addend) noexcept {
-  if (init) {
-    reloc_sec(sec_init_array, target, R_AARCH64_ABS64, off, addend);
-  } else {
-    reloc_sec(sec_fini_array, target, R_AARCH64_ABS64, off, addend);
-  }
 }
 
 inline void AssemblerElfA64::reloc_data_abs(const SymRef target,
