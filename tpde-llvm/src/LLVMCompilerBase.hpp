@@ -623,21 +623,16 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
 
     u32 off;
     auto read_only = gv->isConstant();
+    auto sec = this->assembler.get_data_section(read_only, !relocs.empty());
     auto sym = global_sym(gv);
-    this->assembler.sym_def_predef_data(sym,
-                                        read_only,
-                                        !relocs.empty(),
-                                        data,
-                                        gv->getAlign().valueOrOne().value(),
-                                        &off);
+    this->assembler.sym_def_predef_data(
+        sec, sym, data, gv->getAlign().valueOrOne().value(), &off);
     for (auto &[inner_off, addend, target, type] : relocs) {
       if (type == RelocInfo::RELOC_ABS) {
-        this->assembler.reloc_data_abs(
-            target, read_only, off + inner_off, addend);
+        this->assembler.reloc_abs(sec, target, off + inner_off, addend);
       } else {
         assert(type == RelocInfo::RELOC_PC32);
-        this->assembler.reloc_data_pc32(
-            target, read_only, off + inner_off, addend);
+        this->assembler.reloc_pc32(sec, target, off + inner_off, addend);
       }
     }
   }
@@ -3265,9 +3260,10 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
 
   u32 off;
   u8 tmp[8] = {};
+  auto rodata = this->assembler.get_data_section(true, true);
   const auto addr_sym = this->assembler.sym_def_data(
-      {}, {tmp, sizeof(tmp)}, 8, true, true, true, false, &off);
-  this->assembler.reloc_data_abs(sym, true, off, 0);
+      rodata, {}, {tmp, sizeof(tmp)}, 8, true, false, &off);
+  this->assembler.reloc_abs(rodata, sym, off, 0);
 
   type_info_syms.emplace_back(value, addr_sym);
   return addr_sym;

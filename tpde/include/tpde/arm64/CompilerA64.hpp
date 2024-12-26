@@ -1155,9 +1155,11 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::start_func(
 
         u32 off;
         u8 tmp[8] = {};
+
+        auto rodata = this->assembler.get_data_section(true, true);
         personality_sym = this->assembler.sym_def_data(
-            {}, {tmp, sizeof(tmp)}, 8, true, true, true, false, &off);
-        this->assembler.reloc_data_abs(fn_sym, true, off, 0);
+            rodata, {}, {tmp, sizeof(tmp)}, 8, true, false, &off);
+        this->assembler.reloc_abs(rodata, fn_sym, off, 0);
 
         personality_syms.emplace_back(personality_func, personality_sym);
       }
@@ -1866,11 +1868,11 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     ScratchReg scratch{derived()};
     const auto tmp = scratch.alloc_gp();
 
-    auto sym = this->assembler.sym_def_data("",
+    auto rodata = this->assembler.get_data_section(true, false);
+    auto sym = this->assembler.sym_def_data(rodata,
+                                            "",
                                             {data.data(), size},
                                             16,
-                                            /*read_only=*/true,
-                                            /*relocaatable=*/false,
                                             /*local=*/true,
                                             /*weak=*/false);
     this->assembler.reloc_text(

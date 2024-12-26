@@ -191,7 +191,7 @@ struct AssemblerElf {
   std::vector<Elf64_Sym> global_symbols, local_symbols;
 
   std::vector<char> strtab;
-  DataSection sec_text, sec_data, sec_rodata, sec_relrodata;
+  DataSection sec_text;
   u32 sec_bss_size = 0;
 
   /// Unwind Info
@@ -295,10 +295,15 @@ public:
   }
 
 private:
+  SecRef secref_rodata = INVALID_SEC_REF;
+  SecRef secref_relro = INVALID_SEC_REF;
+  SecRef secref_data = INVALID_SEC_REF;
+
   SecRef secref_init_array = INVALID_SEC_REF;
   SecRef secref_fini_array = INVALID_SEC_REF;
 
 public:
+  SecRef get_data_section(bool rodata, bool relro = false) noexcept;
   SecRef get_structor_section(bool init) noexcept;
 
   [[nodiscard]] SymRef sym_add_undef(std::string_view name,
@@ -312,21 +317,23 @@ public:
   [[nodiscard]] SymRef
       sym_predef_data(std::string_view name, bool local, bool weak) noexcept;
 
-  void sym_def_predef_data(SymRef sym,
-                           bool read_only,
-                           bool relocatable,
+  void sym_def_predef_data(SecRef sec,
+                           SymRef sym,
                            std::span<const u8> data,
                            u32 align,
                            u32 *off) noexcept;
 
-  [[nodiscard]] SymRef sym_def_data(std::string_view name,
+  [[nodiscard]] SymRef sym_def_data(SecRef sec,
+                                    std::string_view name,
                                     std::span<const u8> data,
                                     u32 align,
-                                    bool read_only,
-                                    bool relocatable,
                                     bool local,
                                     bool weak,
-                                    u32 *off = nullptr);
+                                    u32 *off = nullptr) {
+    SymRef sym = sym_predef_data(name, local, weak);
+    sym_def_predef_data(sec, sym, data, align, off);
+    return sym;
+  }
 
   [[nodiscard]] SymRef sym_def_bss(std::string_view name,
                                    u32 size,
@@ -621,13 +628,8 @@ constexpr static std::span<const char> SECTION_NAMES = {
     ".symtab\0"
     ".strtab\0"
     ".shstrtab\0"
-    ".data\0"
     ".bss\0"
-    ".rodata\0"
     ".rela.text\0"
-    ".data.rel.ro\0"
-    ".rela.data.rel.ro\0"
-    ".rela.data\0"
     ".gcc_except_table\0"
     ".rela.gcc_except_table\0"};
 
@@ -639,9 +641,8 @@ constexpr static std::span<const char> SHSTRTAB = {
     ".symtab\0"
     ".strtab\0"
     ".shstrtab\0"
-    ".data\0"
     ".bss\0"
-    ".rodata\0"
+    ".rela.rodata\0"
     ".rela.text\0"
     ".rela.data.rel.ro\0"
     ".rela.data\0"
@@ -708,6 +709,24 @@ consteval static u32 sec_count() {
 
 template <typename Derived>
 typename AssemblerElf<Derived>::SecRef
+    AssemblerElf<Derived>::get_data_section(bool rodata, bool relro) noexcept {
+  SecRef &secref = !rodata ? secref_data : relro ? secref_relro : secref_rodata;
+  if (secref == INVALID_SEC_REF) [[unlikely]] {
+    unsigned idx = sections.size();
+    unsigned off_r = !rodata ? elf::sec_off(".rela.data")
+                     : relro ? elf::sec_off(".rela.data.rel.ro")
+                             : elf::sec_off(".rela.rodata");
+    unsigned flags = SHF_ALLOC | (rodata ? 0 : SHF_WRITE);
+    sections.push_back(DataSection(SHT_PROGBITS, flags, off_r + 5));
+    sections[idx].hdr.sh_addralign = 16;
+    sections.push_back(DataSection(SHT_RELA, 0, off_r));
+    secref = static_cast<SecRef>(idx);
+  }
+  return secref;
+}
+
+template <typename Derived>
+typename AssemblerElf<Derived>::SecRef
     AssemblerElf<Derived>::get_structor_section(bool init) noexcept {
   // TODO: comdat, priorities
   SecRef &secref = init ? secref_init_array : secref_fini_array;
@@ -759,123 +778,24 @@ void AssemblerElf<Derived>::init_special_symbols() noexcept {
 }
 
 template <typename Derived>
-void AssemblerElf<Derived>::sym_def_predef_data(SymRef sym_ref,
-                                                const bool read_only,
-                                                const bool relocatable,
+void AssemblerElf<Derived>::sym_def_predef_data(SecRef sec_ref,
+                                                SymRef sym_ref,
                                                 std::span<const u8> data,
                                                 const u32 align,
                                                 u32 *off) noexcept {
-  Elf64_Sym *sym = sym_ptr(sym_ref);
-
-  assert((align & (align - 1)) == 0);
-  size_t pos;
-  size_t sec_idx;
-
-  if (read_only) {
-    if (relocatable) {
-      sec_idx = elf::sec_idx(".data.rel.ro");
-      pos = util::align_up(sec_relrodata.data.size(), align);
-      sec_relrodata.data.resize(pos);
-      sec_relrodata.data.insert(
-          sec_relrodata.data.end(), data.begin(), data.end());
-    } else {
-      sec_idx = elf::sec_idx(".rodata");
-      pos = util::align_up(sec_rodata.data.size(), align);
-      sec_rodata.data.resize(pos);
-      sec_rodata.data.insert(sec_rodata.data.end(), data.begin(), data.end());
-    }
-  } else {
-    sec_idx = elf::sec_idx(".data");
-    pos = util::align_up(sec_data.data.size(), align);
-    sec_data.data.resize(pos);
-    sec_data.data.insert(sec_data.data.end(), data.begin(), data.end());
-  }
+  DataSection &sec = get_section(sec_ref);
+  size_t pos = util::align_up(sec.data.size(), align);
+  sec.data.resize(pos);
+  sec.data.insert(sec.data.end(), data.begin(), data.end());
 
   if (off) {
     *off = pos;
   }
 
-  sym->st_shndx = static_cast<Elf64_Section>(sec_idx);
+  Elf64_Sym *sym = sym_ptr(sym_ref);
+  sym->st_shndx = static_cast<Elf64_Section>(sec_ref);
   sym->st_value = pos;
   sym->st_size = data.size();
-}
-
-template <typename Derived>
-typename AssemblerElf<Derived>::SymRef
-    AssemblerElf<Derived>::sym_def_data(const std::string_view name,
-                                        const std::span<const u8> data,
-                                        const u32 align,
-                                        const bool read_only,
-                                        const bool relocatable,
-                                        const bool local,
-                                        const bool weak,
-                                        u32 *off) {
-  size_t str_off = 0;
-  if (!name.empty()) {
-    str_off = strtab.size();
-    strtab.insert(strtab.end(), name.begin(), name.end());
-    strtab.emplace_back('\0');
-  }
-
-  uint8_t info;
-  if (local) {
-    assert(!weak);
-    info = ELF64_ST_INFO(STB_LOCAL, STT_OBJECT);
-  } else if (weak) {
-    info = ELF64_ST_INFO(STB_WEAK, STT_OBJECT);
-  } else {
-    info = ELF64_ST_INFO(STB_GLOBAL, STT_OBJECT);
-  }
-
-  auto sym = Elf64_Sym{.st_name = static_cast<Elf64_Word>(str_off),
-                       .st_info = info,
-                       .st_other = STV_DEFAULT,
-                       .st_shndx = static_cast<Elf64_Section>(0),
-                       .st_value = 0,
-                       .st_size = 0};
-
-
-  assert((align & (align - 1)) == 0);
-  size_t pos;
-  size_t sec_idx;
-
-  if (read_only) {
-    if (relocatable) {
-      sec_idx = elf::sec_idx(".data.rel.ro");
-      pos = util::align_up(sec_relrodata.data.size(), align);
-      sec_relrodata.data.resize(pos);
-      sec_relrodata.data.insert(
-          sec_relrodata.data.end(), data.begin(), data.end());
-    } else {
-      sec_idx = elf::sec_idx(".rodata");
-      pos = util::align_up(sec_rodata.data.size(), align);
-      sec_rodata.data.resize(pos);
-      sec_rodata.data.insert(sec_rodata.data.end(), data.begin(), data.end());
-    }
-  } else {
-    sec_idx = elf::sec_idx(".data");
-    pos = util::align_up(sec_data.data.size(), align);
-    sec_data.data.resize(pos);
-    sec_data.data.insert(sec_data.data.end(), data.begin(), data.end());
-  }
-
-  sym.st_shndx = static_cast<Elf64_Section>(sec_idx);
-  sym.st_value = pos;
-  sym.st_size = data.size();
-
-  if (off) {
-    *off = pos;
-  }
-
-  if (local) {
-    local_symbols.push_back(sym);
-    assert(local_symbols.size() < 0x8000'0000);
-    return static_cast<SymRef>(local_symbols.size() - 1);
-  } else {
-    global_symbols.push_back(sym);
-    assert(global_symbols.size() < 0x8000'0000);
-    return static_cast<SymRef>((global_symbols.size() - 1) | 0x8000'0000);
-  }
 }
 
 template <typename Derived>
@@ -982,9 +902,9 @@ void AssemblerElf<Derived>::reset() noexcept {
   local_symbols.clear();
   strtab.clear();
   sec_text = {};
-  sec_data = {};
-  sec_rodata = {};
-  sec_relrodata = {};
+  secref_rodata = INVALID_SEC_REF;
+  secref_relro = INVALID_SEC_REF;
+  secref_data = INVALID_SEC_REF;
   secref_init_array = INVALID_SEC_REF;
   secref_fini_array = INVALID_SEC_REF;
   sec_eh_frame = {};
@@ -1018,12 +938,6 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
   obj_size += SHSTRTAB.size();
   obj_size +=
       sec_text.data.size() + sec_text.relocs.size() + sizeof(Elf64_Rela);
-  obj_size +=
-      sec_data.data.size() + sec_data.relocs.size() + sizeof(Elf64_Rela);
-  obj_size +=
-      sec_rodata.data.size() + sec_rodata.relocs.size() + sizeof(Elf64_Rela);
-  obj_size += sec_relrodata.data.size() + sec_relrodata.relocs.size() +
-              sizeof(Elf64_Rela);
   obj_size += sec_eh_frame.data.size() + sec_eh_frame.relocs.size() +
               sizeof(Elf64_Rela);
   obj_size += sec_except_table.data.size() + sec_except_table.relocs.size() +
@@ -1204,23 +1118,6 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     hdr->sh_addralign = 1;
   }
 
-  // .data
-  {
-    const auto size = util::align_up(sec_data.data.size(), 16);
-    const auto pad = size - sec_data.data.size();
-    const auto sh_off = out.size();
-    out.insert(out.end(), sec_data.data.begin(), sec_data.data.end());
-    out.resize(out.size() + pad);
-
-    auto *hdr = sec_hdr(sec_idx(".data"));
-    hdr->sh_name = sec_off(".data");
-    hdr->sh_type = SHT_PROGBITS;
-    hdr->sh_flags = SHF_ALLOC | SHF_WRITE;
-    hdr->sh_offset = sh_off;
-    hdr->sh_size = size;
-    hdr->sh_addralign = 16;
-  }
-
   // .bss
   {
     const auto size = util::align_up(sec_bss_size, 16);
@@ -1235,53 +1132,9 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     hdr->sh_addralign = 16;
   }
 
-  // .rodata
-  {
-    const auto size = util::align_up(sec_rodata.data.size(), 16);
-    const auto pad = size - sec_rodata.data.size();
-    const auto sh_off = out.size();
-    out.insert(out.end(), sec_rodata.data.begin(), sec_rodata.data.end());
-    out.resize(out.size() + pad);
-
-    auto *hdr = sec_hdr(sec_idx(".rodata"));
-    hdr->sh_name = sec_off(".rodata");
-    hdr->sh_type = SHT_PROGBITS;
-    hdr->sh_flags = SHF_ALLOC;
-    hdr->sh_offset = sh_off;
-    hdr->sh_size = size;
-    hdr->sh_addralign = 16;
-  }
-
   // .rela.text
   write_reloc_sec(
       sec_text, sec_idx(".rela.text"), sec_off(".rela.text"), sec_idx(".text"));
-
-  // .data.rel.ro
-  {
-    const auto size = util::align_up(sec_relrodata.data.size(), 16);
-    const auto pad = size - sec_relrodata.data.size();
-    const auto sh_off = out.size();
-    out.insert(out.end(), sec_relrodata.data.begin(), sec_relrodata.data.end());
-    out.resize(out.size() + pad);
-
-    auto *hdr = sec_hdr(sec_idx(".data.rel.ro"));
-    hdr->sh_name = sec_off(".data.rel.ro");
-    hdr->sh_type = SHT_PROGBITS;
-    hdr->sh_flags = SHF_ALLOC | SHF_WRITE;
-    hdr->sh_offset = sh_off;
-    hdr->sh_size = size;
-    hdr->sh_addralign = 16;
-  }
-
-  // .rela.data.rel.ro
-  write_reloc_sec(sec_relrodata,
-                  sec_idx(".rela.data.rel.ro"),
-                  sec_off(".rela.data.rel.ro"),
-                  sec_idx(".data.rel.ro"));
-
-  // .rela.data
-  write_reloc_sec(
-      sec_data, sec_idx(".rela.data"), sec_off(".rela.data"), sec_idx(".data"));
 
   // .gcc_except_table
   {
@@ -1768,6 +1621,7 @@ AssemblerElf<Derived>::Mapper<SymbolResolver>::~Mapper() {
   mapped_size = 0;
 }
 
+#if 0
 template <typename Derived>
 template <SymbolResolver SymbolResolver>
 bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
@@ -1799,11 +1653,11 @@ bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
     }
   }
 
-#ifdef __x86_64__
+  #ifdef __x86_64__
   constexpr size_t PLT_ENTRY_SIZE = 16;
-#elif defined(__aarch64__)
+  #elif defined(__aarch64__)
   constexpr size_t PLT_ENTRY_SIZE = 16;
-#endif
+  #endif
 
   const u32 plt_size = num_plt_entries * PLT_ENTRY_SIZE;
   const u32 got_size = num_got_entries * 8;
@@ -1898,7 +1752,7 @@ bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
 
       auto *r_addr = mapped_addr + sec_offs[idx] + reloc.r_offset;
       switch (reloc_ty) {
-#ifdef __x86_64__
+  #ifdef __x86_64__
       case R_X86_64_64: {
         *reinterpret_cast<u64 *>(r_addr) =
             reinterpret_cast<i64>(s_addr) + reloc.r_addend;
@@ -1977,7 +1831,7 @@ bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
             reinterpret_cast<u64>(r_addr);
         break;
       }
-#elif defined(__aarch64__)
+  #elif defined(__aarch64__)
       case R_AARCH64_PREL32: {
         auto P = reinterpret_cast<uintptr_t>(r_addr);
         auto val = reinterpret_cast<uintptr_t>(s_addr) + reloc.r_addend - P;
@@ -2022,7 +1876,7 @@ bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
         *reinterpret_cast<u32 *>(r_addr) = de64_BL((off << 38) >> 38);
         break;
       }
-#endif
+  #endif
       default:
         TPDE_LOG_ERR("Encountered unknown relocation: {}", reloc_ty);
         assert(0);
@@ -2074,4 +1928,5 @@ bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
 
   return true;
 }
+#endif
 } // namespace tpde

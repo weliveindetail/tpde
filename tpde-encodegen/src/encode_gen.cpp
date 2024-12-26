@@ -249,8 +249,13 @@ bool generate_cp_entry_sym(GenerationState &state,
                  bytes_str);
   state.fmt_line(buf,
                  indent + 4,
-                 "{} = derived()->assembler.sym_def_data(\"\", data, {}, true, "
-                 "false, true, false);",
+                 "auto sec = derived()->assembler.get_data_section(true);",
+                 sym_name,
+                 align);
+  state.fmt_line(buf,
+                 indent + 4,
+                 "{} = derived()->assembler.sym_def_data(sec, \"\", data, {}, "
+                 "true, false);",
                  sym_name,
                  align);
   state.fmt_line(buf, indent, "}}");

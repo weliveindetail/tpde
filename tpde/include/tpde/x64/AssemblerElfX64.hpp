@@ -77,14 +77,9 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
     reloc_sec(sec, target, R_X86_64_64, off, addend);
   }
 
-  void reloc_data_abs(SymRef target,
-                      bool read_only,
-                      u32 off,
-                      i32 addend) noexcept;
-  void reloc_data_pc32(SymRef target,
-                       bool read_only,
-                       u32 off,
-                       i32 addend) noexcept;
+  void reloc_pc32(SecRef sec, SymRef target, u32 off, i32 addend) noexcept {
+    reloc_sec(sec, target, R_X86_64_PC32, off, addend);
+  }
 
   void reloc_eh_frame_pc32(SymRef target, u32 off, i32 addend) noexcept;
   void reloc_except_table_pc32(SymRef target, u32 off, i32 addend) noexcept;
@@ -263,28 +258,6 @@ inline void AssemblerElfX64::reloc_text_got(const SymRef sym,
                                             const u32 text_imm32_off,
                                             const i32 addend) noexcept {
   reloc_text(sym, R_X86_64_GOTPCREL, text_imm32_off, addend);
-}
-
-inline void AssemblerElfX64::reloc_data_abs(const SymRef target,
-                                            const bool read_only,
-                                            const u32 off,
-                                            const i32 addend) noexcept {
-  if (read_only) {
-    reloc_sec(sec_relrodata, target, R_X86_64_64, off, addend);
-  } else {
-    reloc_sec(sec_data, target, R_X86_64_64, off, addend);
-  }
-}
-
-inline void AssemblerElfX64::reloc_data_pc32(const SymRef target,
-                                             const bool read_only,
-                                             const u32 off,
-                                             const i32 addend) noexcept {
-  if (read_only) {
-    reloc_sec(sec_relrodata, target, R_X86_64_PC32, off, addend);
-  } else {
-    reloc_sec(sec_data, target, R_X86_64_PC32, off, addend);
-  }
 }
 
 inline void AssemblerElfX64::reloc_eh_frame_pc32(const SymRef target,
