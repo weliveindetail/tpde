@@ -1696,49 +1696,91 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
     IRValueRef inst_idx, llvm::Instruction *inst, FloatBinaryOp op) noexcept {
   auto *inst_ty = inst->getType();
+  auto *scalar_ty = inst_ty->getScalarType();
 
-  if (inst_ty->isVectorTy()) {
+  const bool is_double = scalar_ty->isDoubleTy();
+  if (!scalar_ty->isFloatTy() && !scalar_ty->isDoubleTy()) {
     return false;
   }
-
-  const bool is_double = inst_ty->isDoubleTy();
-  if (!inst_ty->isFloatTy() && !inst_ty->isDoubleTy()) {
-    return false;
-  }
-
-  auto res = this->result_ref_lazy(inst_idx, 0);
 
   if (op == FloatBinaryOp::rem) {
+    if (inst_ty->isVectorTy()) {
+      return false;
+    }
     // TODO(ts): encodegen cannot encode calls atm
     derived()->create_frem_calls(llvm_val_idx(inst->getOperand(0)),
                                  llvm_val_idx(inst->getOperand(1)),
-                                 std::move(res),
+                                 this->result_ref_lazy(inst_idx, 0),
                                  is_double);
     return true;
   }
 
   using EncodeFnTy =
       bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
-  std::array<std::array<EncodeFnTy, 2>, 4> encode_ptrs = {
-      {
-       {&Derived::encode_addf32, &Derived::encode_addf64},
-       {&Derived::encode_subf32, &Derived::encode_subf64},
-       {&Derived::encode_mulf32, &Derived::encode_mulf64},
-       {&Derived::encode_divf32, &Derived::encode_divf64},
-       }
-  };
+  EncodeFnTy encode_fn = nullptr;
 
+  switch (this->adaptor->values[inst_idx].type) {
+    using enum LLVMBasicValType;
+  case f32:
+    assert(!is_double);
+    switch (op) {
+    case FloatBinaryOp::add: encode_fn = &Derived::encode_addf32; break;
+    case FloatBinaryOp::sub: encode_fn = &Derived::encode_subf32; break;
+    case FloatBinaryOp::mul: encode_fn = &Derived::encode_mulf32; break;
+    case FloatBinaryOp::div: encode_fn = &Derived::encode_divf32; break;
+    default: TPDE_UNREACHABLE("invalid FloatBinaryOp");
+    }
+    break;
+  case f64:
+    assert(is_double);
+    switch (op) {
+    case FloatBinaryOp::add: encode_fn = &Derived::encode_addf64; break;
+    case FloatBinaryOp::sub: encode_fn = &Derived::encode_subf64; break;
+    case FloatBinaryOp::mul: encode_fn = &Derived::encode_mulf64; break;
+    case FloatBinaryOp::div: encode_fn = &Derived::encode_divf64; break;
+    default: TPDE_UNREACHABLE("invalid FloatBinaryOp");
+    }
+    break;
+  case v64:
+    assert(!is_double);
+    switch (op) {
+    case FloatBinaryOp::add: encode_fn = &Derived::encode_addv2f32; break;
+    case FloatBinaryOp::sub: encode_fn = &Derived::encode_subv2f32; break;
+    case FloatBinaryOp::mul: encode_fn = &Derived::encode_mulv2f32; break;
+    case FloatBinaryOp::div: encode_fn = &Derived::encode_divv2f32; break;
+    default: TPDE_UNREACHABLE("invalid FloatBinaryOp");
+    }
+    break;
+  case v128:
+    if (!is_double) {
+      switch (op) {
+      case FloatBinaryOp::add: encode_fn = &Derived::encode_addv4f32; break;
+      case FloatBinaryOp::sub: encode_fn = &Derived::encode_subv4f32; break;
+      case FloatBinaryOp::mul: encode_fn = &Derived::encode_mulv4f32; break;
+      case FloatBinaryOp::div: encode_fn = &Derived::encode_divv4f32; break;
+      default: TPDE_UNREACHABLE("invalid FloatBinaryOp");
+      }
+    } else {
+      switch (op) {
+      case FloatBinaryOp::add: encode_fn = &Derived::encode_addv2f64; break;
+      case FloatBinaryOp::sub: encode_fn = &Derived::encode_subv2f64; break;
+      case FloatBinaryOp::mul: encode_fn = &Derived::encode_mulv2f64; break;
+      case FloatBinaryOp::div: encode_fn = &Derived::encode_divv2f64; break;
+      default: TPDE_UNREACHABLE("invalid FloatBinaryOp");
+      }
+    }
+    break;
+  default: TPDE_UNREACHABLE("invalid basic type for float binary op");
+  }
+
+  auto res = this->result_ref_lazy(inst_idx, 0);
   auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
   auto rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
   ScratchReg res_scratch{derived()};
-
-  if (!(derived()->*(encode_ptrs[static_cast<u32>(op)][is_double ? 1 : 0]))(
-          std::move(lhs), std::move(rhs), res_scratch)) {
+  if (!(derived()->*encode_fn)(std::move(lhs), std::move(rhs), res_scratch)) {
     return false;
   }
-
   this->set_value(res, res_scratch);
-
   return true;
 }
 

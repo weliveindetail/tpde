@@ -33,6 +33,18 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef __uint128_t u128;
 
+typedef u8 v8u8 __attribute__((vector_size(8)));
+typedef u16 v4u16 __attribute__((vector_size(8)));
+typedef u32 v2u32 __attribute__((vector_size(8)));
+typedef float v2f32 __attribute__((vector_size(8)));
+
+typedef u8 v16u8 __attribute__((vector_size(16)));
+typedef u16 v8u16 __attribute__((vector_size(16)));
+typedef u32 v4u32 __attribute__((vector_size(16)));
+typedef u64 v2u64 __attribute__((vector_size(16)));
+typedef float v4f32 __attribute__((vector_size(16)));
+typedef double v2f64 __attribute__((vector_size(16)));
+
 // clang-format off
 
 // --------------------------
@@ -334,6 +346,21 @@ double TARGET_V1 subf64(double a, double b) { return (a - b); }
 double TARGET_V1 mulf64(double a, double b) { return (a * b); }
 double TARGET_V1 divf64(double a, double b) { return (a / b); }
 //double TARGET_V1 remf64(double a, double b) { return __builtin_fmod(a, b); }
+
+v2f32 TARGET_V1 addv2f32(v2f32 a, v2f32 b) { return (a + b); }
+v2f32 TARGET_V1 subv2f32(v2f32 a, v2f32 b) { return (a - b); }
+v2f32 TARGET_V1 mulv2f32(v2f32 a, v2f32 b) { return (a * b); }
+v2f32 TARGET_V1 divv2f32(v2f32 a, v2f32 b) { return (a / b); }
+
+v4f32 TARGET_V1 addv4f32(v4f32 a, v4f32 b) { return (a + b); }
+v4f32 TARGET_V1 subv4f32(v4f32 a, v4f32 b) { return (a - b); }
+v4f32 TARGET_V1 mulv4f32(v4f32 a, v4f32 b) { return (a * b); }
+v4f32 TARGET_V1 divv4f32(v4f32 a, v4f32 b) { return (a / b); }
+
+v2f64 TARGET_V1 addv2f64(v2f64 a, v2f64 b) { return (a + b); }
+v2f64 TARGET_V1 subv2f64(v2f64 a, v2f64 b) { return (a - b); }
+v2f64 TARGET_V1 mulv2f64(v2f64 a, v2f64 b) { return (a * b); }
+v2f64 TARGET_V1 divv2f64(v2f64 a, v2f64 b) { return (a / b); }
 
 float TARGET_V1 fnegf32(float a) { return (-a); }
 double TARGET_V1 fnegf64(double a) { return (-a); }

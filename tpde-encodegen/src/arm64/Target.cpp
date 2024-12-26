@@ -976,6 +976,30 @@ void EncodingTargetArm64::get_inst_candidates(
   } else if (Name == "UCVTFUXDri") {
     handle_default("UCVTFdx"); // TODO: correct?
 
+  } else if (Name == "FADDv2f32") {
+    handle_default("FADD2s");
+  } else if (Name == "FADDv4f32") {
+    handle_default("FADD4s");
+  } else if (Name == "FADDv2f64") {
+    handle_default("FADD2d");
+  } else if (Name == "FSUBv2f32") {
+    handle_default("FSUB2s");
+  } else if (Name == "FSUBv4f32") {
+    handle_default("FSUB4s");
+  } else if (Name == "FSUBv2f64") {
+    handle_default("FSUB2d");
+  } else if (Name == "FMULv2f32") {
+    handle_default("FMUL2s");
+  } else if (Name == "FMULv4f32") {
+    handle_default("FMUL4s");
+  } else if (Name == "FMULv2f64") {
+    handle_default("FMUL2d");
+  } else if (Name == "FDIVv2f32") {
+    handle_default("FDIV2s");
+  } else if (Name == "FDIVv4f32") {
+    handle_default("FDIV4s");
+  } else if (Name == "FDIVv2f64") {
+    handle_default("FDIV2d");
   } else if (Name == "CNTv8i8") {
     handle_default("CNT8b");
   } else if (Name == "UADDLVv8i8v") {
