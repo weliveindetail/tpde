@@ -629,10 +629,24 @@ constexpr static std::span<const char> SECTION_NAMES = {
     ".rela.data.rel.ro\0"
     ".rela.data\0"
     ".gcc_except_table\0"
+    ".rela.gcc_except_table\0"};
+
+// TODO(ts): this is linux-specific, no?
+constexpr static std::span<const char> SHSTRTAB = {
+    "\0" // first section is the null-section
+    ".note.GNU-stack\0"
+    ".rela.eh_frame\0"
+    ".symtab\0"
+    ".strtab\0"
+    ".shstrtab\0"
+    ".data\0"
+    ".bss\0"
+    ".rodata\0"
+    ".rela.text\0"
+    ".rela.data.rel.ro\0"
+    ".rela.data\0"
     ".rela.gcc_except_table\0"
-    ".init_array\0"
     ".rela.init_array\0"
-    ".fini_array\0"
     ".rela.fini_array\0"};
 
 static void fail_constexpr_compile(const char *) {
@@ -661,11 +675,11 @@ consteval static u32 sec_idx(const std::string_view name) {
 
 consteval static u32 sec_off(const std::string_view name) {
   // skip the first null string
-  const char *data = SECTION_NAMES.data() + 1;
+  const char *data = SHSTRTAB.data() + 1;
   auto sec_name = std::string_view{data};
   while (!sec_name.empty()) {
-    if (sec_name == name) {
-      return sec_name.data() - SECTION_NAMES.data();
+    if (sec_name.ends_with(name)) {
+      return sec_name.data() + sec_name.size() - name.size() - SHSTRTAB.data();
     }
 
     data += sec_name.size() + 1;
@@ -698,22 +712,13 @@ typename AssemblerElf<Derived>::SecRef
   // TODO: comdat, priorities
   SecRef &secref = init ? secref_init_array : secref_fini_array;
   if (secref == INVALID_SEC_REF) [[unlikely]] {
-    unsigned idx =
-        init ? elf::sec_idx(".init_array") : elf::sec_idx(".fini_array");
-    [[maybe_unused]] unsigned idx_r = init ? elf::sec_idx(".rela.init_array")
-                                           : elf::sec_idx(".rela.fini_array");
-    unsigned off =
-        init ? elf::sec_off(".init_array") : elf::sec_off(".fini_array");
+    unsigned idx = sections.size();
     unsigned off_r = init ? elf::sec_off(".rela.init_array")
                           : elf::sec_off(".rela.fini_array");
-    assert(idx + 1 == idx_r);
-    if (sections.size() < idx + 2) {
-      sections.resize(idx + 2);
-    }
     unsigned type = init ? SHT_INIT_ARRAY : SHT_FINI_ARRAY;
-    sections[idx] = DataSection(type, SHF_ALLOC | SHF_WRITE, off);
+    sections.push_back(DataSection(type, SHF_ALLOC | SHF_WRITE, off_r + 5));
     sections[idx].hdr.sh_addralign = 8;
-    sections[idx + 1] = DataSection(SHT_RELA, 0, off_r);
+    sections.push_back(DataSection(SHT_RELA, 0, off_r));
     secref = static_cast<SecRef>(idx);
   }
   return secref;
@@ -722,6 +727,7 @@ typename AssemblerElf<Derived>::SecRef
 
 template <typename Derived>
 void AssemblerElf<Derived>::init_special_symbols() noexcept {
+  sections.resize(elf::sec_count());
   {
     std::string_view name = ".text";
     const auto str_off = strtab.size();
@@ -1005,11 +1011,11 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
   sec_text.data.resize(text_cur_off());
   text_reserve_end = sec_text.data.data() + sec_text.data.size();
 
-  u32 obj_size = sizeof(Elf64_Shdr) + sizeof(Elf64_Shdr) * sec_count();
+  u32 obj_size = sizeof(Elf64_Shdr) + sizeof(Elf64_Shdr) * sections.size();
   obj_size +=
       sizeof(Elf64_Sym) * (local_symbols.size() + global_symbols.size());
   obj_size += strtab.size();
-  obj_size += SECTION_NAMES.size();
+  obj_size += SHSTRTAB.size();
   obj_size +=
       sec_text.data.size() + sec_text.relocs.size() + sizeof(Elf64_Rela);
   obj_size +=
@@ -1030,7 +1036,7 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
   out.resize(sizeof(Elf64_Ehdr));
 
   const auto shdr_off = out.size();
-  out.resize(out.size() + sizeof(Elf64_Shdr) * sec_count());
+  out.resize(out.size() + sizeof(Elf64_Shdr) * sections.size());
 
   const auto sec_hdr = [shdr_off, &out](const u32 idx) {
     return reinterpret_cast<Elf64_Shdr *>(out.data() + shdr_off) + idx;
@@ -1054,7 +1060,7 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     hdr->e_shoff = shdr_off;
     hdr->e_ehsize = sizeof(Elf64_Ehdr);
     hdr->e_shentsize = sizeof(Elf64_Shdr);
-    hdr->e_shnum = sec_count();
+    hdr->e_shnum = sections.size();
     hdr->e_shstrndx = sec_idx(".shstrtab");
   }
 
@@ -1181,13 +1187,13 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
 
   // .shstrtab
   {
-    const auto size = util::align_up(SECTION_NAMES.size(), 8);
-    const auto pad = size - SECTION_NAMES.size();
+    const auto size = util::align_up(SHSTRTAB.size(), 8);
+    const auto pad = size - SHSTRTAB.size();
     const auto sh_off = out.size();
-    out.insert(out.end(),
-               reinterpret_cast<const uint8_t *>(SECTION_NAMES.data()),
-               reinterpret_cast<const uint8_t *>(SECTION_NAMES.data() +
-                                                 SECTION_NAMES.size()));
+    out.insert(
+        out.end(),
+        reinterpret_cast<const uint8_t *>(SHSTRTAB.data()),
+        reinterpret_cast<const uint8_t *>(SHSTRTAB.data() + SHSTRTAB.size()));
     out.resize(out.size() + pad);
 
     auto *hdr = sec_hdr(sec_idx(".shstrtab"));
@@ -1301,7 +1307,7 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
                   sec_off(".rela.gcc_except_table"),
                   sec_idx(".gcc_except_table"));
 
-  for (size_t i = 0; i < sections.size(); ++i) {
+  for (size_t i = sec_count(); i < sections.size(); ++i) {
     DataSection &sec = sections[i];
     if (sec.data.empty()) {
       continue;
