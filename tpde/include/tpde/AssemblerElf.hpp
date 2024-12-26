@@ -203,7 +203,7 @@ struct AssemblerElf {
   SecRef secref_fini_array = INVALID_SEC_REF;
 
   /// Unwind Info
-  DataSection sec_eh_frame;
+  SecRef secref_eh_frame = INVALID_SEC_REF;
   SecRef secref_except_table = INVALID_SEC_REF;
 
   struct ExceptCallSiteInfo {
@@ -622,8 +622,6 @@ namespace elf {
 constexpr static std::span<const char> SECTION_NAMES = {
     "\0" // first section is the null-section
     ".note.GNU-stack\0"
-    ".eh_frame\0"
-    ".rela.eh_frame\0"
     ".symtab\0"
     ".strtab\0"
     ".shstrtab\0"
@@ -768,9 +766,12 @@ typename AssemblerElf<Derived>::SecRef
 template <typename Derived>
 void AssemblerElf<Derived>::init_sections() noexcept {
   sections.resize(elf::sec_count());
-  unsigned off_r = elf::sec_off(".rela.text");
+  unsigned off_text = elf::sec_off(".rela.text");
   (void)get_or_create_section(
-      secref_text, off_r, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 16);
+      secref_text, off_text, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 16);
+  unsigned off_eh_frame = elf::sec_off(".rela.eh_frame");
+  (void)get_or_create_section(
+      secref_eh_frame, off_eh_frame, SHT_PROGBITS, SHF_ALLOC, 8);
 
   current_section = secref_text;
 }
@@ -902,12 +903,13 @@ void AssemblerElf<Derived>::reset() noexcept {
   secref_data = INVALID_SEC_REF;
   secref_init_array = INVALID_SEC_REF;
   secref_fini_array = INVALID_SEC_REF;
-  sec_eh_frame = {};
+  secref_eh_frame = INVALID_SEC_REF;
   current_section = INVALID_SEC_REF;
   text_begin = text_write_ptr = text_reserve_end = nullptr;
   cur_func = INVALID_SYM_REF;
   sec_bss_size = 0;
 
+  init_sections();
   eh_init_cie();
 }
 
@@ -917,8 +919,8 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
 
   // zero-terminate eh_frame
   // TODO(ts): this should probably go somewhere else
-  if (!sec_eh_frame.data.empty()) {
-    sec_eh_frame.data.resize(sec_eh_frame.data.size() + 4);
+  if (auto &eh_frame = get_section(secref_eh_frame); !eh_frame.data.empty()) {
+    eh_frame.data.resize(eh_frame.data.size() + 4);
   }
 
   std::vector<u8> out{};
@@ -930,15 +932,13 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     text_reserve_end = text_ptr(text_cur_off());
   }
 
-  u32 obj_size = sizeof(Elf64_Shdr) + sizeof(Elf64_Shdr) * sections.size();
+  u32 obj_size = sizeof(Elf64_Shdr) + sizeof(Elf64_Shdr) * sections.size() + 16;
   obj_size +=
       sizeof(Elf64_Sym) * (local_symbols.size() + global_symbols.size());
   obj_size += strtab.size();
   obj_size += SHSTRTAB.size();
-  obj_size += sec_eh_frame.data.size() + sec_eh_frame.relocs.size() +
-              sizeof(Elf64_Rela);
   for (const DataSection &sec : sections) {
-    obj_size += sec.data.size() + sec.relocs.size() * sizeof(Elf64_Rela);
+    obj_size += sec.data.size() + sec.relocs.size() * sizeof(Elf64_Rela) + 16;
   }
   out.reserve(obj_size);
 
@@ -1011,29 +1011,6 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     hdr->sh_offset = out.size(); // gcc seems to give empty sections an offset
     hdr->sh_addralign = 1;
   }
-
-  // .eh_frame
-  {
-    const auto size = util::align_up(sec_eh_frame.data.size(), 8);
-    const auto pad = size - sec_eh_frame.data.size();
-    const auto sh_off = out.size();
-    out.insert(out.end(), sec_eh_frame.data.begin(), sec_eh_frame.data.end());
-    out.resize(out.size() + pad);
-
-    auto *hdr = sec_hdr(sec_idx(".eh_frame"));
-    hdr->sh_name = sec_off(".eh_frame");
-    hdr->sh_type = SHT_PROGBITS;
-    hdr->sh_flags = SHF_ALLOC;
-    hdr->sh_offset = sh_off;
-    hdr->sh_size = size;
-    hdr->sh_addralign = 8;
-  }
-
-  // .rela.eh_frame
-  write_reloc_sec(sec_eh_frame,
-                  sec_idx(".rela.eh_frame"),
-                  sec_off(".rela.eh_frame"),
-                  sec_idx(".eh_frame"));
 
   // .symtab
   {
@@ -1157,8 +1134,9 @@ void AssemblerElf<Derived>::reloc_sec(DataSection &sec,
 
 template <typename Derived>
 void AssemblerElf<Derived>::eh_align_frame() noexcept {
-  while ((sec_eh_frame.data.size() & 7) != 0) {
-    sec_eh_frame.data.push_back(dwarf::DW_CFA_nop);
+  auto &data = get_section(secref_eh_frame).data;
+  while ((data.size() & 7) != 0) {
+    data.push_back(dwarf::DW_CFA_nop);
   }
 }
 
@@ -1167,9 +1145,9 @@ void AssemblerElf<Derived>::eh_write_inst(const u8 opcode,
                                           const u64 arg) noexcept {
   if ((opcode & dwarf::DWARF_CFI_PRIMARY_OPCODE_MASK) != 0) {
     assert((arg & dwarf::DWARF_CFI_PRIMARY_OPCODE_MASK) == 0);
-    sec_eh_frame.data.push_back(opcode | arg);
+    get_section(secref_eh_frame).data.push_back(opcode | arg);
   } else {
-    sec_eh_frame.data.push_back(opcode);
+    get_section(secref_eh_frame).data.push_back(opcode);
     eh_write_uleb(arg);
   }
 }
@@ -1184,7 +1162,7 @@ void AssemblerElf<Derived>::eh_write_inst(const u8 opcode,
 
 template <typename Derived>
 void AssemblerElf<Derived>::eh_write_uleb(u64 value) noexcept {
-  eh_write_uleb(sec_eh_frame.data, value);
+  eh_write_uleb(get_section(secref_eh_frame).data, value);
 }
 
 template <typename Derived>
@@ -1234,7 +1212,7 @@ template <typename Derived>
 void AssemblerElf<Derived>::eh_init_cie(SymRef personality_func_addr) noexcept {
   // write out the initial CIE
   eh_align_frame();
-  auto &data = sec_eh_frame.data;
+  auto &data = get_section(secref_eh_frame).data;
 
   // CIE layout:
   // length: u32
@@ -1303,7 +1281,8 @@ void AssemblerElf<Derived>::eh_init_cie(SymRef personality_func_addr) noexcept {
     data[off + 16 + bias] = dwarf::DW_EH_PE_pcrel | dwarf::DW_EH_PE_sdata4 |
                             dwarf::DW_EH_PE_indirect;
 
-    derived()->reloc_eh_frame_pc32(personality_func_addr, off + 17 + bias, 0);
+    derived()->reloc_pc32(
+        secref_eh_frame, personality_func_addr, off + 17 + bias, 0);
 
     // the lsa_encoding as a 4-byte pc-relative address since the whole
     // object should fit in 2gb
@@ -1331,7 +1310,7 @@ template <typename Derived>
 u32 AssemblerElf<Derived>::eh_write_fde_start() noexcept {
   eh_align_frame();
 
-  auto &data = sec_eh_frame.data;
+  auto &data = get_section(secref_eh_frame).data;
   const auto fde_off = data.size();
 
   // FDE Layout:
@@ -1375,8 +1354,9 @@ template <typename Derived>
 void AssemblerElf<Derived>::eh_write_fde_len(const u32 fde_off) noexcept {
   eh_align_frame();
 
-  const u32 len = sec_eh_frame.data.size() - fde_off - sizeof(u32);
-  *reinterpret_cast<u32 *>(sec_eh_frame.data.data() + fde_off) = len;
+  DataSection &eh_frame = get_section(secref_eh_frame);
+  const u32 len = eh_frame.data.size() - fde_off - sizeof(u32);
+  *reinterpret_cast<u32 *>(eh_frame.data.data() + fde_off) = len;
   if (cur_personality_func_addr != INVALID_SYM_REF) {
     DataSection &except_table =
         get_or_create_section(secref_except_table,
@@ -1384,8 +1364,10 @@ void AssemblerElf<Derived>::eh_write_fde_len(const u32 fde_off) noexcept {
                               SHT_PROGBITS,
                               SHF_ALLOC,
                               8);
-    derived()->reloc_eh_frame_pc32(
-        except_table.sym, fde_off + 17, except_table.data.size());
+    derived()->reloc_pc32(secref_eh_frame,
+                          except_table.sym,
+                          fde_off + 17,
+                          except_table.data.size());
   }
 }
 

@@ -81,8 +81,6 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
     reloc_sec(sec, target, R_X86_64_PC32, off, addend);
   }
 
-  void reloc_eh_frame_pc32(SymRef target, u32 off, i32 addend) noexcept;
-
   void eh_write_initial_cie_instrs() noexcept;
 
   void reset() noexcept;
@@ -96,7 +94,7 @@ inline void AssemblerElfX64::end_func(const u64 saved_regs) noexcept {
   // relocate the func_start to the function
   // relocate against .text so we don't have to fix up any relocations
   const auto func_off = sym_ptr(cur_func)->st_value;
-  this->reloc_sec(sec_eh_frame,
+  this->reloc_sec(secref_eh_frame,
                   get_section(current_section).sym,
                   R_X86_64_PC32,
                   fde_off + dwarf::EH_FDE_FUNC_START_OFF,
@@ -256,12 +254,6 @@ inline void AssemblerElfX64::reloc_text_got(const SymRef sym,
                                             const u32 text_imm32_off,
                                             const i32 addend) noexcept {
   reloc_text(sym, R_X86_64_GOTPCREL, text_imm32_off, addend);
-}
-
-inline void AssemblerElfX64::reloc_eh_frame_pc32(const SymRef target,
-                                                 const u32 off,
-                                                 const i32 addend) noexcept {
-  reloc_sec(sec_eh_frame, target, R_X86_64_PC32, off, addend);
 }
 
 inline void AssemblerElfX64::eh_write_initial_cie_instrs() noexcept {
