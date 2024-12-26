@@ -192,9 +192,9 @@ struct AssemblerElf {
   std::vector<Elf64_Sym> global_symbols, local_symbols;
 
   std::vector<char> strtab;
-  DataSection sec_text;
   u32 sec_bss_size = 0;
 
+  SecRef secref_text = INVALID_SEC_REF;
   SecRef secref_rodata = INVALID_SEC_REF;
   SecRef secref_relro = INVALID_SEC_REF;
   SecRef secref_data = INVALID_SEC_REF;
@@ -232,6 +232,8 @@ struct AssemblerElf {
   u32 eh_first_fde_off = 0;
 
   /// The current write pointer for the text section
+  SecRef current_section = INVALID_SEC_REF;
+  u8 *text_begin = nullptr;
   u8 *text_write_ptr = nullptr;
   u8 *text_reserve_end = nullptr;
 
@@ -268,20 +270,13 @@ struct AssemblerElf {
     }
   };
 
-  static constexpr size_t RESERVED_SYM_COUNT = 2;
-
-  // TODO(ts): add option to emit multiple text sections (e.g. on ARM)
-  static constexpr size_t TEXT_SYM_IDX = 1;
-
-  static constexpr SymRef TEXT_SYM_REF = static_cast<SymRef>(TEXT_SYM_IDX);
-
   explicit AssemblerElf(const bool generating_object)
       : generating_object(generating_object) {
     static_assert(std::is_base_of_v<AssemblerElf, Derived>);
     strtab.push_back('\0');
 
-    local_symbols.resize(RESERVED_SYM_COUNT);
-    init_special_symbols();
+    local_symbols.resize(1); // First symbol must be null.
+    init_sections();
     eh_init_cie();
   }
 
@@ -291,7 +286,7 @@ struct AssemblerElf {
 
 protected:
   void end_func() noexcept;
-  void init_special_symbols() noexcept;
+  void init_sections() noexcept;
 
   DataSection &get_or_create_section(SecRef &ref,
                                      unsigned rela_name,
@@ -357,10 +352,10 @@ public:
 
   /// \returns The current used space in the text section
   [[nodiscard]] u32 text_cur_off() const noexcept {
-    return static_cast<u32>(text_write_ptr - sec_text.data.data());
+    return static_cast<u32>(text_write_ptr - text_begin);
   }
 
-  u8 *text_ptr(u32 off) noexcept { return &sec_text.data[off]; }
+  u8 *text_ptr(u32 off) noexcept { return text_begin + off; }
 
   /// Make sure that text_write_ptr can be safely incremented by size
   void text_ensure_space(u32 size) noexcept;
@@ -452,6 +447,7 @@ void AssemblerElf<Derived>::start_func(
   text_align(16);
   auto *elf_sym = sym_ptr(func);
   elf_sym->st_value = text_cur_off();
+  elf_sym->st_shndx = static_cast<Elf64_Section>(current_section);
 
   if (personality_func_addr != cur_personality_func_addr) {
     assert(generating_object); // the jit model does not yet output relocations
@@ -568,10 +564,7 @@ typename AssemblerElf<Derived>::SymRef AssemblerElf<Derived>::sym_predef_func(
 
   const auto sym = Elf64_Sym{.st_name = static_cast<Elf64_Word>(strOff),
                              .st_info = info,
-                             .st_other = STV_DEFAULT,
-                             .st_shndx = 1, // .text is always the first section
-                             .st_value = 0,
-                             .st_size = 0};
+                             .st_other = STV_DEFAULT};
 
   if (local) {
     local_symbols.push_back(sym);
@@ -628,15 +621,13 @@ namespace elf {
 // TODO(ts): this is linux-specific, no?
 constexpr static std::span<const char> SECTION_NAMES = {
     "\0" // first section is the null-section
-    ".text\0"
     ".note.GNU-stack\0"
     ".eh_frame\0"
     ".rela.eh_frame\0"
     ".symtab\0"
     ".strtab\0"
     ".shstrtab\0"
-    ".bss\0"
-    ".rela.text\0"};
+    ".bss\0"};
 
 // TODO(ts): this is linux-specific, no?
 constexpr static std::span<const char> SHSTRTAB = {
@@ -775,22 +766,13 @@ typename AssemblerElf<Derived>::SecRef
 }
 
 template <typename Derived>
-void AssemblerElf<Derived>::init_special_symbols() noexcept {
+void AssemblerElf<Derived>::init_sections() noexcept {
   sections.resize(elf::sec_count());
-  {
-    std::string_view name = ".text";
-    const auto str_off = strtab.size();
-    strtab.insert(strtab.end(), name.begin(), name.end());
-    strtab.emplace_back('\0');
+  unsigned off_r = elf::sec_off(".rela.text");
+  (void)get_or_create_section(
+      secref_text, off_r, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 16);
 
-    auto &sym = local_symbols[TEXT_SYM_IDX];
-    sym.st_name = static_cast<Elf64_Word>(str_off);
-    sym.st_info = ELF64_ST_INFO(STB_LOCAL, STT_SECTION);
-    sym.st_other = STV_DEFAULT;
-    sym.st_shndx = elf::sec_idx(".text");
-    sym.st_value = 0;
-    sym.st_size = 0;
-  }
+  current_section = secref_text;
 }
 
 template <typename Derived>
@@ -899,11 +881,13 @@ void AssemblerElf<Derived>::text_ensure_space(u32 size) noexcept {
   }
 
   size = util::align_up(size, 16 * 1024);
-  const size_t off = text_write_ptr - sec_text.data.data();
-  sec_text.data.resize(sec_text.data.size() + size);
+  const size_t off = text_write_ptr - text_begin;
+  DataSection &sec = get_section(current_section);
+  sec.data.resize(sec.data.size() + size);
 
+  text_begin = sec.data.data();
   text_write_ptr = text_ptr(off);
-  text_reserve_end = text_ptr(sec_text.data.size());
+  text_reserve_end = text_ptr(sec.data.size());
 }
 
 template <typename Derived>
@@ -912,14 +896,15 @@ void AssemblerElf<Derived>::reset() noexcept {
   global_symbols.clear();
   local_symbols.clear();
   strtab.clear();
-  sec_text = {};
+  secref_text = INVALID_SEC_REF;
   secref_rodata = INVALID_SEC_REF;
   secref_relro = INVALID_SEC_REF;
   secref_data = INVALID_SEC_REF;
   secref_init_array = INVALID_SEC_REF;
   secref_fini_array = INVALID_SEC_REF;
   sec_eh_frame = {};
-  text_write_ptr = text_reserve_end = nullptr;
+  current_section = INVALID_SEC_REF;
+  text_begin = text_write_ptr = text_reserve_end = nullptr;
   cur_func = INVALID_SYM_REF;
   sec_bss_size = 0;
 
@@ -939,16 +924,17 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
   std::vector<u8> out{};
 
   // Truncate text section to actually needed size
-  sec_text.data.resize(text_cur_off());
-  text_reserve_end = sec_text.data.data() + sec_text.data.size();
+  {
+    DataSection &sec_text = get_section(current_section);
+    sec_text.data.resize(text_cur_off());
+    text_reserve_end = text_ptr(text_cur_off());
+  }
 
   u32 obj_size = sizeof(Elf64_Shdr) + sizeof(Elf64_Shdr) * sections.size();
   obj_size +=
       sizeof(Elf64_Sym) * (local_symbols.size() + global_symbols.size());
   obj_size += strtab.size();
   obj_size += SHSTRTAB.size();
-  obj_size +=
-      sec_text.data.size() + sec_text.relocs.size() + sizeof(Elf64_Rela);
   obj_size += sec_eh_frame.data.size() + sec_eh_frame.relocs.size() +
               sizeof(Elf64_Rela);
   for (const DataSection &sec : sections) {
@@ -1016,23 +1002,6 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     hdr->sh_addralign = 8;
     hdr->sh_entsize = sizeof(Elf64_Rela);
   };
-
-  // .text
-  {
-    const auto size = sec_text.data.size();
-    const auto pad = util::align_up(size, 16) - sec_text.data.size();
-    const auto sh_off = out.size();
-    out.insert(out.end(), sec_text.data.begin(), sec_text.data.end());
-    out.resize(out.size() + pad);
-
-    auto *hdr = sec_hdr(sec_idx(".text"));
-    hdr->sh_name = sec_off(".text");
-    hdr->sh_type = SHT_PROGBITS;
-    hdr->sh_flags = SHF_ALLOC | SHF_EXECINSTR;
-    hdr->sh_offset = sh_off;
-    hdr->sh_size = size;
-    hdr->sh_addralign = 16;
-  }
 
   // .note.GNU-stack
   {
@@ -1141,10 +1110,6 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     hdr->sh_addralign = 16;
   }
 
-  // .rela.text
-  write_reloc_sec(
-      sec_text, sec_idx(".rela.text"), sec_off(".rela.text"), sec_idx(".text"));
-
   for (size_t i = sec_count(); i < sections.size(); ++i) {
     DataSection &sec = sections[i];
     sec.hdr.sh_offset = out.size();
@@ -1171,7 +1136,7 @@ void AssemblerElf<Derived>::reloc_text(const SymRef sym,
                                        const u32 type,
                                        const u64 offset,
                                        const i64 addend) noexcept {
-  reloc_sec(sec_text, sym, type, offset, addend);
+  reloc_sec(current_section, sym, type, offset, addend);
 }
 
 template <typename Derived>

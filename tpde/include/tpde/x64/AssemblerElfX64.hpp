@@ -97,7 +97,7 @@ inline void AssemblerElfX64::end_func(const u64 saved_regs) noexcept {
   // relocate against .text so we don't have to fix up any relocations
   const auto func_off = sym_ptr(cur_func)->st_value;
   this->reloc_sec(sec_eh_frame,
-                  TEXT_SYM_REF,
+                  get_section(current_section).sym,
                   R_X86_64_PC32,
                   fde_off + dwarf::EH_FDE_FUNC_START_OFF,
                   static_cast<u32>(func_off));

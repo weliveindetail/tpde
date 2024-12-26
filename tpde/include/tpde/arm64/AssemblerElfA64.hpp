@@ -113,7 +113,7 @@ inline void AssemblerElfA64::end_func(const u64 saved_regs,
   // relocate against .text so we don't have to fix up any relocations
   const auto func_off = sym_ptr(cur_func)->st_value;
   this->reloc_sec(sec_eh_frame,
-                  TEXT_SYM_REF,
+                  get_section(current_section).sym,
                   R_AARCH64_PREL32,
                   fde_off + dwarf::EH_FDE_FUNC_START_OFF,
                   static_cast<u32>(func_off));
@@ -405,7 +405,7 @@ inline void AssemblerElfA64::text_ensure_space(u32 size) noexcept {
     return;
   }
 
-  if (text_reserve_end - sec_text.data.data() >= (128 * 1024 * 1024)) {
+  if (text_reserve_end - text_begin >= (128 * 1024 * 1024)) {
     // we do not support multiple text sections currently
     assert(0);
     exit(1);
@@ -435,21 +435,10 @@ inline void AssemblerElfA64::text_ensure_space(u32 size) noexcept {
     last_cond_veneer_off = off;
   }
 
+  Base::text_ensure_space(size + veneer_size + 4);
   if (veneer_size != 0) {
-    // need to reserve more space and jump over veneer
-    size = util::align_up(size + veneer_size + 4, 16 * 1024);
-    sec_text.data.resize(sec_text.data.size() + size);
-    auto *write = reinterpret_cast<u32 *>(text_ptr(cur_off));
-    *write = de64_B((4 + veneer_size) / 4);
-
-    text_write_ptr = text_ptr(cur_off + 4 + veneer_size);
-    text_reserve_end = text_ptr(sec_text.data.size());
-  } else {
-    size = util::align_up(size, 16 * 1024);
-    sec_text.data.resize(sec_text.data.size() + size);
-
-    text_write_ptr = text_ptr(cur_off);
-    text_reserve_end = text_ptr(sec_text.data.size());
+    *reinterpret_cast<u32 *>(text_ptr(cur_off)) = de64_B((4 + veneer_size) / 4);
+    text_write_ptr += veneer_size + 4;
   }
 }
 
