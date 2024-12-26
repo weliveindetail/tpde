@@ -369,12 +369,7 @@ public:
   void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend) noexcept;
 
   void reloc_sec(
-      DataSection &sec, SymRef sym, u32 type, u64 offset, i64 addend) noexcept;
-
-  void reloc_sec(
-      SecRef sec, SymRef sym, u32 type, u64 offset, i64 addend) noexcept {
-    reloc_sec(get_section(sec), sym, type, offset, addend);
-  }
+      SecRef sec, SymRef sym, u32 type, u64 offset, i64 addend) noexcept;
 
   void eh_align_frame() noexcept;
   void eh_write_inst(u8 opcode, u64 arg) noexcept;
@@ -973,36 +968,6 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     hdr->e_shstrndx = sec_idx(".shstrtab");
   }
 
-  const auto write_reloc_sec = [this, &out, &sec_hdr](DataSection &sec,
-                                                      const u32 sec_idx,
-                                                      const u32 sec_off,
-                                                      const u32 info_idx) {
-    // patch relocations
-    for (auto idx : sec.relocs_to_patch) {
-      auto ty = ELF64_R_TYPE(sec.relocs[idx].r_info);
-      auto sym = ELF64_R_SYM(sec.relocs[idx].r_info);
-      sym = (sym & ~0x8000'0000u) + local_symbols.size();
-      sec.relocs[idx].r_info = ELF64_R_INFO(sym, ty);
-    }
-
-    const auto size = sizeof(Elf64_Rela) * sec.relocs.size();
-    const auto sh_off = out.size();
-    out.insert(out.end(),
-               reinterpret_cast<uint8_t *>(&*sec.relocs.begin()),
-               reinterpret_cast<uint8_t *>(&*sec.relocs.end()));
-
-    auto *hdr = sec_hdr(sec_idx);
-    hdr->sh_name = sec_off;
-    hdr->sh_type = SHT_RELA;
-    hdr->sh_flags = SHF_INFO_LINK;
-    hdr->sh_offset = sh_off;
-    hdr->sh_size = size;
-    hdr->sh_link = elf::sec_idx(".symtab");
-    hdr->sh_info = info_idx;
-    hdr->sh_addralign = 8;
-    hdr->sh_entsize = sizeof(Elf64_Rela);
-  };
-
   // .note.GNU-stack
   {
     auto *hdr = sec_hdr(sec_idx(".note.GNU-stack"));
@@ -1098,7 +1063,29 @@ std::vector<u8> AssemblerElf<Derived>::build_object_file() {
     out.resize(out.size() + pad);
 
     if (i + 1 < sections.size() && sections[i + 1].hdr.sh_type == SHT_RELA) {
-      write_reloc_sec(sec, i + 1, sections[i + 1].hdr.sh_name, i);
+      // patch relocations
+      for (auto idx : sec.relocs_to_patch) {
+        auto ty = ELF64_R_TYPE(sec.relocs[idx].r_info);
+        auto sym = ELF64_R_SYM(sec.relocs[idx].r_info);
+        sym = (sym & ~0x8000'0000u) + local_symbols.size();
+        sec.relocs[idx].r_info = ELF64_R_INFO(sym, ty);
+      }
+
+      const auto rela_sh_off = out.size();
+      out.insert(out.end(),
+                 reinterpret_cast<uint8_t *>(&*sec.relocs.begin()),
+                 reinterpret_cast<uint8_t *>(&*sec.relocs.end()));
+
+      auto *hdr = sec_hdr(i + 1);
+      hdr->sh_name = sections[i + 1].hdr.sh_name;
+      hdr->sh_type = SHT_RELA;
+      hdr->sh_flags = SHF_INFO_LINK;
+      hdr->sh_offset = rela_sh_off;
+      hdr->sh_size = sizeof(Elf64_Rela) * sec.relocs.size();
+      hdr->sh_link = elf::sec_idx(".symtab");
+      hdr->sh_info = i;
+      hdr->sh_addralign = 8;
+      hdr->sh_entsize = sizeof(Elf64_Rela);
       ++i;
     } else {
       assert(sec.relocs.empty() && "relocations in section without .rela");
@@ -1117,7 +1104,7 @@ void AssemblerElf<Derived>::reloc_text(const SymRef sym,
 }
 
 template <typename Derived>
-void AssemblerElf<Derived>::reloc_sec(DataSection &sec,
+void AssemblerElf<Derived>::reloc_sec(const SecRef sec_ref,
                                       const SymRef sym,
                                       const u32 type,
                                       const u64 offset,
@@ -1126,6 +1113,7 @@ void AssemblerElf<Derived>::reloc_sec(DataSection &sec,
   rel.r_offset = offset;
   rel.r_info = ELF64_R_INFO(static_cast<u32>(sym), type);
   rel.r_addend = addend;
+  DataSection &sec = get_section(sec_ref);
   sec.relocs.push_back(rel);
   if (!sym_is_local(sym)) {
     sec.relocs_to_patch.push_back(sec.relocs.size() - 1);
