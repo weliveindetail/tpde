@@ -561,7 +561,7 @@ namespace {
     // just widening (e.g., v2f32 => v4f32) on x86-64 *and* AArch64 for now.
     //
     // Therefore, we support:
-    // - Integer elements: v16i8, v8i16, v4i32, v2i64
+    // - Integer elements: v8i8/v16i8, v4i16/v8i16, v2i32/v4i32, v2i64
     //   (no widened vectors: x86-64 would widen, but AArch64 would promote)
     // - Floating-point elements: v2f32, v4f32, v2f64
     //   (single-element vectors would be scalarized; v3f32 would need 12b load)
@@ -571,10 +571,12 @@ namespace {
       if (el_width < 8 || el_width > 64 || (el_width & (el_width - 1))) {
         return {0, LLVMBasicValType::invalid};
       }
-      if (el_width * num_elts != 128) {
-        return {0, LLVMBasicValType::invalid};
+      if (el_width * num_elts == 64) {
+        return {1, LLVMBasicValType::v64};
+      } else if (el_width * num_elts == 128) {
+        return {1, LLVMBasicValType::v128};
       }
-      return {1, LLVMBasicValType::v128};
+      return {0, LLVMBasicValType::invalid};
     }
     case llvm::Type::FloatTyID:
       if (num_elts == 2) {
