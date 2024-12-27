@@ -188,11 +188,13 @@ void EncodingTargetX64::get_inst_candidates(
           }
         });
   };
-  const auto handle_memrepl = [&](std::string_view mnem, unsigned replop_idx) {
+  const auto handle_memrepl = [&](std::string_view mnem,
+                                  unsigned replop_idx,
+                                  unsigned align = 1) {
     candidates.emplace_back(
         replop_idx,
         "encodeable_as_mem",
-        "",
+        std::format("{}", align),
         [mnem, replop_idx](llvm::raw_ostream &os,
                            const llvm::MachineInstr &mi,
                            std::span<const std::string> ops) {
@@ -389,9 +391,10 @@ void EncodingTargetX64::get_inst_candidates(
                              std::string_view llvm_mnem_m,
                              unsigned memop_start,
                              std::string_view fd_mnem_r,
-                             std::string_view fd_mnem_m) {
+                             std::string_view fd_mnem_m,
+                             unsigned align = 1) {
     if (std::string_view(Name) == llvm_mnem_r) {
-      handle_memrepl(fd_mnem_m, memop_start);
+      handle_memrepl(fd_mnem_m, memop_start, align);
       handle_default(fd_mnem_r);
     }
     if (std::string_view(Name) == llvm_mnem_m) {
@@ -596,42 +599,42 @@ void EncodingTargetX64::get_inst_candidates(
     // TODO: memrepl for first mov operand
     handle_rm("MOVSSrr", "MOVSSrm_alt", 1, "SSE_MOVSSrr", "SSE_MOVSSrm");
     handle_rm("MOVSDrr", "MOVSDrm_alt", 1, "SSE_MOVSDrr", "SSE_MOVSDrm");
-    handle_rm("MOVAPSrr", "MOVAPSrm", 1, "SSE_MOVAPSrr", "SSE_MOVAPSrm");
-    handle_rm("MOVAPDrr", "MOVAPDrm", 1, "SSE_MOVAPDrr", "SSE_MOVAPDrm");
+    handle_rm("MOVAPSrr", "MOVAPSrm", 1, "SSE_MOVAPSrr", "SSE_MOVAPSrm", 16);
+    handle_rm("MOVAPDrr", "MOVAPDrm", 1, "SSE_MOVAPDrr", "SSE_MOVAPDrm", 16);
     handle_rm("MOVUPSrr", "MOVUPSrm", 1, "SSE_MOVUPSrr", "SSE_MOVUPSrm");
     handle_rm("MOVUPDrr", "MOVUPDrm", 1, "SSE_MOVUPDrr", "SSE_MOVUPDrm");
     handle_rm("ADDSSrr", "ADDSSrm", 2, "SSE_ADDSSrr", "SSE_ADDSSrm");
     handle_rm("ADDSDrr", "ADDSDrm", 2, "SSE_ADDSDrr", "SSE_ADDSDrm");
-    handle_rm("ADDPSrr", "ADDPSrm", 2, "SSE_ADDPSrr", "SSE_ADDPSrm");
-    handle_rm("ADDPDrr", "ADDPDrm", 2, "SSE_ADDPDrr", "SSE_ADDPDrm");
+    handle_rm("ADDPSrr", "ADDPSrm", 2, "SSE_ADDPSrr", "SSE_ADDPSrm", 16);
+    handle_rm("ADDPDrr", "ADDPDrm", 2, "SSE_ADDPDrr", "SSE_ADDPDrm", 16);
     handle_rm("SUBSSrr", "SUBSSrm", 2, "SSE_SUBSSrr", "SSE_SUBSSrm");
     handle_rm("SUBSDrr", "SUBSDrm", 2, "SSE_SUBSDrr", "SSE_SUBSDrm");
-    handle_rm("SUBPSrr", "SUBPSrm", 2, "SSE_SUBPSrr", "SSE_SUBPSrm");
-    handle_rm("SUBPDrr", "SUBPDrm", 2, "SSE_SUBPDrr", "SSE_SUBPDrm");
+    handle_rm("SUBPSrr", "SUBPSrm", 2, "SSE_SUBPSrr", "SSE_SUBPSrm", 16);
+    handle_rm("SUBPDrr", "SUBPDrm", 2, "SSE_SUBPDrr", "SSE_SUBPDrm", 16);
     handle_rm("MULSSrr", "MULSSrm", 2, "SSE_MULSSrr", "SSE_MULSSrm");
     handle_rm("MULSDrr", "MULSDrm", 2, "SSE_MULSDrr", "SSE_MULSDrm");
-    handle_rm("MULPSrr", "MULPSrm", 2, "SSE_MULPSrr", "SSE_MULPSrm");
-    handle_rm("MULPDrr", "MULPDrm", 2, "SSE_MULPDrr", "SSE_MULPDrm");
+    handle_rm("MULPSrr", "MULPSrm", 2, "SSE_MULPSrr", "SSE_MULPSrm", 16);
+    handle_rm("MULPDrr", "MULPDrm", 2, "SSE_MULPDrr", "SSE_MULPDrm", 16);
     handle_rm("DIVSSrr", "DIVSSrm", 2, "SSE_DIVSSrr", "SSE_DIVSSrm");
     handle_rm("DIVSDrr", "DIVSDrm", 2, "SSE_DIVSDrr", "SSE_DIVSDrm");
-    handle_rm("DIVPSrr", "DIVPSrm", 2, "SSE_DIVPSrr", "SSE_DIVPSrm");
-    handle_rm("DIVPDrr", "DIVPDrm", 2, "SSE_DIVPDrr", "SSE_DIVPDrm");
+    handle_rm("DIVPSrr", "DIVPSrm", 2, "SSE_DIVPSrr", "SSE_DIVPSrm", 16);
+    handle_rm("DIVPDrr", "DIVPDrm", 2, "SSE_DIVPDrr", "SSE_DIVPDrm", 16);
     handle_rm("CMPSSrri", "CMPSSrmi", 2, "SSE_CMPSSrri", "SSE_CMPSSrmi");
     handle_rm("CMPSDrri", "CMPSDrmi", 2, "SSE_CMPSDrri", "SSE_CMPSDrmi");
-    handle_rm("CMPPSrri", "CMPPSrmi", 2, "SSE_CMPPSrri", "SSE_CMPPSrmi");
-    handle_rm("CMPPDrri", "CMPPDrmi", 2, "SSE_CMPPDrri", "SSE_CMPPDrmi");
+    handle_rm("CMPPSrri", "CMPPSrmi", 2, "SSE_CMPPSrri", "SSE_CMPPSrmi", 16);
+    handle_rm("CMPPDrri", "CMPPDrmi", 2, "SSE_CMPPDrri", "SSE_CMPPDrmi", 16);
     handle_rm("SQRTSSr", "SQRTSSm", 1, "SSE_SQRTSSrr", "SSE_SQRTSSrm");
     handle_rm("SQRTSDr", "SQRTSDm", 1, "SSE_SQRTSDrr", "SSE_SQRTSDrm");
-    handle_rm("SQRTPSr", "SQRTPSm", 1, "SSE_SQRTPSrr", "SSE_SQRTPSrm");
-    handle_rm("SQRTPDr", "SQRTPDm", 1, "SSE_SQRTPDrr", "SSE_SQRTPDrm");
-    handle_rm("ANDPSrr", "ANDPSrm", 2, "SSE_ANDPSrr", "SSE_ANDPSrm");
-    handle_rm("ANDPDrr", "ANDPDrm", 2, "SSE_ANDPDrr", "SSE_ANDPDrm");
-    handle_rm("XORPSrr", "XORPSrm", 2, "SSE_XORPSrr", "SSE_XORPSrm");
-    handle_rm("XORPDrr", "XORPDrm", 2, "SSE_XORPDrr", "SSE_XORPDrm");
-    handle_rm("ORPSrr", "ORPSrm", 2, "SSE_ORPSrr", "SSE_ORPSrm");
-    handle_rm("ORPDrr", "ORPDrm", 2, "SSE_ORPDrr", "SSE_ORPDrm");
-    handle_rm("ANDNPSrr", "ANDNPSrm", 2, "SSE_ANDNPSrr", "SSE_ANDNPSrm");
-    handle_rm("ANDNPDrr", "ANDNPDrm", 2, "SSE_ANDNPDrr", "SSE_ANDNPDrm");
+    handle_rm("SQRTPSr", "SQRTPSm", 1, "SSE_SQRTPSrr", "SSE_SQRTPSrm", 16);
+    handle_rm("SQRTPDr", "SQRTPDm", 1, "SSE_SQRTPDrr", "SSE_SQRTPDrm", 16);
+    handle_rm("ANDPSrr", "ANDPSrm", 2, "SSE_ANDPSrr", "SSE_ANDPSrm", 16);
+    handle_rm("ANDPDrr", "ANDPDrm", 2, "SSE_ANDPDrr", "SSE_ANDPDrm", 16);
+    handle_rm("XORPSrr", "XORPSrm", 2, "SSE_XORPSrr", "SSE_XORPSrm", 16);
+    handle_rm("XORPDrr", "XORPDrm", 2, "SSE_XORPDrr", "SSE_XORPDrm", 16);
+    handle_rm("ORPSrr", "ORPSrm", 2, "SSE_ORPSrr", "SSE_ORPSrm", 16);
+    handle_rm("ORPDrr", "ORPDrm", 2, "SSE_ORPDrr", "SSE_ORPDrm", 16);
+    handle_rm("ANDNPSrr", "ANDNPSrm", 2, "SSE_ANDNPSrr", "SSE_ANDNPSrm", 16);
+    handle_rm("ANDNPDrr", "ANDNPDrm", 2, "SSE_ANDNPDrr", "SSE_ANDNPDrm", 16);
     handle_rm("COMISSrr", "COMISSrm", 1, "SSE_COMISSrr", "SSE_COMISSrm");
     handle_rm("COMISDrr", "COMISDrm", 1, "SSE_COMISDrr", "SSE_COMISDrm");
     handle_rm("UCOMISSrr", "UCOMISSrm", 1, "SSE_UCOMISSrr", "SSE_UCOMISSrm");

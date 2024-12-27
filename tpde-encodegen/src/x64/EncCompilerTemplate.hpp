@@ -61,7 +61,7 @@ struct EncodeCompiler {
     using SymRef       = typename Assembler::SymRef;
 
     [[nodiscard]] static std::optional<i32> encodeable_as_imm32_sext(GenericValuePart &gv) noexcept;
-    [[nodiscard]] static std::optional<FeMem> encodeable_as_mem(GenericValuePart &gv) noexcept;
+    [[nodiscard]] static std::optional<FeMem> encodeable_as_mem(GenericValuePart &gv, unsigned align) noexcept;
     [[nodiscard]] static std::optional<FeMem> encodeable_with(GenericValuePart &gv, FeMem other) noexcept;
     void          try_salvage_or_materialize(GenericValuePart &gv,
                                              ScratchReg     &dst_scratch,
@@ -154,7 +154,7 @@ template <typename Adaptor,
           class BaseTy,
           typename Config>
 std::optional<FeMem> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
-    encodeable_as_mem(GenericValuePart &gv) noexcept {
+    encodeable_as_mem(GenericValuePart &gv, unsigned align) noexcept {
     const ValuePartRef *ptr;
     if (std::holds_alternative<ValuePartRef>(gv.state)) {
         ptr = &std::get<ValuePartRef>(gv.state);
@@ -170,6 +170,8 @@ std::optional<FeMem> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
 
     const auto ap = ptr->assignment();
     if (ap.register_valid() || ap.variable_ref())
+        return std::nullopt;
+    if (ap.frame_off() & (align - 1))
         return std::nullopt;
     return FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(ap.frame_off()));
 }
