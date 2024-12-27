@@ -229,6 +229,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
                       GenericValuePart el) noexcept;
   bool compile_extract_element(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_insert_element(IRValueRef, llvm::Instruction *) noexcept;
+  bool compile_shuffle_vector(IRValueRef, llvm::Instruction *) noexcept;
 
   bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_phi(IRValueRef, llvm::Instruction *) noexcept;
@@ -1026,6 +1027,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
   case llvm::Instruction::InsertValue: return compile_insert_value(val_idx, i);
   case llvm::Instruction::ExtractElement: return compile_extract_element(val_idx, i);
   case llvm::Instruction::InsertElement: return compile_insert_element(val_idx, i);
+  case llvm::Instruction::ShuffleVector: return compile_shuffle_vector(val_idx, i);
   case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(val_idx, i);
   case llvm::Instruction::PHI: return compile_phi(val_idx, i);
   case llvm::Instruction::Freeze: return compile_freeze(val_idx, i);
@@ -2395,6 +2397,77 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
   default: TPDE_UNREACHABLE("unexpected vector element type");
   }
 
+  return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+  auto sv_inst = llvm::cast<llvm::ShuffleVectorInst>(inst);
+  IRValueRef lhs = llvm_val_idx(inst->getOperand(0));
+  IRValueRef rhs = llvm_val_idx(inst->getOperand(1));
+
+  auto *vec_ty = llvm::cast<llvm::FixedVectorType>(inst->getType());
+  unsigned nelem = vec_ty->getNumElements();
+  assert((nelem & (nelem - 1)) == 0 && "vector nelem must be power of two");
+
+  // TODO: deduplicate with adaptor
+  LLVMBasicValType bvt;
+  auto *elem_ty = vec_ty->getElementType();
+  if (elem_ty->isFloatTy()) {
+    bvt = LLVMBasicValType::f32;
+  } else if (elem_ty->isDoubleTy()) {
+    bvt = LLVMBasicValType::f64;
+  } else if (elem_ty->isIntegerTy(8)) {
+    bvt = LLVMBasicValType::i8;
+  } else if (elem_ty->isIntegerTy(16)) {
+    bvt = LLVMBasicValType::i16;
+  } else if (elem_ty->isIntegerTy(32)) {
+    bvt = LLVMBasicValType::i32;
+  } else if (elem_ty->isIntegerTy(64)) {
+    bvt = LLVMBasicValType::i64;
+  } else {
+    TPDE_UNREACHABLE("invalid element type for shufflevector");
+  }
+
+  {
+    ScratchReg tmp{this};
+    ValuePartRef result = this->result_ref_lazy(inst_idx, 0);
+    tmp.alloc(result.bank());
+    this->set_value(result, tmp);
+  }
+
+  ScratchReg tmp{this};
+  llvm::ArrayRef<int> mask = sv_inst->getShuffleMask();
+  for (unsigned i = 0; i < nelem; i++) {
+    if (mask[i] == llvm::PoisonMaskElem) {
+      continue;
+    }
+    IRValueRef src = unsigned(mask[i]) < nelem ? lhs : rhs;
+    auto *cst = llvm::dyn_cast<llvm::Constant>(this->adaptor->values[src].val);
+    if (cst) {
+      auto *cst_elem = cst->getAggregateElement(i);
+      u64 const_elem;
+      if (llvm::isa<llvm::PoisonValue>(cst_elem)) {
+        continue;
+      } else if (auto *ci = llvm::dyn_cast<llvm::ConstantInt>(cst_elem)) {
+        const_elem = ci->getZExtValue();
+      } else if (auto *cfp = llvm::dyn_cast<llvm::ConstantFP>(cst_elem)) {
+        const_elem = cfp->getValue().bitcastToAPInt().getZExtValue();
+      } else {
+        TPDE_UNREACHABLE("invalid constant element type");
+      }
+      auto bank = this->adaptor->basic_ty_part_bank(bvt);
+      auto size = this->adaptor->basic_ty_part_size(bvt);
+      ValuePartRef const_ref{const_elem, bank, size};
+      derived()->materialize_constant(const_ref, tmp);
+    } else {
+      derived()->extract_element(src, mask[i] & (nelem - 1), bvt, tmp);
+    }
+    derived()->insert_element(inst_idx, i, bvt, std::move(tmp));
+  }
+  (void)this->val_ref(lhs, 0); // ref-counting
+  (void)this->val_ref(rhs, 0); // ref-counting
   return true;
 }
 
