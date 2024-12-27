@@ -609,7 +609,6 @@ public:
   }
 
   // internal helpers
-private:
   static unsigned basic_ty_part_size(const LLVMBasicValType ty) noexcept {
     switch (ty) {
       using enum LLVMBasicValType;
@@ -634,6 +633,7 @@ private:
     }
   }
 
+private:
   static unsigned basic_ty_part_align(const LLVMBasicValType ty) noexcept {
     switch (ty) {
       using enum LLVMBasicValType;
