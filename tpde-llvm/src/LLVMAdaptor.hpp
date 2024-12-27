@@ -106,6 +106,7 @@ struct LLVMAdaptor {
     LLVMBasicValType type;
     bool fused;
     bool argument;
+    bool skip_liveness;
     u32 complex_part_tys_idx;
   };
 
@@ -423,21 +424,7 @@ struct LLVMAdaptor {
 
   [[nodiscard]] bool
       val_ignore_in_liveness_analysis(const IRValueRef idx) const noexcept {
-    if (idx == INVALID_VALUE_REF) {
-      return true;
-    }
-    const auto *inst = llvm::dyn_cast<llvm::Instruction>(values[idx].val);
-    if (!inst) {
-      if (llvm::isa<llvm::Argument>(values[idx].val)) {
-        return false;
-      }
-      // should handle constants and globals
-      return true;
-    }
-    if (inst->getOpcode() != llvm::Instruction::Alloca) {
-      return false;
-    }
-    return is_static_alloca(llvm::cast<llvm::AllocaInst>(inst));
+    return idx == INVALID_VALUE_REF || values[idx].skip_liveness;
   }
 
   [[nodiscard]] bool val_produces_result(const IRValueRef idx) const noexcept {

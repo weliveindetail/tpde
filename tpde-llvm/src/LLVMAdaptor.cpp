@@ -309,6 +309,7 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
                            .type = ty,
                            .fused = fused,
                            .argument = false,
+                           .skip_liveness = fused,
                            .complex_part_tys_idx = complex_part_idx});
   return nullptr;
 }
@@ -351,6 +352,7 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
                                .type = ty,
                                .fused = false,
                                .argument = false,
+                               .skip_liveness = true,
                                .complex_part_tys_idx = complex_part_idx});
     };
     for (llvm::Function &fn : mod.functions()) {
@@ -383,6 +385,7 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
                              .type = ty,
                              .fused = false,
                              .argument = true,
+                             .skip_liveness = false,
                              .complex_part_tys_idx = complex_part_idx});
   }
 
@@ -426,7 +429,8 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     values.push_back(ValInfo{.val = static_cast<llvm::Value *>(&block),
                              .type = LLVMBasicValType::invalid,
                              .fused = false,
-                             .argument = false});
+                             .argument = false,
+                             .skip_liveness = true});
 
     for (auto *C : block_constants) {
       if (value_lookup.find(C) == value_lookup.end()) {
@@ -436,6 +440,7 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
                                  .type = ty,
                                  .fused = false,
                                  .argument = false,
+                                 .skip_liveness = true,
                                  .complex_part_tys_idx = complex_part_idx});
       }
     }
