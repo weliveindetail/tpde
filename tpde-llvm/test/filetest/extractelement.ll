@@ -23,8 +23,7 @@ define i8 @ext_v16i8_0(<16 x i8> %v) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xa0]
-; ARM64-NEXT:    ldrb w0, [x29, #0xa0]
+; ARM64-NEXT:    umov w0, v0.b[0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -52,8 +51,7 @@ define i8 @ext_v16i8_11(<16 x i8> %v) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xa0]
-; ARM64-NEXT:    ldrb w0, [x29, #0xab]
+; ARM64-NEXT:    umov w0, v0.b[11]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -113,8 +111,7 @@ define i32 @ext_v4i32_0(<4 x i32> %v) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xa0]
-; ARM64-NEXT:    ldr w0, [x29, #0xa0]
+; ARM64-NEXT:    mov w0, v0.s[0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -142,8 +139,7 @@ define i32 @ext_v4i32_3(<4 x i32> %v) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xa0]
-; ARM64-NEXT:    ldr w0, [x29, #0xac]
+; ARM64-NEXT:    mov w0, v0.s[3]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -203,8 +199,7 @@ define double @ext_v2f64_0(<2 x double> %v) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xa0]
-; ARM64-NEXT:    ldr d1, [x29, #0xa0]
+; ARM64-NEXT:    mov d1, v0.d[0]
 ; ARM64-NEXT:    mov v0.16b, v1.16b
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
@@ -233,8 +228,7 @@ define double @ext_v2f64_1(<2 x double> %v) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xa0]
-; ARM64-NEXT:    ldr d1, [x29, #0xa8]
+; ARM64-NEXT:    mov d1, v0.d[1]
 ; ARM64-NEXT:    mov v0.16b, v1.16b
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0

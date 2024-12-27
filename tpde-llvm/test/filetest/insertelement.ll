@@ -23,9 +23,7 @@ define <16 x i8> @ins_v16i8_0(<16 x i8> %v, i8 %e) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xc0]
-; ARM64-NEXT:    strb w0, [x29, #0xc0]
-; ARM64-NEXT:    ldr q0, [x29, #0xc0]
+; ARM64-NEXT:    mov v0.b[0], w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -53,9 +51,7 @@ define <16 x i8> @ins_v16i8_11(<16 x i8> %v, i8 %e) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xc0]
-; ARM64-NEXT:    strb w0, [x29, #0xcb]
-; ARM64-NEXT:    ldr q0, [x29, #0xc0]
+; ARM64-NEXT:    mov v0.b[11], w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -116,9 +112,7 @@ define <4 x i32> @ins_v4i32_0(<4 x i32> %v, i32 %e) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xc0]
-; ARM64-NEXT:    str w0, [x29, #0xc0]
-; ARM64-NEXT:    ldr q0, [x29, #0xc0]
+; ARM64-NEXT:    mov v0.s[0], w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -146,9 +140,7 @@ define <4 x i32> @ins_v4i32_3(<4 x i32> %v, i32 %e) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xc0]
-; ARM64-NEXT:    str w0, [x29, #0xcc]
-; ARM64-NEXT:    ldr q0, [x29, #0xc0]
+; ARM64-NEXT:    mov v0.s[3], w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -189,17 +181,11 @@ define <4 x i32> @ins_v4i32_chain(i32 %a, i32 %b, i32 %c, i32 %d) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    movi v0.16b, #0x0
 ; ARM64-NEXT:    str q0, [x29, #0xb0]
-; ARM64-NEXT:    str w0, [x29, #0xb0]
 ; ARM64-NEXT:    ldr q0, [x29, #0xb0]
-; ARM64-NEXT:    str q0, [x29, #0xc0]
-; ARM64-NEXT:    str w1, [x29, #0xc4]
-; ARM64-NEXT:    ldr q0, [x29, #0xc0]
-; ARM64-NEXT:    str q0, [x29, #0xb0]
-; ARM64-NEXT:    str w2, [x29, #0xb8]
-; ARM64-NEXT:    ldr q0, [x29, #0xb0]
-; ARM64-NEXT:    str q0, [x29, #0xc0]
-; ARM64-NEXT:    str w3, [x29, #0xcc]
-; ARM64-NEXT:    ldr q0, [x29, #0xc0]
+; ARM64-NEXT:    mov v0.s[0], w0
+; ARM64-NEXT:    mov v0.s[1], w1
+; ARM64-NEXT:    mov v0.s[2], w2
+; ARM64-NEXT:    mov v0.s[3], w3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -263,9 +249,7 @@ define <2 x double> @ins_v2f64_0(<2 x double> %v, double %e) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xc0]
-; ARM64-NEXT:    str d1, [x29, #0xc0]
-; ARM64-NEXT:    ldr q0, [x29, #0xc0]
+; ARM64-NEXT:    mov v0.d[0], v1.d[0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
@@ -293,9 +277,7 @@ define <2 x double> @ins_v2f64_1(<2 x double> %v, double %e) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    str q0, [x29, #0xc0]
-; ARM64-NEXT:    str d1, [x29, #0xc8]
-; ARM64-NEXT:    ldr q0, [x29, #0xc0]
+; ARM64-NEXT:    mov v0.d[1], v1.d[0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret

@@ -633,6 +633,30 @@ public:
     }
   }
 
+  static unsigned basic_ty_part_bank(const LLVMBasicValType ty) noexcept {
+    switch (ty) {
+      using enum LLVMBasicValType;
+    case i1:
+    case i8:
+    case i16:
+    case i32:
+    case i64:
+    case i128:
+    case ptr: return 0;
+    case f32:
+    case f64:
+    case v32:
+    case v64:
+    case v128:
+    case v256:
+    case v512: return 1;
+    case none:
+    case invalid:
+    case complex:
+    default: TPDE_UNREACHABLE("invalid basic type");
+    }
+  }
+
 private:
   static unsigned basic_ty_part_align(const LLVMBasicValType ty) noexcept {
     switch (ty) {

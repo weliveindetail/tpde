@@ -87,6 +87,15 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                      unsigned from,
                      unsigned to) noexcept;
 
+  void extract_element(IRValueRef vec,
+                       unsigned idx,
+                       LLVMBasicValType ty,
+                       ScratchReg &out) noexcept;
+  void insert_element(IRValueRef vec,
+                      unsigned idx,
+                      LLVMBasicValType ty,
+                      GenericValuePart el) noexcept;
+
   void create_frem_calls(IRValueRef lhs,
                          IRValueRef rhs,
                          ValuePartRef &&res,
@@ -166,28 +175,7 @@ u32 LLVMCompilerArm64::val_part_size(const IRValueRef val_idx,
 u8 LLVMCompilerArm64::val_part_bank(const IRValueRef val_idx,
                                     const u32 part_idx) const noexcept {
   auto ty = this->adaptor->val_part_ty(val_idx, part_idx);
-
-  switch (ty) {
-    using enum LLVMBasicValType;
-  case i1:
-  case i8:
-  case i16:
-  case i32:
-  case i64:
-  case i128:
-  case ptr: return 0;
-  case f32:
-  case f64:
-  case v32:
-  case v64:
-  case v128:
-  case v256:
-  case v512: return 1;
-  case none:
-  case invalid:
-  case complex:
-  default: TPDE_UNREACHABLE("invalid basic type");
-  }
+  return this->adaptor->basic_ty_part_bank(ty);
 }
 
 void LLVMCompilerArm64::move_val_to_ret_regs(llvm::Value *val) noexcept {
@@ -307,6 +295,59 @@ LLVMCompilerArm64::ScratchReg LLVMCompilerArm64::ext_int(GenericValuePart op,
   AsmReg src = gval_as_reg_reuse(op, scratch);
   ext_int(scratch.alloc_gp(), src, sign, from, to);
   return scratch;
+}
+
+void LLVMCompilerArm64::extract_element(IRValueRef vec,
+                                        unsigned idx,
+                                        LLVMBasicValType ty,
+                                        ScratchReg &out_reg) noexcept {
+  assert(this->val_part_count(vec) == 1);
+
+  ScratchReg tmp{this};
+  ValuePartRef vec_ref = this->val_ref(vec, 0);
+  AsmReg vec_reg = this->val_as_reg(vec_ref, tmp);
+  // TODO: reuse vec_reg if possible
+  AsmReg dst_reg = out_reg.alloc(this->adaptor->basic_ty_part_bank(ty));
+  switch (ty) {
+    using enum LLVMBasicValType;
+  case i8: ASM(UMOVwb, dst_reg, vec_reg, idx); break;
+  case i16: ASM(UMOVwh, dst_reg, vec_reg, idx); break;
+  case i32: ASM(UMOVws, dst_reg, vec_reg, idx); break;
+  case i64:
+  case ptr: ASM(UMOVxd, dst_reg, vec_reg, idx); break;
+  case f32: ASM(DUPs, dst_reg, vec_reg, idx); break;
+  case f64: ASM(DUPd, dst_reg, vec_reg, idx); break;
+  default: TPDE_UNREACHABLE("unexpected vector element type");
+  }
+
+  vec_ref.reset_without_refcount();
+}
+
+void LLVMCompilerArm64::insert_element(IRValueRef vec,
+                                       unsigned idx,
+                                       LLVMBasicValType ty,
+                                       GenericValuePart el) noexcept {
+  assert(this->val_part_count(vec) == 1);
+
+  ScratchReg tmp{this};
+  ValuePartRef vec_ref = this->val_ref(vec, 0);
+  AsmReg vec_reg = this->val_as_reg(vec_ref, tmp);
+  AsmReg src_reg = this->gval_as_reg(el);
+  switch (ty) {
+    using enum LLVMBasicValType;
+  case i8: ASM(INSbw, vec_reg, idx, src_reg); break;
+  case i16: ASM(INShw, vec_reg, idx, src_reg); break;
+  case i32: ASM(INSsw, vec_reg, idx, src_reg); break;
+  case i64:
+  case ptr: ASM(INSdx, vec_reg, idx, src_reg); break;
+  case f32: ASM(INSs, vec_reg, idx, src_reg, 0); break;
+  case f64: ASM(INSd, vec_reg, idx, src_reg, 0); break;
+  default: TPDE_UNREACHABLE("unexpected vector element type");
+  }
+
+  assert(vec_ref.assignment().register_valid());
+  vec_ref.assignment().set_modified(true);
+  vec_ref.reset_without_refcount();
 }
 
 void LLVMCompilerArm64::create_frem_calls(const IRValueRef lhs,

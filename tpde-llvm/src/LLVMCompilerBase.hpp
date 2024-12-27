@@ -2239,7 +2239,10 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::insert_element(
   ValuePartRef vec_ref = this->val_ref(vec, 0);
   vec_ref.spill();
   vec_ref.unlock();
-  vec_ref.assignment().set_register_valid(false);
+  if (vec_ref.assignment().register_valid()) {
+    vec_ref.assignment().set_register_valid(false);
+    this->register_file.unmark_used(AsmReg{vec_ref.assignment().full_reg_id()});
+  }
 
   GenericValuePart addr = derived()->val_spill_slot(vec_ref);
   auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
@@ -2333,8 +2336,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
 
   ValuePartRef result = this->result_ref_lazy(inst_idx, 0);
   LLVMBasicValType bvt = this->adaptor->values[ins_idx].type; // insert type
-  unsigned frame_off = result.assignment().frame_off();
-  unsigned part_size = result.assignment().part_size();
 
   // We do the dynamic insert in the spill slot of result.
   // TODO: reuse spill slot of vec_ref if possible.
@@ -2345,8 +2346,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
     ValuePartRef vec_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
     ScratchReg tmp{this};
     AsmReg orig_reg = this->val_as_reg(vec_ref, tmp);
-    // TODO: don't spill when target insert_element doesn't need it?
-    derived()->spill_reg(orig_reg, frame_off, part_size);
+    if (vec_ref.can_salvage()) {
+      tmp.alloc_specific(vec_ref.salvage());
+      this->set_value(result, tmp);
+    } else {
+      // TODO: don't spill when target insert_element doesn't need it?
+      unsigned frame_off = result.assignment().frame_off();
+      unsigned part_size = result.assignment().part_size();
+      derived()->spill_reg(orig_reg, frame_off, part_size);
+    }
   }
 
   if (auto *ci = llvm::dyn_cast<llvm::ConstantInt>(index)) {
@@ -2354,6 +2362,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
     derived()->insert_element(inst_idx, cidx, bvt, std::move(val));
     // No need for ref counting: all operands and results were ValuePartRefs.
     return true;
+  }
+
+  result.spill();
+  result.unlock();
+  if (result.assignment().register_valid()) {
+    result.assignment().set_register_valid(false);
+    this->register_file.unmark_used(AsmReg{result.assignment().full_reg_id()});
   }
 
   // Second, create address. Mask index, out-of-bounds access are just poison.
