@@ -1000,10 +1000,16 @@ void EncodingTargetArm64::get_inst_candidates(
     handle_default("FDIV4s");
   } else if (Name == "FDIVv2f64") {
     handle_default("FDIV2d");
+  } else if (Name == "CMEQv16i8") {
+    handle_default("CMEQ16b");
+  } else if (Name == "DUPv16i8lane") {
+    handle_default("DUP16b");
   } else if (Name == "CNTv8i8") {
     handle_default("CNT8b");
   } else if (Name == "UADDLVv8i8v") {
     handle_default("UADDLV8b");
+  } else if (Name == "BITv16i8") {
+    handle_default("BIT16b");
   } else if (Name == "BIFv16i8") {
     handle_default("BIF16b");
   } else if (Name == "FNEGv2f64") {

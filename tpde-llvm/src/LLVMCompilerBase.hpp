@@ -2476,91 +2476,71 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
-  auto ty = inst->getType();
-
   auto cond = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
   auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
   auto rhs = this->val_ref(llvm_val_idx(inst->getOperand(2)), 0);
 
   ScratchReg res_scratch{derived()};
   auto res_ref = this->result_ref_lazy(inst_idx, 0);
-  auto pretend_128 = false;
-  if (ty->isStructTy() && ty->getStructNumElements() == 2) {
-    auto *ty0 = ty->getContainedType(0);
-    auto *ty1 = ty->getContainedType(1);
-    if (((ty0->isIntegerTy() && ty0->getIntegerBitWidth() <= 64) ||
-         ty0->isPointerTy()) &&
-        ((ty1->isIntegerTy() && ty1->getIntegerBitWidth() <= 64) ||
-         ty1->isPointerTy())) {
-      // for this special case we simply preten it is an 128 bit value to
-      // get better codegen and I can skip supporting the full complex
-      // case for now
-      // TODO(ts): support full complex types using branches
-      pretend_128 = true;
+
+  switch (this->adaptor->values[inst_idx].type) {
+    using enum LLVMBasicValType;
+  case i1:
+  case i8:
+  case i16:
+  case i32:
+    derived()->encode_select_i32(
+        std::move(cond), std::move(lhs), std::move(rhs), res_scratch);
+    break;
+  case i64:
+  case ptr:
+    derived()->encode_select_i64(
+        std::move(cond), std::move(lhs), std::move(rhs), res_scratch);
+    break;
+  case f32:
+  case v32:
+    derived()->encode_select_f32(
+        std::move(cond), std::move(lhs), std::move(rhs), res_scratch);
+    break;
+  case f64:
+  case v64:
+    derived()->encode_select_f64(
+        std::move(cond), std::move(lhs), std::move(rhs), res_scratch);
+    break;
+  case v128:
+    derived()->encode_select_v2u64(
+        std::move(cond), std::move(lhs), std::move(rhs), res_scratch);
+    break;
+  case complex:
+    // Handle case of complex with two i64 as i128, this is extremely hacky...
+    // TODO(ts): support full complex types using branches
+    if (derived()->val_part_count(inst_idx) != 2 ||
+        derived()->val_part_bank(inst_idx, 0) != 0 ||
+        derived()->val_part_bank(inst_idx, 1) != 0) {
+      return false;
     }
+    [[fallthrough]];
+  case i128: {
+    lhs.inc_ref_count();
+    rhs.inc_ref_count();
+    auto lhs_high = this->val_ref(llvm_val_idx(inst->getOperand(1)), 1);
+    auto rhs_high = this->val_ref(llvm_val_idx(inst->getOperand(2)), 1);
+
+    ScratchReg res_scratch_high{derived()};
+    auto res_ref_high = this->result_ref_lazy(inst_idx, 1);
+
+    derived()->encode_select_i128(std::move(cond),
+                                  std::move(lhs),
+                                  std::move(lhs_high),
+                                  std::move(rhs),
+                                  std::move(rhs_high),
+                                  res_scratch,
+                                  res_scratch_high);
+    this->set_value(res_ref_high, res_scratch_high);
+    res_ref_high.reset_without_refcount();
+    break;
   }
-
-  if (ty->isIntegerTy() || ty->isPointerTy() || pretend_128) {
-    auto width = 64u;
-    if (ty->isIntegerTy()) {
-      width = ty->getIntegerBitWidth();
-    }
-
-    if (width == 128 || pretend_128) {
-      lhs.inc_ref_count();
-      rhs.inc_ref_count();
-      auto lhs_high = this->val_ref(llvm_val_idx(inst->getOperand(1)), 1);
-      auto rhs_high = this->val_ref(llvm_val_idx(inst->getOperand(2)), 1);
-
-      ScratchReg res_scratch_high{derived()};
-      auto res_ref_high = this->result_ref_lazy(inst_idx, 1);
-
-      if (!derived()->encode_select_i128(std::move(cond),
-                                         std::move(lhs),
-                                         std::move(lhs_high),
-                                         std::move(rhs),
-                                         std::move(rhs_high),
-                                         res_scratch,
-                                         res_scratch_high)) {
-        TPDE_LOG_ERR("Failed to encode select for i128");
-        return false;
-      }
-      this->set_value(res_ref, res_scratch);
-      this->set_value(res_ref_high, res_scratch_high);
-      res_ref_high.reset_without_refcount();
-      return true;
-    }
-    if (width <= 32) {
-      if (!derived()->encode_select_i32(
-              std::move(cond), std::move(lhs), std::move(rhs), res_scratch)) {
-        TPDE_LOG_ERR("Failed to encode select for i32");
-        return false;
-      }
-    } else if (width <= 64) {
-      if (!derived()->encode_select_i64(
-              std::move(cond), std::move(lhs), std::move(rhs), res_scratch)) {
-        TPDE_LOG_ERR("Failed to encode select for i64");
-        return false;
-      }
-    } else {
-      TPDE_LOG_ERR("Invalid select width {}", width);
-      return false;
-    }
-  } else if (ty->isFloatTy()) {
-    if (!derived()->encode_select_f32(
-            std::move(cond), std::move(lhs), std::move(rhs), res_scratch)) {
-      TPDE_LOG_ERR("Failed to encode select for f32");
-      return false;
-    }
-  } else if (ty->isDoubleTy()) {
-    if (!derived()->encode_select_f64(
-            std::move(cond), std::move(lhs), std::move(rhs), res_scratch)) {
-      TPDE_LOG_ERR("Failed to encode select for f64");
-      return false;
-    }
-  } else {
-    TPDE_LOG_ERR("Invalid type for select");
-    return false;
+  default: TPDE_UNREACHABLE("invalid select basic type"); break;
   }
 
   this->set_value(res_ref, res_scratch);

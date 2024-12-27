@@ -502,6 +502,7 @@ i64 TARGET_V1 select_i64(u8 cond, i64 val1, i64 val2) { return ((cond & 1) ? val
 i128 TARGET_V1 select_i128(u8 cond, i128 val1, i128 val2) { return ((cond & 1) ? val1 : val2); }
 float TARGET_V1 select_f32(u8 cond, float val1, float val2) { return ((cond & 1) ? val1 : val2); }
 double TARGET_V1 select_f64(u8 cond, double val1, double val2) { return ((cond & 1) ? val1 : val2); }
+v2u64 TARGET_V1 select_v2u64(u8 cond, v2u64 val1, v2u64 val2) { return ((cond & 1) ? val1 : val2); }
 
 // --------------------------
 // float comparisons
