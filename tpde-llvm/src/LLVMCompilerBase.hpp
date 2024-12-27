@@ -3605,6 +3605,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     auto op2_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
     auto op3_ref = this->val_ref(llvm_val_idx(inst->getOperand(2)), 0);
 
+    if (!inst->getType()->isFloatTy() && !inst->getType()->isDoubleTy()) {
+      return false;
+    }
+
     const auto is_double = inst->getOperand(0)->getType()->isDoubleTy();
 
     auto res_ref = this->result_ref_lazy(inst_idx, 0);
