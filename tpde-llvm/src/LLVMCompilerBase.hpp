@@ -1780,20 +1780,31 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fneg(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
-  const auto is_double = inst->getType()->isDoubleTy();
-
-  if (!inst->getType()->isFloatTy() && !inst->getType()->isDoubleTy()) {
+  auto *scalar_ty = inst->getType()->getScalarType();
+  const bool is_double = scalar_ty->isDoubleTy();
+  if (!scalar_ty->isFloatTy() && !scalar_ty->isDoubleTy()) {
     return false;
   }
 
   auto src_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
   auto res_ref = this->result_ref_lazy(inst_idx, 0);
   auto res_scratch = ScratchReg{derived()};
-
-  if (is_double) {
-    derived()->encode_fnegf64(std::move(src_ref), res_scratch);
-  } else {
-    derived()->encode_fnegf32(std::move(src_ref), res_scratch);
+  switch (this->adaptor->values[inst_idx].type) {
+    using enum LLVMBasicValType;
+  case f32: derived()->encode_fnegf32(std::move(src_ref), res_scratch); break;
+  case f64: derived()->encode_fnegf64(std::move(src_ref), res_scratch); break;
+  case v64:
+    assert(!is_double);
+    derived()->encode_fnegv2f32(std::move(src_ref), res_scratch);
+    break;
+  case v128:
+    if (!is_double) {
+      derived()->encode_fnegv4f32(std::move(src_ref), res_scratch);
+    } else {
+      derived()->encode_fnegv2f64(std::move(src_ref), res_scratch);
+    }
+    break;
+  default: TPDE_UNREACHABLE("invalid basic type for fneg");
   }
 
   this->set_value(res_ref, res_scratch);

@@ -1012,6 +1012,10 @@ void EncodingTargetArm64::get_inst_candidates(
     handle_default("BIT16b");
   } else if (Name == "BIFv16i8") {
     handle_default("BIF16b");
+  } else if (Name == "FNEGv2f32") {
+    handle_default("FNEG2s");
+  } else if (Name == "FNEGv4f32") {
+    handle_default("FNEG4s");
   } else if (Name == "FNEGv2f64") {
     handle_default("FNEG2d");
   } else if (Name == "MOVIv2d_ns") {

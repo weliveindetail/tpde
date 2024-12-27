@@ -364,6 +364,9 @@ v2f64 TARGET_V1 divv2f64(v2f64 a, v2f64 b) { return (a / b); }
 
 float TARGET_V1 fnegf32(float a) { return (-a); }
 double TARGET_V1 fnegf64(double a) { return (-a); }
+v2f32 TARGET_V1 fnegv2f32(v2f32 a) { return (-a); }
+v4f32 TARGET_V1 fnegv4f32(v4f32 a) { return (-a); }
+v2f64 TARGET_V1 fnegv2f64(v2f64 a) { return (-a); }
 
 float TARGET_V1 fabsf32(float a) { return __builtin_fabsf(a); }
 double TARGET_V1 fabsf64(double a) { return __builtin_fabs(a); }
