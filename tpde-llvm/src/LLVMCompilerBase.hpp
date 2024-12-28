@@ -264,6 +264,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
 
   bool compile_br(IRValueRef, llvm::Instruction *) noexcept { return false; }
 
+  bool compile_inline_asm(IRValueRef, llvm::CallBase *) { return false; }
   bool compile_call_inner(IRValueRef,
                           llvm::CallInst *,
                           std::variant<SymRef, ValuePartRef> &,
@@ -2621,8 +2622,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
     call_target = global_sym(fn);
     var_arg = fn->getFunctionType()->isVarArg();
   } else if (call->isInlineAsm()) {
-    // TODO: handle inline assembly
-    return false;
+    return derived()->compile_inline_asm(inst_idx, call);
   } else {
     // either indirect call or call with mismatch of arguments
     var_arg = call->getFunctionType()->isVarArg();

@@ -4,6 +4,8 @@
 
 #include <fstream>
 
+#include <llvm/IR/InlineAsm.h>
+
 #include "LLVMAdaptor.hpp"
 #include "LLVMCompilerBase.hpp"
 #include "encode_template_x64.hpp"
@@ -97,6 +99,7 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
   void generate_conditional_branch(Jump jmp,
                                    IRBlockRef true_target,
                                    IRBlockRef false_target) noexcept;
+  bool compile_inline_asm(IRValueRef, llvm::CallBase *) noexcept;
   bool compile_call_inner(IRValueRef,
                           llvm::CallBase *,
                           std::variant<SymRef, ValuePartRef> &,
@@ -476,6 +479,31 @@ void LLVMCompilerX64::generate_conditional_branch(
   }
 
   this->release_spilled_regs(spilled);
+}
+
+bool LLVMCompilerX64::compile_inline_asm(IRValueRef,
+                                         llvm::CallBase *call) noexcept {
+  auto inline_asm = llvm::cast<llvm::InlineAsm>(call->getCalledOperand());
+  // TODO: handle inline assembly that actually does something
+  if (!inline_asm->getAsmString().empty() || inline_asm->isAlignStack() ||
+      !call->getType()->isVoidTy() || call->arg_size() != 0) {
+    return false;
+  }
+
+  auto constraints = inline_asm->ParseConstraints();
+  for (const llvm::InlineAsm::ConstraintInfo &ci : constraints) {
+    if (ci.Type != llvm::InlineAsm::isClobber) {
+      continue;
+    }
+    for (const auto &code : ci.Codes) {
+      if (code != "{memory}" && code != "{dirflag}" && code != "{fpsr}" &&
+          code != "{flags}") {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 bool LLVMCompilerX64::compile_call_inner(
