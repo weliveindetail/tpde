@@ -78,6 +78,23 @@ inline i64 sext(const u64 val, const unsigned bits) {
   return (i64)(val << (64 - bits)) >> (64 - bits);
 }
 
+constexpr unsigned uleb_len(u64 value) {
+  return value ? (64 - cnt_lz(value) + 6) / 7 : 1;
+}
+
+constexpr unsigned uleb_write(u8 *dst, u64 value) noexcept {
+  u8 *base = dst;
+  while (true) {
+    u8 write = value & 0b0111'1111;
+    value >>= 7;
+    if (value == 0) {
+      *dst++ = write;
+      return dst - base;
+    }
+    *dst++ = write | 0b1000'0000;
+  }
+}
+
 template <bool Reverse = false>
 struct BitSetIterator {
   u64 set;

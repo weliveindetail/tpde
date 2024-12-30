@@ -39,7 +39,7 @@ target_compile_definitions(tpde PUBLIC GCH_NO_STRONG_EXCEPTION_GUARANTEES)
 target_link_libraries(tpde PUBLIC gch::small_vector)
 
 target_sources(tpde PRIVATE
-    # currently there are no source files
+    src/AssemblerElf.cpp
 
     PUBLIC
     FILE_SET HEADERS
@@ -73,7 +73,9 @@ if (TPDE_X64)
     add_subdirectory(../deps/fadec ${CMAKE_CURRENT_BINARY_DIR}/deps/fadec)
 
     target_link_libraries(tpde PUBLIC fadec::fadec)
-    target_sources(tpde
+    target_sources(tpde PRIVATE
+        src/x64/AssemblerElfX64.cpp
+
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
@@ -88,7 +90,9 @@ if (TPDE_A64)
     add_subdirectory(../deps/disarm ${CMAKE_CURRENT_BINARY_DIR}/deps/disarm)
 
     target_link_libraries(tpde PUBLIC disarm64::disarm64)
-    target_sources(tpde
+    target_sources(tpde PRIVATE
+        src/arm64/AssemblerElfA64.cpp
+
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include

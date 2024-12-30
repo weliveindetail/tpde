@@ -15,11 +15,7 @@ namespace tpde::a64 {
 struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
   using Base = AssemblerElf<AssemblerElfA64>;
 
-  static constexpr u8 ELF_OS_ABI = ELFOSABI_SYSV;
-  static constexpr Elf64_Half ELF_MACHINE = EM_AARCH64;
-
-  // fake register number for the return address
-  static constexpr u8 DWARF_EH_RETURN_ADDR_REGISTER = dwarf::a64::DW_reg_lr;
+  static const TargetInfo TARGET_INFO;
 
   // TODO(ts): maybe move Labels into the compiler since they are kind of more
   // arch specific and probably don't change if u compile Elf/PE/Mach-O? then
@@ -91,8 +87,6 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
   void reloc_pc32(SecRef sec, SymRef target, u32 off, i32 addend) noexcept {
     reloc_sec(sec, target, R_AARCH64_PREL32, off, addend);
   }
-
-  void eh_write_initial_cie_instrs() noexcept;
 
 
   /// Make sure that text_write_ptr can be safely incremented by size
@@ -381,15 +375,6 @@ inline void
 inline void AssemblerElfA64::reloc_text_call(const SymRef target,
                                              const u32 off) noexcept {
   reloc_text(target, R_AARCH64_CALL26, off, 0);
-}
-
-inline void AssemblerElfA64::eh_write_initial_cie_instrs() noexcept {
-  // the current frame setup does not have a constant offset from the FP
-  // to the CFA so we need to encode that at the end
-  // for now just encode the CFA before the first sub sp
-
-  // def_cfa sp, 0
-  eh_write_inst(dwarf::DW_CFA_def_cfa, dwarf::a64::DW_reg_sp, 0);
 }
 
 inline void AssemblerElfA64::text_more_space(u32 size) noexcept {

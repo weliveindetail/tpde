@@ -13,11 +13,7 @@ namespace tpde::x64 {
 struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
   using Base = AssemblerElf<AssemblerElfX64>;
 
-  static constexpr u8 ELF_OS_ABI = ELFOSABI_SYSV;
-  static constexpr Elf64_Half ELF_MACHINE = EM_X86_64;
-
-  // fake register number for the return address
-  static constexpr u8 DWARF_EH_RETURN_ADDR_REGISTER = dwarf::x64::DW_reg_ra;
+  static const TargetInfo TARGET_INFO;
 
   // TODO(ts): maybe move Labels into the compiler since they are kind of more
   // arch specific and probably don't change if u compile Elf/PE/Mach-O? then
@@ -80,8 +76,6 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
   void reloc_pc32(SecRef sec, SymRef target, u32 off, i32 addend) noexcept {
     reloc_sec(sec, target, R_X86_64_PC32, off, addend);
   }
-
-  void eh_write_initial_cie_instrs() noexcept;
 
   void reset() noexcept;
 };
@@ -254,17 +248,6 @@ inline void AssemblerElfX64::reloc_text_got(const SymRef sym,
                                             const u32 text_imm32_off,
                                             const i32 addend) noexcept {
   reloc_text(sym, R_X86_64_GOTPCREL, text_imm32_off, addend);
-}
-
-inline void AssemblerElfX64::eh_write_initial_cie_instrs() noexcept {
-  // we always emit a frame-setup so we can encode that in the CIE
-
-  // def_cfa rbp, 16 (CFA = rbp + 16)
-  eh_write_inst(dwarf::DW_CFA_def_cfa, dwarf::x64::DW_reg_rbp, 16);
-  // cfa_offset ra, 8 (ra = CFA - 8)
-  eh_write_inst(dwarf::DW_CFA_offset, dwarf::x64::DW_reg_ra, 8);
-  // cfa_offset rbp, 16 (rbp = CFA - 16)
-  eh_write_inst(dwarf::DW_CFA_offset, dwarf::x64::DW_reg_rbp, 16);
 }
 
 inline void AssemblerElfX64::reset() noexcept {
