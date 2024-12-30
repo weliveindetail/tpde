@@ -3,12 +3,8 @@
 ;
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
-; RUN: rm -rf %t
-; RUN: mkdir %t
-
-; RUN: llvm-as -o %t/out.bc %s
-; RUN: tpde-llc --target=x86_64 %t/out.bc | %objdump | FileCheck %s -check-prefixes=X64
-; RUN: tpde-llc --target=aarch64 %t/out.bc | %objdump | FileCheck %s -check-prefixes=ARM64
+; RUN: llvm-as < %s | tpde-llc --target=x86_64 | %objdump | FileCheck %s -check-prefixes=X64
+; RUN: llvm-as < %s | tpde-llc --target=aarch64 | %objdump | FileCheck %s -check-prefixes=ARM64
 
 define void @empty() {
 ; X64-LABEL: <empty>:
