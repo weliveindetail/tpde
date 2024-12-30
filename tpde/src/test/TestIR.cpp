@@ -40,6 +40,7 @@
 #include <charconv>
 #include <format>
 #include <iostream>
+#include <algorithm>
 
 #include "TestIR.hpp"
 
