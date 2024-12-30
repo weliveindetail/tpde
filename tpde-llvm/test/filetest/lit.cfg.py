@@ -14,7 +14,7 @@ config.suffixes = ['.ll', '.cpp']
 
 config.test_source_root = os.path.dirname(__file__)
 config.test_exec_root = os.path.join(config.tpde_llvm_bin_dir, 'test/filetest');
-config.environment["FILECHECK_OPTS"] = "--enable-var-scope --dump-input always"
+config.environment["FILECHECK_OPTS"] = "--enable-var-scope --dump-input always --allow-unused-prefixes=false"
 
 # Tweak the PATH to include the tools dir and TPDE binaries.
 llvm_config.with_environment('PATH', config.llvm_tools_dir, append_path=True)

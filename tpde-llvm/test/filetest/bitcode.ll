@@ -7,11 +7,11 @@
 ; RUN: mkdir %t
 
 ; RUN: llvm-as -o %t/out.bc %s
-; RUN: tpde-llc --target=x86_64 %t/out.bc | %objdump | FileCheck %s -check-prefixes=X64,CHECK
-; RUN: tpde-llc --target=aarch64 %t/out.bc | %objdump | FileCheck %s -check-prefixes=ARM64,CHECK
+; RUN: tpde-llc --target=x86_64 %t/out.bc | %objdump | FileCheck %s -check-prefixes=X64
+; RUN: tpde-llc --target=aarch64 %t/out.bc | %objdump | FileCheck %s -check-prefixes=ARM64
 
 define void @empty() {
-; CHECK-LABEL: empty>:
+; X64-LABEL: <empty>:
 ; X64-NEXT: push rbp
 ; X64-NEXT: mov rbp, rsp
 ; X64-NEXT: nop word ptr [rax + rax]
@@ -19,6 +19,7 @@ define void @empty() {
 ; X64-NEXT: add rsp, 0x30
 ; X64-NEXT: pop rbp
 ; X64-NEXT: ret
+; ARM64-LABEL: <empty>:
 ; ARM64-NEXT:    sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
@@ -26,7 +27,6 @@ define void @empty() {
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
-; ARM64-NEXT:     ...
   entry:
     ret void
 }
