@@ -7,8 +7,8 @@
 ; RUN: mkdir %t
 
 ; RUN: llvm-as -o %t/out.bc %s
-; RUN: tpde_llvm --target=x86_64 %t/out.bc | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-; RUN: tpde_llvm --target=aarch64 %t/out.bc | llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
+; RUN: tpde-llc --target=x86_64 %t/out.bc | %objdump | FileCheck %s -check-prefixes=X64,CHECK
+; RUN: tpde-llc --target=aarch64 %t/out.bc | %objdump | FileCheck %s -check-prefixes=ARM64,CHECK
 
 define void @empty() {
 ; CHECK-LABEL: empty>:

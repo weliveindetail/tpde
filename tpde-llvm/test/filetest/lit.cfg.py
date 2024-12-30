@@ -14,10 +14,11 @@ config.suffixes = ['.ll', '.cpp']
 
 config.test_source_root = os.path.dirname(__file__)
 config.test_exec_root = os.path.join(config.tpde_llvm_bin_dir, 'test/filetest');
+config.environment["FILECHECK_OPTS"] = "--enable-var-scope --dump-input always"
 
 # Tweak the PATH to include the tools dir and TPDE binaries.
 llvm_config.with_environment('PATH', config.llvm_tools_dir, append_path=True)
 llvm_config.with_environment('PATH', config.tpde_llvm_bin_dir, append_path=True)
-config.substitutions.append(('tpde_llvm', 'tpde-llc'))
+config.substitutions.append(('%objdump', 'llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel -'))
 
 # TODO(ts): arch config

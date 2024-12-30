@@ -1,7 +1,8 @@
+; NOTE: Do not autogenerate
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
-; RUN: tpde_llvm --target=x86_64 %s | llvm-readelf -SrW - | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
-; RUN: tpde_llvm --target=aarch64 %s | llvm-readelf -SrW - | FileCheck %s -check-prefixes=ARM64,CHECK --enable-var-scope --dump-input always
+; RUN: tpde-llc --target=x86_64 %s | llvm-readelf -SrW - | FileCheck %s -check-prefixes=X64,CHECK
+; RUN: tpde-llc --target=aarch64 %s | llvm-readelf -SrW - | FileCheck %s -check-prefixes=ARM64,CHECK
 
 ; COM: Check symbol table
 ; CHECK: [[[INIT_ARRAY_IDX:[0-9]+]]] .init_array INIT_ARRAY {{[0-9a-f]+}} {{[0-9a-f]+}} {{0*8}} {{0+}} WA 0 0 8
