@@ -1275,11 +1275,29 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     assert(final_frame_size < 16 * 1024 * 1024);
   }
 
+  const auto fde_off = this->assembler.eh_begin_fde();
+
   {
     util::SmallVector<u32, 16> prologue;
     prologue.push_back(de64_SUBxi(DA_SP, DA_SP, final_frame_size));
+    this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 4);
+    this->assembler.eh_write_inst(dwarf::DW_CFA_def_cfa_offset,
+                                  final_frame_size);
     prologue.push_back(de64_STPx(DA_GP(29), DA_GP(30), DA_SP, 0));
     prologue.push_back(de64_MOV_SPx(DA_GP(29), DA_SP));
+    this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 8);
+    this->assembler.eh_write_inst(dwarf::DW_CFA_def_cfa_register,
+                                  dwarf::a64::DW_reg_fp);
+    this->assembler.eh_write_inst(
+        dwarf::DW_CFA_offset, dwarf::a64::DW_reg_fp, final_frame_size);
+    this->assembler.eh_write_inst(
+        dwarf::DW_CFA_offset, dwarf::a64::DW_reg_lr, final_frame_size - 8);
+
+    auto &sec_eh_frame =
+        this->assembler.get_section(this->assembler.secref_eh_frame);
+    // Patched below
+    auto fde_prologue_adv_off = sec_eh_frame.data.size();
+    this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 0);
 
     AsmReg last_reg = AsmReg::make_invalid();
     u32 frame_off = 16;
@@ -1306,6 +1324,16 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
         continue;
       }
 
+      u8 dwarf_base = reg < 32 ? dwarf::a64::DW_reg_v0 : dwarf::a64::DW_reg_x0;
+      u8 dwarf_reg = dwarf_base + reg % 32;
+      u32 cfa_off = final_frame_size - frame_off;
+      if ((dwarf_reg & dwarf::DWARF_CFI_PRIMARY_OPCODE_MASK) == 0) {
+        this->assembler.eh_write_inst(dwarf::DW_CFA_offset, dwarf_reg, cfa_off);
+      } else {
+        this->assembler.eh_write_inst(
+            dwarf::DW_CFA_offset_extended, dwarf_reg, cfa_off);
+      }
+
       last_reg = AsmReg{reg};
     }
 
@@ -1318,6 +1346,10 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     }
 
     assert(prologue.size() * sizeof(u32) <= func_prologue_alloc);
+
+    assert(prologue.size() * sizeof(u32) < 0x4c);
+    sec_eh_frame.data[fde_prologue_adv_off] =
+        dwarf::DW_CFA_advance_loc | (prologue.size() * sizeof(u32) - 12);
 
     // Pad with NOPs so that func_prologue_alloc - prologue.size() is a
     // multiple if 16 (the function alignment).
@@ -1358,7 +1390,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
   }
 
   // TODO(ts): honor cur_needs_unwind_info
-  this->assembler.end_func(saved_regs, final_frame_size);
+  this->assembler.end_func();
+  this->assembler.eh_end_fde(fde_off, this->assembler.cur_func);
+  this->assembler.except_encode_func();
 
   if (func_ret_offs.empty()) {
     return;

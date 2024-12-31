@@ -1127,6 +1127,23 @@ template <IRAdaptor Adaptor,
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
   const CallingConv conv = Base::derived()->cur_calling_convention();
 
+  const auto fde_off = this->assembler.eh_begin_fde();
+  // push rbp
+  this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 1);
+  this->assembler.eh_write_inst(dwarf::DW_CFA_def_cfa_offset, 16);
+  this->assembler.eh_write_inst(
+      dwarf::DW_CFA_offset, dwarf::x64::DW_reg_rbp, 16);
+  // mov rbp, rsp
+  this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 3);
+  this->assembler.eh_write_inst(dwarf::DW_CFA_def_cfa_register,
+                                dwarf::x64::DW_reg_rbp);
+
+  auto &sec_eh_frame =
+      this->assembler.get_section(this->assembler.secref_eh_frame);
+  // Patched below
+  auto fde_prologue_adv_off = sec_eh_frame.data.size();
+  this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 0);
+
   auto *write_ptr = this->assembler.text_ptr(func_reg_save_off);
   const u64 saved_regs =
       this->register_file.clobbered & conv.callee_saved_mask();
@@ -1136,7 +1153,15 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     write_ptr +=
         fe64_PUSHr(write_ptr, 0, AsmReg{static_cast<AsmReg::REG>(reg)});
     ++num_saved_regs;
+
+    this->assembler.eh_write_inst(
+        dwarf::DW_CFA_offset, reg, 16 + 8 * num_saved_regs);
   }
+
+  u32 prologue_size = write_ptr - this->assembler.text_ptr(func_start_off);
+  assert(prologue_size < 0x44);
+  sec_eh_frame.data[fde_prologue_adv_off] =
+      dwarf::DW_CFA_advance_loc | (prologue_size - 4);
 
   // The frame_size contains the reserved frame size so we need to subtract
   // the stack space we used for the saved registers
@@ -1185,7 +1210,9 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
 
   if (func_ret_offs.empty()) {
     // TODO(ts): honor cur_needs_unwind_info
-    this->assembler.end_func(saved_regs);
+    this->assembler.end_func();
+    this->assembler.eh_end_fde(fde_off, this->assembler.cur_func);
+    this->assembler.except_encode_func();
     return;
   }
 
@@ -1241,7 +1268,9 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
   // Do end_func at the very end; we shorten the function here again, so only
   // at this point we know the actual size of the function.
   // TODO(ts): honor cur_needs_unwind_info
-  this->assembler.end_func(saved_regs);
+  this->assembler.end_func();
+  this->assembler.eh_end_fde(fde_off, this->assembler.cur_func);
+  this->assembler.except_encode_func();
 }
 
 template <IRAdaptor Adaptor,

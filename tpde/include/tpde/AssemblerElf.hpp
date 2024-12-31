@@ -53,7 +53,11 @@ constexpr u8 DW_EH_PE_omit = 0xff;
 
 constexpr u8 DW_CFA_offset_extended = 0x05;
 constexpr u8 DW_CFA_def_cfa = 0x0c;
+constexpr u8 DW_CFA_def_cfa_register = 0x0d;
+constexpr u8 DW_CFA_def_cfa_offset = 0x0e;
 constexpr u8 DW_CFA_offset = 0x80;
+constexpr u8 DW_CFA_advance_loc = 0x40;
+constexpr u8 DW_CFA_advance_loc4 = 0x04;
 
 constexpr u8 DWARF_CFI_PRIMARY_OPCODE_MASK = 0xc0;
 
@@ -382,8 +386,8 @@ public:
   void eh_write_sleb(std::vector<u8> &dst, i64 value) noexcept;
 
   void eh_init_cie(SymRef personality_func_addr = INVALID_SYM_REF) noexcept;
-  u32 eh_write_fde_start() noexcept;
-  void eh_write_fde_len(u32 fde_off) noexcept;
+  u32 eh_begin_fde() noexcept;
+  void eh_end_fde(u32 fde_start, SymRef func) noexcept;
   void except_encode_func() noexcept;
 
   /// add an entry to the call-site table
@@ -459,10 +463,8 @@ struct AssemblerElf : public AssemblerElfBase {
 
   void start_func(SymRef func, SymRef personality_func_addr) noexcept;
 
-protected:
   void end_func() noexcept;
 
-public:
   /// Align the text write pointer
   void text_align(u64 align) noexcept { derived()->text_align_impl(align); }
 

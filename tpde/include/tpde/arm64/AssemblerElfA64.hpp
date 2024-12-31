@@ -60,8 +60,6 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
 
   explicit AssemblerElfA64(const bool gen_obj) : Base{gen_obj} {}
 
-  void end_func(u64 saved_regs, u32 frame_size) noexcept;
-
   [[nodiscard]] Label label_create() noexcept;
 
   [[nodiscard]] u32 label_offset(Label label) const noexcept;
@@ -94,52 +92,6 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
 
   void reset() noexcept;
 };
-
-inline void AssemblerElfA64::end_func(const u64 saved_regs,
-                                      const u32 frame_size) noexcept {
-  Base::end_func();
-
-  const auto fde_off = eh_write_fde_start();
-
-  // relocate the func_start to the function
-  // relocate against .text so we don't have to fix up any relocations
-  const auto func_off = sym_ptr(cur_func)->st_value;
-  this->reloc_sec(secref_eh_frame,
-                  get_section(current_section).sym,
-                  R_AARCH64_PREL32,
-                  fde_off + dwarf::EH_FDE_FUNC_START_OFF,
-                  static_cast<u32>(func_off));
-
-  // setup the CFA
-  // CFA = FP + frame_size
-  eh_write_inst(dwarf::DW_CFA_def_cfa, dwarf::a64::DW_reg_fp, frame_size);
-  // FP = CFA - frame_size
-  eh_write_inst(dwarf::DW_CFA_offset, dwarf::a64::DW_reg_fp, frame_size);
-  // LR = CFA - frame_size + 8
-  eh_write_inst(dwarf::DW_CFA_offset, dwarf::a64::DW_reg_lr, frame_size - 8);
-
-  // write out the saved registers
-
-  // register saves start at CFA - frame_size + 16
-  u32 cur_off = frame_size - 16;
-  for (auto reg_id : util::BitSetIterator<>(saved_regs)) {
-    if (reg_id >= 32) {
-      reg_id = reg_id - 32 + dwarf::a64::DW_reg_v0;
-    }
-
-    // cfa_offset reg, cur_off (reg = CFA - cur_off)
-    if ((reg_id & dwarf::DWARF_CFI_PRIMARY_OPCODE_MASK) == 0) {
-      eh_write_inst(dwarf::DW_CFA_offset, reg_id, cur_off);
-    } else {
-      eh_write_inst(dwarf::DW_CFA_offset_extended, reg_id, cur_off);
-    }
-    // hardcodes register saves of 8 bytes
-    cur_off -= 8;
-  }
-
-  this->eh_write_fde_len(fde_off);
-  this->except_encode_func();
-}
 
 inline AssemblerElfA64::Label AssemblerElfA64::label_create() noexcept {
   const auto label = static_cast<Label>(label_offsets.size());

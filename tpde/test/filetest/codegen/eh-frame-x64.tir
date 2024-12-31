@@ -14,16 +14,21 @@
 ; EH-NEXT:   Return address column: 16
 ; EH-NEXT:   Augmentation data:     1B
 ; EH-EMPTY:
-; EH-NEXT:   DW_CFA_def_cfa: RBP +16
+; EH-NEXT:   DW_CFA_def_cfa: RSP +8
 ; EH-NEXT:   DW_CFA_offset: RIP -8
-; EH-NEXT:   DW_CFA_offset: RBP -16
+; EH-NEXT:   DW_CFA_nop:
+; EH-NEXT:   DW_CFA_nop:
 ; EH-EMPTY:
-; EH-NEXT:   CFA=RBP+16: RBP=[CFA-16], RIP=[CFA-8]
 
 add1(%a, %b) {
 ; EH-LABEL: FDE cie=00000000 pc=00000000...00000020
 ; EH-NEXT: Format:       DWARF32
-; EH-NEXT: DW_CFA_nop:
+; EH-NEXT: DW_CFA_advance_loc: 1 to 0x1
+; EH-NEXT: DW_CFA_def_cfa_offset: +16
+; EH-NEXT: DW_CFA_offset: RBP -16
+; EH-NEXT: DW_CFA_advance_loc: 3 to 0x4
+; EH-NEXT: DW_CFA_def_cfa_register: RBP
+; EH-NEXT: DW_CFA_advance_loc: 0 to 0x4
 ; EH-NEXT: DW_CFA_nop:
 ; EH-NEXT: DW_CFA_nop:
 ; EH-NEXT: DW_CFA_nop:

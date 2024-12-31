@@ -45,8 +45,6 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
 
   explicit AssemblerElfX64(const bool gen_obj) : Base{gen_obj} {}
 
-  void end_func(u64 saved_regs) noexcept;
-
   [[nodiscard]] Label label_create() noexcept;
 
   [[nodiscard]] u32 label_offset(Label label) const noexcept;
@@ -79,40 +77,6 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
 
   void reset() noexcept;
 };
-
-inline void AssemblerElfX64::end_func(const u64 saved_regs) noexcept {
-  Base::end_func();
-
-  const auto fde_off = eh_write_fde_start();
-
-  // relocate the func_start to the function
-  // relocate against .text so we don't have to fix up any relocations
-  const auto func_off = sym_ptr(cur_func)->st_value;
-  this->reloc_sec(secref_eh_frame,
-                  get_section(current_section).sym,
-                  R_X86_64_PC32,
-                  fde_off + dwarf::EH_FDE_FUNC_START_OFF,
-                  static_cast<u32>(func_off));
-
-  // write out the saved registers
-
-  // register saves start at CFA - 24
-  u32 cur_off = 24;
-  for (auto reg_id : util::BitSetIterator<>(saved_regs)) {
-    if (reg_id >= 32) {
-      reg_id -= 15; // vector register ids start at 32 but dwarf encodes
-                    // them starting at 17
-    }
-    // cfa_offset reg, cur_off (reg = CFA - cur_off)
-    eh_write_inst(dwarf::DW_CFA_offset, reg_id, cur_off);
-    // TODO(ts): this does not cope with register saves of xmm regs > 8
-    // bytes
-    cur_off += 8;
-  }
-
-  this->eh_write_fde_len(fde_off);
-  this->except_encode_func();
-}
 
 inline AssemblerElfX64::Label AssemblerElfX64::label_create() noexcept {
   const auto label = static_cast<Label>(label_offsets.size());

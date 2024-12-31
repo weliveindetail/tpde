@@ -571,7 +571,7 @@ void AssemblerElfBase::eh_init_cie(SymRef personality_func_addr) noexcept {
   }
 }
 
-u32 AssemblerElfBase::eh_write_fde_start() noexcept {
+u32 AssemblerElfBase::eh_begin_fde() noexcept {
   eh_align_frame();
 
   auto &data = get_section(secref_eh_frame).data;
@@ -600,11 +600,7 @@ u32 AssemblerElfBase::eh_write_fde_start() noexcept {
   *reinterpret_cast<u32 *>(data.data() + fde_off + 4) =
       fde_off - eh_cur_cie_off + sizeof(u32);
 
-  // func_start will be relocated by the arch impl
-
-  // func_size
-  auto *func_sym = sym_ptr(cur_func);
-  *reinterpret_cast<i32 *>(data.data() + fde_off + 12) = func_sym->st_size;
+  // func_start and func_size will be relocated at the end
 
   // augmentation_data_len is 0 with no personality or 4 otherwise
   if (cur_personality_func_addr != INVALID_SYM_REF) {
@@ -614,12 +610,27 @@ u32 AssemblerElfBase::eh_write_fde_start() noexcept {
   return fde_off;
 }
 
-void AssemblerElfBase::eh_write_fde_len(const u32 fde_off) noexcept {
+void AssemblerElfBase::eh_end_fde(u32 fde_start, SymRef func) noexcept {
   eh_align_frame();
 
-  DataSection &eh_frame = get_section(secref_eh_frame);
-  const u32 len = eh_frame.data.size() - fde_off - sizeof(u32);
-  *reinterpret_cast<u32 *>(eh_frame.data.data() + fde_off) = len;
+  auto &eh_data = get_section(secref_eh_frame).data;
+  auto *func_sym = sym_ptr(func);
+
+  // relocate the func_start to the function
+  // relocate against .text so we don't have to fix up any relocations
+  // NB: ld.bfd (for a reason that needs to be investigated) doesn't accept
+  // using the function symbol here.
+  DataSection &func_sec = get_section(SecRef{func_sym->st_shndx});
+  this->reloc_sec(secref_eh_frame,
+                  func_sec.sym,
+                  target_info.reloc_pc32,
+                  fde_start + 8,
+                  func_sym->st_value);
+  // Adjust func_size to the function size
+  *reinterpret_cast<i32 *>(eh_data.data() + fde_start + 12) = func_sym->st_size;
+
+  const u32 len = eh_data.size() - fde_start - sizeof(u32);
+  *reinterpret_cast<u32 *>(eh_data.data() + fde_start) = len;
   if (cur_personality_func_addr != INVALID_SYM_REF) {
     DataSection &except_table =
         get_or_create_section(secref_except_table,
@@ -631,7 +642,7 @@ void AssemblerElfBase::eh_write_fde_len(const u32 fde_off) noexcept {
     reloc_sec(secref_eh_frame,
               except_table.sym,
               target_info.reloc_pc32,
-              fde_off + 17,
+              fde_start + 17,
               except_table.data.size());
   }
 }

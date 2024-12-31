@@ -16,15 +16,12 @@ static constexpr auto get_cie_initial_instrs() {
   // we always emit a frame-setup so we can encode that in the CIE
 
   u8 *dst = data.data();
-  // def_cfa rbp, 16 (CFA = rbp + 16)
+  // def_cfa rsp, 8
   dst += AssemblerElfX64::write_eh_inst(
-      dst, dwarf::DW_CFA_def_cfa, dwarf::x64::DW_reg_rbp, 16);
-  // cfa_offset ra, 8 (ra = CFA - 8)
+      dst, dwarf::DW_CFA_def_cfa, dwarf::x64::DW_reg_rsp, 8);
+  // cfa_offset ra, 8
   dst += AssemblerElfX64::write_eh_inst(
       dst, dwarf::DW_CFA_offset, dwarf::x64::DW_reg_ra, 8);
-  // cfa_offset rbp, 16 (rbp = CFA - 16)
-  dst += AssemblerElfX64::write_eh_inst(
-      dst, dwarf::DW_CFA_offset, dwarf::x64::DW_reg_rbp, 16);
   return std::make_pair(data, dst - data.data());
 }
 
