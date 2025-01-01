@@ -3245,13 +3245,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
 
     auto cur_block = this->analyzer.block_ref(this->cur_block_idx);
 
-    if (this->analyzer.block_ref(this->next_block()) == normal_block_ref &&
-        !unwind_block_has_phi) {
-      // this block will handle the spilling for us, the value is not
-      // usable in unwind block. Always spill if the unwind block has phi nodes,
-      // because the phi handling will modify the register states.
-      return;
-    }
+    // TODO: temporarily disable the optimization, it doesn't work reliably.
+    // First, if the unwind block has PHIs, we currently assume that the result
+    // registers (which are the landing pad result registers) are reserveable.
+    // Second, the result registers might be in the result from spill_before_br,
+    // which would cause the result to be freed immediately after the branch.
+    // Both cases could be handled by inspecting the result registers. However,
+    // a proper solution requires some more thought. Therefore, as a temporary
+    // workaround, *always* (=> && false) spill the result of an invoke if it is
+    // used outside of a PHI node in the normal block.
+    //
+    // This used to be: if (normal_is_next) return;
 
     uint32_t num_phi_reads = 0;
     for (auto i : this->adaptor->block_phis(normal_block_ref)) {
