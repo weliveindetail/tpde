@@ -743,15 +743,17 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
       u64 shift = 64 - int_width;
       imm = ((i64)((imm & mask) << shift)) >> shift;
     }
+
+    ScratchReg rhs_tmp{this};
     if (int_width <= 32) {
       if (!ASMIF(CMPwi, lhs_reg, imm)) {
-        const auto rhs_reg = gval_as_reg(rhs_op);
-        ASM(CMPw, lhs_reg, rhs_reg);
+        this->materialize_constant(imm, 0, 4, rhs_tmp.alloc_gp());
+        ASM(CMPw, lhs_reg, rhs_tmp.cur_reg);
       }
     } else {
       if (!ASMIF(CMPxi, lhs_reg, imm)) {
-        const auto rhs_reg = gval_as_reg(rhs_op);
-        ASM(CMPx, lhs_reg, rhs_reg);
+        this->materialize_constant(imm, 0, 4, rhs_tmp.alloc_gp());
+        ASM(CMPx, lhs_reg, rhs_tmp.cur_reg);
       }
     }
   } else {

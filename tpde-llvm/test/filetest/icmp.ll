@@ -950,6 +950,38 @@ define void @icmp_slt_i16_1(i16 %0) {
     ret void
 }
 
+define i1 @icmp_slt_i16_m11776(i16 %0) {
+; X64-LABEL: <icmp_slt_i16_m11776>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    movsx edi, di
+; X64-NEXT:    cmp edi, 0xffffd200
+; X64-NEXT:    mov edi, 0x0
+; X64-NEXT:    setl dil
+; X64-NEXT:    mov eax, edi
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop
+;
+; ARM64-LABEL: <icmp_slt_i16_m11776>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    sxth w0, w0
+; ARM64-NEXT:    mov x1, #-0x2e00 // =-11776
+; ARM64-NEXT:    cmp w0, w1
+; ARM64-NEXT:    cset w0, lt
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+  %r = icmp slt i16 %0, -11776
+  ret i1 %r
+}
+
 define void @icmp_sle_i16_1(i16 %0) {
 ; X64-LABEL: <icmp_sle_i16_1>:
 ; X64:         push rbp
@@ -2428,6 +2460,43 @@ define void @icmp_slt_i37_1(i37 %0) {
   entry:
     %1 = icmp slt i37 %0, 1
     ret void
+}
+
+define i1 @icmp_slt_i37_largeimm(i37 %0) {
+; X64-LABEL: <icmp_slt_i37_largeimm>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    shl rdi, 0x1b
+; X64-NEXT:    sar rdi, 0x1b
+; X64-NEXT:    movabs rax, -0x111111111
+; X64-NEXT:    cmp rdi, rax
+; X64-NEXT:    mov edi, 0x0
+; X64-NEXT:    setl dil
+; X64-NEXT:    mov eax, edi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+;
+; ARM64-LABEL: <icmp_slt_i37_largeimm>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    sbfx x0, x0, #0, #37
+; ARM64-NEXT:    mov x1, #0xeeef // =61167
+; ARM64-NEXT:    movk x1, #0xeeee, lsl #16
+; ARM64-NEXT:    movk x1, #0xfffe, lsl #32
+; ARM64-NEXT:    movk x1, #0xffff, lsl #48
+; ARM64-NEXT:    cmp x0, x1
+; ARM64-NEXT:    cset w0, lt
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+  %r = icmp slt i37 %0, -4581298449
+  ret i1 %r
 }
 
 define void @icmp_sle_i37_1(i37 %0) {
