@@ -434,14 +434,14 @@ bool LLVMCompilerX64::compile_br(IRValueRef, llvm::Instruction *inst) noexcept {
     auto spilled = this->spill_before_branch();
 
     generate_branch_to_block(
-        Jump::jmp, adaptor->block_lookup[br->getSuccessor(0)], false, true);
+        Jump::jmp, adaptor->block_lookup_idx(br->getSuccessor(0)), false, true);
 
     release_spilled_regs(spilled);
     return true;
   }
 
-  const auto true_block = adaptor->block_lookup[br->getSuccessor(0)];
-  const auto false_block = adaptor->block_lookup[br->getSuccessor(1)];
+  const auto true_block = adaptor->block_lookup_idx(br->getSuccessor(0));
+  const auto false_block = adaptor->block_lookup_idx(br->getSuccessor(1));
 
   {
     ScratchReg scratch{this};
@@ -631,9 +631,9 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef inst_idx,
 
               // generate the branch
               const auto true_block =
-                  adaptor->block_lookup[branch->getSuccessor(0)];
+                  adaptor->block_lookup_idx(branch->getSuccessor(0));
               const auto false_block =
-                  adaptor->block_lookup[branch->getSuccessor(1)];
+                  adaptor->block_lookup_idx(branch->getSuccessor(1));
 
               generate_conditional_branch(jump, true_block, false_block);
 

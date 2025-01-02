@@ -470,14 +470,14 @@ bool LLVMCompilerArm64::compile_br(IRValueRef,
     auto spilled = this->spill_before_branch();
 
     generate_branch_to_block(
-        Jump::jmp, adaptor->block_lookup[br->getSuccessor(0)], false, true);
+        Jump::jmp, adaptor->block_lookup_idx(br->getSuccessor(0)), false, true);
 
     release_spilled_regs(spilled);
     return true;
   }
 
-  const auto true_block = adaptor->block_lookup[br->getSuccessor(0)];
-  const auto false_block = adaptor->block_lookup[br->getSuccessor(1)];
+  const auto true_block = adaptor->block_lookup_idx(br->getSuccessor(0));
+  const auto false_block = adaptor->block_lookup_idx(br->getSuccessor(1));
 
   // TODO: use Tbz/Tbnz. Must retain register until branch.
   {
@@ -680,8 +680,8 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
     lhs.reset();
     rhs.reset();
     if (fuse_br) {
-      auto true_block = adaptor->block_lookup[fuse_br->getSuccessor(0)];
-      auto false_block = adaptor->block_lookup[fuse_br->getSuccessor(1)];
+      auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
+      auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
       generate_conditional_branch(jump, true_block, false_block);
       this->adaptor->val_set_fused(*remaining.from, true);
     } else {
@@ -731,8 +731,8 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
 
       auto jump_kind = jump == Jump::Jeq ? Jump::Cbz : Jump::Cbnz;
       Jump cbz{jump_kind, lhs_reg, int_width <= 32};
-      auto true_block = adaptor->block_lookup[fuse_br->getSuccessor(0)];
-      auto false_block = adaptor->block_lookup[fuse_br->getSuccessor(1)];
+      auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
+      auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
       generate_conditional_branch(cbz, true_block, false_block);
       this->adaptor->val_set_fused(*remaining.from, true);
       return true;
@@ -769,8 +769,8 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
   rhs_op.reset();
 
   if (fuse_br) {
-    auto true_block = adaptor->block_lookup[fuse_br->getSuccessor(0)];
-    auto false_block = adaptor->block_lookup[fuse_br->getSuccessor(1)];
+    auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
+    auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
     generate_conditional_branch(jump, true_block, false_block);
     this->adaptor->val_set_fused(*remaining.from, true);
   } else {

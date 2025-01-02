@@ -133,7 +133,7 @@ struct LLVMAdaptor {
   /// that are not globals, arguments, and basic blocks. Instructions are
   /// only included in debug builds.
   tsl::hopscotch_map<const llvm::Value *, u32> value_lookup;
-  tsl::hopscotch_map<llvm::BasicBlock *, u32> block_lookup;
+  tsl::hopscotch_map<const llvm::BasicBlock *, u32> block_lookup;
   tpde::util::SmallVector<LLVMComplexPart, 32> complex_part_types;
 
   // helpers for faster lookup
@@ -283,6 +283,13 @@ struct LLVMAdaptor {
   }
 
   [[nodiscard]] static IRBlockRef cur_entry_block() noexcept { return 0; }
+
+  [[nodiscard]] IRBlockRef
+      block_lookup_idx(const llvm::BasicBlock *block) const noexcept {
+    auto it = block_lookup.find(block);
+    assert(it != block_lookup.end());
+    return it->second;
+  }
 
   [[nodiscard]] IRBlockRef
       block_sibling(const IRBlockRef block) const noexcept {
@@ -461,9 +468,7 @@ struct LLVMAdaptor {
 
       [[nodiscard]] IRBlockRef
           incoming_block_for_slot(const u32 slot) const noexcept {
-        const auto it = self->block_lookup.find(phi->getIncomingBlock(slot));
-        assert(it != self->block_lookup.end());
-        return it->second;
+        return self->block_lookup_idx(phi->getIncomingBlock(slot));
       }
 
       [[nodiscard]] IRValueRef

@@ -3071,7 +3071,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
   for (auto case_val : switch_inst->cases()) {
     cases.push_back(std::make_pair(
         case_val.getCaseValue()->getZExtValue(),
-        this->adaptor->block_lookup[case_val.getCaseSuccessor()]));
+        this->adaptor->block_lookup_idx(case_val.getCaseSuccessor())));
   }
   std::sort(cases.begin(), cases.end(), [](const auto &lhs, const auto &rhs) {
     return lhs.first < rhs.first;
@@ -3172,7 +3172,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
   // TODO(ts): factor into arch-code?
   derived()->generate_branch_to_block(
       Derived::Jump::jmp,
-      this->adaptor->block_lookup[switch_inst->getDefaultDest()],
+      this->adaptor->block_lookup_idx(switch_inst->getDefaultDest()),
       false,
       false);
 
@@ -3227,9 +3227,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
     break;
   }
 
-  const auto unwind_block_ref = this->adaptor->block_lookup[unwind_block];
+  const auto unwind_block_ref = this->adaptor->block_lookup_idx(unwind_block);
   const auto normal_block_ref =
-      this->adaptor->block_lookup[invoke->getNormalDest()];
+      this->adaptor->block_lookup_idx(invoke->getNormalDest());
   auto unwind_label =
       this->block_labels[(u32)this->analyzer.block_idx(unwind_block_ref)];
 
