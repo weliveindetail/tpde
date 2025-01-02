@@ -44,9 +44,9 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
   RegBitSet allocatable = 0;
   /// Registers that are currently in use. Requires allocatable.
   RegBitSet used = 0;
-  /// Registers that are currently unevictable. Requrres used.
+  /// Registers that are currently unevictable. Requires used.
   RegBitSet fixed = 0;
-  /// Regsiters that were clobbered at some point. Used to track registers that
+  /// Registers that were clobbered at some point. Used to track registers that
   /// need to be saved/restored.
   RegBitSet clobbered = 0;
   u32 clocks[2] = {};

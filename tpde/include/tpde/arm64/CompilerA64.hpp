@@ -1981,8 +1981,8 @@ AsmReg
   }
 
   // try to first get an unused reg, otherwise an unfixed reg
-  if ((possible_regs & this->register_file.used) == 0) {
-    return AsmReg{util::cnt_tz(possible_regs)};
+  if ((possible_regs & ~this->register_file.used) != 0) {
+    return AsmReg{util::cnt_tz(possible_regs & ~this->register_file.used)};
   }
 
   for (const auto reg_id : util::BitSetIterator<>{possible_regs}) {
