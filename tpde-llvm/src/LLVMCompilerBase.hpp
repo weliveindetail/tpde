@@ -160,7 +160,23 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
   void analysis_end() noexcept;
 
   std::optional<ValuePartRef> val_ref_special(ValLocalIdx local_idx,
-                                              u32 part) noexcept;
+                                              u32 part) noexcept {
+    auto val_idx = static_cast<LLVMAdaptor::IRValueRef>(local_idx);
+    // As a first approximation, a value is definitely not a constant if it has
+    // some liveness information. Non-constants without liveness are static
+    // allocas and basic blocks. This is faster than querying the type of every
+    // operand.
+    if (!this->adaptor->values[val_idx].skip_liveness) [[likely]] {
+      return std::nullopt;
+    }
+    if (llvm::isa<llvm::Constant>(this->adaptor->values[val_idx].val)) {
+      return val_ref_constant(val_idx, part);
+    }
+    return std::nullopt;
+  }
+
+  std::optional<ValuePartRef> val_ref_constant(IRValueRef val_idx,
+                                               u32 part) noexcept;
 
   void define_func_idx(IRFuncRef func, const u32 idx) noexcept;
   bool hook_post_func_sym_init() noexcept;
@@ -309,14 +325,10 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::analysis_end() noexcept {
 
 template <typename Adaptor, typename Derived, typename Config>
 std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
-    LLVMCompilerBase<Adaptor, Derived, Config>::val_ref_special(
-        ValLocalIdx local_idx, u32 part) noexcept {
-  auto val_idx = static_cast<LLVMAdaptor::IRValueRef>(local_idx);
+    LLVMCompilerBase<Adaptor, Derived, Config>::val_ref_constant(
+        IRValueRef val_idx, u32 part) noexcept {
   auto *val = this->adaptor->values[val_idx].val;
-  auto *const_val = llvm::dyn_cast<llvm::Constant>(val);
-  if (!const_val) {
-    return std::nullopt;
-  }
+  auto *const_val = llvm::cast<llvm::Constant>(val);
 
   auto ty = this->adaptor->values[val_idx].type;
   unsigned sub_part = part;
@@ -358,6 +370,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
       const_val = llvm::dyn_cast<llvm::Constant>(agg->getOperand(idx));
     }
     if (!const_val) {
+      // TODO: when can this happen?
       return {};
     }
 
