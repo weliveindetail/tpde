@@ -4,6 +4,7 @@
 #pragma once
 
 #include <format>
+#include <ranges>
 
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
@@ -404,44 +405,10 @@ struct LLVMAdaptor {
   }
 
   [[nodiscard]] auto val_operands(const IRValueRef idx) const noexcept {
-    llvm::Value *val = values[idx].val;
-    llvm::Instruction *inst = llvm::dyn_cast<llvm::Instruction>(val);
-    assert(inst);
-
-    struct OpIter {
-      u32 idx;
-      llvm::Instruction *inst;
-      const LLVMAdaptor *self;
-
-      [[nodiscard]] OpIter begin() noexcept { return *this; }
-
-      [[nodiscard]] OpIter end() const noexcept {
-        return OpIter{
-            .idx = inst->getNumOperands(),
-            .inst = this->inst,
-            .self = this->self,
-        };
-      }
-
-      OpIter &operator++() noexcept {
-        ++idx;
-        return *this;
-      }
-
-      [[nodiscard]] u32 operator*() const noexcept {
-        return self->val_lookup_idx(inst->getOperand(idx));
-      }
-
-      bool operator!=(const OpIter &rhs) const {
-        return (idx != rhs.idx) || (inst != rhs.inst) || (self != rhs.self);
-      }
-    };
-
-    return OpIter{
-        .idx = 0,
-        .inst = inst,
-        .self = this,
-    };
+    auto *inst = llvm::cast<llvm::Instruction>(values[idx].val);
+    return inst->operands() | std::views::transform([this](llvm::Use &use) {
+             return val_lookup_idx(use.get());
+           });
   }
 
   [[nodiscard]] bool

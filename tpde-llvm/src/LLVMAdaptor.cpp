@@ -24,7 +24,7 @@ namespace tpde_llvm {
 std::pair<llvm::Value *, llvm::Instruction *>
     LLVMAdaptor::fixup_constant(llvm::Constant *cst,
                                 llvm::Instruction *ins_before) {
-  if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(cst); cexpr) {
+  if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(cst)) [[unlikely]] {
     // clang creates these and we don't want to handle them so
     // we split them up into their own values
     llvm::Instruction *expr_inst = cexpr->getAsInstruction();
@@ -32,7 +32,7 @@ std::pair<llvm::Value *, llvm::Instruction *>
     return {expr_inst, expr_inst};
   }
 
-  if (auto *cv = llvm::dyn_cast<llvm::ConstantVector>(cst)) {
+  if (auto *cv = llvm::dyn_cast<llvm::ConstantVector>(cst)) [[unlikely]] {
     // TODO: optimize so that all supported constants are in a top-level
     // ConstantDataVector. E.g., <poison, 0> could be replaced with zero.
     llvm::Instruction *ins_begin = nullptr;
@@ -84,7 +84,7 @@ std::pair<llvm::Value *, llvm::Instruction *>
     return {repl, ins_begin};
   }
 
-  if (auto *agg = llvm::dyn_cast<llvm::ConstantAggregate>(cst)) {
+  if (auto *agg = llvm::dyn_cast<llvm::ConstantAggregate>(cst)) [[unlikely]] {
     llvm::Instruction *ins_begin = nullptr;
     llvm::SmallVector<llvm::Value *> repls;
     for (auto it : llvm::enumerate(agg->operands())) {
@@ -260,23 +260,24 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
 
   // Check operands for constants; PHI nodes are handled by predecessors.
   if (!llvm::isa<llvm::PHINode>(inst)) {
-    for (auto it : llvm::enumerate(inst->operands())) {
-      auto *cst = llvm::dyn_cast<llvm::Constant>(it.value());
+    for (llvm::Use &use : inst->operands()) {
+      auto *cst = llvm::dyn_cast<llvm::Constant>(use.get());
       if (!cst || llvm::isa<llvm::GlobalValue>(cst)) {
         continue;
       }
 
-      if (auto [repl, ins_begin] = fixup_constant(cst, inst); repl) {
-        inst->setOperand(it.index(), repl);
+      if (auto [repl, ins_begin] = fixup_constant(cst, inst); repl)
+          [[unlikely]] {
+        use = repl;
         if (!ins_begin) {
           block_constants.push_back(llvm::cast<llvm::Constant>(repl));
         } else if (!restart_from) {
           restart_from = ins_begin;
         }
-      } else if (!value_lookup.contains(cst)) {
+      } else if (!value_lookup.contains(use.get())) {
         // we insert constants inbetween block so that instructions in a
         // block are consecutive
-        block_constants.push_back(cst);
+        block_constants.push_back(llvm::cast<llvm::Constant>(use.get()));
       }
     }
   }
