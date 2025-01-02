@@ -41,6 +41,10 @@ inline u32 &block_embedded_idx(llvm::BasicBlock *block) noexcept {
       offsetof(llvm::BasicBlock, IsNewDbgInfoFormat) + 4);
 }
 
+inline u32 block_embedded_idx(const llvm::BasicBlock *block) noexcept {
+  return block_embedded_idx(const_cast<llvm::BasicBlock *>(block));
+}
+
 #pragma GCC diagnostic pop
 
 // the basic types we handle, the actual compiler can figure out the parts
@@ -133,7 +137,9 @@ struct LLVMAdaptor {
   /// that are not globals, arguments, and basic blocks. Instructions are
   /// only included in debug builds.
   tsl::hopscotch_map<const llvm::Value *, u32> value_lookup;
+#ifndef NDEBUG
   tsl::hopscotch_map<const llvm::BasicBlock *, u32> block_lookup;
+#endif
   tpde::util::SmallVector<LLVMComplexPart, 32> complex_part_types;
 
   // helpers for faster lookup
@@ -286,9 +292,12 @@ struct LLVMAdaptor {
 
   [[nodiscard]] IRBlockRef
       block_lookup_idx(const llvm::BasicBlock *block) const noexcept {
+    auto idx = block_embedded_idx(block);
+#ifndef NDEBUG
     auto it = block_lookup.find(block);
-    assert(it != block_lookup.end());
-    return it->second;
+    assert(it != block_lookup.end() && it->second == idx);
+#endif
+    return idx;
   }
 
   [[nodiscard]] IRBlockRef

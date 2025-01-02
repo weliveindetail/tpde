@@ -330,7 +330,9 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
 
   // assign local ids
   value_lookup.clear();
+#ifndef NDEBUG
   block_lookup.clear();
+#endif
   blocks.clear();
   block_succ_indices.clear();
   block_succ_ranges.clear();
@@ -373,7 +375,6 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
 
   // reserve a constant size and optimize for smaller functions
   value_lookup.reserve(512);
-  block_lookup.reserve(128);
 
   const size_t arg_count = function->arg_size();
   for (size_t i = 0; i < arg_count; ++i) {
@@ -420,7 +421,9 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
                         .sibling = INVALID_BLOCK_REF}
     });
 
+#ifndef NDEBUG
     block_lookup[&block] = block_idx;
+#endif
     block_embedded_idx(&block) = block_idx;
 
     // blocks are also used as operands for branches so they need an
@@ -468,7 +471,9 @@ void LLVMAdaptor::reset() noexcept {
   values.clear();
   global_lookup.clear();
   value_lookup.clear();
+#ifndef NDEBUG
   block_lookup.clear();
+#endif
   complex_part_types.clear();
   func_arg_indices.clear();
   initial_stack_slot_indices.clear();
