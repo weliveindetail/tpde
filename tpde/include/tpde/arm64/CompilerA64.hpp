@@ -1550,20 +1550,19 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_reg(
     const AsmReg reg, const u32 frame_off, const u32 size) noexcept {
   assert((size & (size - 1)) == 0);
   assert(util::align_up(frame_off, size) == frame_off);
+  // We don't support stack frames that aren't encodeable with add/sub.
+  assert(frame_off >= 0 && frame_off < 0x1'000'000);
 
   u32 off = frame_off;
   u32 fp_mod = 0;
   auto addr_base = AsmReg{AsmReg::FP};
   ScratchReg scratch{derived()};
-  if ((size == 1 && frame_off > 4095) || (size == 2 && frame_off > 8190) ||
-      (size == 4 && frame_off > 16380) || (size == 8 && frame_off > 32760) ||
-      (size == 16 && frame_off > 65520)) [[unlikely]] {
+  if (off >= 0x1000 * size) [[unlikely]] {
     // We cannot encode the offset in the store instruction.
     auto tmp = scratch.alloc(Config::GP_BANK, 0, /*spill_if_needed=*/false);
     if (tmp.valid()) {
-      materialize_constant(frame_off, 0, 4, tmp);
-      ASM(ADDx_uxtw, tmp, DA_GP(29), tmp, 0);
-      off = 0;
+      ASM(ADDxi, tmp, DA_GP(29), off & ~0xfff);
+      off &= 0xfff;
       addr_base = tmp;
     } else {
       fp_mod = off & ~u32{0xfff};
@@ -1614,19 +1613,17 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
     const bool sign_extend) noexcept {
   assert((size & (size - 1)) == 0);
   assert(util::align_up(frame_off, size) == frame_off);
+  // We don't support stack frames that aren't encodeable with add/sub.
+  assert(frame_off >= 0 && frame_off < 0x1'000'000);
 
   u32 off = frame_off;
   auto addr_base = AsmReg{AsmReg::FP};
   ScratchReg scratch{derived()};
-  if ((size == 1 && frame_off > 4095) || (size == 2 && frame_off > 8190) ||
-      (size == 4 && frame_off > 16380) || (size == 8 && frame_off > 32760) ||
-      (size == 16 && frame_off > 65520)) [[unlikely]] {
+  if (off >= 0x1000 * size) [[unlikely]] {
     // need to calculate this explicitely
-    auto tmp = scratch.alloc_gp();
-    materialize_constant(frame_off, 0, 4, tmp);
-    ASM(ADDx_uxtw, tmp, DA_GP(29), tmp, 0);
-    off = 0;
-    addr_base = tmp;
+    addr_base = dst.id() <= AsmReg::R30 ? dst : scratch.alloc_gp();
+    ASM(ADDxi, addr_base, DA_GP(29), off & ~0xfff);
+    off &= 0xfff;
   }
 
   this->assembler.text_ensure_space(4);

@@ -556,34 +556,22 @@ define i32 @alloca_call(i32 %a1, i32 %a2, i32 %a3, i32 %a4) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov w0, w1
-; ARM64-NEXT:    mov x4, #0x3920 // =14624
-; ARM64-NEXT:    movk x4, #0x1, lsl #16
-; ARM64-NEXT:    add x4, x29, w4, uxtw
-; ARM64-NEXT:    str w1, [x4]
+; ARM64-NEXT:    add x4, x29, #0x13, lsl #12 // =0x13000
+; ARM64-NEXT:    str w1, [x4, #0x920]
 ; ARM64-NEXT:    add x1, x29, #0xa0
-; ARM64-NEXT:    mov x4, #0x3924 // =14628
-; ARM64-NEXT:    movk x4, #0x1, lsl #16
-; ARM64-NEXT:    add x4, x29, w4, uxtw
-; ARM64-NEXT:    str w2, [x4]
-; ARM64-NEXT:    mov x2, #0x3928 // =14632
-; ARM64-NEXT:    movk x2, #0x1, lsl #16
-; ARM64-NEXT:    add x2, x29, w2, uxtw
-; ARM64-NEXT:    str w3, [x2]
-; ARM64-NEXT:    bl 0x6d8 <alloca_call+0x48>
+; ARM64-NEXT:    add x4, x29, #0x13, lsl #12 // =0x13000
+; ARM64-NEXT:    str w2, [x4, #0x924]
+; ARM64-NEXT:    add x2, x29, #0x13, lsl #12 // =0x13000
+; ARM64-NEXT:    str w3, [x2, #0x928]
+; ARM64-NEXT:    bl 0x6c0 <alloca_call+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 alloca_call_tgt
-; ARM64-NEXT:    mov x2, #0x3920 // =14624
-; ARM64-NEXT:    movk x2, #0x1, lsl #16
-; ARM64-NEXT:    add x2, x29, w2, uxtw
-; ARM64-NEXT:    ldr w1, [x2]
+; ARM64-NEXT:    add x1, x29, #0x13, lsl #12 // =0x13000
+; ARM64-NEXT:    ldr w1, [x1, #0x920]
 ; ARM64-NEXT:    add w0, w0, w1
-; ARM64-NEXT:    mov x2, #0x3928 // =14632
-; ARM64-NEXT:    movk x2, #0x1, lsl #16
-; ARM64-NEXT:    add x2, x29, w2, uxtw
-; ARM64-NEXT:    ldr w1, [x2]
-; ARM64-NEXT:    mov x3, #0x3924 // =14628
-; ARM64-NEXT:    movk x3, #0x1, lsl #16
-; ARM64-NEXT:    add x3, x29, w3, uxtw
-; ARM64-NEXT:    ldr w2, [x3]
+; ARM64-NEXT:    add x1, x29, #0x13, lsl #12 // =0x13000
+; ARM64-NEXT:    ldr w1, [x1, #0x928]
+; ARM64-NEXT:    add x2, x29, #0x13, lsl #12 // =0x13000
+; ARM64-NEXT:    ldr w2, [x2, #0x924]
 ; ARM64-NEXT:    add w1, w1, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x14, lsl #12 // =0x14000
