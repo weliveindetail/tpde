@@ -2758,7 +2758,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
   // fuse geps
   // TODO: use llvm statistic or analyzer liveness stat?
   auto final_idx = inst_idx;
-  while (gep->hasOneUser() && remaining.from != remaining.to) {
+  while (gep->hasOneUse() && remaining.from != remaining.to) {
     auto next_inst_idx = *remaining.from;
     auto *next_val = this->adaptor->values[next_inst_idx].val;
     auto *next_gep = llvm::dyn_cast<llvm::GetElementPtrInst>(next_val);
@@ -2816,7 +2816,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
   GenericValuePart addr = derived()->resolved_gep_to_addr(resolved);
 
-  if (gep->hasOneUser() && remaining.from != remaining.to) {
+  if (gep->hasOneUse() && remaining.from != remaining.to) {
     auto next_inst_idx = *remaining.from;
     auto *next_val = this->adaptor->values[next_inst_idx].val;
     if (auto *store = llvm::dyn_cast<llvm::StoreInst>(next_val);
