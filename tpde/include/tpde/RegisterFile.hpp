@@ -40,7 +40,15 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
 
   static constexpr size_t MAX_ID = 63;
 
-  u64 used = 0, free = 0, fixed = 0, clobbered = 0;
+  /// Registers that are generally allocatable and not reserved.
+  RegBitSet allocatable = 0;
+  /// Registers that are currently in use. Requires allocatable.
+  RegBitSet used = 0;
+  /// Registers that are currently unevictable. Requrres used.
+  RegBitSet fixed = 0;
+  /// Regsiters that were clobbered at some point. Used to track registers that
+  /// need to be saved/restored.
+  RegBitSet clobbered = 0;
   u32 clocks[2] = {};
 
   struct Assignment {
@@ -74,7 +82,6 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     assert(!is_used(reg));
     assert(!is_fixed(reg));
     used |= (1ull << reg.id());
-    free &= ~(1ull << reg.id());
     assignments[reg.id()] =
         Assignment{.local_idx = local_idx, .part = part, .lock_count = 0};
   }
@@ -93,7 +100,6 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     assert(is_used(reg));
     assert(!is_fixed(reg));
     used &= ~(1ull << reg.id());
-    free |= (1ull << reg.id());
   }
 
   void mark_fixed(const Reg reg) noexcept {
@@ -149,44 +155,39 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
       find_first_free_excluding(const u8 bank,
                                 const u64 exclusion_mask) const noexcept {
     // TODO(ts): implement preferred registers
-    assert(bank <= 1);
-    const u64 free_mask =
-        ((0xFFFF'FFFFull << (bank * 32)) & free) & ~exclusion_mask;
-    if (free_mask == 0) {
+    const RegBitSet free_bank = allocatable & ~used & bank_regs(bank);
+    const RegBitSet selectable = free_bank & ~exclusion_mask;
+    if (selectable == 0) {
       return Reg::make_invalid();
     }
-    return Reg{static_cast<u8>(util::cnt_tz(free_mask))};
+    return Reg{static_cast<u8>(util::cnt_tz(selectable))};
   }
 
   [[nodiscard]] Reg
       find_first_nonfixed_excluding(const u8 bank,
                                     const u64 exclusion_mask) const noexcept {
     // TODO(ts): implement preferred registers
-    assert(bank <= 1);
-    const u64 nonfixed_mask =
-        ((0xFFFF'FFFFull << (bank * 32)) & ((free | used) & ~fixed)) &
-        ~exclusion_mask;
-    if (nonfixed_mask == 0) {
+    const RegBitSet allocatable_bank = allocatable & ~fixed & bank_regs(bank);
+    const RegBitSet selectable = allocatable_bank & ~exclusion_mask;
+    if (selectable == 0) {
       return Reg::make_invalid();
     }
-    return Reg{util::cnt_tz(nonfixed_mask)};
+    return Reg{util::cnt_tz(selectable)};
   }
 
   [[nodiscard]] Reg
       find_clocked_nonfixed_excluding(const u8 bank,
                                       const u64 exclusion_mask) noexcept {
-    assert(bank <= 1);
-    const u64 nonfixed_mask =
-        ((0xFFFF'FFFFull << (bank * 32)) & ((free | used) & ~fixed)) &
-        ~exclusion_mask;
-    if (nonfixed_mask == 0) {
+    const RegBitSet allocatable_bank = allocatable & ~fixed & bank_regs(bank);
+    const RegBitSet selectable = allocatable_bank & ~exclusion_mask;
+    if (selectable == 0) {
       return Reg::make_invalid();
     }
 
     auto clock = clocks[bank];
-    const u64 reg_id = (nonfixed_mask >> clock)
-                           ? util::cnt_tz(nonfixed_mask >> clock) + clock
-                           : util::cnt_tz(nonfixed_mask);
+    const u64 reg_id = (selectable >> clock)
+                           ? util::cnt_tz(selectable >> clock) + clock
+                           : util::cnt_tz(selectable);
 
     // always move clock to after the found reg_id
     clock = reg_id + 1;
@@ -200,6 +201,11 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
 
   [[nodiscard]] static u8 reg_bank(const Reg reg) noexcept {
     return (reg.id() >> 5);
+  }
+
+  [[nodiscard]] static RegBitSet bank_regs(const u8 bank) noexcept {
+    assert(bank <= 1);
+    return 0xFFFF'FFFFull << (bank * 32);
   }
 };
 } // namespace tpde

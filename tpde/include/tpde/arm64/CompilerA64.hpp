@@ -1492,7 +1492,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::
   const CallingConv conv = derived()->cur_calling_convention();
   this->register_file.fixed = this->register_file.used =
       this->register_file.clobbered = 0;
-  this->register_file.free = conv.initial_free_regs();
+  this->register_file.allocatable = conv.initial_free_regs();
   this->register_file.clocks[0] = 0;
   this->register_file.clocks[1] = 0;
 }
@@ -1951,7 +1951,8 @@ AsmReg
   const auto find_possible_regs = [this,
                                    reg_mask](const u64 preferred_regs) -> u64 {
     // try to first get an unused reg, otherwise an unfixed reg
-    u64 possible_regs = this->register_file.free & preferred_regs & reg_mask;
+    u64 free_regs = this->register_file.allocatable & ~this->register_file.used;
+    u64 possible_regs = free_regs & preferred_regs & reg_mask;
     if (possible_regs == 0) {
       possible_regs = (this->register_file.used & ~this->register_file.fixed) &
                       preferred_regs & reg_mask;
@@ -1983,7 +1984,7 @@ AsmReg
   }
 
   // try to first get an unused reg, otherwise an unfixed reg
-  if ((possible_regs & this->register_file.free) != 0) {
+  if ((possible_regs & this->register_file.used) == 0) {
     return AsmReg{util::cnt_tz(possible_regs)};
   }
 
