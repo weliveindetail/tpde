@@ -1079,11 +1079,13 @@ void CompilerBase<Adaptor, Derived, Config>::set_value(
     register_file.unmark_used(cur_reg);
   }
 
-  scratch.reset();
-  assert(!register_file.is_used(reg));
-
-  register_file.mark_used(reg, val_ref.local_idx(), val_ref.part());
-  register_file.mark_clobbered(reg);
+  // ScratchReg's reg is fixed and used => unfix, keep used, update assignment
+  assert(register_file.is_used(reg));
+  assert(register_file.is_fixed(reg));
+  assert(register_file.is_clobbered(reg));
+  scratch.cur_reg = AsmReg::make_invalid();
+  register_file.unmark_fixed(reg);
+  register_file.update_reg_assignment(reg, val_ref.local_idx(), val_ref.part());
   ap.set_full_reg_id(reg.id());
   ap.set_register_valid(true);
   ap.set_modified(true);

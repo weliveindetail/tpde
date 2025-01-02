@@ -62,6 +62,11 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     return (fixed & 1ull << reg.id()) != 0;
   }
 
+  [[nodiscard]] bool is_clobbered(const Reg reg) const noexcept {
+    assert(reg.id() < 64);
+    return (clobbered & 1ull << reg.id()) != 0;
+  }
+
   void mark_used(const Reg reg,
                  const ValLocalIdx local_idx,
                  const u32 part) noexcept {
