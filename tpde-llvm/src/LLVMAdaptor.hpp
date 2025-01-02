@@ -9,8 +9,6 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 
-#include <tsl/hopscotch_map.h>
-
 #include "base.hpp"
 #include "tpde/base.hpp"
 #include "tpde/util/SmallVector.hpp"
@@ -137,13 +135,13 @@ struct LLVMAdaptor {
   /// Map from global value to value index. Globals are the lowest values.
   /// Keep them separate so that we don't have to repeatedly insert them for
   /// every function.
-  tsl::hopscotch_map<const llvm::GlobalValue *, u32> global_lookup;
+  llvm::DenseMap<const llvm::GlobalValue *, u32> global_lookup;
   /// Map from non-global value to value index. This map contains constants
   /// that are not globals, arguments, and basic blocks. Instructions are
   /// only included in debug builds.
-  tsl::hopscotch_map<const llvm::Value *, u32> value_lookup;
+  llvm::DenseMap<const llvm::Value *, u32> value_lookup;
 #ifndef NDEBUG
-  tsl::hopscotch_map<const llvm::BasicBlock *, u32> block_lookup;
+  llvm::DenseMap<const llvm::BasicBlock *, u32> block_lookup;
 #endif
   tpde::util::SmallVector<LLVMComplexPart, 32> complex_part_types;
 

@@ -101,7 +101,7 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
   };
 
   // <is_func, idx>
-  tsl::hopscotch_map<const llvm::GlobalValue *, std::pair<bool, u32>>
+  llvm::DenseMap<const llvm::GlobalValue *, std::pair<bool, u32>>
       global_sym_lookup{};
   // TODO(ts): SmallVector?
   std::vector<SymRef> global_syms;
