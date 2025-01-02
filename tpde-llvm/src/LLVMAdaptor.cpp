@@ -497,10 +497,9 @@ void LLVMAdaptor::reset() noexcept {
 namespace {
 
 /// Returns (num, element-type), with num > 0 and a valid type, or (0, invalid).
-[[nodiscard]] std::pair<unsigned, LLVMBasicValType>
-    llvm_ty_to_basic_ty_simple(const llvm::Type *type,
-                               const llvm::Type::TypeID id) noexcept {
-  switch (id) {
+[[nodiscard]] std::pair<unsigned long, LLVMBasicValType>
+    llvm_ty_to_basic_ty_simple(const llvm::Type *type) noexcept {
+  switch (type->getTypeID()) {
   case llvm::Type::FloatTyID: return {1, LLVMBasicValType::f32};
   case llvm::Type::DoubleTyID: return {1, LLVMBasicValType::f64};
   case llvm::Type::FP128TyID: return {1, LLVMBasicValType::v128};
@@ -509,21 +508,17 @@ namespace {
     // case llvm::Type::X86_MMXTyID: return {1, LLVMBasicValType::v64};
 
   case llvm::Type::IntegerTyID: {
-    auto bit_width = type->getIntegerBitWidth();
+    const u32 bit_width = type->getIntegerBitWidth();
     // round up to the nearest size we support
-    if (bit_width <= 8) {
-      return {1, LLVMBasicValType::i8};
-    }
-    if (bit_width <= 16) {
-      return {1, LLVMBasicValType::i16};
-    }
-    if (bit_width <= 32) {
-      return {1, LLVMBasicValType::i32};
-    }
-    if (bit_width <= 64) {
-      return {1, LLVMBasicValType::i64};
-    }
-    if (bit_width == 128) {
+    if (bit_width <= 64) [[likely]] {
+      constexpr unsigned base = static_cast<unsigned>(LLVMBasicValType::i8);
+      static_assert(base + 1 == static_cast<unsigned>(LLVMBasicValType::i16));
+      static_assert(base + 2 == static_cast<unsigned>(LLVMBasicValType::i32));
+      static_assert(base + 3 == static_cast<unsigned>(LLVMBasicValType::i64));
+
+      unsigned off = 31 - tpde::util::cnt_lz((bit_width - 1) >> 2 | 1);
+      return {1, static_cast<LLVMBasicValType>(base + off)};
+    } else if (bit_width == 128) {
       return {2, LLVMBasicValType::i128};
     }
     return {0, LLVMBasicValType::invalid};
@@ -613,8 +608,7 @@ namespace {
 
 std::pair<unsigned, unsigned>
     LLVMAdaptor::complex_types_append(llvm::Type *type) noexcept {
-  const auto type_id = type->getTypeID();
-  if (auto [num, ty] = llvm_ty_to_basic_ty_simple(type, type_id);
+  if (auto [num, ty] = llvm_ty_to_basic_ty_simple(type);
       ty != LLVMBasicValType::invalid) {
     unsigned size = basic_ty_part_size(ty);
     unsigned align = basic_ty_part_align(ty);
@@ -627,7 +621,7 @@ std::pair<unsigned, unsigned>
   }
 
   size_t start = complex_part_types.size();
-  switch (type_id) {
+  switch (type->getTypeID()) {
   case llvm::Type::ArrayTyID: {
     auto [sz, algn] = complex_types_append(type->getArrayElementType());
     size_t len = complex_part_types.size() - start;
@@ -692,8 +686,7 @@ std::pair<unsigned, unsigned>
   (void)const_or_global;
   // TODO: Cache this?
   auto *type = val->getType();
-  auto type_id = type->getTypeID();
-  if (auto [num, ty] = llvm_ty_to_basic_ty_simple(type, type_id); num > 0) {
+  if (auto [num, ty] = llvm_ty_to_basic_ty_simple(type); num > 0) [[likely]] {
     assert(num == 1 || ty == LLVMBasicValType::i128);
     return std::make_pair(ty, ~0u);
   }
