@@ -376,10 +376,16 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
   // reserve a constant size and optimize for smaller functions
   value_lookup.reserve(512);
 
+  // NB: this iterates over all basic blocks.
+  const size_t block_count = function->size();
+  block_idx_end = global_idx_end + block_count;
+  values.resize(block_idx_end);
+
   const size_t arg_count = function->arg_size();
+  arg_idx_end = block_idx_end + arg_count;
   for (size_t i = 0; i < arg_count; ++i) {
     llvm::Argument *arg = function->getArg(i);
-    value_lookup.insert_or_assign(arg, values.size());
+    // value_lookup.insert_or_assign(arg, values.size());
     func_arg_indices.push_back(values.size());
     const auto [ty, complex_part_idx] = val_basic_type_uncached(arg, false);
     values.push_back(ValInfo{.val = static_cast<llvm::Value *>(arg),
@@ -428,12 +434,13 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
 
     // blocks are also used as operands for branches so they need an
     // IRValueRef, too
-    value_lookup.insert_or_assign(&block, values.size());
-    values.push_back(ValInfo{.val = static_cast<llvm::Value *>(&block),
-                             .type = LLVMBasicValType::invalid,
-                             .fused = false,
-                             .argument = false,
-                             .skip_liveness = true});
+    values[global_idx_end + block_idx] = ValInfo{
+        .val = static_cast<llvm::Value *>(&block),
+        .type = LLVMBasicValType::invalid,
+        .fused = false,
+        .argument = false,
+        .skip_liveness = true,
+    };
 
     for (auto *C : block_constants) {
       if (value_lookup.find(C) == value_lookup.end()) {

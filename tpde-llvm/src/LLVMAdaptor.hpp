@@ -128,6 +128,11 @@ struct LLVMAdaptor {
     BlockAux aux;
   };
 
+  /// Value info. Values are numbered in the following order:
+  /// - 0..<global_idx_end: GlobalValue
+  /// - global_idx_end..<block_idx_end: BasicBlock
+  /// - block_idx_end..<arg_idx_end: Arguments
+  /// - arg_idx_end..: Constants
   tpde::util::SmallVector<ValInfo, 128> values;
   /// Map from global value to value index. Globals are the lowest values.
   /// Keep them separate so that we don't have to repeatedly insert them for
@@ -150,7 +155,10 @@ struct LLVMAdaptor {
   bool func_unsupported = false;
   bool globals_init = false;
   bool func_has_dynamic_alloca = false;
+  // Index boundaries into values.
   u32 global_idx_end = 0;
+  u32 block_idx_end = 0;
+  u32 arg_idx_end = 0;
   u32 global_complex_part_types_end_idx = 0;
 
   tpde::util::SmallVector<llvm::Constant *, 32> block_constants;
@@ -597,6 +605,12 @@ public:
       if (auto it = global_lookup.find(gv); it != global_lookup.end()) {
         return it->second;
       }
+    }
+    if (auto *bb = llvm::dyn_cast<llvm::BasicBlock>(val)) {
+      return global_idx_end + block_lookup_idx(bb);
+    }
+    if (auto *arg = llvm::dyn_cast<llvm::Argument>(val)) {
+      return block_idx_end + arg->getArgNo();
     }
     const auto it = value_lookup.find(val);
     if (it != value_lookup.end()) {
