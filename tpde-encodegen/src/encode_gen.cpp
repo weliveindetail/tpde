@@ -2464,7 +2464,8 @@ bool create_encode_function(llvm::MachineFunction *func,
     } else {
       first = false;
     }
-    std::format_to(std::back_inserter(func_decl), "GenericValuePart {}", param);
+    std::format_to(
+        std::back_inserter(func_decl), "GenericValuePart &&{}", param);
   }
 
   if (state.num_ret_regs == -1) {

@@ -1105,7 +1105,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
     }
 
     const auto order = load->getOrdering();
-    using EncodeFnTy = bool (Derived::*)(GenericValuePart, ScratchReg &);
+    using EncodeFnTy = bool (Derived::*)(GenericValuePart &&, ScratchReg &);
     EncodeFnTy encode_fn = nullptr;
     if (order == llvm::AtomicOrdering::Monotonic) {
       switch (width) {
@@ -1482,10 +1482,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     ScratchReg scratch_low{derived()}, scratch_high{derived()};
 
 
-    std::array<bool (Derived::*)(GenericValuePart,
-                                 GenericValuePart,
-                                 GenericValuePart,
-                                 GenericValuePart,
+    std::array<bool (Derived::*)(GenericValuePart &&,
+                                 GenericValuePart &&,
+                                 GenericValuePart &&,
+                                 GenericValuePart &&,
                                  ScratchReg &,
                                  ScratchReg &),
                10>
@@ -1613,7 +1613,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
   // encode functions for 32/64 bit operations
   using EncodeFnTy =
-      bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
+      bool (Derived::*)(GenericValuePart &&, GenericValuePart &&, ScratchReg &);
   std::array<std::array<EncodeFnTy, 2>, 13> encode_ptrs{
       {
        {&Derived::encode_addi32, &Derived::encode_addi64},
@@ -1722,7 +1722,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
   }
 
   using EncodeFnTy =
-      bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
+      bool (Derived::*)(GenericValuePart &&, GenericValuePart &&, ScratchReg &);
   EncodeFnTy encode_fn = nullptr;
 
   switch (this->adaptor->values[inst_idx].type) {
@@ -2481,9 +2481,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
   const auto fail_order = cmpxchg->getFailureOrdering();
 
   // ptr, cmp, new_val, old_val, success
-  bool (Derived::*encode_ptr)(GenericValuePart,
-                              GenericValuePart,
-                              GenericValuePart,
+  bool (Derived::*encode_ptr)(GenericValuePart &&,
+                              GenericValuePart &&,
+                              GenericValuePart &&,
                               ScratchReg &,
                               ScratchReg &) = nullptr;
 
@@ -2946,7 +2946,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
   }
 
   using EncodeFnTy =
-      bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
+      bool (Derived::*)(GenericValuePart &&, GenericValuePart &&, ScratchReg &);
   EncodeFnTy fn = nullptr;
 
   if (cmp_ty->isFloatTy()) {
@@ -3702,8 +3702,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     ScratchReg res{derived()};
     auto res_ref = this->result_ref_lazy(inst_idx, 0);
-    using EncodeFnTy =
-        bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
+    using EncodeFnTy = bool (Derived::*)(
+        GenericValuePart &&, GenericValuePart &&, ScratchReg &);
     EncodeFnTy encode_fn = nullptr;
     if (width <= 32) {
       switch (intrin_id) {
@@ -3779,8 +3779,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     bool shift_left = intrin_id == llvm::Intrinsic::fshl;
     if (inst->getOperand(0) == inst->getOperand(1)) {
       // Better code for rotate.
-      using EncodeFnTy =
-          bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
+      using EncodeFnTy = bool (Derived::*)(
+          GenericValuePart &&, GenericValuePart &&, ScratchReg &);
       EncodeFnTy fn = nullptr;
       if (shift_left) {
         switch (width) {
@@ -3804,8 +3804,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         return false;
       }
     } else {
-      using EncodeFnTy = bool (Derived::*)(
-          GenericValuePart, GenericValuePart, GenericValuePart, ScratchReg &);
+      using EncodeFnTy = bool (Derived::*)(GenericValuePart &&,
+                                           GenericValuePart &&,
+                                           GenericValuePart &&,
+                                           ScratchReg &);
       EncodeFnTy fn = nullptr;
       if (shift_left) {
         switch (width) {
@@ -3845,7 +3847,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       return false;
     }
 
-    using EncodeFnTy = bool (Derived::*)(GenericValuePart, ScratchReg &);
+    using EncodeFnTy = bool (Derived::*)(GenericValuePart &&, ScratchReg &);
     static constexpr std::array<EncodeFnTy, 4> encode_fns = {
         &Derived::encode_bswapi16,
         &Derived::encode_bswapi32,
@@ -4222,7 +4224,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
   }
 
   using EncodeFnTy = bool (Derived::*)(
-      GenericValuePart, GenericValuePart, ScratchReg &, ScratchReg &);
+      GenericValuePart &&, GenericValuePart &&, ScratchReg &, ScratchReg &);
   std::array<std::array<EncodeFnTy, 4>, 6> encode_fns = {
       {
        {&Derived::encode_of_add_u8,
@@ -4291,7 +4293,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_saturating_intrin(
   }
 
   using EncodeFnTy =
-      bool (Derived::*)(GenericValuePart, GenericValuePart, ScratchReg &);
+      bool (Derived::*)(GenericValuePart &&, GenericValuePart &&, ScratchReg &);
   std::array<std::array<EncodeFnTy, 4>, 4> encode_fns{
       {
        {&Derived::encode_sat_add_u8,
