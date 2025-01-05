@@ -515,6 +515,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   void generate_raw_jump(Jump jmp, Assembler::Label target) noexcept;
 
   void generate_raw_set(Jump jmp, AsmReg dst) noexcept;
+  void generate_raw_mask(Jump jmp, AsmReg dst) noexcept;
 
   void spill_before_call(CallingConv calling_conv, u64 except_mask = 0);
 
@@ -1977,6 +1978,17 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_set(
   case Jump::jp: ASM(SETP8r, dst); break;
   case Jump::jnp: ASM(SETNP8r, dst); break;
   }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> class BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_mask(
+    Jump jmp, AsmReg dst) noexcept {
+  // TODO: use sbb dst,dst/adc dest,-1 for carry flag
+  generate_raw_set(jmp, dst);
+  ASM(NEG64r, dst);
 }
 
 template <IRAdaptor Adaptor,

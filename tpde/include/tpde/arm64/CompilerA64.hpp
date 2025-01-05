@@ -5,6 +5,7 @@
 
 #include "AssemblerElfA64.hpp"
 #include "tpde/CompilerBase.hpp"
+#include "tpde/base.hpp"
 
 #include <disarm64.h>
 
@@ -588,6 +589,7 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   void generate_raw_jump(Jump jmp, Assembler::Label target) noexcept;
 
   void generate_raw_set(Jump jmp, AsmReg dst) noexcept;
+  void generate_raw_mask(Jump jmp, AsmReg dst) noexcept;
 
   void spill_before_call(CallingConv calling_conv, u64 except_mask = 0);
 
@@ -2340,6 +2342,33 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_set(
   case Jump::Jle: ASMNC(CSETw, dst, DA_LE); break;
   case Jump::jmp: ASMNC(CSETw, dst, DA_AL); break;
   default: assert(0); __builtin_unreachable();
+  }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> class BaseTy,
+          typename Config>
+void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_mask(
+    Jump jmp, AsmReg dst) noexcept {
+  this->assembler.text_ensure_space(4);
+  switch (jmp.kind) {
+  case Jump::Jeq: ASMNC(CSETMx, dst, DA_EQ); break;
+  case Jump::Jne: ASMNC(CSETMx, dst, DA_NE); break;
+  case Jump::Jcs: ASMNC(CSETMx, dst, DA_CS); break;
+  case Jump::Jcc: ASMNC(CSETMx, dst, DA_CC); break;
+  case Jump::Jmi: ASMNC(CSETMx, dst, DA_MI); break;
+  case Jump::Jpl: ASMNC(CSETMx, dst, DA_PL); break;
+  case Jump::Jvs: ASMNC(CSETMx, dst, DA_VS); break;
+  case Jump::Jvc: ASMNC(CSETMx, dst, DA_VC); break;
+  case Jump::Jhi: ASMNC(CSETMx, dst, DA_HI); break;
+  case Jump::Jls: ASMNC(CSETMx, dst, DA_LS); break;
+  case Jump::Jge: ASMNC(CSETMx, dst, DA_GE); break;
+  case Jump::Jlt: ASMNC(CSETMx, dst, DA_LT); break;
+  case Jump::Jgt: ASMNC(CSETMx, dst, DA_GT); break;
+  case Jump::Jle: ASMNC(CSETMx, dst, DA_LE); break;
+  case Jump::jmp: ASMNC(CSETMx, dst, DA_AL); break;
+  default: TPDE_UNREACHABLE("invalid condition for set/mask");
   }
 }
 

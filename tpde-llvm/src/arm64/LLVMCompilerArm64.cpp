@@ -5,6 +5,7 @@
 #include <fstream>
 
 #include <llvm/IR/InlineAsm.h>
+#include <llvm/IR/Instructions.h>
 
 #include "LLVMAdaptor.hpp"
 #include "LLVMCompilerBase.hpp"
@@ -646,11 +647,18 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
   }
 
   llvm::BranchInst *fuse_br = nullptr;
-  if (remaining.from != remaining.to &&
-      (analyzer.liveness_info((u32)val_idx(inst_idx)).ref_count <= 2)) {
-    auto *br = llvm::dyn_cast<llvm::BranchInst>(cmp->getNextNode());
-    if (br && br->isConditional() && br->getCondition() == cmp) {
+  llvm::Instruction *fuse_ext = nullptr;
+  if (!cmp->user_empty() && remaining.from != remaining.to &&
+      (analyzer.liveness_info((u32)val_idx(inst_idx)).ref_count <= 2) &&
+      *cmp->user_begin() == cmp->getNextNode()) {
+    auto *fuse_inst = cmp->getNextNode();
+    assert(cmp->hasNUses(1));
+    if (auto *br = llvm::dyn_cast<llvm::BranchInst>(fuse_inst)) {
+      assert(br->isConditional() && br->getCondition() == cmp);
       fuse_br = br;
+    } else if (llvm::isa<llvm::ZExtInst, llvm::SExtInst>(fuse_inst) &&
+               fuse_inst->getType()->getIntegerBitWidth() <= 64) {
+      fuse_ext = fuse_inst;
     }
   }
 
@@ -761,6 +769,15 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
     auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
     auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
     generate_conditional_branch(jump, true_block, false_block);
+    this->adaptor->val_set_fused(*remaining.from, true);
+  } else if (fuse_ext) {
+    auto res_ref = result_ref_lazy(*remaining.from, 0);
+    if (llvm::isa<llvm::ZExtInst>(fuse_ext)) {
+      generate_raw_set(jump, res_scratch.alloc_gp());
+    } else {
+      generate_raw_mask(jump, res_scratch.alloc_gp());
+    }
+    set_value(res_ref, res_scratch);
     this->adaptor->val_set_fused(*remaining.from, true);
   } else {
     auto res_ref = result_ref_lazy(inst_idx, 0);
