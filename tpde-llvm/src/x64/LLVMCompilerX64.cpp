@@ -9,6 +9,7 @@
 #include "LLVMAdaptor.hpp"
 #include "LLVMCompilerBase.hpp"
 #include "encode_template_x64.hpp"
+#include "tpde/base.hpp"
 #include "tpde/x64/CompilerX64.hpp"
 
 namespace tpde_llvm::x64 {
@@ -604,56 +605,21 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef inst_idx,
     jump = Jump::jle;
     is_signed = true;
     break;
-  default: __builtin_unreachable();
+  default: TPDE_UNREACHABLE("invalid icmp predicate");
+  }
+
+  llvm::BranchInst *fuse_br = nullptr;
+  if (remaining.from != remaining.to &&
+      (analyzer.liveness_info((u32)val_idx(inst_idx)).ref_count <= 2)) {
+    auto *br = llvm::dyn_cast<llvm::BranchInst>(cmp->getNextNode());
+    if (br && br->isConditional() && br->getCondition() == cmp) {
+      fuse_br = br;
+    }
   }
 
   auto lhs = this->val_ref(llvm_val_idx(cmp->getOperand(0)), 0);
   auto rhs = this->val_ref(llvm_val_idx(cmp->getOperand(1)), 0);
-
-  const auto try_fuse_compare =
-      [&](std::variant<ValuePartRef, ScratchReg> &&lhs) {
-        if ((remaining.from != remaining.to) &&
-            (analyzer.liveness_info((u32)val_idx(inst_idx)).ref_count <= 2)) {
-          // Check if the next instruction is a condbr
-          auto *next = llvm::dyn_cast<llvm::Instruction>(
-              adaptor->values[*remaining.from].val);
-
-          if (next->getOpcode() == llvm::Instruction::Br) {
-            // Check if the branch uses our result
-            auto *branch = llvm::dyn_cast<llvm::BranchInst>(next);
-            if (branch->isConditional() && branch->getCondition() == cmp) {
-              // free the operands of the compare if possible
-              if (std::holds_alternative<ValuePartRef>(lhs)) {
-                std::get<ValuePartRef>(lhs).reset();
-              } else {
-                std::get<ScratchReg>(lhs).reset();
-              }
-
-              // generate the branch
-              const auto true_block =
-                  adaptor->block_lookup_idx(branch->getSuccessor(0));
-              const auto false_block =
-                  adaptor->block_lookup_idx(branch->getSuccessor(1));
-
-              generate_conditional_branch(jump, true_block, false_block);
-
-              this->adaptor->val_set_fused(*remaining.from, true);
-              return;
-            }
-          }
-        }
-
-        if (std::holds_alternative<ValuePartRef>(lhs)) {
-          auto res_ref = result_ref_salvage(
-              inst_idx, 0, std::move(std::get<ValuePartRef>(lhs)));
-          generate_raw_set(jump, res_ref.cur_reg());
-          set_value(res_ref, res_ref.cur_reg());
-        } else {
-          auto res_ref = result_ref_lazy(inst_idx, 0);
-          generate_raw_set(jump, std::get<ScratchReg>(lhs).cur_reg);
-          set_value(res_ref, std::get<ScratchReg>(lhs));
-        }
-      };
+  ScratchReg res_scratch{this};
 
   if (int_width == 128) {
     auto lhs_high = this->val_ref(llvm_val_idx(cmp->getOperand(0)), 1);
@@ -671,18 +637,18 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef inst_idx,
     ScratchReg scratch1{this}, scratch2{this}, scratch3{this}, scratch4{this};
     if ((jump == Jump::je) || (jump == Jump::jne)) {
       // for eq,neq do something a bit quicker
-      lhs.reload_into_specific_fixed(this, scratch1.alloc_gp());
+      lhs.reload_into_specific_fixed(this, res_scratch.alloc_gp());
       lhs_high.reload_into_specific_fixed(this, scratch2.alloc_gp());
       const auto rhs_reg = this->val_as_reg(rhs, scratch3);
       const auto rhs_reg_high = this->val_as_reg(rhs_high, scratch4);
 
-      ASM(XOR64rr, scratch1.cur_reg, rhs_reg);
+      ASM(XOR64rr, res_scratch.cur_reg, rhs_reg);
       ASM(XOR64rr, scratch2.cur_reg, rhs_reg_high);
-      ASM(OR64rr, scratch1.cur_reg, scratch2.cur_reg);
+      ASM(OR64rr, res_scratch.cur_reg, scratch2.cur_reg);
     } else {
       const auto lhs_reg = this->val_as_reg(lhs, scratch1);
       auto lhs_high_tmp =
-          lhs_high.reload_into_specific_fixed(this, scratch2.alloc_gp());
+          lhs_high.reload_into_specific_fixed(this, res_scratch.alloc_gp());
       const auto rhs_reg = this->val_as_reg(rhs, scratch3);
       const auto rhs_reg_high = this->val_as_reg(rhs_high, scratch4);
 
@@ -691,53 +657,64 @@ bool LLVMCompilerX64::compile_icmp(IRValueRef inst_idx,
     }
     lhs_high.reset_without_refcount();
     rhs_high.reset_without_refcount();
+    lhs.reset();
     rhs.reset();
-    try_fuse_compare(std::move(lhs));
-    return true;
-  }
-
-  if (lhs.is_const && !rhs.is_const) {
-    std::swap(lhs, rhs);
-    jump = swap_jump(jump);
-  }
-
-  GenericValuePart lhs_op = std::move(lhs);
-  GenericValuePart rhs_op = std::move(rhs);
-
-  if (int_width != 32 && int_width != 64) {
-    unsigned ext_bits = tpde::util::align_up(int_width, 32);
-    lhs_op = ext_int(std::move(lhs_op), is_signed, int_width, ext_bits);
-    if (!rhs_op.is_imm()) {
-      rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
-    } else if (is_signed) {
-      rhs_op = EncodeImm{u64(tpde::util::sext(rhs_op.imm64(), int_width))};
-    }
-  }
-
-  const auto lhs_reg = gval_as_reg(lhs_op);
-  if (int_width <= 32) {
-    if (rhs_op.is_imm()) {
-      ASM(CMP32ri, lhs_reg, i32(rhs_op.imm64()));
-    } else {
-      const auto rhs_reg = gval_as_reg(rhs_op);
-      ASM(CMP32rr, lhs_reg, rhs_reg);
-    }
   } else {
-    if (rhs_op.is_imm() && i32(rhs_op.imm64()) == i64(rhs_op.imm64())) {
-      ASM(CMP64ri, lhs_reg, rhs_op.imm64());
-    } else {
-      const auto rhs_reg = gval_as_reg(rhs_op);
-      ASM(CMP64rr, lhs_reg, rhs_reg);
+    if (lhs.is_const && !rhs.is_const) {
+      std::swap(lhs, rhs);
+      jump = swap_jump(jump);
     }
+
+    GenericValuePart lhs_op = std::move(lhs);
+    GenericValuePart rhs_op = std::move(rhs);
+
+    if (int_width != 32 && int_width != 64) {
+      unsigned ext_bits = tpde::util::align_up(int_width, 32);
+      lhs_op = ext_int(std::move(lhs_op), is_signed, int_width, ext_bits);
+      if (!rhs_op.is_imm()) {
+        rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
+      } else if (is_signed) {
+        rhs_op = EncodeImm{u64(tpde::util::sext(rhs_op.imm64(), int_width))};
+      }
+    }
+
+    AsmReg lhs_reg;
+    if (fuse_br) {
+      lhs_reg = gval_as_reg(lhs_op);
+    } else {
+      lhs_reg = gval_as_reg_reuse(lhs_op, res_scratch);
+    }
+    if (int_width <= 32) {
+      if (rhs_op.is_imm()) {
+        ASM(CMP32ri, lhs_reg, i32(rhs_op.imm64()));
+      } else {
+        const auto rhs_reg = gval_as_reg(rhs_op);
+        ASM(CMP32rr, lhs_reg, rhs_reg);
+      }
+    } else {
+      if (rhs_op.is_imm() && i32(rhs_op.imm64()) == i64(rhs_op.imm64())) {
+        ASM(CMP64ri, lhs_reg, rhs_op.imm64());
+      } else {
+        const auto rhs_reg = gval_as_reg(rhs_op);
+        ASM(CMP64rr, lhs_reg, rhs_reg);
+      }
+    }
+
+    lhs_op.reset();
+    rhs_op.reset();
   }
 
-  rhs_op.reset();
-  if (std::holds_alternative<ValuePartRef>(lhs_op.state)) {
-    try_fuse_compare(std::move(std::get<ValuePartRef>(lhs_op.state)));
+  if (fuse_br) {
+    auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
+    auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
+    generate_conditional_branch(jump, true_block, false_block);
+    this->adaptor->val_set_fused(*remaining.from, true);
   } else {
-    assert(std::holds_alternative<ScratchReg>(lhs_op.state));
-    try_fuse_compare(std::move(std::get<ScratchReg>(lhs_op.state)));
+    auto res_ref = result_ref_lazy(inst_idx, 0);
+    generate_raw_set(jump, res_scratch.alloc_gp());
+    set_value(res_ref, res_scratch);
   }
+
   return true;
 }
 

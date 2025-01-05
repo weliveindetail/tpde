@@ -2648,8 +2648,8 @@ define void @icmp_eq_i128_0(i128 %0) {
 ; X64-NEXT:    xor rax, rdx
 ; X64-NEXT:    xor rcx, rbx
 ; X64-NEXT:    or rax, rcx
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    sete dil
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    sete al
 ; X64-NEXT:    add rsp, 0x48
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
@@ -2686,14 +2686,14 @@ define void @icmp_eq_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    xor rax, rdx
 ; X64-NEXT:    xor rbx, rcx
 ; X64-NEXT:    or rax, rbx
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    sete dil
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    sete al
 ; X64-NEXT:    add rsp, 0x58
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_eq_i128_i128>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -2723,14 +2723,14 @@ define void @icmp_ne_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    xor rax, rdx
 ; X64-NEXT:    xor rbx, rcx
 ; X64-NEXT:    or rax, rbx
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setne dil
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setne al
 ; X64-NEXT:    add rsp, 0x58
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_ne_i128_i128>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -2757,8 +2757,8 @@ define void @icmp_ugt_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    cmp rdx, rdi
 ; X64-NEXT:    sbb rax, rsi
-; X64-NEXT:    mov edx, 0x0
-; X64-NEXT:    setb dl
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setb al
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -2789,12 +2789,12 @@ define void @icmp_uge_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rax, rsi
 ; X64-NEXT:    cmp rdi, rdx
 ; X64-NEXT:    sbb rax, rcx
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setae dil
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setae al
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_uge_i128_i128>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -2821,12 +2821,12 @@ define void @icmp_ult_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rax, rsi
 ; X64-NEXT:    cmp rdi, rdx
 ; X64-NEXT:    sbb rax, rcx
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setb dil
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setb al
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_ult_i128_i128>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -2853,8 +2853,8 @@ define void @icmp_ule_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    cmp rdx, rdi
 ; X64-NEXT:    sbb rax, rsi
-; X64-NEXT:    mov edx, 0x0
-; X64-NEXT:    setae dl
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setae al
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -2885,8 +2885,8 @@ define void @icmp_sgt_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    cmp rdx, rdi
 ; X64-NEXT:    sbb rax, rsi
-; X64-NEXT:    mov edx, 0x0
-; X64-NEXT:    setl dl
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -2917,12 +2917,12 @@ define void @icmp_sge_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rax, rsi
 ; X64-NEXT:    cmp rdi, rdx
 ; X64-NEXT:    sbb rax, rcx
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setge dil
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setge al
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_sge_i128_i128>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -2949,12 +2949,12 @@ define void @icmp_slt_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rax, rsi
 ; X64-NEXT:    cmp rdi, rdx
 ; X64-NEXT:    sbb rax, rcx
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setl dil
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_slt_i128_i128>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -2981,8 +2981,8 @@ define void @icmp_sle_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    cmp rdx, rdi
 ; X64-NEXT:    sbb rax, rsi
-; X64-NEXT:    mov edx, 0x0
-; X64-NEXT:    setge dl
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setge al
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret

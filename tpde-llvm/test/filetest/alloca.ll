@@ -1306,20 +1306,20 @@ define void @alloca_manyregs(i32 %0, ptr %1, ptr %2, ptr %3, i64 %4, i32 %5, ptr
 ; X64-NEXT:    mov dword ptr [0x0], ecx
 ; X64-NEXT:    mov rdx, qword ptr [rbp - 0x407f8]
 ; X64-NEXT:    cmp rdx, 0x0
-; X64-NEXT:    mov ebx, 0x0
-; X64-NEXT:    sete bl
-; X64-NEXT:    mov rbx, qword ptr [rbp - 0x40780]
-; X64-NEXT:    lea rax, [rbx + 0x4]
 ; X64-NEXT:    mov eax, 0x0
-; X64-NEXT:    mov esi, dword ptr [rbp - 0x407fc]
-; X64-NEXT:    mov ecx, esi
+; X64-NEXT:    sete al
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x40780]
+; X64-NEXT:    lea rcx, [rax + 0x4]
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    mov ebx, dword ptr [rbp - 0x407fc]
+; X64-NEXT:    mov ecx, ebx
 ; X64-NEXT:    shr eax, cl
 ; X64-NEXT:    mov rax, qword ptr [rbp - 0x40808]
 ; X64-NEXT:    mov rcx, rax
 ; X64-NEXT:    mov rcx, qword ptr [rbp - 0x40810]
 ; X64-NEXT:    mov rax, rcx
-; X64-NEXT:    mov rdi, qword ptr [rbp - 0x40818]
-; X64-NEXT:    lea rax, [rax + 4*rdi]
+; X64-NEXT:    mov rsi, qword ptr [rbp - 0x40818]
+; X64-NEXT:    lea rax, [rax + 4*rsi]
 ; X64-NEXT:    mov eax, dword ptr [rbp - 0x40800]
 ; X64-NEXT:    mov ecx, eax
 ; X64-NEXT:    and ecx, dword ptr [rbp - 0x4081c]

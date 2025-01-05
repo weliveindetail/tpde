@@ -633,8 +633,9 @@ define i8 @icmp_eq_i32_0_br_no_salvage(i32 %0) {
 ; X64-NEXT:    nop dword ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x28
 ; X64-NEXT:    cmp edi, 0x0
-; X64-NEXT:    mov ebx, 0x0
-; X64-NEXT:    sete bl
+; X64-NEXT:    mov edi, 0x0
+; X64-NEXT:    sete dil
+; X64-NEXT:    mov ebx, edi
 ; X64-NEXT:    test ebx, 0x1
 ; X64-NEXT:    je <L0>
 ; X64-NEXT:    and ebx, 0x1
@@ -651,7 +652,8 @@ define i8 @icmp_eq_i32_0_br_no_salvage(i32 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_eq_i32_0_br_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0

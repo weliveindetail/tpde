@@ -127,14 +127,15 @@ define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    call <L0>
 ; X64-NEXT:     R_X86_64_PLT32 foo-0x4
-; X64-NEXT:    mov r12, rax
+; X64-NEXT:    mov qword ptr [rbp - 0x58], rax
 ; X64-NEXT:    jmp <L1>
 ; X64-NEXT:    mov ecx, 0x0
 ; X64-NEXT:    mov qword ptr [rbp - 0x40], rcx
 ; X64-NEXT:    jmp <L2>
 ; X64-NEXT:  <L1>:
 ; X64-NEXT:    mov dword ptr [rbp - 0x2c], ebx
-; X64-NEXT:    mov qword ptr [rbp - 0x38], r12
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x58]
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
 ; X64-NEXT:    jmp <L3>
 ; X64-NEXT:  <L2>:
 ; X64-NEXT:    mov edi, 0x0

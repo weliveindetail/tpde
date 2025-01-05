@@ -656,6 +656,7 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
 
   auto lhs = this->val_ref(llvm_val_idx(cmp->getOperand(0)), 0);
   auto rhs = this->val_ref(llvm_val_idx(cmp->getOperand(1)), 0);
+  ScratchReg res_scratch{this};
 
   if (int_width == 128) {
     auto lhs_high = this->val_ref(llvm_val_idx(cmp->getOperand(0)), 1);
@@ -679,94 +680,82 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
     rhs_high.reset_without_refcount();
     lhs.reset();
     rhs.reset();
-    if (fuse_br) {
-      auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
-      auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
-      generate_conditional_branch(jump, true_block, false_block);
-      this->adaptor->val_set_fused(*remaining.from, true);
-    } else {
-      auto res_ref = result_ref_lazy(inst_idx, 0);
-      generate_raw_set(jump, scratch1.alloc_gp());
-      set_value(res_ref, scratch1);
-    }
-    return true;
-  }
-
-  if (lhs.is_const && !rhs.is_const) {
-    std::swap(lhs, rhs);
-    jump = swap_jump(jump).kind;
-  }
-
-  GenericValuePart lhs_op = std::move(lhs);
-  GenericValuePart rhs_op = std::move(rhs);
-
-  if (int_width != 32 && int_width != 64) {
-    unsigned ext_bits = tpde::util::align_up(int_width, 32);
-    lhs_op = ext_int(std::move(lhs_op), is_signed, int_width, ext_bits);
-
-    if (!rhs_op.is_imm()) {
-      rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
-    }
-  }
-
-  ScratchReg res_scratch{this};
-  AsmReg lhs_reg = gval_as_reg_reuse(lhs_op, res_scratch);
-
-  if (rhs_op.is_imm()) {
-    u64 imm = rhs_op.imm().const_u64;
-    if (imm == 0 && fuse_br && (jump == Jump::Jeq || jump == Jump::Jne)) {
-      // Gnerate CBZ/CBNZ if possible. However, lhs_reg might be the register
-      // corresponding to a PHI node, which gets modified before the branch. We
-      // have to detect this case and generate a copy into a separate register.
-      // This case is not easy to detect here, though. Therefore, for now we
-      // always copy the value into a register that we own.
-      // TODO: copy only when lhs_reg belongs to an overwritten PHI node.
-      if (res_scratch.cur_reg.invalid()) {
-        AsmReg src_reg = lhs_reg;
-        lhs_reg = res_scratch.alloc_gp();
-        this->mov(lhs_reg, src_reg, int_width <= 32 ? 4 : 8);
-        lhs_op.reset();
-      }
-      rhs_op.reset();
-
-      auto jump_kind = jump == Jump::Jeq ? Jump::Cbz : Jump::Cbnz;
-      Jump cbz{jump_kind, lhs_reg, int_width <= 32};
-      auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
-      auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
-      generate_conditional_branch(cbz, true_block, false_block);
-      this->adaptor->val_set_fused(*remaining.from, true);
-      return true;
-    }
-
-    if (is_signed && int_width != 64 && int_width != 32) {
-      u64 mask = (1ull << int_width) - 1;
-      u64 shift = 64 - int_width;
-      imm = ((i64)((imm & mask) << shift)) >> shift;
-    }
-
-    ScratchReg rhs_tmp{this};
-    if (int_width <= 32) {
-      if (!ASMIF(CMPwi, lhs_reg, imm)) {
-        this->materialize_constant(imm, 0, 4, rhs_tmp.alloc_gp());
-        ASM(CMPw, lhs_reg, rhs_tmp.cur_reg);
-      }
-    } else {
-      if (!ASMIF(CMPxi, lhs_reg, imm)) {
-        this->materialize_constant(imm, 0, 4, rhs_tmp.alloc_gp());
-        ASM(CMPx, lhs_reg, rhs_tmp.cur_reg);
-      }
-    }
   } else {
-    const auto rhs_reg = gval_as_reg(rhs_op);
-    if (int_width <= 32) {
-      ASM(CMPw, lhs_reg, rhs_reg);
-    } else {
-      ASM(CMPx, lhs_reg, rhs_reg);
+    if (lhs.is_const && !rhs.is_const) {
+      std::swap(lhs, rhs);
+      jump = swap_jump(jump).kind;
     }
-  }
 
-  lhs_op.reset();
-  rhs_op.reset();
+    GenericValuePart lhs_op = std::move(lhs);
+    GenericValuePart rhs_op = std::move(rhs);
+
+    if (int_width != 32 && int_width != 64) {
+      unsigned ext_bits = tpde::util::align_up(int_width, 32);
+      lhs_op = ext_int(std::move(lhs_op), is_signed, int_width, ext_bits);
+
+      if (!rhs_op.is_imm()) {
+        rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
+      }
+    }
+
+    AsmReg lhs_reg = gval_as_reg_reuse(lhs_op, res_scratch);
+
+    if (rhs_op.is_imm()) {
+      u64 imm = rhs_op.imm().const_u64;
+      if (imm == 0 && fuse_br && (jump == Jump::Jeq || jump == Jump::Jne)) {
+        // Generate CBZ/CBNZ if possible. However, lhs_reg might be the register
+        // corresponding to a PHI node, which gets modified before the branch.
+        // We have to detect this case and generate a copy into a separate
+        // register. This case is not easy to detect here, though. Therefore,
+        // for now we always copy the value into a register that we own.
+        // TODO: copy only when lhs_reg belongs to an overwritten PHI node.
+        if (res_scratch.cur_reg.invalid()) {
+          AsmReg src_reg = lhs_reg;
+          lhs_reg = res_scratch.alloc_gp();
+          this->mov(lhs_reg, src_reg, int_width <= 32 ? 4 : 8);
+          lhs_op.reset();
+        }
+        rhs_op.reset();
+
+        auto jump_kind = jump == Jump::Jeq ? Jump::Cbz : Jump::Cbnz;
+        Jump cbz{jump_kind, lhs_reg, int_width <= 32};
+        auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
+        auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
+        generate_conditional_branch(cbz, true_block, false_block);
+        this->adaptor->val_set_fused(*remaining.from, true);
+        return true;
+      }
+
+      if (is_signed && int_width != 64 && int_width != 32) {
+        u64 mask = (1ull << int_width) - 1;
+        u64 shift = 64 - int_width;
+        imm = ((i64)((imm & mask) << shift)) >> shift;
+      }
+
+      ScratchReg rhs_tmp{this};
+      if (int_width <= 32) {
+        if (!ASMIF(CMPwi, lhs_reg, imm)) {
+          this->materialize_constant(imm, 0, 4, rhs_tmp.alloc_gp());
+          ASM(CMPw, lhs_reg, rhs_tmp.cur_reg);
+        }
+      } else {
+        if (!ASMIF(CMPxi, lhs_reg, imm)) {
+          this->materialize_constant(imm, 0, 4, rhs_tmp.alloc_gp());
+          ASM(CMPx, lhs_reg, rhs_tmp.cur_reg);
+        }
+      }
+    } else {
+      const auto rhs_reg = gval_as_reg(rhs_op);
+      if (int_width <= 32) {
+        ASM(CMPw, lhs_reg, rhs_reg);
+      } else {
+        ASM(CMPx, lhs_reg, rhs_reg);
+      }
+    }
+
+    lhs_op.reset();
+    rhs_op.reset();
+  }
 
   if (fuse_br) {
     auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
