@@ -15,33 +15,40 @@ myfunc(%a) {
 ; CHECK-NEXT: Succ ret
 ; CHECK-NEXT: Succ other
   entry:
-; CHECK-NEXT: Alloca with size 0x10 and align 8: alloca
-    %alloca = alloca 16
+; CHECK-NEXT: Value alloca (alloca)
+; CHECK-NEXT: Op $16
+; CHECK-NEXT: Op $8
+    %alloca = alloca 16, 8
 ; CHECK-NEXT: Value val
     %val =
 ; CHECK-NEXT: Value dep
 ; CHECK-NEXT: Op alloca
 ; CHECK-NEXT: Op val
 ; CHECK-NEXT: Op tbd
-    %dep = %alloca %val %tbd
+    %dep = %alloca, %val, %tbd
 ; CHECK-NEXT: Value tbd
 ; CHECK-NEXT: Op val
     %tbd = %val
-    jump %ret, %other
+; CHECK-NEXT: Value (jump)
+; CHECK-NEXT: Op ^ret
+; CHECK-NEXT: Op ^other
+    jump ^ret, ^other
 ; CHECK-NEXT: Block other
 ; CHECK-NEXT: Succ ret
   other:
 ; CHECK-NEXT: Value val2
 ; CHECK-NEXT: Op tbd
     %val2 = %tbd
-    jump %ret
+; CHECK-NEXT: Value (jump)
+; CHECK-NEXT: Op ^ret
+    jump ^ret
 ; CHECK-NEXT: Block ret
   ret:
 ; CHECK-NEXT: PHI phi
 ; CHECK-NEXT: val from entry
 ; CHECK-NEXT: val2 from other
-    %phi = phi [%entry, %val], [%other, %val2]
-; CHECK-NEXT: Ret
+    %phi = phi [^entry, %val], [^other, %val2]
+; CHECK-NEXT: Value (terminate)
     terminate
 }
 
@@ -53,8 +60,8 @@ secfunc(%a, %b) {
   entry:
 ; CHECK-NEXT: Value val
     %val =
-; CHECK-NEXT: Ret
+; CHECK-NEXT: Value (ret)
 ; CHECK-NEXT: Op val
-    terminate %val
+    ret %val
 }
 ; CHECK-EMPTY

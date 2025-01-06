@@ -20,15 +20,15 @@ entry:
 ; X64-NEXT: mov r11,rsi
 ; X64-NEXT: cmp r10,0
 ; X64-NEXT: je
-  condbr %a, %ret1, %ret2
+  condbr %a, ^ret1, ^ret2
 ret1:
 ; X64-NEXT: mov rax,r10
 ; X64-NEXT: add rsp
-  terminate %a
+  ret %a
 ret2:
 ; X64: mov rax,r11
 ; X64-NEXT: add rsp
-  terminate %b
+  ret %b
 }
 
 ; CHECK-LABEL: condbr2
@@ -40,15 +40,15 @@ entry:
 ; X64-NEXT: mov r11,rsi
 ; X64-NEXT: cmp r10,0x0
 ; X64-NEXT: jne
-  condbr %a, %ret1, %ret2
+  condbr %a, ^ret1, ^ret2
 ret2:
 ; X64-NEXT: mov rax,r11
 ; X64-NEXT: add rsp
-  terminate %b
+  ret %b
 ret1:
 ; X64: mov rax,r10
 ; X64-NEXT: add rsp
-  terminate %a
+  ret %a
 }
 
 ; CHECK-LABEL: condbr3
@@ -62,19 +62,19 @@ entry:
 ; COM: PHI-resolution for f
 ; X64-NEXT: mov rcx,r10
 ; X64-NEXT: jmp
-  condbr %a, %t, %f
+  condbr %a, ^t, ^f
 t:
 ; X64-NEXT: add r10,r11
 ; X64-NEXT: mov rcx,r10
   %d = add %b, %c
-  br %f
+  br ^f
 f:
-  %e = phi [%entry, %b], [%t, %d]
+  %e = phi [^entry, %b], [^t, %d]
 ; X64-NEXT: sub r11,rcx
 ; X64-NEXT: mov rax,r11
   %f = sub %c, %e
 ; X64-NEXT: add rsp
-  terminate %f
+  ret %f
 }
 
 
@@ -85,19 +85,19 @@ entry:
 ; X64-NEXT: mov r10,rsi
 ; COM: move of %a into %p
 ; X64-NEXT: mov rcx,rdi
-  br %loop_head
+  br ^loop_head
 loop_head:
-  %p = phi [%entry, %a], [%loop_body, %c]
+  %p = phi [^entry, %a], [^loop_body, %c]
 ; X64-NEXT: cmp rcx,0x0
 ; X64-NEXT: je
-  condbr %p, %loop_body, %ret
+  condbr %p, ^loop_body, ^ret
 loop_body:
 ; X64-NEXT: mov rax,rcx
 ; X64-NEXT: sub rax,r10
   %c = sub %p, %b
 ; X64-NEXT: mov rcx,rax
 ; X64-NEXT: jmp
-  br %loop_head
+  br ^loop_head
 ret:
 ; X64-NEXT: add rsp
   terminate
@@ -111,13 +111,13 @@ entry:
 ; X64-NEXT: mov rcx,rdi
 ; COM: move into p2
 ; X64-NEXT: mov rsi,rdi
-  br %loop_head
+  br ^loop_head
 loop_head:
-  %p1 = phi [%entry, %a], [%loop_body, %c]
-  %p2 = phi [%entry, %a], [%loop_body, %p1]
+  %p1 = phi [^entry, %a], [^loop_body, %c]
+  %p2 = phi [^entry, %a], [^loop_body, %p1]
 ; X64-NEXT: cmp rsi,0x0
 ; X64-NEXT: je
-  condbr %p2, %loop_body, %ret
+  condbr %p2, ^loop_body, ^ret
 loop_body:
 ; X64-NEXT: lea rax,[rcx+rsi*1]
   %c = add %p1, %p2
@@ -125,7 +125,7 @@ loop_body:
 ; X64-NEXT: mov rsi,rcx
 ; X64-NEXT: mov rcx,rax
 ; X64-NEXT: jmp
-  br %loop_head
+  br ^loop_head
 ret:
 ; X64-NEXT: add rsp
   terminate
@@ -139,13 +139,13 @@ entry:
 ; X64-NEXT: mov rcx,rdi
 ; COM: move into p2
 ; X64-NEXT: mov rsi,rdi
-  br %loop_head
+  br ^loop_head
 loop_head:
-  %p1 = phi [%entry, %a], [%loop_body, %p2]
-  %p2 = phi [%entry, %a], [%loop_body, %p1]
+  %p1 = phi [^entry, %a], [^loop_body, %p2]
+  %p2 = phi [^entry, %a], [^loop_body, %p1]
 ; X64-NEXT: cmp rsi,0x0
 ; X64-NEXT: je
-  condbr %p2, %loop_body, %ret
+  condbr %p2, ^loop_body, ^ret
 loop_body:
 ; X64-NEXT: lea rax,[rcx+rsi*1]
   %c = add %p1, %p2
@@ -154,7 +154,7 @@ loop_body:
 ; X64-NEXT: mov rcx,rsi
 ; X64-NEXT: mov rsi,rax
 ; X64-NEXT: jmp
-  br %loop_head
+  br ^loop_head
 ret:
 ; X64-NEXT: add rsp
   terminate

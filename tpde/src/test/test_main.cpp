@@ -180,6 +180,10 @@ int main(int argc, char *argv[]) {
     Analyzer<test::TestIRAdaptor> analyzer{&adaptor};
 
     for (auto func : adaptor.funcs()) {
+      if (adaptor.func_extern(func)) {
+        continue;
+      }
+
       adaptor.switch_func(func);
       analyzer.switch_func(func);
 

@@ -31,11 +31,11 @@ entry:
 ; CHECK-NEXT: End Loops
 loop1() {
 entry:
-  jump %loop_head
+  jump ^loop_head
 loop_head:
-  jump %loop_body, %cont
+  jump ^loop_body, ^cont
 loop_body:
-  jump %loop_head
+  jump ^loop_head
 cont:
   terminate
 }
@@ -52,13 +52,13 @@ cont:
 ; CHECK-NEXT: End Loops
 loop2() {
 entry:
-  jump %loop_head
+  jump ^loop_head
 cont:
   terminate
 loop_head:
-  jump %loop_body, %cont
+  jump ^loop_body, ^cont
 loop_body:
-  jump %loop_head
+  jump ^loop_head
 }
 
 ; CHECK: Block Layout for loop3
@@ -73,13 +73,13 @@ loop_body:
 ; CHECK-NEXT: End Loops
 loop3() {
 entry:
-  jump %loop_head, %cont
+  jump ^loop_head, ^cont
 cont:
   terminate
 loop_head:
-  jump %loop_body, %cont
+  jump ^loop_body, ^cont
 loop_body:
-  jump %loop_head
+  jump ^loop_head
 }
 
 ; CHECK: Block Layout for mixed_loop
@@ -97,17 +97,17 @@ loop_body:
 ; CHECK-NEXT: End Loops
 mixed_loop() {
 entry:
-  jump %loop1_head, %cont1
+  jump ^loop1_head, ^cont1
 loop1_head:
-  jump %loop1_body, %cont1
+  jump ^loop1_body, ^cont1
 loop1_body:
-  jump %loop1_head
+  jump ^loop1_head
 cont1:
-  jump %loop2_head
+  jump ^loop2_head
 loop2_head:
-  jump %loop2_body, %ret
+  jump ^loop2_body, ^ret
 loop2_body:
-  jump %loop2_head
+  jump ^loop2_head
 ret:
   terminate
 }
@@ -128,17 +128,17 @@ ret:
 ; CHECK-NEXT: End Loops
 mixed_loop2() {
 entry:
-  jump %loop1_head, %cont1
+  jump ^loop1_head, ^cont1
 loop1_head:
-  jump %loop1_body, %cont1
+  jump ^loop1_body, ^cont1
 cont1:
-  jump %loop2_head
+  jump ^loop2_head
 loop1_body:
-  jump %loop1_head
+  jump ^loop1_head
 loop2_body:
-  jump %loop2_head
+  jump ^loop2_head
 loop2_head:
-  jump %loop2_body, %ret
+  jump ^loop2_body, ^ret
 ret:
   terminate
 }
@@ -158,17 +158,17 @@ ret:
 ; CHECK-NEXT: End Loops
 mixed_loop3() {
 entry:
-  jump %loop1_head, %cont1
+  jump ^loop1_head, ^cont1
 cont1:
-  jump %loop2_head
+  jump ^loop2_head
 loop1_head:
-  jump %loop1_body, %cont1
+  jump ^loop1_body, ^cont1
 loop1_body:
-  jump %loop1_head
+  jump ^loop1_head
 loop2_body:
-  jump %loop2_head
+  jump ^loop2_head
 loop2_head:
-  jump %loop2_body, %ret
+  jump ^loop2_body, ^ret
 ret:
   terminate
 }
@@ -192,21 +192,21 @@ ret:
 ; CHECK-NEXT: End Loops
 nested_loop1() {
 entry:
-  jump %loop1_head, %cont
+  jump ^loop1_head, ^cont
 loop1_head:
-  jump %loop1_body1, %cont
+  jump ^loop1_body1, ^cont
 loop1_body1:
-  jump %loop1_body2, %loop1_body3
+  jump ^loop1_body2, ^loop1_body3
 loop1_body2:
-  jump %loop1_body1
+  jump ^loop1_body1
 loop1_body3:
-  jump %loop1_head
+  jump ^loop1_head
 cont:
-  jump %loop2_head
+  jump ^loop2_head
 loop2_head:
-  jump %loop2_body, %ret
+  jump ^loop2_body, ^ret
 loop2_body:
-  jump %loop2_head
+  jump ^loop2_head
 ret:
   terminate
 }
@@ -233,25 +233,25 @@ ret:
 ; CHECK-NEXT: End Loops
 nested_loop2() {
 entry:
-  jump %loop1_head, %cont
+  jump ^loop1_head, ^cont
 loop1_head:
-  jump %loop1_body1, %cont
+  jump ^loop1_body1, ^cont
 loop1_body1:
-  jump %loop1_body2_head, %loop1_body3_head
+  jump ^loop1_body2_head, ^loop1_body3_head
 loop1_body2_head:
-  jump %loop1_head, %loop1_body2_body
+  jump ^loop1_head, ^loop1_body2_body
 loop1_body2_body:
-  jump %loop1_body2_head
+  jump ^loop1_body2_head
 loop1_body3_head:
-  jump %loop1_head, %loop1_body3_body
+  jump ^loop1_head, ^loop1_body3_body
 loop1_body3_body:
-  jump %loop1_body3_head
+  jump ^loop1_body3_head
 cont:
-  jump %loop2_head
+  jump ^loop2_head
 loop2_head:
-  jump %loop2_body, %ret
+  jump ^loop2_body, ^ret
 loop2_body:
-  jump %loop2_head
+  jump ^loop2_head
 ret:
   terminate
 }
@@ -278,25 +278,25 @@ ret:
 ; CHECK-NEXT: End Loops
 nested_loop3() {
 entry:
-  jump %loop1_head, %cont
+  jump ^loop1_head, ^cont
 loop1_head:
-  jump %loop1_body1, %cont
+  jump ^loop1_body1, ^cont
 loop1_body1:
-  jump %loop1_body2_head, %loop1_body3_head
+  jump ^loop1_body2_head, ^loop1_body3_head
 loop1_body3_head:
-  jump %loop1_head, %loop1_body3_body
+  jump ^loop1_head, ^loop1_body3_body
 loop1_body3_body:
-  jump %loop1_body3_head
+  jump ^loop1_body3_head
 loop1_body2_head:
-  jump %loop1_head, %loop1_body2_body
+  jump ^loop1_head, ^loop1_body2_body
 loop1_body2_body:
-  jump %loop1_body2_head
+  jump ^loop1_body2_head
 cont:
-  jump %loop2_head
+  jump ^loop2_head
 loop2_head:
-  jump %loop2_body, %ret
+  jump ^loop2_body, ^ret
 loop2_body:
-  jump %loop2_head
+  jump ^loop2_head
 ret:
   terminate
 }
@@ -313,11 +313,11 @@ ret:
 ; CHECK-NEXT: End Loops
 irreducible_loop() {
 entry:
-  jump %loop1_head, %ret
+  jump ^loop1_head, ^ret
 loop1_head:
-  jump %ret, %loop1_body
+  jump ^ret, ^loop1_body
 loop1_body:
-  jump %loop1_head
+  jump ^loop1_head
 ret:
-  jump %loop1_body
+  jump ^loop1_body
 }

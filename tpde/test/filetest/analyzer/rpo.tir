@@ -24,11 +24,11 @@ entry:
 ; CHECK-NEXT: End RPO
 loop1() {
 entry:
-  jump %loop_head
+  jump ^loop_head
 loop_head:
-  jump %loop_body, %cont
+  jump ^loop_body, ^cont
 loop_body:
-  jump %loop_head
+  jump ^loop_head
 cont:
   terminate
 }
@@ -41,13 +41,13 @@ cont:
 ; CHECK-NEXT: End RPO
 loop2() {
 entry:
-  jump %loop_head
+  jump ^loop_head
 cont:
   terminate
 loop_head:
-  jump %loop_body, %cont
+  jump ^loop_body, ^cont
 loop_body:
-  jump %loop_head
+  jump ^loop_head
 }
 
 ; CHECK: RPO for func loop3
@@ -59,13 +59,13 @@ loop_body:
 ; CHECK-NEXT: End RPO
 loop3() {
 entry:
-  jump %loop_head, %cont
+  jump ^loop_head, ^cont
 cont:
   terminate
 loop_head:
-  jump %loop_body, %cont
+  jump ^loop_body, ^cont
 loop_body:
-  jump %loop_head
+  jump ^loop_head
 }
 
 ; CHECK: RPO for func loop4
@@ -76,13 +76,13 @@ loop_body:
 ; CHECK-NEXT: End RPO
 loop4() {
 entry:
-  jump %loop_head
+  jump ^loop_head
 loop_head:
-  jump %loop_body, %cont
+  jump ^loop_body, ^cont
 cont:
   terminate
 loop_body:
-  jump %loop_head
+  jump ^loop_head
 }
 
 ; CHECK: RPO for func if1
@@ -93,11 +93,11 @@ loop_body:
 ; CHECK-NEXT: End RPO
 if1() {
 entry:
-  jump %true_block, %false_block
+  jump ^true_block, ^false_block
 true_block:
-  jump %end_block
+  jump ^end_block
 false_block:
-  jump %end_block
+  jump ^end_block
 end_block:
   terminate
 }
@@ -110,13 +110,13 @@ end_block:
 ; CHECK-NEXT: End RPO
 if2() {
 entry:
-  jump %true_block, %false_block
+  jump ^true_block, ^false_block
 true_block:
-  jump %end_block
+  jump ^end_block
 end_block:
   terminate
 false_block:
-  jump %end_block
+  jump ^end_block
 }
 
 ; CHECK: RPO for func irreducible_loop
@@ -128,13 +128,13 @@ false_block:
 ; CHECK-NEXT: End RPO
 irreducible_loop() {
 entry:
-  jump %loop1_head, %ret
+  jump ^loop1_head, ^ret
 loop1_head:
-  jump %ret, %loop1_body
+  jump ^ret, ^loop1_body
 loop1_body:
-  jump %loop1_head
+  jump ^loop1_head
 ret:
-  jump %loop1_body
+  jump ^loop1_body
 }
 
 ; CHECK: RPO for func unreachable_block
@@ -143,7 +143,7 @@ ret:
 ; CHECK-NEXT: End RPO
 unreachable_block() {
 entry:
-  jump %ret
+  jump ^ret
 ret:
   terminate
 unreachable:

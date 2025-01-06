@@ -84,22 +84,16 @@ struct TestIRCompilerA64 : a64::CompilerA64<TestIRAdaptor, TestIRCompilerA64> {
 bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
   const TestIR::Value &value =
       this->analyzer.adaptor->ir->values[static_cast<u32>(val_idx)];
-
-  switch (value.type) {
-    using enum TestIR::Value::Type;
-  case normal: {
-    switch (value.op) {
-      using enum TestIR::Value::Op;
-    case add: return compile_add(val_idx);
-    case sub: return compile_sub(val_idx);
-    default: assert(0); return false;
-    }
-  }
-  case phi: {
+  if (value.type == TestIR::Value::Type::phi) {
     // ref-count
     this->val_ref(val_idx, 0);
     return true;
   }
+
+  switch (value.op) {
+    using enum TestIR::Value::Op;
+  case add: return compile_add(val_idx);
+  case sub: return compile_sub(val_idx);
   case ret: {
     if (value.op_count == 1) {
       const auto op = static_cast<IRValueRef>(
@@ -115,11 +109,12 @@ bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
     } else {
       assert(value.op_count == 0);
     }
-
+    [[fallthrough]];
+  }
+  case terminate:
     this->gen_func_epilog();
     this->release_regs_after_return();
     return true;
-  }
   case alloca: return true;
   case br: {
     auto block_idx = ir()->value_operands[value.op_begin_idx];
@@ -192,7 +187,7 @@ bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
                         false);
     return true;
   }
-  default: assert(0); __builtin_unreachable();
+  default: return false;
   }
 
   return false;

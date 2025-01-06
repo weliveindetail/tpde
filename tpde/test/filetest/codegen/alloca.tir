@@ -13,9 +13,9 @@ alloca1() {
 entry:
 ; X64: sub rsp,0x30
 ; X64-NEXT: lea rax,[rbp-0x30]
-  %a = alloca 8
+  %a = alloca 8, 8
 ; X64-NEXT: add rsp,0x30
-  terminate %a
+  ret %a
 }
 
 ; CHECK-LABEL: alloca2
@@ -23,9 +23,9 @@ alloca2() {
 entry:
 ; X64: sub rsp,0x50
 ; X64-NEXT: lea rax,[rbp-0x50]
-  %a = alloca 24
+  %a = alloca 24, 8
 ; X64-NEXT: add rsp,0x50
-  terminate %a
+  ret %a
 }
 
 ; CHECK-LABEL: alloca3
@@ -33,9 +33,9 @@ alloca3() {
 entry:
 ; X64: sub rsp,0x50
 ; X64-NEXT: lea rax,[rbp-0x50]
-  %a = alloca 22
+  %a = alloca 22, 8
 ; X64-NEXT: add rsp,0x50
-  terminate %a
+  ret %a
 }
 
 
@@ -44,10 +44,10 @@ alloca4() {
 entry:
 ; X64: sub rsp,0x50
 ; X64-NEXT: lea rax,[rbp-0x30]
-  %a = alloca 24
-  %b = alloca 8
+  %a = alloca 24, 8
+  %b = alloca 8, 8
 ; X64-NEXT: add rsp,0x50
-  terminate %b
+  ret %b
 }
 
 ; CHECK-LABEL: alloca5
@@ -56,10 +56,10 @@ entry:
 ; X64: sub rsp,0x50
 ; COM: stack allocations > 16 are aligned up to 16
 ; X64-NEXT: lea rax,[rbp-0x50]
-  %a = alloca 24
-  %b = alloca 8
+  %a = alloca 24, 8
+  %b = alloca 8, 8
 ; X64-NEXT: add rsp,0x50
-  terminate %a
+  ret %a
 }
 
 
@@ -68,9 +68,9 @@ alloca6() {
 entry:
 ; X64: sub rsp,0x30
 ; X64-NEXT: lea rax,[rbp-0x29]
-  %a = alloca 1, align 1
+  %a = alloca 1, 1
 ; X64-NEXT: add rsp,0x30
-  terminate %a
+  ret %a
 }
 
 ; CHECK-LABEL: alloca7
@@ -78,9 +78,9 @@ alloca7() {
 entry:
 ; X64: sub rsp,0x30
 ; X64-NEXT: lea rax,[rbp-0x2a]
-  %a = alloca 1, align 2
+  %a = alloca 1, 2
 ; X64-NEXT: add rsp,0x30
-  terminate %a
+  ret %a
 }
 
 ; CHECK-LABEL: alloca8
@@ -88,9 +88,9 @@ alloca8() {
 entry:
 ; X64: sub rsp,0x30
 ; X64-NEXT: lea rax,[rbp-0x2c]
-  %a = alloca 1, align 4
+  %a = alloca 1, 4
 ; X64-NEXT: add rsp,0x30
-  terminate %a
+  ret %a
 }
 
 ; CHECK-LABEL: alloca9
@@ -98,9 +98,9 @@ alloca9() {
 entry:
 ; X64: sub rsp,0x30
 ; X64-NEXT: lea rax,[rbp-0x30]
-  %a = alloca 1, align 8
+  %a = alloca 1, 8
 ; X64-NEXT: add rsp,0x30
-  terminate %a
+  ret %a
 }
 
 ; CHECK-LABEL: alloca10
@@ -108,9 +108,9 @@ alloca10() {
 entry:
 ; X64: sub rsp,0x40
 ; X64-NEXT: lea rax,[rbp-0x40]
-  %a = alloca 1, align 16
+  %a = alloca 1, 16
 ; X64-NEXT: add rsp,0x40
-  terminate %a
+  ret %a
 }
 
 
@@ -119,21 +119,21 @@ alloca11() {
 entry:
 ; X64: sub rsp,0x30
 ; X64-NEXT: lea rax,[rbp-0x29]
-  %a = alloca 1, align 1
-  %b = alloca 1, align 1
+  %a = alloca 1, 1
+  %b = alloca 1, 1
 ; X64-NEXT: add rsp,0x30
-  terminate %a
+  ret %a
 }
 
 ; CHECK-LABEL: alloca12
 alloca12() {
 entry:
 ; X64: sub rsp,0x30
-  %a = alloca 1, align 1
+  %a = alloca 1, 1
 ; X64-NEXT: lea rax,[rbp-0x2a]
-  %b = alloca 1, align 1
+  %b = alloca 1, 1
 ; X64-NEXT: add rsp,0x30
-  terminate %b
+  ret %b
 }
 
 
@@ -141,20 +141,20 @@ entry:
 alloca13() {
 entry:
 ; X64: sub rsp,0x30
-  %a = alloca 1, align 1
+  %a = alloca 1, 1
 ; X64-NEXT: lea rax,[rbp-0x30]
-  %b = alloca 4, align 4
+  %b = alloca 4, 4
 ; X64-NEXT: add rsp,0x30
-  terminate %b
+  ret %b
 }
 
 ; CHECK-LABEL: alloca14
 alloca14() {
 entry:
 ; X64: sub rsp,0x30
-  %a = alloca 1, align 1
+  %a = alloca 1, 1
 ; X64-NEXT: lea rax,[rbp-0x2c]
-  %b = alloca 2, align 2
+  %b = alloca 2, 2
 ; X64-NEXT: add rsp,0x30
-  terminate %b
+  ret %b
 }

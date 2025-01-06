@@ -25,15 +25,15 @@ entry:
 ; X64-NEXT: mov rbx,r9
 ; X64-NEXT: cmp r10,0
 ; X64-NEXT: je
-  condbr %a, %ret1, %ret2
+  condbr %a, ^ret1, ^ret2
 ret1:
 ; X64-NEXT: mov rax,r10
 ; X64-NEXT: add rsp
-  terminate %a
+  ret %a
 ret2:
 ; X64: mov rax,r11
 ; X64-NEXT: add rsp
-  terminate %b
+  ret %b
 }
 
 ; CHECK-LABEL: fixed_stack_arg
@@ -43,15 +43,15 @@ entry:
 ; X64-NEXT: mov r10,QWORD PTR [rbp+0x10]
 ; X64-NEXT: cmp rdi,0x0
 ; X64-NEXT: je
-  condbr %a, %ret1, %ret2
+  condbr %a, ^ret1, ^ret2
 ret1:
 ; X64-NEXT: mov rax,rdi
 ; X64-NEXT: add rsp
-  terminate %a
+  ret %a
 ret2:
 ; X64: mov rax,r10
 ; X64-NEXT: add rsp
-  terminate %g
+  ret %g
 }
 
 extern_func(%a)!
@@ -64,10 +64,10 @@ entry:
 ; X64-NEXT: mov rbx,rdi
 ; X64-NEXT: mov rdi,rbx
 ; X64-NEXT: call
-  %b = call %extern_func, %a
+  %b = call @extern_func, %a
 ; X64-NEXT: add rsp
 ; X64-NEXT: pop rbx
-  terminate %b
+  ret %b
 }
 
 ; CHECK-LABEL: salvage_from_fixed_to_nonfixed
@@ -82,16 +82,16 @@ entry:
 ; X64-NEXT: mov QWORD PTR [rbp-0x40],r10
 ; X64-NEXT: cmp rsi,0x0
 ; X64-NEXT: je
-  condbr %b, %ret1, %ret2
+  condbr %b, ^ret1, ^ret2
 ret1:
 ; COM: %c kept around since it has only one predecessor
 ; X64-NEXT: mov rax,r10
 ; X64-NEXT: add rsp
-  terminate %c
+  ret %c
 ret2:
 ; X64: mov rax,QWORD PTR [rbp-0x40]
 ; X64-NEXT: add rsp
-  terminate %c
+  ret %c
 }
 
 ; CHECK-LABEL: salvage_from_fixed_to_fixed
@@ -105,15 +105,15 @@ entry:
 ; COM: no spilling since c is fixed
 ; X64-NEXT: cmp rsi,0x0
 ; X64-NEXT: je
-  condbr %b, %ret1, %ret2
+  condbr %b, ^ret1, ^ret2
 ret1:
 ; X64-NEXT: mov rax,rcx
 ; X64-NEXT: add rsp
-  terminate %c
+  ret %c
 ret2:
 ; X64: mov rax,rcx
 ; X64-NEXT: add rsp
-  terminate %c
+  ret %c
 }
 
 ; CHECK-LABEL: salvage_from_nonfixed_to_fixed
@@ -126,13 +126,13 @@ entry:
 ; COM: no spilling since c is fixed
 ; X64-NEXT: cmp rsi,0x0
 ; X64-NEXT: je
-  condbr %b, %ret1, %ret2
+  condbr %b, ^ret1, ^ret2
 ret1:
 ; X64-NEXT: mov rax,rcx
 ; X64-NEXT: add rsp
-  terminate %c
+  ret %c
 ret2:
 ; X64: mov rax,rcx
 ; X64-NEXT: add rsp
-  terminate %c
+  ret %c
 }

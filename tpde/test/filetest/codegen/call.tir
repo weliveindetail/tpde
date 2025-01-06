@@ -16,13 +16,13 @@ impl_func(%p) {
 entry:
 ; X64-NEXT: mov QWORD PTR [rbp-0x30],rdi
 ; X64-NEXT: call
-  %a = call %ext_func2
+  %a = call @ext_func2
 ; X64-NEXT: mov rdi,rax
 ; X64-NEXT: mov rsi,QWORD PTR [rbp-0x30]
 ; X64-NEXT: call
-  %b = call %ext_func, %a, %p
+  %b = call @ext_func, %a, %p
 ; X64-NEXT: add rsp
-  terminate %b
+  ret %b
 }
 
 ext_func2()!

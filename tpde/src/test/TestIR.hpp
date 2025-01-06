@@ -17,38 +17,61 @@ struct TestIR {
     enum class Type : u8 {
       normal,
       arg,
-      alloca,
       phi,
-      ret,
-      br,
-      condbr,
-      call,
+      terminator,
     };
 
     enum class Op : u8 {
       none,
+      any,
       add,
-      sub
+      sub,
+      alloca,
+      terminate,
+      ret,
+      br,
+      condbr,
+      jump,
+      call,
     };
-    inline static constexpr const char *OP_NAMES[] = {"none", "add", "sub"};
+
+    struct OpInfo {
+      std::string_view name;
+      bool is_terminator;
+      bool is_def;
+      u32 op_count;
+      u32 succ_count;
+      u32 imm_count;
+    };
+
+    inline static constexpr OpInfo OP_INFOS[] = {
+        // name       term   def    ops succ imm
+        {   "<none>", false, false,   0,   0, 0},
+        {      "any", false,  true, ~0u,   0, 0},
+        {      "add", false,  true,   2,   0, 0},
+        {      "sub", false,  true,   2,   0, 0},
+        {   "alloca", false,  true,   0,   0, 2},
+        {"terminate",  true, false,   0,   0, 0},
+        {      "ret",  true, false,   1,   0, 0},
+        {       "br",  true, false,   0,   1, 0},
+        {   "condbr",  true, false,   1,   2, 0},
+        {     "jump",  true, false,   0, ~0u, 0},
+        {     "call", false,  true, ~0u,   0, 0},
+    };
 
     std::string name;
-    u32 local_idx = 0;
     Type type;
     Op op = Op::none;
     bool force_fixed_assignment = false;
+    /// For call only: called function
+    u32 call_func_idx;
+    /// Number of value operands
+    u32 op_count;
 
-    union {
-      u32 alloca_size;
-      u32 op_count = 0;
-    };
+    // op_count value operands first, then blocks, then constants
+    u32 op_begin_idx, op_end_idx;
 
-    union {
-      u32 alloca_align = 0;
-      u32 call_func_idx;
-    };
-
-    u32 op_begin_idx = 0, op_end_idx = 0;
+    Value(Type type, std::string_view name) : name(name), type(type) {}
   };
 
   struct Block {
@@ -71,65 +94,9 @@ struct TestIR {
   std::vector<Value> values;
   std::vector<u32> value_operands;
   std::vector<Block> blocks;
-  std::vector<u32> block_succs;
   std::vector<Function> functions;
 
-  struct PendingBlockEntry {
-    enum class Type : u8 {
-      succ,
-      value,
-    };
-    Type type;
-
-    union {
-      u32 block_idx;
-      u32 value_idx;
-    };
-
-    union {
-      u32 succ_idx;
-      u32 op_idx;
-    };
-  };
-
-  struct BodyParseState {
-    u32 func_idx;
-    u32 cur_block;
-    bool block_finished;
-    bool block_finished_phis;
-    std::unordered_map<std::string_view, u32> value_map;
-    std::unordered_map<std::string_view, u32> block_map;
-    std::unordered_map<std::string_view, std::vector<std::pair<u32, u32>>>
-        pending_value_resolves;
-    std::unordered_map<std::string_view, std::vector<PendingBlockEntry>>
-        pending_block_resolves;
-    // val_idx
-    std::unordered_map<std::string_view, std::vector<u32>>
-        *pending_call_resolves;
-  };
-
   [[nodiscard]] bool parse_ir(std::string_view text) noexcept;
-  [[nodiscard]] bool
-      parse_func(std::string_view &text,
-                 std::unordered_set<std::string_view> &func_names,
-                 std::unordered_map<std::string_view, std::vector<u32>>
-                     &pending_call_resolves) noexcept;
-  [[nodiscard]] bool parse_func_body(std::string_view body,
-                                     BodyParseState &parse_state) noexcept;
-  [[nodiscard]] bool parse_body_line(std::string_view line,
-                                     BodyParseState &parse_state) noexcept;
-  [[nodiscard]] bool parse_value_line(std::string_view line,
-                                      BodyParseState &parse_state) noexcept;
-
-  [[nodiscard]] bool parse_block(std::string_view line,
-                                 BodyParseState &parse_state,
-                                 bool is_entry) noexcept;
-
-  static void remove_whitespace(std::string_view &text) noexcept;
-  [[nodiscard]] static std::string_view
-      get_line(std::string_view text) noexcept;
-  [[nodiscard]] static std::string_view
-      parse_name(std::string_view &text) noexcept;
 
   void dump_debug() const noexcept;
   void print() const noexcept;
@@ -283,7 +250,7 @@ struct TestIRAdaptor {
           while (val != val_idx_end) {
             ++val;
 
-            if (self->values[val].type == TestIR::Value::Type::alloca) {
+            if (self->values[val].op == TestIR::Value::Op::alloca) {
               break;
             }
           }
@@ -318,7 +285,7 @@ struct TestIRAdaptor {
 
     u32 first_alloca = entry.inst_begin_idx;
     while (first_alloca != entry.inst_end_idx) {
-      if (ir->values[first_alloca].type == TestIR::Value::Type::alloca) {
+      if (ir->values[first_alloca].op == TestIR::Value::Op::alloca) {
         break;
       }
       ++first_alloca;
@@ -372,7 +339,7 @@ struct TestIRAdaptor {
     };
 
     const auto &info = ir->blocks[static_cast<u32>(block)];
-    const auto *data = ir->block_succs.data();
+    const auto *data = ir->value_operands.data();
     return Range{data + info.succ_begin_idx, data + info.succ_end_idx};
   }
 
@@ -498,19 +465,13 @@ struct TestIRAdaptor {
 
   [[nodiscard]] auto val_operands(IRValueRef val) {
     struct Range {
-      bool is_phi;
       const u32 *beg, *last;
 
       struct Iter {
-        bool is_phi;
         const u32 *val;
 
         Iter &operator++() {
-          if (is_phi) {
-            val += 2;
-          } else {
-            ++val;
-          }
+          ++val;
           return *this;
         }
 
@@ -523,47 +484,25 @@ struct TestIRAdaptor {
         }
       };
 
-      [[nodiscard]] Iter begin() const noexcept { return Iter{is_phi, beg}; }
+      [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
 
-      [[nodiscard]] Iter end() const noexcept { return Iter{is_phi, last}; }
+      [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
     };
 
     const auto &info = ir->values[static_cast<u32>(val)];
     const auto *data = ir->value_operands.data();
-    if (info.type == TestIR::Value::Type::phi) {
-      return Range(
-          true, data + info.op_begin_idx + 1, data + info.op_end_idx + 1);
-    } else if (info.type == TestIR::Value::Type::normal ||
-               info.type == TestIR::Value::Type::ret ||
-               info.type == TestIR::Value::Type::call) {
-      return Range(false, data + info.op_begin_idx, data + info.op_end_idx);
-    } else if (info.type == TestIR::Value::Type::condbr) {
-      return Range(
-          false, data + info.op_begin_idx, data + info.op_begin_idx + 1);
-    } else {
-      return Range{false, nullptr, nullptr};
-    }
+    return Range(data + info.op_begin_idx,
+                 data + info.op_begin_idx + info.op_count);
   }
 
   [[nodiscard]] bool
       val_ignore_in_liveness_analysis(IRValueRef value) const noexcept {
-    return ir->values[static_cast<u32>(value)].type ==
-           TestIR::Value::Type::alloca;
+    return ir->values[static_cast<u32>(value)].op == TestIR::Value::Op::alloca;
   }
 
   [[nodiscard]] bool val_produces_result(IRValueRef value) const noexcept {
-    switch (ir->values[static_cast<u32>(value)].type) {
-      using enum TestIR::Value::Type;
-    case normal: [[fallthrough]];
-    case arg: [[fallthrough]];
-    case alloca: [[fallthrough]];
-    case phi: return true;
-    case ret: [[fallthrough]];
-    case br: [[fallthrough]];
-    case condbr: return false;
-    case call: return true;
-    default: TPDE_UNREACHABLE("invalid instruction type");
-    }
+    const auto &info = ir->values[static_cast<u32>(value)];
+    return TestIR::Value::OP_INFOS[static_cast<u32>(info.op)].is_def;
   }
 
   static bool val_fused(IRValueRef) noexcept { return false; }
@@ -578,30 +517,30 @@ struct TestIRAdaptor {
 
   [[nodiscard]] auto val_as_phi(IRValueRef value) const noexcept {
     struct PHIRef {
-      const u32 *op_begin, *op_end;
+      const u32 *op_begin, *block_begin;
 
       [[nodiscard]] u32 incoming_count() const noexcept {
-        return (op_end - op_begin) / 2;
+        return block_begin - op_begin;
       }
 
       [[nodiscard]] IRValueRef
           incoming_val_for_slot(const u32 slot) const noexcept {
         assert(slot < incoming_count());
-        return static_cast<IRValueRef>(*(op_begin + slot * 2 + 1));
+        return static_cast<IRValueRef>(op_begin[slot]);
       }
 
       [[nodiscard]] IRBlockRef
           incoming_block_for_slot(const u32 slot) const noexcept {
         assert(slot < incoming_count());
-        return static_cast<IRBlockRef>(*(op_begin + slot * 2));
+        return static_cast<IRBlockRef>(block_begin[slot]);
       }
 
       [[nodiscard]] IRValueRef
           incoming_val_for_block(const IRBlockRef block_ref) const noexcept {
         const auto block = static_cast<u32>(block_ref);
-        for (auto *op = op_begin; op < op_end; op += 2) {
-          if (*op == block) {
-            return static_cast<IRValueRef>(*(op + 1));
+        for (auto *op = op_begin; op < block_begin; ++op) {
+          if (block_begin[op - op_begin] == block) {
+            return static_cast<IRValueRef>(*op);
           }
         }
 
@@ -613,19 +552,22 @@ struct TestIRAdaptor {
     assert(ir->values[val_idx].type == TestIR::Value::Type::phi);
     const auto &info = ir->values[val_idx];
     const auto *data = ir->value_operands.data();
-    return PHIRef{data + info.op_begin_idx, data + info.op_end_idx};
+    return PHIRef{data + info.op_begin_idx,
+                  data + info.op_begin_idx + info.op_count};
   }
 
   [[nodiscard]] u32 val_alloca_size(IRValueRef value) const noexcept {
     const auto val_idx = static_cast<u32>(value);
-    assert(ir->values[val_idx].type == TestIR::Value::Type::alloca);
-    return ir->values[val_idx].alloca_size;
+    assert(ir->values[val_idx].op == TestIR::Value::Op::alloca);
+    const auto *data = ir->value_operands.data();
+    return data[ir->values[val_idx].op_begin_idx];
   }
 
   [[nodiscard]] u32 val_alloca_align(IRValueRef value) const noexcept {
     const auto val_idx = static_cast<u32>(value);
-    assert(ir->values[val_idx].type == TestIR::Value::Type::alloca);
-    return ir->values[val_idx].alloca_align;
+    assert(ir->values[val_idx].op == TestIR::Value::Op::alloca);
+    const auto *data = ir->value_operands.data();
+    return data[ir->values[val_idx].op_begin_idx + 1];
   }
 
   void start_compile() const noexcept {}

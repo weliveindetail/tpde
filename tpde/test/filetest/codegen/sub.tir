@@ -16,7 +16,7 @@ entry:
   %res = sub %a, %b
 ; X64-NEXT: mov rax,rdi
 ; X64-NEXT: add rsp
-  terminate %res
+  ret %res
 }
 
 ; CHECK-LABEL: sub2
@@ -30,5 +30,5 @@ entry:
   %res = sub %a, %tmp
 ; X64-NEXT: mov rax,rdi
 ; X64-NEXT: add rsp
-  terminate %res
+  ret %res
 }

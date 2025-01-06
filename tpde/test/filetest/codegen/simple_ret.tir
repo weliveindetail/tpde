@@ -44,5 +44,5 @@ entry:
 ; A64: ldp x29, x30, [sp]
 ; A64-NEXT: add sp, sp
 ; A64-NEXT: ret
-  terminate %b
+  ret %b
 }

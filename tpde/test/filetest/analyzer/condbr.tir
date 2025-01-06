@@ -11,7 +11,7 @@
 ; CHECK-NEXT: End Liveness
 condbr1(%a) {
 entry:
-  condbr %a, %ret, %ret
+  condbr %a, ^ret, ^ret
 ret:
   terminate
 }

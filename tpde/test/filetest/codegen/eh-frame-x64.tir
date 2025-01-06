@@ -48,5 +48,5 @@ add1(%a, %b) {
 ; ASM-NEXT: 1f: ret
 entry:
   %res = add %a, %b
-  terminate %res
+  ret %res
 }
