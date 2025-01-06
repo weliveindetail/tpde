@@ -211,6 +211,7 @@ struct AssemblerElfBase {
         : hdr{.sh_name = name_off, .sh_type = type, .sh_flags = flags} {}
   };
 
+private:
   const TargetInfo &target_info;
 
   util::SmallVector<DataSection, 16> sections;
@@ -220,6 +221,7 @@ struct AssemblerElfBase {
   std::vector<char> strtab;
   u32 sec_bss_size = 0;
 
+protected:
   SecRef secref_text = INVALID_SEC_REF;
   SecRef secref_rodata = INVALID_SEC_REF;
   SecRef secref_relro = INVALID_SEC_REF;
@@ -240,9 +242,12 @@ struct AssemblerElfBase {
     u32 action_entry;
   };
 
+public:
   /// Exception Handling temporary storage
   /// Call Sites for current function
   std::vector<ExceptCallSiteInfo> except_call_site_table;
+
+protected:
   /// Temporary storage for encoding call sites
   std::vector<u8> except_encoded_call_sites;
   /// Action Table for current function
@@ -262,6 +267,7 @@ struct AssemblerElfBase {
   /// The current function
   SymRef cur_func = INVALID_SYM_REF;
 
+public:
   explicit AssemblerElfBase(const TargetInfo &target_info,
                             bool generating_object)
       : target_info(target_info), generating_object(generating_object) {
@@ -294,6 +300,7 @@ private:
 public:
   SecRef get_data_section(bool rodata, bool relro = false) noexcept;
   SecRef get_structor_section(bool init) noexcept;
+  SecRef get_eh_frame_section() const noexcept { return secref_eh_frame; }
 
   // Symbols
 
@@ -351,6 +358,12 @@ public:
     return sym;
   }
 
+  /// Forcefully set value of symbol, doesn't change section.
+  void sym_set_value(SymRef sym, u64 value) noexcept {
+    sym_ptr(sym)->st_value = value;
+  }
+
+protected:
   [[nodiscard]] static bool sym_is_local(const SymRef sym) noexcept {
     return (static_cast<u32>(sym) & 0x8000'0000) == 0;
   }
@@ -377,6 +390,7 @@ public:
 
   // Relocations
 
+public:
   void reloc_sec(
       SecRef sec, SymRef sym, u32 type, u64 offset, i64 addend) noexcept;
 

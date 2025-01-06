@@ -29,7 +29,8 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
   { a.gen_func_prolog_and_args() };
 
   // This has to call assembler->finish_func
-  { a.finish_func() };
+  // (func_idx)
+  { a.finish_func(ARG(u32)) };
 
   { a.reset_register_file() };
 

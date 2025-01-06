@@ -71,7 +71,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
     return this->adaptor->values[val_idx].type == LLVMBasicValType::i128;
   }
 
-  void finish_func() noexcept;
+  void finish_func(u32 func_idx) noexcept;
 
   u32 val_part_count(IRValueRef) const noexcept;
 
@@ -158,8 +158,8 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                                   ScratchReg &res_of) noexcept;
 };
 
-void LLVMCompilerArm64::finish_func() noexcept {
-  Base::finish_func();
+void LLVMCompilerArm64::finish_func(u32 func_idx) noexcept {
+  Base::finish_func(func_idx);
 
   if (llvm::timeTraceProfilerEnabled()) {
     llvm::timeTraceProfilerEnd(time_entry);

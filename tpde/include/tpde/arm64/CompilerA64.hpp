@@ -479,7 +479,7 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   void gen_func_prolog_and_args() noexcept;
 
   // note: this has to call assembler->end_func
-  void finish_func() noexcept;
+  void finish_func(u32 func_idx) noexcept;
 
   u32 func_reserved_frame_size() noexcept;
 
@@ -1264,7 +1264,8 @@ template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
-void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
+void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
+    u32 func_idx) noexcept {
   const CallingConv conv = Base::derived()->cur_calling_convention();
 
   const u64 saved_regs =
@@ -1301,8 +1302,8 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     this->assembler.eh_write_inst(
         dwarf::DW_CFA_offset, dwarf::a64::DW_reg_lr, final_frame_size - 8);
 
-    auto &sec_eh_frame =
-        this->assembler.get_section(this->assembler.secref_eh_frame);
+    auto secref_eh_frame = this->assembler.get_eh_frame_section();
+    auto &sec_eh_frame = this->assembler.get_section(secref_eh_frame);
     // Patched below
     auto fde_prologue_adv_off = sec_eh_frame.data.size();
     this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 0);
@@ -1370,8 +1371,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
     // Shrink function at the beginning
     func_start_off +=
         util::align_down(func_prologue_alloc - prologue.size() * 4, 16);
-    this->assembler.sym_ptr(this->assembler.cur_func)->st_value =
-        func_start_off;
+    this->assembler.sym_set_value(this->func_syms[func_idx], func_start_off);
     std::memcpy(this->assembler.text_ptr(func_start_off),
                 prologue.data(),
                 prologue.size() * sizeof(u32));
@@ -1399,7 +1399,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func() noexcept {
 
   // TODO(ts): honor cur_needs_unwind_info
   this->assembler.end_func();
-  this->assembler.eh_end_fde(fde_off, this->assembler.cur_func);
+  this->assembler.eh_end_fde(fde_off, this->func_syms[func_idx]);
   this->assembler.except_encode_func();
 
   if (func_ret_offs.empty()) {

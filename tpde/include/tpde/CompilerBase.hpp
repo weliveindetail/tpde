@@ -1897,7 +1897,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     }
   }
 
-  derived()->finish_func();
+  derived()->finish_func(func_idx);
 #ifdef TPDE_ASSERTS
   assert(assembler.func_was_ended());
 #endif
