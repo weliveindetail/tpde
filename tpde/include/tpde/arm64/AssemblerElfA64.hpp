@@ -247,7 +247,7 @@ inline void AssemblerElfA64::label_place(Label label) noexcept {
         // veneer
         const auto cur_inst =
             *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
-        const auto new_inst = (cur_inst & 0xFF80'001F) | ((diff / 4) << 5);
+        const auto new_inst = (cur_inst & 0xFFF8'001F) | ((diff / 4) << 5);
         *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) = new_inst;
 
         // if there was no veneer after this branch it is still present

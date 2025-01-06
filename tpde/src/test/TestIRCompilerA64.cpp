@@ -126,7 +126,8 @@ bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
     this->release_spilled_regs(spilled);
     return true;
   }
-  case condbr: {
+  case condbr:
+  case tbz: {
     auto val_idx =
         static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx]);
     auto true_block =
@@ -144,21 +145,30 @@ bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
 
     auto spilled = this->spill_before_branch();
 
-    ASM(CMPxi, val_reg, 0);
+    Jump jump;
+    if (value.op == condbr) {
+      ASM(CMPxi, val_reg, 0);
+      jump = Jump::Jne;
+    } else {
+      u32 bit = ir()->value_operands[value.op_begin_idx + 3];
+      jump = Jump(Jump::Tbz, val_reg, u8(bit));
+    }
+
+    Jump inv_jump = invert_jump(jump);
+
     if (this->analyzer.block_ref(this->next_block()) == true_block) {
       this->generate_branch_to_block(
-          Jump::Jeq, false_block, false_needs_split, false);
+          inv_jump, false_block, false_needs_split, false);
       this->generate_branch_to_block(Jump::jmp, true_block, false, true);
     } else if (this->analyzer.block_ref(this->next_block()) == false_block) {
-      this->generate_branch_to_block(
-          Jump::Jne, true_block, true_needs_split, false);
+      this->generate_branch_to_block(jump, true_block, true_needs_split, false);
       this->generate_branch_to_block(Jump::jmp, false_block, false, true);
     } else if (!true_needs_split) {
-      this->generate_branch_to_block(Jump::Jne, true_block, false, false);
+      this->generate_branch_to_block(jump, true_block, false, false);
       this->generate_branch_to_block(Jump::jmp, false_block, false, true);
     } else {
       this->generate_branch_to_block(
-          Jump::Jeq, false_block, false_needs_split, false);
+          inv_jump, false_block, false_needs_split, false);
       this->generate_branch_to_block(Jump::jmp, true_block, false, true);
     }
 

@@ -31,6 +31,7 @@ struct TestIR {
       ret,
       br,
       condbr,
+      tbz,
       jump,
       call,
     };
@@ -55,6 +56,7 @@ struct TestIR {
         {      "ret",  true, false,   1,   0, 0},
         {       "br",  true, false,   0,   1, 0},
         {   "condbr",  true, false,   1,   2, 0},
+        {      "tbz",  true, false,   1,   2, 1},
         {     "jump",  true, false,   0, ~0u, 0},
         {     "call", false,  true, ~0u,   0, 0},
     };
