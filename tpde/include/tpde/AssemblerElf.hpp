@@ -180,6 +180,15 @@ struct AssemblerElfBase {
     u32 reloc_pc32;
   };
 
+  enum class SymBinding : u8 {
+    /// Symbol with local linkage, must be defined
+    LOCAL,
+    /// Weak linkage
+    WEAK,
+    /// Global linkage
+    GLOBAL,
+  };
+
   enum class SymRef : u32 {
   };
   static constexpr SymRef INVALID_SYM_REF = static_cast<SymRef>(~0u);
@@ -288,16 +297,27 @@ public:
 
   // Symbols
 
-  void sym_copy(SymRef dst, SymRef src, bool local, bool weak) noexcept;
+  void sym_copy(SymRef dst, SymRef src) noexcept;
+
+private:
+  [[nodiscard]] SymRef
+      sym_add(std::string_view name, SymBinding binding, u32 type) noexcept;
+
+public:
   [[nodiscard]] SymRef sym_add_undef(std::string_view name,
-                                     bool local = false,
-                                     bool weak = false);
+                                     SymBinding binding) noexcept {
+    return sym_add(name, binding, STT_NOTYPE);
+  }
 
-  [[nodiscard]] SymRef
-      sym_predef_func(std::string_view name, bool local, bool weak);
+  [[nodiscard]] SymRef sym_predef_func(std::string_view name,
+                                       SymBinding binding) noexcept {
+    return sym_add(name, binding, STT_FUNC);
+  }
 
-  [[nodiscard]] SymRef
-      sym_predef_data(std::string_view name, bool local, bool weak) noexcept;
+  [[nodiscard]] SymRef sym_predef_data(std::string_view name,
+                                       SymBinding binding) noexcept {
+    return sym_add(name, binding, STT_OBJECT);
+  }
 
   void sym_def_predef_data(SecRef sec,
                            SymRef sym,
@@ -309,25 +329,27 @@ public:
                                     std::string_view name,
                                     std::span<const u8> data,
                                     u32 align,
-                                    bool local,
-                                    bool weak,
+                                    SymBinding binding,
                                     u32 *off = nullptr) {
-    SymRef sym = sym_predef_data(name, local, weak);
+    SymRef sym = sym_predef_data(name, binding);
     sym_def_predef_data(sec, sym, data, align, off);
     return sym;
   }
-
-  [[nodiscard]] SymRef sym_def_bss(std::string_view name,
-                                   u32 size,
-                                   u32 align,
-                                   bool local,
-                                   bool weak,
-                                   u32 *off = nullptr) noexcept;
 
   void sym_def_predef_bss(SymRef sym_ref,
                           u32 size,
                           u32 align,
                           u32 *off = nullptr) noexcept;
+
+  [[nodiscard]] SymRef sym_def_bss(std::string_view name,
+                                   u32 size,
+                                   u32 align,
+                                   SymBinding binding,
+                                   u32 *off = nullptr) noexcept {
+    SymRef sym = sym_predef_data(name, binding);
+    sym_def_predef_bss(sym, size, align, off);
+    return sym;
+  }
 
   [[nodiscard]] static bool sym_is_local(const SymRef sym) noexcept {
     return (static_cast<u32>(sym) & 0x8000'0000) == 0;

@@ -1012,13 +1012,19 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::start_func(
         // create symbol that contains the address of the personality
         // function
         auto fn_sym = this->assembler.sym_add_undef(
-            this->adaptor->func_link_name(personality_func));
+            this->adaptor->func_link_name(personality_func),
+            Assembler::SymBinding::GLOBAL);
 
         u32 off;
         u8 tmp[8] = {};
         auto rodata = this->assembler.get_data_section(true, true);
-        personality_sym = this->assembler.sym_def_data(
-            rodata, {}, {tmp, sizeof(tmp)}, 8, true, false, &off);
+        personality_sym =
+            this->assembler.sym_def_data(rodata,
+                                         {},
+                                         {tmp, sizeof(tmp)},
+                                         8,
+                                         Assembler::SymBinding::LOCAL,
+                                         &off);
         this->assembler.reloc_abs(rodata, fn_sym, off, 0);
 
         personality_syms.emplace_back(personality_func, personality_sym);
@@ -1709,12 +1715,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
 
   if (size == 16) {
     auto rodata = this->assembler.get_data_section(true, false);
-    auto sym = this->assembler.sym_def_data(rodata,
-                                            "",
-                                            {data.data(), size},
-                                            16,
-                                            /*local=*/true,
-                                            /*weak=*/false);
+    auto sym = this->assembler.sym_def_data(
+        rodata, "", {data.data(), size}, 16, Assembler::SymBinding::LOCAL);
     if (has_cpu_feats(CPU_AVX)) {
       ASM(VMOVAPS128rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
     } else {

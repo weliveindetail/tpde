@@ -179,31 +179,18 @@ void AssemblerElfBase::init_sections() noexcept {
 }
 
 
-void AssemblerElfBase::sym_copy(SymRef dst,
-                                SymRef src,
-                                bool local,
-                                bool weak) noexcept {
+void AssemblerElfBase::sym_copy(SymRef dst, SymRef src) noexcept {
   Elf64_Sym *src_ptr = sym_ptr(src), *dst_ptr = sym_ptr(dst);
 
   dst_ptr->st_shndx = src_ptr->st_shndx;
   dst_ptr->st_size = src_ptr->st_size;
   dst_ptr->st_value = src_ptr->st_value;
-
-  const auto type = ELF64_ST_TYPE(src_ptr->st_info);
-  u8 info;
-  if (local) {
-    assert(!weak);
-    info = ELF64_ST_INFO(STB_LOCAL, type);
-  } else if (weak) {
-    info = ELF64_ST_INFO(STB_WEAK, type);
-  } else {
-    info = ELF64_ST_INFO(STB_GLOBAL, type);
-  }
-  dst_ptr->st_info = info;
+  // Don't copy st_info.
 }
 
-AssemblerElfBase::SymRef AssemblerElfBase::sym_add_undef(
-    const std::string_view name, const bool local, const bool weak) {
+AssemblerElfBase::SymRef AssemblerElfBase::sym_add(const std::string_view name,
+                                                   SymBinding binding,
+                                                   u32 type) noexcept {
   size_t str_off = 0;
   if (!name.empty()) {
     str_off = strtab.size();
@@ -212,15 +199,13 @@ AssemblerElfBase::SymRef AssemblerElfBase::sym_add_undef(
   }
 
   u8 info;
-  if (local) {
-    assert(!weak);
-    info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
-  } else if (weak) {
-    info = ELF64_ST_INFO(STB_WEAK, STT_NOTYPE);
-  } else {
-    info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
+  switch (binding) {
+    using enum AssemblerElfBase::SymBinding;
+  case LOCAL: info = ELF64_ST_INFO(STB_LOCAL, type); break;
+  case WEAK: info = ELF64_ST_INFO(STB_WEAK, type); break;
+  case GLOBAL: info = ELF64_ST_INFO(STB_GLOBAL, type); break;
+  default: TPDE_UNREACHABLE("invalid symbol binding");
   }
-
   auto sym = Elf64_Sym{.st_name = static_cast<Elf64_Word>(str_off),
                        .st_info = info,
                        .st_other = STV_DEFAULT,
@@ -228,80 +213,7 @@ AssemblerElfBase::SymRef AssemblerElfBase::sym_add_undef(
                        .st_value = 0,
                        .st_size = 0};
 
-  if (local) {
-    local_symbols.push_back(sym);
-    assert(local_symbols.size() < 0x8000'0000);
-    return static_cast<SymRef>(local_symbols.size() - 1);
-  } else {
-    global_symbols.push_back(sym);
-    assert(global_symbols.size() < 0x8000'0000);
-    return static_cast<SymRef>((global_symbols.size() - 1) | 0x8000'0000);
-  }
-}
-
-AssemblerElfBase::SymRef AssemblerElfBase::sym_predef_func(
-    const std::string_view name, const bool local, const bool weak) {
-  assert(name != "__gxx_personality_v0");
-
-  // TODO(ts): can/should we allow empty names?
-  assert(!name.empty());
-
-  const auto strOff = strtab.size();
-  strtab.insert(strtab.end(), name.begin(), name.end());
-  strtab.emplace_back('\0');
-
-  u8 info;
-  if (local) {
-    assert(!weak);
-    info = ELF64_ST_INFO(STB_LOCAL, STT_FUNC);
-  } else if (weak) {
-    info = ELF64_ST_INFO(STB_WEAK, STT_FUNC);
-  } else {
-    info = ELF64_ST_INFO(STB_GLOBAL, STT_FUNC);
-  }
-
-  const auto sym = Elf64_Sym{.st_name = static_cast<Elf64_Word>(strOff),
-                             .st_info = info,
-                             .st_other = STV_DEFAULT};
-
-  if (local) {
-    local_symbols.push_back(sym);
-    assert(local_symbols.size() < 0x8000'0000);
-    return static_cast<SymRef>(local_symbols.size() - 1);
-  } else {
-    global_symbols.push_back(sym);
-    assert(global_symbols.size() < 0x8000'0000);
-    return static_cast<SymRef>((global_symbols.size() - 1) | 0x8000'0000);
-  }
-}
-
-AssemblerElfBase::SymRef AssemblerElfBase::sym_predef_data(
-    const std::string_view name, bool const local, const bool weak) noexcept {
-  size_t str_off = 0;
-  if (!name.empty()) {
-    str_off = strtab.size();
-    strtab.insert(strtab.end(), name.begin(), name.end());
-    strtab.emplace_back('\0');
-  }
-
-  u8 info;
-  if (local) {
-    assert(!weak);
-    info = ELF64_ST_INFO(STB_LOCAL, STT_OBJECT);
-  } else if (weak) {
-    info = ELF64_ST_INFO(STB_WEAK, STT_OBJECT);
-  } else {
-    info = ELF64_ST_INFO(STB_GLOBAL, STT_OBJECT);
-  }
-
-  auto sym = Elf64_Sym{.st_name = static_cast<Elf64_Word>(str_off),
-                       .st_info = info,
-                       .st_other = STV_DEFAULT,
-                       .st_shndx = static_cast<Elf64_Section>(0),
-                       .st_value = 0,
-                       .st_size = 0};
-
-  if (local) {
+  if (binding == SymBinding::LOCAL) {
     local_symbols.push_back(sym);
     assert(local_symbols.size() < 0x8000'0000);
     return static_cast<SymRef>(local_symbols.size() - 1);
@@ -330,56 +242,6 @@ void AssemblerElfBase::sym_def_predef_data(SecRef sec_ref,
   sym->st_shndx = static_cast<Elf64_Section>(sec_ref);
   sym->st_value = pos;
   sym->st_size = data.size();
-}
-
-AssemblerElfBase::SymRef
-    AssemblerElfBase::sym_def_bss(const std::string_view name,
-                                  const u32 size,
-                                  const u32 align,
-                                  const bool local,
-                                  const bool weak,
-                                  u32 *off) noexcept {
-  size_t str_off = 0;
-  if (!name.empty()) {
-    str_off = strtab.size();
-    strtab.insert(strtab.end(), name.begin(), name.end());
-    strtab.emplace_back('\0');
-  }
-
-  uint8_t info;
-  if (local) {
-    assert(!weak);
-    info = ELF64_ST_INFO(STB_LOCAL, STT_OBJECT);
-  } else if (weak) {
-    info = ELF64_ST_INFO(STB_WEAK, STT_OBJECT);
-  } else {
-    info = ELF64_ST_INFO(STB_GLOBAL, STT_OBJECT);
-  }
-
-  assert((align & (align - 1)) == 0);
-  const u32 pos = util::align_up(sec_bss_size, align);
-  sec_bss_size += size;
-  auto sym =
-      Elf64_Sym{.st_name = static_cast<Elf64_Word>(str_off),
-                .st_info = info,
-                .st_other = STV_DEFAULT,
-                .st_shndx = static_cast<Elf64_Section>(elf::sec_idx(".bss")),
-                .st_value = pos,
-                .st_size = size};
-
-  if (off) {
-    *off = pos;
-  }
-
-  if (local) {
-    local_symbols.push_back(sym);
-    assert(local_symbols.size() < 0x8000'0000);
-    return static_cast<SymRef>(local_symbols.size() - 1);
-  } else {
-    global_symbols.push_back(sym);
-    assert(global_symbols.size() < 0x8000'0000);
-    return static_cast<SymRef>((global_symbols.size() - 1) | 0x8000'0000);
-  }
 }
 
 void AssemblerElfBase::sym_def_predef_bss(const SymRef sym_ref,

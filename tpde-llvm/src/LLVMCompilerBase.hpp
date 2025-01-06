@@ -178,6 +178,18 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
   std::optional<ValuePartRef> val_ref_constant(IRValueRef val_idx,
                                                u32 part) noexcept;
 
+private:
+  static typename Assembler::SymBinding
+      convert_linkage(const llvm::GlobalValue *gv) noexcept {
+    if (gv->hasLocalLinkage()) {
+      return Assembler::SymBinding::LOCAL;
+    } else if (gv->isWeakForLinker()) {
+      return Assembler::SymBinding::WEAK;
+    }
+    return Assembler::SymBinding::GLOBAL;
+  }
+
+public:
   void define_func_idx(IRFuncRef func, const u32 idx) noexcept;
   bool hook_post_func_sym_init() noexcept;
   bool global_init_to_data(const llvm::Value *reloc_base,
@@ -196,10 +208,10 @@ struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
   IRValueRef llvm_val_idx(const llvm::Value *) const noexcept;
   IRValueRef llvm_val_idx(const llvm::Instruction *) const noexcept;
 
-  SymRef get_or_create_sym_ref(SymRef &sym,
-                               std::string_view name,
-                               bool local = false,
-                               bool weak = false) noexcept;
+  SymRef get_or_create_sym_ref(
+      SymRef &sym,
+      std::string_view name,
+      Assembler::SymBinding binding = Assembler::SymBinding::GLOBAL) noexcept;
   SymRef global_sym(const llvm::GlobalValue *global) const noexcept;
 
   void setup_var_ref_assignments() noexcept;
@@ -524,17 +536,16 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
     // TODO(ts): we ignore weak linkage here, should emit a weak symbol for
     // it in the data section and place an undef symbol in the symbol
     // lookup
-    bool local = gv->hasLocalLinkage();
-    bool weak = gv->isWeakForLinker();
+    auto binding = convert_linkage(gv);
     if (!gv->isDeclarationForLinker()) {
-      auto sym = this->assembler.sym_predef_data(gv->getName(), local, weak);
+      auto sym = this->assembler.sym_predef_data(gv->getName(), binding);
 
       const auto idx = global_syms.size();
       global_syms.push_back(sym);
       global_sym_lookup.insert_or_assign(gv, std::make_pair(false, idx));
     } else {
       // TODO(ts): should we use getValueName here?
-      auto sym = this->assembler.sym_add_undef(gv->getName(), local, weak);
+      auto sym = this->assembler.sym_add_undef(gv->getName(), binding);
       const auto idx = global_syms.size();
       global_syms.push_back(sym);
       global_sym_lookup.insert_or_assign(gv, std::make_pair(false, idx));
@@ -543,9 +554,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
 
   for (auto it = llvm_mod.alias_begin(); it != llvm_mod.alias_end(); ++it) {
     const llvm::GlobalAlias *ga = &*it;
-    bool local = ga->hasLocalLinkage();
-    bool weak = ga->isWeakForLinker();
-    const auto sym = this->assembler.sym_add_undef(ga->getName(), local, weak);
+    auto binding = convert_linkage(ga);
+    const auto sym = this->assembler.sym_add_undef(ga->getName(), binding);
     const auto idx = global_syms.size();
     global_syms.push_back(sym);
     global_sym_lookup.insert_or_assign(ga, std::make_pair(false, idx));
@@ -890,12 +900,14 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef
 template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
     LLVMCompilerBase<Adaptor, Derived, Config>::get_or_create_sym_ref(
-        SymRef &sym, std::string_view name, bool local, bool weak) noexcept {
+        SymRef &sym,
+        std::string_view name,
+        Assembler::SymBinding binding) noexcept {
   if (sym != Assembler::INVALID_SYM_REF) [[likely]] {
     return sym;
   }
 
-  sym = this->assembler.sym_add_undef(name, local, weak);
+  sym = this->assembler.sym_add_undef(name, binding);
   return sym;
 }
 
@@ -984,8 +996,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile() {
     auto dst_sym = global_sym(ga);
     auto from_sym = global_sym(alias_target);
 
-    this->assembler.sym_copy(
-        dst_sym, from_sym, ga->hasLocalLinkage(), ga->isWeakForLinker());
+    this->assembler.sym_copy(dst_sym, from_sym);
   }
 
   return true;
@@ -3430,7 +3441,7 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
   u8 tmp[8] = {};
   auto rodata = this->assembler.get_data_section(true, true);
   const auto addr_sym = this->assembler.sym_def_data(
-      rodata, {}, {tmp, sizeof(tmp)}, 8, true, false, &off);
+      rodata, {}, {tmp, sizeof(tmp)}, 8, Assembler::SymBinding::LOCAL, &off);
   this->assembler.reloc_abs(rodata, sym, off, 0);
 
   type_info_syms.emplace_back(value, addr_sym);

@@ -255,7 +255,7 @@ bool generate_cp_entry_sym(GenerationState &state,
   state.fmt_line(buf,
                  indent + 4,
                  "{} = derived()->assembler.sym_def_data(sec, \"\", data, {}, "
-                 "true, false);",
+                 "Assembler::SymBinding::LOCAL);",
                  sym_name,
                  align);
   state.fmt_line(buf, indent, "}}");
