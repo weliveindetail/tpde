@@ -126,6 +126,13 @@ bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
     this->release_spilled_regs(spilled);
     return true;
   }
+  case zerofill: {
+    auto size = ir()->value_operands[value.op_begin_idx];
+    this->assembler.text_ensure_space(size);
+    ASM(B, size / 4);
+    this->assembler.text_write_ptr += (size - 4) & -4u;
+    return true;
+  }
   case condbr:
   case tbz: {
     auto val_idx =

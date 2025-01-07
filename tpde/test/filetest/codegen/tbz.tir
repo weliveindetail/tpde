@@ -1,0 +1,98 @@
+; SPDX-License-Identifier: LicenseRef-Proprietary
+
+; RUN: rm -rf %t
+; RUN: mkdir %t
+
+; RUN: %tpde_test --arch=a64 %s -o %t/out.o
+; RUN: llvm-objdump --no-show-raw-insn --disassemble %t/out.o | FileCheck %s --enable-var-scope --dump-input always
+
+tbz(%a) {
+; CHECK-LABEL: tbz
+; CHECK:      30: mov x8, x0
+; CHECK-NEXT: 34: tbnz x8, #0x2f, 0x40
+; CHECK-NEXT: 38: sub x0, x8, x8
+; CHECK-NEXT: 3c: b 0x44
+; CHECK-NEXT: 40: add x0, x8, x8
+; CHECK-NEXT: 44: ldp
+entry:
+  tbz %a, ^tgt1, ^tgt2, 47
+tgt1:
+  %s1 = sub %a, %a
+  br ^ret
+tgt2:
+  %s2 = add %a, %a
+  br ^ret
+ret:
+  terminate
+}
+
+tbz_small(%a) {
+; CHECK-LABEL: tbz_small
+; CHECK:      b0: mov x8, x0
+; CHECK-NEXT: b4: tbnz x8, #0x2f, 0x8b0
+; CHECK-NEXT: b8: b 0x8a8
+; CHECK:      8a8: sub x0, x8, x8
+; CHECK-NEXT: 8ac: b 0x8b4
+; CHECK-NEXT: 8b0: add x0, x8, x8
+; CHECK-NEXT: 8b4: ldp
+entry:
+  tbz %a, ^tgt1, ^tgt2, 47
+tgt1:
+  zerofill 0x7f0
+  %s1 = sub %a, %a
+  br ^ret
+tgt2:
+  %s2 = add %a, %a
+  br ^ret
+ret:
+  terminate
+}
+
+; Medium-sized tbz; veener space is allocated but not used
+tbz_medium(%a) {
+; CHECK-LABEL: tbz_medium
+; CHECK:      920: mov x8, x0
+; CHECK-NEXT: 924: tbnz x8, #0x2f, 0x8838
+; CHECK-NEXT: 928: b 0x930
+; CHECK:      930: b 0x8830
+; CHECK:      8830: sub x0, x8, x8
+; CHECK-NEXT: 8834: b 0x883c
+; CHECK-NEXT: 8838: add x0, x8, x8
+; CHECK-NEXT: 883c: ldp
+entry:
+  tbz %a, ^tgt1, ^tgt2, 47
+tgt1:
+  zerofill 0x7f00
+  %s1 = sub %a, %a
+  br ^ret
+tgt2:
+  %s2 = add %a, %a
+  br ^ret
+ret:
+  terminate
+}
+
+; Large-sized tbz; veener must be used
+tbz_large(%a) {
+; CHECK-LABEL: tbz_large
+; CHECK:      88a0: mov x8, x0
+; CHECK-NEXT: 88a4: tbnz x8, #0x2f, 0x88ac
+; CHECK-NEXT: 88a8: b 0x88b0
+; CHECK-NEXT: 88ac: b 0x108b8
+; CHECK-NEXT: 88b0: b 0x108b0
+; CHECK:      108b0: sub x0, x8, x8
+; CHECK-NEXT: 108b4: b 0x108bc
+; CHECK-NEXT: 108b8: add x0, x8, x8
+; CHECK-NEXT: 108bc: ldp
+entry:
+  tbz %a, ^tgt1, ^tgt2, 47
+tgt1:
+  zerofill 0x8000
+  %s1 = sub %a, %a
+  br ^ret
+tgt2:
+  %s2 = add %a, %a
+  br ^ret
+ret:
+  terminate
+}

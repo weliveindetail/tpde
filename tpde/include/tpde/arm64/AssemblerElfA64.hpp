@@ -47,16 +47,10 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
   std::vector<UnresolvedEntryKind> unresolved_entry_kinds;
   u32 unresolved_next_free_entry = ~0u;
 
-  struct VeneerInfo {
-    u32 off;
-    u16 insts_used;
-    u16 max_insts;
-    UnresolvedEntryKind ty;
-  };
-
-  util::SmallVector<VeneerInfo, 16> veneers;
+  /// Begin offsets of veneer space. A veneer always has space for all
+  /// unresolved cbz/tbz branches that come after it.
+  util::SmallVector<u32, 16> veneers;
   u32 unresolved_test_brs = 0, unresolved_cond_brs = 0;
-  u32 last_cond_veneer_off = 0;
 
   explicit AssemblerElfA64(const bool gen_obj) : Base{gen_obj} {}
 
@@ -70,7 +64,6 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
                             u32 text_off,
                             UnresolvedEntryKind) noexcept;
 
-  VeneerInfo &find_nearest_veneer(u32 jmp_off, UnresolvedEntryKind ty) noexcept;
   void label_place(Label label) noexcept;
 
   void emit_jump_table(Label table, std::span<Label> labels) noexcept;
@@ -147,25 +140,6 @@ inline void AssemblerElfA64::add_unresolved_entry(
   }
 }
 
-inline AssemblerElfA64::VeneerInfo &
-    AssemblerElfA64::find_nearest_veneer(u32 jmp_off,
-                                         UnresolvedEntryKind ty) noexcept {
-  assert(!veneers.empty());
-
-  // find the veneer that comes closest after the specified imm offset
-  // and fits the type
-  for (u32 i = 0; i < veneers.size(); i++) {
-    auto &e = veneers[i];
-    if (e.off < jmp_off || e.ty != ty) {
-      continue;
-    }
-    return e;
-  }
-
-  assert(0);
-  exit(1);
-}
-
 inline void AssemblerElfA64::label_place(Label label) noexcept {
   const auto idx = static_cast<u32>(label);
   assert(label_is_pending(label));
@@ -175,120 +149,53 @@ inline void AssemblerElfA64::label_place(Label label) noexcept {
   auto cur_entry = label_offsets[idx];
   while (cur_entry != ~0u) {
     auto &entry = unresolved_entries[cur_entry];
+    u32 *dst_ptr = reinterpret_cast<u32 *>(text_ptr(entry.text_off));
+
+    auto fix_condbr = [=, this](unsigned nbits) {
+      i64 diff = (i64)text_off - (i64)entry.text_off;
+      assert(diff >= 0 && diff < 128 * 1024 * 1024);
+      // lowest two bits are ignored, highest bit is sign bit
+      if (diff >= (4 << (nbits - 1))) {
+        auto veneer =
+            std::lower_bound(veneers.begin(), veneers.end(), entry.text_off);
+        assert(veneer != veneers.end());
+
+        // Create intermediate branch at v.begin
+        auto *br = reinterpret_cast<u32 *>(text_ptr(*veneer));
+        assert(*br == 0 && "overwriting instructions with veneer branch");
+        *br = de64_B((text_off - *veneer) / 4);
+        diff = *veneer - entry.text_off;
+        *veneer += 4;
+      }
+      u32 off_mask = ((1 << nbits) - 1) << 5;
+      *dst_ptr = (*dst_ptr & ~off_mask) | ((diff / 4) << 5);
+    };
+
     switch (unresolved_entry_kinds[cur_entry]) {
     case UnresolvedEntryKind::BR: {
       // diff from entry to label (should be positive tho)
       i64 diff = (i64)text_off - (i64)entry.text_off;
-      assert(diff >= 0);
-      assert(diff < 128 * 1024 * 1024);
-      auto inst = de64_B(diff / 4);
-      assert(inst != 0);
-      *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) = inst;
+      assert(diff >= 0 && diff < 128 * 1024 * 1024);
+      *dst_ptr = de64_B(diff / 4);
       break;
     }
-    case UnresolvedEntryKind::COND_BR: {
-      // diff from entry to label (should be positive tho)
-      i64 diff = (i64)text_off - (i64)entry.text_off;
-      assert(diff >= 0);
-      // functions should fit in 128mb
-      assert(diff < 128 * 1024 * 1024);
-      // TODO(ts): < or <=?
-      if (diff < 1024 * 1024) {
-        // we can write the offset into the instruction and don't need a
-        // veneer
-        const auto cur_inst =
-            *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
-        const auto new_inst = (cur_inst & 0xFF00'001F) | ((diff / 4) << 5);
-        *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) = new_inst;
-
-        // if there was no veneer after this branch it is still present
-        // in pendingCondBrs so we can remove it
-        if (veneers.empty() || last_cond_veneer_off < entry.text_off) {
-          assert(unresolved_cond_brs > 0);
-          unresolved_cond_brs -= 1;
-        }
-      } else {
-        // need to use venner
-        VeneerInfo &v = find_nearest_veneer(entry.text_off,
-                                            unresolved_entry_kinds[cur_entry]);
-        assert(v.insts_used + 5 <= v.max_insts);
-
-        const auto trampoline_off = v.off + (v.insts_used * sizeof(u32));
-        auto *w = reinterpret_cast<u32 *>(text_ptr(trampoline_off));
-        // ADR x16, [pc + 4*4]
-        *w++ = de64_ADR(DA_GP(16), 0, 16);
-        // LDR w17, [pc + 3*4]
-        *w++ = de64_LDRw_pcrel(DA_GP(17), 3);
-        *w++ = de64_ADDx(DA_GP(16), DA_GP(16), DA_GP(17));
-        *w++ = de64_BR(DA_GP(16));
-
-        const auto const_off = v.off + v.insts_used * 4 + 4 * 4;
-        *w = text_off - const_off;
-
-        const auto cur_inst =
-            *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
-        const auto new_inst = (cur_inst & 0xFF00'001F) |
-                              (((trampoline_off - entry.text_off) / 4) << 5);
-        *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) = new_inst;
-
-        v.insts_used += 5;
+    case UnresolvedEntryKind::COND_BR:
+      if (veneers.empty() || veneers.back() < entry.text_off) {
+        assert(unresolved_cond_brs > 0);
+        unresolved_cond_brs -= 1;
       }
+      fix_condbr(19); // CBZ/CBNZ has 19 bits.
       break;
-    }
-    case UnresolvedEntryKind::TEST_BR: {
-      // diff from entry to label (should be positive tho)
-      i64 diff = (i64)text_off - (i64)entry.text_off;
-      assert(diff >= 0);
-      // functions should fit in 128mb
-      assert(diff < 128 * 1024 * 1024);
-      // TODO(ts): < or <=?
-      if (diff < 32 * 1024) {
-        // we can write the offset into the instruction and don't need a
-        // veneer
-        const auto cur_inst =
-            *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
-        const auto new_inst = (cur_inst & 0xFFF8'001F) | ((diff / 4) << 5);
-        *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) = new_inst;
-
-        // if there was no veneer after this branch it is still present
-        // in pendingCondBrs so we can remove it
-        if (veneers.empty() || veneers.back().off < entry.text_off) {
-          assert(unresolved_test_brs > 0);
-          unresolved_test_brs -= 1;
-        }
-      } else {
-        // need to use venner
-        // TOOD(ts): deduplicate with above
-        VeneerInfo &v = find_nearest_veneer(entry.text_off,
-                                            unresolved_entry_kinds[cur_entry]);
-        assert(v.insts_used + 5 <= v.max_insts);
-
-        const auto trampoline_off = v.off + (v.insts_used * sizeof(u32));
-        auto *w = reinterpret_cast<u32 *>(text_ptr(trampoline_off));
-        // ADR x16, [pc + 4*4]
-        *w++ = de64_ADR(DA_GP(16), 0, 16);
-        // LDR w17, [pc + 3*4]
-        *w++ = de64_LDRw_pcrel(DA_GP(17), 3);
-        *w++ = de64_ADDx(DA_GP(16), DA_GP(16), DA_GP(17));
-        *w++ = de64_BR(DA_GP(16));
-
-        const auto const_off = v.off + v.insts_used * 4 + 4 * 4;
-        *w = text_off - const_off;
-
-        const auto cur_inst =
-            *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
-        const auto new_inst = (cur_inst & 0xFF00'001F) |
-                              (((trampoline_off - entry.text_off) / 4) << 5);
-        *reinterpret_cast<u32 *>(text_ptr(entry.text_off)) = new_inst;
-
-        v.insts_used += 5;
+    case UnresolvedEntryKind::TEST_BR:
+      if (veneers.empty() || veneers.back() < entry.text_off) {
+        assert(unresolved_test_brs > 0);
+        unresolved_test_brs -= 1;
       }
+      fix_condbr(14); // TBZ/TBNZ has 14 bits.
       break;
-    }
     case UnresolvedEntryKind::JUMP_TABLE: {
       const auto table_off = *reinterpret_cast<u32 *>(text_ptr(entry.text_off));
-      const auto diff = (i32)text_off - (i32)table_off;
-      *reinterpret_cast<i32 *>(text_ptr(entry.text_off)) = diff;
+      *dst_ptr = (i32)text_off - (i32)table_off;
       break;
     }
     }
@@ -336,35 +243,29 @@ inline void AssemblerElfA64::text_more_space(u32 size) noexcept {
     exit(1);
   }
 
-  u32 veneer_size = 0;
-
-  const auto cur_off = text_cur_off();
-  if (unresolved_test_brs) {
-    veneer_size = unresolved_test_brs * (5 * 4);
-    veneers.push_back(VeneerInfo{.off = cur_off + 4,
-                                 .insts_used = 0,
-                                 .max_insts = (u16)(unresolved_test_brs * 5),
-                                 .ty = UnresolvedEntryKind::TEST_BR});
-    unresolved_test_brs = 0;
-  }
-
-  if (unresolved_cond_brs && (cur_off - last_cond_veneer_off) >=
-                                 (1024 * 1024 - 16 * 1024 - veneer_size)) {
-    const u32 off = cur_off + 4 + veneer_size;
-    veneer_size += unresolved_cond_brs * (5 * 4);
-    veneers.push_back(VeneerInfo{.off = off,
-                                 .insts_used = 0,
-                                 .max_insts = (u16)(unresolved_cond_brs * 5),
-                                 .ty = UnresolvedEntryKind::COND_BR});
-    unresolved_cond_brs = 0;
-    last_cond_veneer_off = off;
-  }
-
+  u32 veneer_size = sizeof(u32) * (unresolved_test_brs + unresolved_cond_brs);
   Base::text_more_space(size + veneer_size + 4);
-  if (veneer_size != 0) {
-    *reinterpret_cast<u32 *>(text_ptr(cur_off)) = de64_B((4 + veneer_size) / 4);
-    text_write_ptr += veneer_size + 4;
+  if (veneer_size == 0) {
+    return;
   }
+
+  // TBZ has 14 bits, CBZ has 19 bits; but the first bit is the sign bit
+  u32 max_dist = unresolved_test_brs ? 4 << (14 - 1) : 4 << (19 - 1);
+  max_dist -= veneer_size; // must be able to reach last veneer
+  // TODO: get a better approximation of the first unresolved condbr after the
+  // last veneer.
+  u32 first_condbr = veneers.empty() ? 0 : veneers.back();
+  // If all condbrs can only jump inside the now-reserved memory, do nothing.
+  if (first_condbr + max_dist > text_reserve_end - text_begin) {
+    return;
+  }
+
+  u32 cur_off = text_cur_off();
+  veneers.push_back(cur_off + 4);
+  unresolved_test_brs = unresolved_cond_brs = 0;
+
+  *reinterpret_cast<u32 *>(text_ptr(cur_off)) = de64_B(veneer_size / 4 + 1);
+  text_write_ptr += veneer_size + 4;
 }
 
 inline void AssemblerElfA64::reset() noexcept {
@@ -375,7 +276,6 @@ inline void AssemblerElfA64::reset() noexcept {
   unresolved_next_free_entry = ~0u;
   veneers.clear();
   unresolved_test_brs = unresolved_cond_brs = 0;
-  last_cond_veneer_off = 0;
   Base::reset();
 }
 } // namespace tpde::a64

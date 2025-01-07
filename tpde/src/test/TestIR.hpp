@@ -34,6 +34,7 @@ struct TestIR {
       tbz,
       jump,
       call,
+      zerofill,
     };
 
     struct OpInfo {
@@ -59,6 +60,7 @@ struct TestIR {
         {      "tbz",  true, false,   1,   2, 1},
         {     "jump",  true, false,   0, ~0u, 0},
         {     "call", false,  true, ~0u,   0, 0},
+        { "zerofill", false,  true,   0,   0, 1},
     };
 
     std::string name;
