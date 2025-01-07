@@ -1909,12 +1909,13 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     auto rodata = this->assembler.get_data_section(true, false);
     auto sym = this->assembler.sym_def_data(
         rodata, "", {data.data(), size}, 16, Assembler::SymBinding::LOCAL);
+    this->assembler.text_ensure_space(8); // ensure contiguous instructions
     this->assembler.reloc_text(
         sym, R_AARCH64_ADR_PREL_PG_HI21, this->assembler.text_cur_off(), 0);
-    ASM(ADRP, tmp, 0, 0);
+    ASMNC(ADRP, tmp, 0, 0);
     this->assembler.reloc_text(
         sym, R_AARCH64_LDST128_ABS_LO12_NC, this->assembler.text_cur_off(), 0);
-    ASM(LDRqu, dst, tmp, 0);
+    ASMNC(LDRqu, dst, tmp, 0);
     return;
   }
 
