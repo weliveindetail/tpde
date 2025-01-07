@@ -79,6 +79,13 @@ define i64 @condbr0(i64 %0, i1 %1) {
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    add x19, x19, #0xa
+; ARM64-NEXT:    mov x0, x19
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    ldr x19, [sp, #0x10]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
 entry:
   br i1 %1, label %block1, label %block2
 block1:
@@ -121,6 +128,12 @@ define i64 @condbr1(i64 %0, i1 %1) {
 ; ARM64-NEXT:    tst w1, #0x1
 ; ARM64-NEXT:    b.ne 0x190 <condbr1+0x50>
 ; ARM64-NEXT:    add x0, x19, #0xa
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    ldr x19, [sp, #0x10]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+; ARM64-NEXT:     ...
+; ARM64-NEXT:    mov x0, x19
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
 ; ARM64-NEXT:    add sp, sp, #0xc0
