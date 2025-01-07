@@ -867,8 +867,10 @@ bool LLVMCompilerX64::switch_emit_jump_table(Label default_label,
   Label jump_table = assembler.label_create();
   ASM(LEA64rm, tmp, FE_MEM(FE_IP, 0, FE_NOREG, -1));
   // we reuse the jump offset stuff since the patch procedure is the same
-  assembler.label_add_unresolved_jump_offset(jump_table,
-                                             assembler.text_cur_off() - 4);
+  assembler.add_unresolved_entry(
+      jump_table,
+      assembler.text_cur_off() - 4,
+      Assembler::UnresolvedEntryKind::JMP_OR_MEM_DISP);
   // load the 4 byte displacement from the jump table
   ASM(MOVSXr64m32, cmp_reg, FE_MEM(tmp, 4, cmp_reg, 0));
   ASM(ADD64rr, tmp, cmp_reg);

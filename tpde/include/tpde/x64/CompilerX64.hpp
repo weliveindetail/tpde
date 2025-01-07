@@ -1927,8 +1927,10 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
     case Jump::jnp: ASMNCF(JNP, FE_JMPL, target); break;
     }
 
-    this->assembler.label_add_unresolved_jump_offset(
-        target_label, this->assembler.text_cur_off() - 4);
+    this->assembler.add_unresolved_entry(
+        target_label,
+        this->assembler.text_cur_off() - 4,
+        Assembler::UnresolvedEntryKind::JMP_OR_MEM_DISP);
   } else {
     this->assembler.text_ensure_space(6);
     auto *target =

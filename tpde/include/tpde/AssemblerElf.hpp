@@ -165,6 +165,9 @@ concept SymbolResolver = requires(T a) {
 };
 
 struct AssemblerElfBase {
+  template <class Derived>
+  friend struct AssemblerElf;
+
   struct TargetInfo {
     /// The OS ABI for the ELF header.
     u8 elf_osabi;
@@ -197,6 +200,10 @@ struct AssemblerElfBase {
   };
   static constexpr SecRef INVALID_SEC_REF = static_cast<SecRef>(~0u);
 
+  // TODO: merge Label with SymRef when adding private symbols
+  enum class Label : u32 {
+  };
+
   // TODO(ts): 32 bit version?
   struct DataSection {
     std::vector<u8> data;
@@ -217,6 +224,29 @@ private:
   util::SmallVector<DataSection, 16> sections;
 
   std::vector<Elf64_Sym> global_symbols, local_symbols;
+
+protected:
+  struct TempSymbolInfo {
+    /// Section, or INVALID_SEC_REF if pending
+    SecRef section;
+    /// Offset into section, or index into temp_symbol_fixups if pending
+    union {
+      u32 fixup_idx;
+      u32 off;
+    };
+  };
+
+  struct TempSymbolFixup {
+    SecRef section;
+    u32 next_list_entry;
+    u32 off;
+    u8 kind;
+  };
+
+private:
+  std::vector<TempSymbolInfo> temp_symbols;
+  std::vector<TempSymbolFixup> temp_symbol_fixups;
+  u32 next_free_tsfixup = ~0u;
 
   std::vector<char> strtab;
   u32 sec_bss_size = 0;
@@ -363,6 +393,25 @@ public:
     sym_ptr(sym)->st_value = value;
   }
 
+  Label label_create() noexcept {
+    const Label label = static_cast<Label>(temp_symbols.size());
+    temp_symbols.push_back(TempSymbolInfo{INVALID_SEC_REF, {.fixup_idx = ~0u}});
+    return label;
+  }
+
+  // TODO: return pair of section, offset
+  u32 label_is_pending(Label label) const noexcept {
+    const auto &info = temp_symbols[static_cast<u32>(label)];
+    return info.section == INVALID_SEC_REF;
+  }
+
+  // TODO: return pair of section, offset
+  u32 label_offset(Label label) const noexcept {
+    assert(!label_is_pending(label));
+    const auto &info = temp_symbols[static_cast<u32>(label)];
+    return info.off;
+  }
+
 protected:
   [[nodiscard]] static bool sym_is_local(const SymRef sym) noexcept {
     return (static_cast<u32>(sym) & 0x8000'0000) == 0;
@@ -393,6 +442,8 @@ protected:
 public:
   void reloc_sec(
       SecRef sec, SymRef sym, u32 type, u64 offset, i64 addend) noexcept;
+
+  void reloc_sec(SecRef sec, Label label, u8 kind, u32 offset) noexcept;
 
   // Unwind and exception info
 
@@ -528,6 +579,12 @@ struct AssemblerElf : public AssemblerElfBase {
     reloc_sec(current_section, sym, type, offset, addend);
   }
 
+  void label_place(Label label, SecRef sec, u32 off) noexcept;
+
+  void label_place(Label label) noexcept {
+    derived()->label_place(label, current_section, text_cur_off());
+  }
+
   std::vector<u8> build_object_file() {
     // Truncate text section to actually needed size
     DataSection &sec_text = get_section(current_section);
@@ -602,6 +659,26 @@ void AssemblerElf<Derived>::text_more_space(u32 size) noexcept {
   text_begin = sec.data.data();
   text_write_ptr = text_ptr(off);
   text_reserve_end = text_ptr(sec.data.size());
+}
+
+template <typename Derived>
+void AssemblerElf<Derived>::label_place(Label label,
+                                        SecRef sec,
+                                        u32 offset) noexcept {
+  assert(label_is_pending(label));
+  TempSymbolInfo &info = temp_symbols[static_cast<u32>(label)];
+  u32 fixup_idx = info.fixup_idx;
+  info.section = sec;
+  info.off = offset;
+
+  while (fixup_idx != ~0u) {
+    TempSymbolFixup &fixup = temp_symbol_fixups[fixup_idx];
+    derived()->handle_fixup(info, fixup);
+    auto next = fixup.next_list_entry;
+    fixup.next_list_entry = next_free_tsfixup;
+    next_free_tsfixup = fixup_idx;
+    fixup_idx = next;
+  }
 }
 
 template <typename Derived>

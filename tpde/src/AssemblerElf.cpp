@@ -94,6 +94,9 @@ void AssemblerElfBase::reset() noexcept {
   sections.clear();
   global_symbols.clear();
   local_symbols.clear();
+  temp_symbols.clear();
+  temp_symbol_fixups.clear();
+  next_free_tsfixup = ~0u;
   strtab.clear();
   secref_text = INVALID_SEC_REF;
   secref_rodata = INVALID_SEC_REF;
@@ -277,6 +280,30 @@ void AssemblerElfBase::reloc_sec(const SecRef sec_ref,
   if (!sym_is_local(sym)) {
     sec.relocs_to_patch.push_back(sec.relocs.size() - 1);
   }
+}
+
+void AssemblerElfBase::reloc_sec(const SecRef sec,
+                                 const Label label,
+                                 const u8 kind,
+                                 const u32 offset) noexcept {
+  assert(label_is_pending(label));
+  u32 fixup_idx;
+  if (next_free_tsfixup != ~0u) {
+    fixup_idx = next_free_tsfixup;
+    next_free_tsfixup = temp_symbol_fixups[fixup_idx].next_list_entry;
+  } else {
+    fixup_idx = temp_symbol_fixups.size();
+    temp_symbol_fixups.push_back(TempSymbolFixup{});
+  }
+
+  TempSymbolInfo &info = temp_symbols[static_cast<u32>(label)];
+  temp_symbol_fixups[fixup_idx] = TempSymbolFixup{
+      .section = sec,
+      .next_list_entry = info.fixup_idx,
+      .off = offset,
+      .kind = kind,
+  };
+  info.fixup_idx = fixup_idx;
 }
 
 void AssemblerElfBase::eh_align_frame() noexcept {
