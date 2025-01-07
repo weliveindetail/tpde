@@ -2456,8 +2456,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
   if (std::holds_alternative<Assembler::SymRef>(target)) {
     this->assembler.text_ensure_space(4);
     ASMNC(BL, 0);
-    this->assembler.reloc_text_call(std::get<Assembler::SymRef>(target),
-                                    this->assembler.text_cur_off() - 4);
+    this->assembler.reloc_text(std::get<Assembler::SymRef>(target),
+                               R_AARCH64_CALL26,
+                               this->assembler.text_cur_off() - 4);
   } else if (std::holds_alternative<ScratchReg>(target)) {
     auto &reg = std::get<ScratchReg>(target);
     assert(!reg.cur_reg.invalid());

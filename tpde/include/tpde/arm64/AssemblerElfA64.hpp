@@ -47,18 +47,6 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
 
   void emit_jump_table(Label table, std::span<Label> labels) noexcept;
 
-  // relocs
-  void reloc_text_call(SymRef target, u32 off) noexcept;
-
-  void reloc_abs(SecRef sec, SymRef target, u32 off, i32 addend) noexcept {
-    reloc_sec(sec, target, R_AARCH64_ABS64, off, addend);
-  }
-
-  void reloc_pc32(SecRef sec, SymRef target, u32 off, i32 addend) noexcept {
-    reloc_sec(sec, target, R_AARCH64_PREL32, off, addend);
-  }
-
-
   /// Make sure that text_write_ptr can be safely incremented by size
   void text_more_space(u32 size) noexcept;
 
@@ -142,11 +130,6 @@ inline void
     }
     text_write_ptr += 4;
   }
-}
-
-inline void AssemblerElfA64::reloc_text_call(const SymRef target,
-                                             const u32 off) noexcept {
-  reloc_text(target, R_AARCH64_CALL26, off, 0);
 }
 
 inline void AssemblerElfA64::text_more_space(u32 size) noexcept {

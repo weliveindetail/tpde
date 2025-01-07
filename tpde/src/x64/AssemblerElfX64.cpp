@@ -37,6 +37,7 @@ const AssemblerElfBase::TargetInfo AssemblerElfX64::TARGET_INFO{
     .cie_instrs = {cie_instrs.first.data(), cie_instrs.second},
 
     .reloc_pc32 = R_X86_64_PC32,
+    .reloc_abs64 = R_X86_64_64,
 };
 
 } // end namespace tpde::x64

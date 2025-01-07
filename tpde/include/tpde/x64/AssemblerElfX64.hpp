@@ -34,19 +34,6 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
   void emit_jump_table(Label table, std::span<Label> labels) noexcept;
 
   void text_align_impl(u64 align) noexcept;
-
-  // relocs
-  void reloc_text_plt32(SymRef, u32 text_imm32_off) noexcept;
-  void reloc_text_pc32(SymRef sym, u32 text_imm32_off, i32 addend) noexcept;
-  void reloc_text_got(SymRef sym, u32 text_imm32_off, i32 addend) noexcept;
-
-  void reloc_abs(SecRef sec, SymRef target, u32 off, i32 addend) noexcept {
-    reloc_sec(sec, target, R_X86_64_64, off, addend);
-  }
-
-  void reloc_pc32(SecRef sec, SymRef target, u32 off, i32 addend) noexcept {
-    reloc_sec(sec, target, R_X86_64_PC32, off, addend);
-  }
 };
 
 inline void
@@ -100,24 +87,6 @@ inline void AssemblerElfX64::text_align_impl(u64 align) noexcept {
   if (u32 cur_off = text_cur_off(); cur_off > old_off) {
     fe64_NOP(text_write_ptr - (cur_off - old_off), cur_off - old_off);
   }
-}
-
-inline void
-    AssemblerElfX64::reloc_text_plt32(const SymRef sym,
-                                      const u32 text_imm32_off) noexcept {
-  reloc_text(sym, R_X86_64_PLT32, text_imm32_off, -4);
-}
-
-inline void AssemblerElfX64::reloc_text_pc32(SymRef sym,
-                                             u32 text_imm32_off,
-                                             i32 addend) noexcept {
-  reloc_text(sym, R_X86_64_PC32, text_imm32_off, addend);
-}
-
-inline void AssemblerElfX64::reloc_text_got(const SymRef sym,
-                                            const u32 text_imm32_off,
-                                            const i32 addend) noexcept {
-  reloc_text(sym, R_X86_64_GOTPCREL, text_imm32_off, addend);
 }
 
 } // namespace tpde::x64

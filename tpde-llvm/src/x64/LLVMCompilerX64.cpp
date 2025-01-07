@@ -265,13 +265,13 @@ void LLVMCompilerX64::load_address_of_var_reference(
     if (!info.local) {
       // mov the ptr from the GOT
       ASM(MOV64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
-      this->assembler.reloc_text_got(
-          sym, this->assembler.text_cur_off() - 4, -4);
+      this->assembler.reloc_text(
+          sym, R_X86_64_GOTPCREL, this->assembler.text_cur_off() - 4, -4);
     } else {
       // emit lea with relocation
       ASM(LEA64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
-      this->assembler.reloc_text_pc32(
-          sym, this->assembler.text_cur_off() - 4, -4);
+      this->assembler.reloc_text(
+          sym, R_X86_64_PC32, this->assembler.text_cur_off() - 4, -4);
     }
   }
 }

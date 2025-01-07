@@ -181,6 +181,8 @@ struct AssemblerElfBase {
 
     /// The relocation type for 32-bit pc-relative offsets.
     u32 reloc_pc32;
+    /// The relocation type for 64-bit absolute addresses.
+    u32 reloc_abs64;
   };
 
   enum class SymBinding : u8 {
@@ -443,6 +445,14 @@ public:
   void reloc_sec(
       SecRef sec, SymRef sym, u32 type, u64 offset, i64 addend) noexcept;
 
+  void reloc_pc32(SecRef sec, SymRef sym, u64 offset, i64 addend) noexcept {
+    reloc_sec(sec, sym, target_info.reloc_pc32, offset, addend);
+  }
+
+  void reloc_abs(SecRef sec, SymRef sym, u64 offset, i64 addend) noexcept {
+    reloc_sec(sec, sym, target_info.reloc_abs64, offset, addend);
+  }
+
   void reloc_sec(SecRef sec, Label label, u8 kind, u32 offset) noexcept;
 
   // Unwind and exception info
@@ -575,7 +585,7 @@ struct AssemblerElf : public AssemblerElfBase {
 
   void reset() noexcept;
 
-  void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend) noexcept {
+  void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend = 0) noexcept {
     reloc_sec(current_section, sym, type, offset, addend);
   }
 

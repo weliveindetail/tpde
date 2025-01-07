@@ -31,6 +31,7 @@ const AssemblerElfBase::TargetInfo AssemblerElfA64::TARGET_INFO{
     .cie_instrs = {cie_instrs.first.data(), cie_instrs.second},
 
     .reloc_pc32 = R_AARCH64_PREL32,
+    .reloc_abs64 = R_AARCH64_ABS64,
 };
 
 } // end namespace tpde::a64

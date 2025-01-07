@@ -1723,8 +1723,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     } else {
       ASM(SSE_MOVAPSrm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
     }
-    this->assembler.reloc_text_pc32(
-        sym, this->assembler.text_cur_off() - 4, -4);
+    this->assembler.reloc_text(
+        sym, R_X86_64_PC32, this->assembler.text_cur_off() - 4, -4);
     return;
   }
 
@@ -2082,8 +2082,10 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     this->assembler.text_ensure_space(8);
     auto *target_ptr = this->assembler.text_write_ptr;
     ASMNC(CALL, target_ptr);
-    this->assembler.reloc_text_plt32(std::get<Assembler::SymRef>(target),
-                                     this->assembler.text_cur_off() - 4);
+    this->assembler.reloc_text(std::get<Assembler::SymRef>(target),
+                               R_X86_64_PLT32,
+                               this->assembler.text_cur_off() - 4,
+                               -4);
   } else if (std::holds_alternative<ScratchReg>(target)) {
     auto &reg = std::get<ScratchReg>(target);
     assert(!reg.cur_reg.invalid());
