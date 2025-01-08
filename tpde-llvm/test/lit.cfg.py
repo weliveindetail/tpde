@@ -7,13 +7,12 @@ import lit.formats
 
 from lit.llvm import llvm_config
 
-config.name = 'TPDE-LLVM FileTests'
+config.name = 'TPDE-LLVM'
 config.test_format = lit.formats.ShTest(True)
 
 config.suffixes = ['.ll', '.cpp']
 
 config.test_source_root = os.path.dirname(__file__)
-config.test_exec_root = os.path.join(config.tpde_llvm_bin_dir, 'test/filetest');
 config.environment["FILECHECK_OPTS"] = "--enable-var-scope --dump-input always --allow-unused-prefixes=false"
 
 # Tweak the PATH to include the tools dir and TPDE binaries.

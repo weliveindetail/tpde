@@ -140,10 +140,10 @@ target_include_directories(tpde-llc PRIVATE ../deps/)
 # Tests
 
 # configure lit.site.cfg.py
-configure_file(test/filetest/lit.site.cfg.py.in test/filetest/lit.site.cfg.py @ONLY)
+configure_file(test/lit.site.cfg.py.in test/lit.site.cfg.py @ONLY)
 
 # TODO(ts): make this configurable
 add_custom_target(tpde_llvm_filetest
-    COMMAND ${LIT} -v "${CMAKE_CURRENT_BINARY_DIR}/test/filetest"
+    COMMAND ${LIT} -sv "${CMAKE_CURRENT_BINARY_DIR}/test"
     DEPENDS tpde-llc
     USES_TERMINAL)
