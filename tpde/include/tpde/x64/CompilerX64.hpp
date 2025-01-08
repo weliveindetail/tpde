@@ -1162,8 +1162,30 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
         fe64_PUSHr(write_ptr, 0, AsmReg{static_cast<AsmReg::REG>(reg)});
     ++num_saved_regs;
 
-    this->assembler.eh_write_inst(
-        dwarf::DW_CFA_offset, reg, 16 + 8 * num_saved_regs);
+    // DWARF register ordering is subtly different from the encoding:
+    // x86 is:   ax, cx, dx, bx, sp, bp, si, di, r8, ...
+    // DWARF is: ax, dx, cx, bx, si, di, bp, sp, r8, ...
+    static const u8 gpreg_to_dwarf[] = {
+        dwarf::x64::DW_reg_rax,
+        dwarf::x64::DW_reg_rcx,
+        dwarf::x64::DW_reg_rdx,
+        dwarf::x64::DW_reg_rbx,
+        dwarf::x64::DW_reg_rsp,
+        dwarf::x64::DW_reg_rbp,
+        dwarf::x64::DW_reg_rsi,
+        dwarf::x64::DW_reg_rdi,
+        dwarf::x64::DW_reg_r8,
+        dwarf::x64::DW_reg_r9,
+        dwarf::x64::DW_reg_r10,
+        dwarf::x64::DW_reg_r11,
+        dwarf::x64::DW_reg_r12,
+        dwarf::x64::DW_reg_r13,
+        dwarf::x64::DW_reg_r14,
+        dwarf::x64::DW_reg_r15,
+    };
+    u8 dwarf_reg = gpreg_to_dwarf[reg];
+    auto cfa_off = 16 + 8 * num_saved_regs;
+    this->assembler.eh_write_inst(dwarf::DW_CFA_offset, dwarf_reg, cfa_off);
   }
 
   u32 prologue_size = write_ptr - this->assembler.text_ptr(func_start_off);
