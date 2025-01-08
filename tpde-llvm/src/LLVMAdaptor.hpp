@@ -187,16 +187,24 @@ struct LLVMAdaptor {
   [[nodiscard]] auto funcs() const noexcept {
     struct FuncIter {
       struct Iter {
+        using value_type = IRFuncRef;
+        using difference_type = ptrdiff_t;
+
         llvm::Module::iterator it;
 
-        Iter &operator++() {
+        Iter &operator++() noexcept {
           ++it;
           return *this;
         }
+        Iter operator++(int) noexcept {
+          auto copy = *this;
+          ++*this;
+          return copy;
+        }
 
-        bool operator!=(const Iter &rhs) const noexcept { return it != rhs.it; }
+        bool operator==(const Iter &rhs) const noexcept { return it == rhs.it; }
 
-        llvm::Function *operator*() const { return &*it; }
+        llvm::Function *operator*() const noexcept { return &*it; }
       };
 
       Iter first, last;
@@ -208,6 +216,7 @@ struct LLVMAdaptor {
 
       [[nodiscard]] Iter end() const noexcept { return last; }
     };
+    static_assert(std::ranges::range<FuncIter>);
 
     return FuncIter{&mod};
   }
@@ -219,17 +228,25 @@ struct LLVMAdaptor {
       IRValueRef end_idx;
 
       struct iterator {
+        using value_type = IRValueRef;
+        using difference_type = ptrdiff_t;
+
         IRValueRef it;
 
         iterator &operator++() noexcept {
           ++it;
           return *this;
         }
+        iterator operator++(int) noexcept {
+          auto copy = *this;
+          ++*this;
+          return copy;
+        }
 
         IRValueRef operator*() const noexcept { return it; }
 
-        bool operator!=(const iterator &rhs) const noexcept {
-          return it != rhs.it;
+        bool operator==(const iterator &rhs) const noexcept {
+          return it == rhs.it;
         }
       };
 
@@ -241,6 +258,7 @@ struct LLVMAdaptor {
         return iterator{.it = end_idx};
       }
     };
+    static_assert(std::ranges::range<GlobalIter>);
 
     return GlobalIter{.end_idx = global_idx_end};
   }
@@ -322,6 +340,7 @@ struct LLVMAdaptor {
 
       [[nodiscard]] const IRBlockRef *end() const noexcept { return block_end; }
     };
+    static_assert(std::ranges::range<BlockRange>);
 
     auto &[start, end] = block_succ_ranges[block];
     return BlockRange{block_succ_indices.data() + start,
@@ -332,17 +351,25 @@ struct LLVMAdaptor {
     IRValueRef start_idx, end_idx;
 
     struct Iterator {
+      using value_type = IRValueRef;
+      using difference_type = ptrdiff_t;
+
       IRValueRef it;
 
       Iterator &operator++() noexcept {
         ++it;
         return *this;
       }
+      Iterator operator++(int) noexcept {
+        auto copy = *this;
+        ++*this;
+        return copy;
+      }
 
       [[nodiscard]] IRValueRef operator*() const noexcept { return it; }
 
-      bool operator!=(const Iterator &rhs) const noexcept {
-        return it != rhs.it;
+      bool operator==(const Iterator &rhs) const noexcept {
+        return it == rhs.it;
       }
     };
 
@@ -354,8 +381,7 @@ struct LLVMAdaptor {
       return Iterator{.it = end_idx};
     }
   };
-
-  using IRInstIter = BlockValIter::Iterator;
+  static_assert(std::ranges::range<BlockValIter>);
 
   [[nodiscard]] auto block_values(const IRBlockRef block) const noexcept {
     const auto &aux = blocks[block].aux;

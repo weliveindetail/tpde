@@ -157,7 +157,13 @@ struct CompilerBase {
 #pragma endregion
 
   struct InstRange {
-    typename Adaptor::IRInstIter from, to;
+  private:
+    using ValueRange = decltype(std::declval<Adaptor>().block_values(
+        Adaptor::INVALID_BLOCK_REF));
+
+  public:
+    std::ranges::iterator_t<ValueRange> from;
+    std::ranges::sentinel_t<ValueRange> to;
   };
 
   /// Initialize a CompilerBase, should be called by the derived classes
@@ -1912,7 +1918,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
       static_cast<typename Analyzer<Adaptor>::BlockIndex>(block_idx);
 
   assembler.label_place(block_labels[block_idx]);
-  const auto &val_range = adaptor->block_values(block);
+  auto val_range = adaptor->block_values(block);
   const auto end = val_range.end();
   for (auto it = val_range.begin(); it != end; ++it) {
     const IRValueRef value = *it;
