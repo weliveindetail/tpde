@@ -120,3 +120,23 @@ end_block:
 false_block:
   jump ^end_block
 }
+
+; CHECK: Liveness for loop
+; CHECK-NEXT:   0: 2 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT:   1: 0 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT:   2: 4 refs, 0->1 (entry->loop), lf: true
+; CHECK-NEXT:   3: 2 refs, 1->1 (loop->loop), lf: false
+; CHECK-NEXT:   4: 0 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT:   5: 0 refs, 0->0 (entry->entry), lf: false
+; CHECK-NEXT: End Liveness
+loop() {
+entry:
+  %init =
+  jump ^loop
+loop:
+  %phi = phi [^entry, %init], [^loop, %inc]
+  %inc = %phi
+  jump ^loop, ^ret
+ret:
+  terminate
+}
