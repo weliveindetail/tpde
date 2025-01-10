@@ -4363,6 +4363,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_saturating_intrin(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_to_elf(
     llvm::Module &mod, std::vector<uint8_t> &buf) noexcept {
+  if (this->adaptor->mod) {
+    this->reset();
+  }
   if (!compile(mod)) {
     return false;
   }

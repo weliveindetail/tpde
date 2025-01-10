@@ -93,11 +93,11 @@ consteval static u32 sec_count() {
 void AssemblerElfBase::reset() noexcept {
   sections.clear();
   global_symbols.clear();
-  local_symbols.clear();
+  local_symbols.resize(1); // first symbol must be null
   temp_symbols.clear();
   temp_symbol_fixups.clear();
   next_free_tsfixup = ~0u;
-  strtab.clear();
+  strtab.resize(1); // must begin with null byte
   secref_text = INVALID_SEC_REF;
   secref_rodata = INVALID_SEC_REF;
   secref_relro = INVALID_SEC_REF;
@@ -105,6 +105,7 @@ void AssemblerElfBase::reset() noexcept {
   secref_init_array = INVALID_SEC_REF;
   secref_fini_array = INVALID_SEC_REF;
   secref_eh_frame = INVALID_SEC_REF;
+  secref_except_table = INVALID_SEC_REF;
   sec_bss_size = 0;
   cur_func = INVALID_SYM_REF;
 
