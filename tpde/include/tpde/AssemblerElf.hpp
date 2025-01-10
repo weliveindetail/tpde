@@ -196,11 +196,11 @@ struct AssemblerElfBase {
 
   enum class SymRef : u32 {
   };
-  static constexpr SymRef INVALID_SYM_REF = static_cast<SymRef>(~0u);
+  static constexpr SymRef INVALID_SYM_REF = static_cast<SymRef>(0u);
 
   enum class SecRef : u32 {
   };
-  static constexpr SecRef INVALID_SEC_REF = static_cast<SecRef>(~0u);
+  static constexpr SecRef INVALID_SEC_REF = static_cast<SecRef>(0u);
 
   // TODO: merge Label with SymRef when adding private symbols
   enum class Label : u32 {
