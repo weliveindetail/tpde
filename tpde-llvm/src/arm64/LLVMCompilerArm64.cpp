@@ -394,7 +394,7 @@ bool LLVMCompilerArm64::compile_alloca(IRValueRef inst_idx,
   auto size_ref = this->val_ref(llvm_val_idx(alloca->getArraySize()), 0);
   ValuePartRef res_ref;
 
-  auto &layout = adaptor->mod.getDataLayout();
+  auto &layout = adaptor->mod->getDataLayout();
   if (auto opt = alloca->getAllocationSize(layout); opt) {
     res_ref = this->result_ref_eager(inst_idx, 0);
 
@@ -571,7 +571,7 @@ bool LLVMCompilerArm64::compile_call_inner(
     } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::ByVal)) {
       flag = CallArg::Flag::byval;
       byval_align = call->getParamAlign(i).valueOrOne().value();
-      byval_size = this->adaptor->mod.getDataLayout().getTypeAllocSize(
+      byval_size = this->adaptor->mod->getDataLayout().getTypeAllocSize(
           call->getParamByValType(i));
     } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::StructRet)) {
       flag = CallArg::Flag::sret;
@@ -1120,10 +1120,10 @@ bool LLVMCompilerArm64::handle_overflow_intrin_128(
 }
 
 extern bool compile_llvm(llvm::Module &mod, std::vector<u8> &out_buf) {
-  auto adaptor = std::make_unique<LLVMAdaptor>(mod.getContext(), mod);
+  auto adaptor = std::make_unique<LLVMAdaptor>();
   auto compiler = std::make_unique<LLVMCompilerArm64>(std::move(adaptor));
 
-  if (!compiler->compile()) {
+  if (!compiler->compile(mod)) {
     return false;
   }
 

@@ -8,6 +8,7 @@
 
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 
 #include "base.hpp"
@@ -101,8 +102,8 @@ union LLVMComplexPart {
 static_assert(sizeof(LLVMComplexPart) == 4);
 
 struct LLVMAdaptor {
-  llvm::LLVMContext &context;
-  llvm::Module &mod;
+  llvm::LLVMContext *context = nullptr;
+  llvm::Module *mod = nullptr;
 
   struct ValInfo {
     llvm::Value *val;
@@ -165,8 +166,7 @@ struct LLVMAdaptor {
   tpde::util::SmallVector<u32, 256> block_succ_indices;
   tpde::util::SmallVector<std::pair<u32, u32>, 128> block_succ_ranges;
 
-  LLVMAdaptor(llvm::LLVMContext &ctx, llvm::Module &mod)
-      : context(ctx), mod(mod) {}
+  LLVMAdaptor() = default;
 
   using IRValueRef = u32;
   using IRBlockRef = u32;
@@ -181,7 +181,7 @@ struct LLVMAdaptor {
   static constexpr bool TPDE_LIVENESS_VISIT_ARGS = true;
 
   [[nodiscard]] u32 func_count() const noexcept {
-    return mod.getFunctionList().size();
+    return mod->getFunctionList().size();
   }
 
   [[nodiscard]] auto funcs() const noexcept {
@@ -218,7 +218,7 @@ struct LLVMAdaptor {
     };
     static_assert(std::ranges::range<FuncIter>);
 
-    return FuncIter{&mod};
+    return FuncIter{mod};
   }
 
   [[nodiscard]] auto funcs_to_compile() const noexcept { return funcs(); }
@@ -505,7 +505,7 @@ public:
   [[nodiscard]] u32 val_alloca_size(const IRValueRef idx) const noexcept {
     const auto *alloca = llvm::cast<llvm::AllocaInst>(values[idx].val);
     assert(alloca->isStaticAlloca());
-    const u64 size = *alloca->getAllocationSize(mod.getDataLayout());
+    const u64 size = *alloca->getAllocationSize(mod->getDataLayout());
     assert(size <= std::numeric_limits<u32>::max());
     return size;
   }
@@ -527,7 +527,7 @@ public:
   }
 
   u32 cur_arg_byval_size(const u32 idx) const noexcept {
-    return mod.getDataLayout().getTypeAllocSize(
+    return mod->getDataLayout().getTypeAllocSize(
         cur_func->getParamByValType(idx));
   }
 
@@ -553,6 +553,8 @@ private:
 
 public:
   bool switch_func(const IRFuncRef function) noexcept;
+
+  void switch_module(llvm::Module &mod) noexcept;
 
   void reset() noexcept;
 

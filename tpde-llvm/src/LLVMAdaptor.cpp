@@ -9,6 +9,7 @@
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TimeProfiler.h>
@@ -72,7 +73,7 @@ std::pair<llvm::Value *, llvm::Instruction *>
       return {repl, nullptr};
     }
 
-    llvm::Type *i32 = llvm::Type::getInt32Ty(context);
+    llvm::Type *i32 = llvm::Type::getInt32Ty(*context);
     for (auto it : llvm::enumerate(repls)) {
       auto *el = it.value() ? it.value() : cv->getOperand(it.index());
       auto *idx_val = llvm::ConstantInt::get(i32, it.index());
@@ -148,7 +149,7 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
       auto *ty = gep->getSourceElementType();
       auto *ptr_val = gep->getPointerOperand();
       auto start_idx = 0;
-      auto nullC = llvm::ConstantInt::get(llvm::Type::getInt64Ty(context), 0);
+      auto nullC = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 0);
       auto inbounds = gep->isInBounds();
       for (auto split_idx = 0; split_idx < split_indices_size; ++split_idx) {
         idx_vec.clear();
@@ -358,13 +359,13 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
                                .skip_liveness = true,
                                .complex_part_tys_idx = complex_part_idx});
     };
-    for (llvm::Function &fn : mod.functions()) {
+    for (llvm::Function &fn : mod->functions()) {
       add_global(&fn);
     }
-    for (llvm::GlobalVariable &gv : mod.globals()) {
+    for (llvm::GlobalVariable &gv : mod->globals()) {
       add_global(&gv);
     }
-    for (llvm::GlobalAlias &ga : mod.aliases()) {
+    for (llvm::GlobalAlias &ga : mod->aliases()) {
       add_global(&ga);
     }
     global_idx_end = values.size();
@@ -475,7 +476,17 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
   return !func_unsupported;
 }
 
+void LLVMAdaptor::switch_module(llvm::Module &mod) noexcept {
+  if (this->mod) {
+    reset();
+  }
+  this->context = &mod.getContext();
+  this->mod = &mod;
+}
+
 void LLVMAdaptor::reset() noexcept {
+  context = nullptr;
+  mod = nullptr;
   values.clear();
   global_lookup.clear();
   value_lookup.clear();

@@ -216,7 +216,7 @@ public:
 
   void setup_var_ref_assignments() noexcept;
 
-  bool compile();
+  bool compile(llvm::Module &mod) noexcept;
 
   bool compile_inst(IRValueRef, InstRange) noexcept;
 
@@ -511,7 +511,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
   }
 
   // create global symbols and their definitions
-  const auto &llvm_mod = this->adaptor->mod;
+  const auto &llvm_mod = *this->adaptor->mod;
   auto &data_layout = llvm_mod.getDataLayout();
 
   global_sym_lookup.reserve(2 * llvm_mod.global_size());
@@ -978,14 +978,16 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
 }
 
 template <typename Adaptor, typename Derived, typename Config>
-bool LLVMCompilerBase<Adaptor, Derived, Config>::compile() {
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile(
+    llvm::Module &mod) noexcept {
+  this->adaptor->switch_module(mod);
   if (!Base::compile()) {
     return false;
   }
 
   // copy alias symbol definitions
-  for (auto it = this->adaptor->mod.alias_begin();
-       it != this->adaptor->mod.alias_end();
+  for (auto it = this->adaptor->mod->alias_begin();
+       it != this->adaptor->mod->alias_end();
        ++it) {
     llvm::GlobalAlias *ga = &*it;
     auto *alias_target = llvm::dyn_cast<llvm::GlobalValue>(ga->getAliasee());
@@ -2758,7 +2760,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     if (llvm::dyn_cast<llvm::Constant>(idx_begin->get()) == nullptr) {
       variable_off = llvm_val_idx(idx_begin->get());
       indices.push_back(llvm::ConstantInt::get(
-          llvm::IntegerType::getInt64Ty(this->adaptor->context), 0));
+          llvm::IntegerType::getInt64Ty(*this->adaptor->context), 0));
       ++idx_begin;
     }
 
@@ -2815,7 +2817,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
   auto resolved = ResolvedGEP{};
   resolved.base = this->val_ref(llvm_val_idx(ptr), 0);
 
-  auto &data_layout = this->adaptor->mod.getDataLayout();
+  auto &data_layout = this->adaptor->mod->getDataLayout();
 
   if (variable_off) {
     resolved.index = this->val_ref(*variable_off, 0);
