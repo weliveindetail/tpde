@@ -1014,25 +1014,9 @@ bool LLVMCompilerX64::handle_overflow_intrin_128(OverflowOp op,
                             res_of);
 }
 
-extern bool compile_llvm(llvm::Module &mod, std::vector<u8> &out_buf) {
+std::unique_ptr<LLVMCompiler> create_compiler() noexcept {
   auto adaptor = std::make_unique<LLVMAdaptor>();
-  auto compiler = std::make_unique<LLVMCompilerX64>(std::move(adaptor));
-
-  if (!compiler->compile(mod)) {
-    return false;
-  }
-
-  llvm::TimeTraceProfilerEntry *time_entry = nullptr;
-  if (llvm::timeTraceProfilerEnabled()) {
-    time_entry = llvm::timeTraceProfilerBegin("TPDE_EmitObj", "");
-  }
-  std::vector<u8> data = compiler->assembler.build_object_file();
-  out_buf = std::move(data);
-  if (llvm::timeTraceProfilerEnabled()) {
-    llvm::timeTraceProfilerEnd(time_entry);
-  }
-
-  return true;
+  return std::make_unique<LLVMCompilerX64>(std::move(adaptor));
 }
 
 } // namespace tpde_llvm::x64

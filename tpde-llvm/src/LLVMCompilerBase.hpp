@@ -18,11 +18,13 @@
 #include "tpde/util/misc.hpp"
 
 #include "LLVMAdaptor.hpp"
+#include "tpde-llvm/LLVMCompiler.hpp"
 
 namespace tpde_llvm {
 
 template <typename Adaptor, typename Derived, typename Config>
-struct LLVMCompilerBase : tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
+struct LLVMCompilerBase : public LLVMCompiler,
+                          tpde::CompilerBase<LLVMAdaptor, Derived, Config> {
   // TODO
   using Base = tpde::CompilerBase<LLVMAdaptor, Derived, Config>;
 
@@ -318,6 +320,9 @@ public:
                      llvm::Function *) noexcept {
     return false;
   }
+
+  bool compile_to_elf(llvm::Module &mod,
+                      std::vector<uint8_t> &buf) noexcept override;
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -4355,4 +4360,22 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_saturating_intrin(
   return true;
 }
 
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_to_elf(
+    llvm::Module &mod, std::vector<uint8_t> &buf) noexcept {
+  if (!compile(mod)) {
+    return false;
+  }
+
+  llvm::TimeTraceProfilerEntry *time_entry = nullptr;
+  if (llvm::timeTraceProfilerEnabled()) {
+    time_entry = llvm::timeTraceProfilerBegin("TPDE_EmitObj", "");
+  }
+  buf = this->assembler.build_object_file();
+  if (llvm::timeTraceProfilerEnabled()) {
+    llvm::timeTraceProfilerEnd(time_entry);
+  }
+
+  return true;
+}
 } // namespace tpde_llvm

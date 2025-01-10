@@ -10,8 +10,7 @@
 #include <llvm/TargetParser/Host.h>
 #include <llvm/TargetParser/Triple.h>
 
-#include "arm64/LLVMCompilerArm64.hpp"
-#include "x64/LLVMCompilerX64.hpp"
+#include "tpde-llvm/LLVMCompiler.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -100,21 +99,14 @@ int main(int argc, char *argv[]) {
     triple_str = llvm::sys::getDefaultTargetTriple();
   }
   llvm::Triple triple(triple_str);
-
-  using CompileFn = bool(llvm::Module &, std::vector<uint8_t> &);
-  CompileFn *compile_fn;
-  switch (triple.getArch()) {
-  case llvm::Triple::x86_64: compile_fn = tpde_llvm::x64::compile_llvm; break;
-  case llvm::Triple::aarch64:
-    compile_fn = tpde_llvm::arm64::compile_llvm;
-    break;
-  default:
+  auto compiler = tpde_llvm::LLVMCompiler::create(triple);
+  if (!compiler) {
     std::cerr << "Unknown architecture: " << triple_str << "\n";
     return 1;
   }
 
   std::vector<uint8_t> buf;
-  if (!compile_fn(*mod, buf)) {
+  if (!compiler->compile_to_elf(*mod, buf)) {
     std::cerr << "Failed to compile\n";
     return 1;
   }

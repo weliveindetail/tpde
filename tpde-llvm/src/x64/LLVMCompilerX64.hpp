@@ -3,10 +3,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
-#include <llvm/IR/LLVMContext.h>
+#include <memory>
+
+#include "tpde-llvm/LLVMCompiler.hpp"
 
 namespace tpde_llvm::x64 {
 
-extern bool compile_llvm(llvm::Module &mod, std::vector<uint8_t> &out_buf);
+std::unique_ptr<LLVMCompiler> create_compiler() noexcept;
 
 } // namespace tpde_llvm::x64

@@ -40,6 +40,13 @@ endif ()
 
 target_sources(tpde_llvm PRIVATE
     src/LLVMAdaptor.cpp
+    src/LLVMCompiler.cpp
+
+    PUBLIC
+    FILE_SET HEADERS
+    BASE_DIRS include
+    FILES
+        include/tpde-llvm/LLVMCompiler.hpp
 
     PRIVATE
     FILE_SET priv_headers TYPE HEADERS
@@ -74,8 +81,8 @@ if(TPDE_X64)
     target_sources(tpde_llvm PRIVATE
         src/x64/LLVMCompilerX64.cpp
 
-        PUBLIC
-        FILE_SET HEADERS
+        PRIVATE
+        FILE_SET priv_headers TYPE HEADERS
         BASE_DIRS src
         FILES
             src/x64/LLVMCompilerX64.hpp
@@ -110,8 +117,8 @@ if(TPDE_A64)
     target_sources(tpde_llvm PRIVATE
         src/arm64/LLVMCompilerArm64.cpp
 
-        PUBLIC
-        FILE_SET HEADERS
+        PRIVATE
+        FILE_SET priv_headers TYPE HEADERS
         BASE_DIRS src
         FILES
             src/arm64/LLVMCompilerArm64.hpp
