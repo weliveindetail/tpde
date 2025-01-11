@@ -61,6 +61,12 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
     static_assert(tpde::Compiler<LLVMCompilerX64, tpde::x64::PlatformConfig>);
   }
 
+  void reset() noexcept {
+    // TODO: move to LLVMCompilerBase
+    Base::reset();
+    libfunc_syms.fill(Assembler::INVALID_SYM_REF);
+  }
+
   [[nodiscard]] static tpde::x64::CallingConv
       cur_calling_convention() noexcept {
     return tpde::x64::CallingConv::SYSV_CC;
@@ -342,9 +348,9 @@ void LLVMCompilerX64::create_frem_calls(const IRValueRef lhs,
                                         const bool is_double) noexcept {
   SymRef sym;
   if (is_double) {
-    sym = get_or_create_sym_ref(sym_fmod, "fmod");
+    sym = get_libfunc_sym(LibFunc::fmod);
   } else {
-    sym = get_or_create_sym_ref(sym_fmodf, "fmodf");
+    sym = get_libfunc_sym(LibFunc::fmodf);
   }
 
   std::array<CallArg, 2> args = {

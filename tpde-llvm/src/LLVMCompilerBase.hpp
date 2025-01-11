@@ -111,33 +111,37 @@ struct LLVMCompilerBase : public LLVMCompiler,
   tpde::util::SmallVector<VarRefInfo, 16> variable_refs{};
   tpde::util::SmallVector<std::pair<IRValueRef, SymRef>, 16> type_info_syms;
 
-  SymRef sym_fmod = Assembler::INVALID_SYM_REF;
-  SymRef sym_fmodf = Assembler::INVALID_SYM_REF;
-  SymRef sym_floorf = Assembler::INVALID_SYM_REF;
-  SymRef sym_floor = Assembler::INVALID_SYM_REF;
-  SymRef sym_ceilf = Assembler::INVALID_SYM_REF;
-  SymRef sym_ceil = Assembler::INVALID_SYM_REF;
-  SymRef sym_roundf = Assembler::INVALID_SYM_REF;
-  SymRef sym_round = Assembler::INVALID_SYM_REF;
-  SymRef sym_memcpy = Assembler::INVALID_SYM_REF;
-  SymRef sym_memset = Assembler::INVALID_SYM_REF;
-  SymRef sym_memmove = Assembler::INVALID_SYM_REF;
-  SymRef sym_resume = Assembler::INVALID_SYM_REF;
-  SymRef sym_powisf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_powidf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_trunc = Assembler::INVALID_SYM_REF;
-  SymRef sym_truncf = Assembler::INVALID_SYM_REF;
-  SymRef sym_trunctfsf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_trunctfdf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_extendsftf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_extenddftf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_eqtf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_netf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_gttf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_getf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_lttf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_letf2 = Assembler::INVALID_SYM_REF;
-  SymRef sym_unordtf2 = Assembler::INVALID_SYM_REF;
+  enum class LibFunc {
+    fmod,
+    fmodf,
+    floorf,
+    floor,
+    ceilf,
+    ceil,
+    roundf,
+    round,
+    memcpy,
+    memset,
+    memmove,
+    resume,
+    powisf2,
+    powidf2,
+    trunc,
+    truncf,
+    trunctfsf2,
+    trunctfdf2,
+    extendsftf2,
+    extenddftf2,
+    eqtf2,
+    netf2,
+    gttf2,
+    getf2,
+    lttf2,
+    letf2,
+    unordtf2,
+    MAX
+  };
+  std::array<SymRef, static_cast<size_t>(LibFunc::MAX)> libfunc_syms;
 
   llvm::TimeTraceProfilerEntry *time_entry;
 
@@ -145,6 +149,7 @@ struct LLVMCompilerBase : public LLVMCompiler,
       : Base{adaptor, generate_obj} {
     static_assert(tpde::Compiler<Derived, Config>);
     static_assert(std::is_same_v<Adaptor, LLVMAdaptor>);
+    libfunc_syms.fill(Assembler::INVALID_SYM_REF);
   }
 
   Derived *derived() noexcept { return static_cast<Derived *>(this); }
@@ -210,10 +215,7 @@ public:
   IRValueRef llvm_val_idx(const llvm::Value *) const noexcept;
   IRValueRef llvm_val_idx(const llvm::Instruction *) const noexcept;
 
-  SymRef get_or_create_sym_ref(
-      SymRef &sym,
-      std::string_view name,
-      Assembler::SymBinding binding = Assembler::SymBinding::GLOBAL) noexcept;
+  SymRef get_libfunc_sym(LibFunc func) noexcept;
   SymRef global_sym(const llvm::GlobalValue *global) const noexcept;
 
   void setup_var_ref_assignments() noexcept;
@@ -904,15 +906,47 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef
 
 template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
-    LLVMCompilerBase<Adaptor, Derived, Config>::get_or_create_sym_ref(
-        SymRef &sym,
-        std::string_view name,
-        Assembler::SymBinding binding) noexcept {
+    LLVMCompilerBase<Adaptor, Derived, Config>::get_libfunc_sym(
+        LibFunc func) noexcept {
+  assert(func < LibFunc::MAX);
+  SymRef &sym = libfunc_syms[static_cast<size_t>(func)];
   if (sym != Assembler::INVALID_SYM_REF) [[likely]] {
     return sym;
   }
 
-  sym = this->assembler.sym_add_undef(name, binding);
+  std::string_view name = "???";
+  switch (func) {
+  case LibFunc::fmod: name = "fmod"; break;
+  case LibFunc::fmodf: name = "fmodf"; break;
+  case LibFunc::floorf: name = "floorf"; break;
+  case LibFunc::floor: name = "floor"; break;
+  case LibFunc::ceilf: name = "ceilf"; break;
+  case LibFunc::ceil: name = "ceil"; break;
+  case LibFunc::roundf: name = "roundf"; break;
+  case LibFunc::round: name = "round"; break;
+  case LibFunc::memcpy: name = "memcpy"; break;
+  case LibFunc::memset: name = "memset"; break;
+  case LibFunc::memmove: name = "memmove"; break;
+  case LibFunc::resume: name = "_Unwind_Resume"; break;
+  case LibFunc::powisf2: name = "__powisf2"; break;
+  case LibFunc::powidf2: name = "__powidf2"; break;
+  case LibFunc::trunc: name = "trunc"; break;
+  case LibFunc::truncf: name = "truncf"; break;
+  case LibFunc::trunctfsf2: name = "__trunctfsf2"; break;
+  case LibFunc::trunctfdf2: name = "__trunctfdf2"; break;
+  case LibFunc::extendsftf2: name = "__extendsftf2"; break;
+  case LibFunc::extenddftf2: name = "__extenddftf2"; break;
+  case LibFunc::eqtf2: name = "__eqtf2"; break;
+  case LibFunc::netf2: name = "__netf2"; break;
+  case LibFunc::gttf2: name = "__gttf2"; break;
+  case LibFunc::getf2: name = "__getf2"; break;
+  case LibFunc::lttf2: name = "__lttf2"; break;
+  case LibFunc::letf2: name = "__letf2"; break;
+  case LibFunc::unordtf2: name = "__unordtf2"; break;
+  default: TPDE_UNREACHABLE("invalid libfunc");
+  }
+
+  sym = this->assembler.sym_add_undef(name, Assembler::SymBinding::GLOBAL);
   return sym;
 }
 
@@ -1870,16 +1904,16 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
     auto src_ref = this->val_ref(llvm_val_idx(src_val), 0);
     derived()->encode_f64tof32(std::move(src_ref), res_scratch);
   } else if (src_ty->isFP128Ty() && dst_ty->isFloatTy()) {
-    sym = get_or_create_sym_ref(sym_trunctfsf2, "__trunctfsf2");
+    sym = get_libfunc_sym(LibFunc::trunctfsf2);
   } else if (src_ty->isFP128Ty() && dst_ty->isDoubleTy()) {
-    sym = get_or_create_sym_ref(sym_trunctfdf2, "__trunctfdf2");
+    sym = get_libfunc_sym(LibFunc::trunctfdf2);
   } else if (src_ty->isFloatTy() && dst_ty->isDoubleTy()) {
     auto src_ref = this->val_ref(llvm_val_idx(src_val), 0);
     derived()->encode_f32tof64(std::move(src_ref), res_scratch);
   } else if (src_ty->isFloatTy() && dst_ty->isFP128Ty()) {
-    sym = get_or_create_sym_ref(sym_extendsftf2, "__extendsftf2");
+    sym = get_libfunc_sym(LibFunc::extendsftf2);
   } else if (src_ty->isDoubleTy() && dst_ty->isFP128Ty()) {
-    sym = get_or_create_sym_ref(sym_extenddftf2, "__extenddftf2");
+    sym = get_libfunc_sym(LibFunc::extenddftf2);
   }
 
   if (res_scratch.cur_reg.valid()) {
@@ -2898,51 +2932,51 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
     llvm::CmpInst::Predicate cmp_pred = llvm::CmpInst::ICMP_EQ;
     switch (pred) {
     case llvm::CmpInst::FCMP_OEQ:
-      sym = get_or_create_sym_ref(sym_eqtf2, "__eqtf2");
+      sym = get_libfunc_sym(LibFunc::eqtf2);
       cmp_pred = llvm::CmpInst::ICMP_EQ;
       break;
     case llvm::CmpInst::FCMP_UNE:
-      sym = get_or_create_sym_ref(sym_netf2, "__netf2");
+      sym = get_libfunc_sym(LibFunc::netf2);
       cmp_pred = llvm::CmpInst::ICMP_NE;
       break;
     case llvm::CmpInst::FCMP_OGT:
-      sym = get_or_create_sym_ref(sym_gttf2, "__gttf2");
+      sym = get_libfunc_sym(LibFunc::gttf2);
       cmp_pred = llvm::CmpInst::ICMP_SGT;
       break;
     case llvm::CmpInst::FCMP_ULE:
-      sym = get_or_create_sym_ref(sym_gttf2, "__gttf2");
+      sym = get_libfunc_sym(LibFunc::gttf2);
       cmp_pred = llvm::CmpInst::ICMP_SLE;
       break;
     case llvm::CmpInst::FCMP_OGE:
-      sym = get_or_create_sym_ref(sym_getf2, "__getf2");
+      sym = get_libfunc_sym(LibFunc::getf2);
       cmp_pred = llvm::CmpInst::ICMP_SGE;
       break;
     case llvm::CmpInst::FCMP_ULT:
-      sym = get_or_create_sym_ref(sym_getf2, "__getf2");
+      sym = get_libfunc_sym(LibFunc::getf2);
       cmp_pred = llvm::CmpInst::ICMP_SLT;
       break;
     case llvm::CmpInst::FCMP_OLT:
-      sym = get_or_create_sym_ref(sym_lttf2, "__lttf2");
+      sym = get_libfunc_sym(LibFunc::lttf2);
       cmp_pred = llvm::CmpInst::ICMP_SLT;
       break;
     case llvm::CmpInst::FCMP_UGE:
-      sym = get_or_create_sym_ref(sym_lttf2, "__lttf2");
+      sym = get_libfunc_sym(LibFunc::lttf2);
       cmp_pred = llvm::CmpInst::ICMP_SGE;
       break;
     case llvm::CmpInst::FCMP_OLE:
-      sym = get_or_create_sym_ref(sym_letf2, "__letf2");
+      sym = get_libfunc_sym(LibFunc::letf2);
       cmp_pred = llvm::CmpInst::ICMP_SLE;
       break;
     case llvm::CmpInst::FCMP_UGT:
-      sym = get_or_create_sym_ref(sym_letf2, "__letf2");
+      sym = get_libfunc_sym(LibFunc::letf2);
       cmp_pred = llvm::CmpInst::ICMP_SGT;
       break;
     case llvm::CmpInst::FCMP_ORD:
-      sym = get_or_create_sym_ref(sym_unordtf2, "__unordtf2");
+      sym = get_libfunc_sym(LibFunc::unordtf2);
       cmp_pred = llvm::CmpInst::ICMP_EQ;
       break;
     case llvm::CmpInst::FCMP_UNO:
-      sym = get_or_create_sym_ref(sym_unordtf2, "__unordtf2");
+      sym = get_libfunc_sym(LibFunc::unordtf2);
       cmp_pred = llvm::CmpInst::ICMP_NE;
       break;
     case llvm::CmpInst::FCMP_ONE:
@@ -3425,7 +3459,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_resume(
     IRValueRef, llvm::Instruction *inst) noexcept {
   IRValueRef arg = llvm_val_idx(inst->getOperand(0));
 
-  const auto sym = get_or_create_sym_ref(sym_resume, "_Unwind_Resume");
+  const auto sym = get_libfunc_sym(LibFunc::resume);
 
   derived()->create_helper_call({&arg, 1}, {}, sym);
   return derived()->compile_unreachable(Adaptor::INVALID_VALUE_REF, nullptr);
@@ -3491,7 +3525,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     std::array<IRValueRef, 3> args{dst, src, len};
 
-    const auto sym = get_or_create_sym_ref(sym_memcpy, "memcpy");
+    const auto sym = get_libfunc_sym(LibFunc::memcpy);
     derived()->create_helper_call(args, {}, sym);
     return true;
   }
@@ -3502,7 +3536,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     std::array<IRValueRef, 3> args{dst, val, len};
 
-    const auto sym = get_or_create_sym_ref(sym_memset, "memset");
+    const auto sym = get_libfunc_sym(LibFunc::memset);
     derived()->create_helper_call(args, {}, sym);
     return true;
   }
@@ -3513,7 +3547,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     std::array<IRValueRef, 3> args{dst, src, len};
 
-    const auto sym = get_or_create_sym_ref(sym_memmove, "memmove");
+    const auto sym = get_libfunc_sym(LibFunc::memmove);
     derived()->create_helper_call(args, {}, sym);
     return true;
   }
@@ -3549,28 +3583,28 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     SymRef sym;
     if (intrin_id == llvm::Intrinsic::floor) {
       if (is_double) {
-        sym = get_or_create_sym_ref(sym_floor, "floor");
+        sym = get_libfunc_sym(LibFunc::floor);
       } else {
-        sym = get_or_create_sym_ref(sym_floorf, "floorf");
+        sym = get_libfunc_sym(LibFunc::floorf);
       }
     } else if (intrin_id == llvm::Intrinsic::ceil) {
       if (is_double) {
-        sym = get_or_create_sym_ref(sym_ceil, "ceil");
+        sym = get_libfunc_sym(LibFunc::ceil);
       } else {
-        sym = get_or_create_sym_ref(sym_ceilf, "ceilf");
+        sym = get_libfunc_sym(LibFunc::ceilf);
       }
     } else if (intrin_id == llvm::Intrinsic::round) {
       if (is_double) {
-        sym = get_or_create_sym_ref(sym_round, "round");
+        sym = get_libfunc_sym(LibFunc::round);
       } else {
-        sym = get_or_create_sym_ref(sym_roundf, "roundf");
+        sym = get_libfunc_sym(LibFunc::roundf);
       }
     } else {
       assert(intrin_id == llvm::Intrinsic::trunc);
       if (is_double) {
-        sym = get_or_create_sym_ref(sym_trunc, "trunc");
+        sym = get_libfunc_sym(LibFunc::trunc);
       } else {
-        sym = get_or_create_sym_ref(sym_truncf, "truncf");
+        sym = get_libfunc_sym(LibFunc::truncf);
       }
     }
 
@@ -3674,9 +3708,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     const auto is_double = inst->getOperand(0)->getType()->isDoubleTy();
     SymRef sym;
     if (is_double) {
-      sym = get_or_create_sym_ref(sym_powidf2, "__powidf2");
+      sym = get_libfunc_sym(LibFunc::powidf2);
     } else {
-      sym = get_or_create_sym_ref(sym_powisf2, "__powisf2");
+      sym = get_libfunc_sym(LibFunc::powisf2);
     }
     auto res_ref = this->result_ref_lazy(inst_idx, 0);
 
@@ -4364,7 +4398,7 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_to_elf(
     llvm::Module &mod, std::vector<uint8_t> &buf) noexcept {
   if (this->adaptor->mod) {
-    this->reset();
+    derived()->reset();
   }
   if (!compile(mod)) {
     return false;
