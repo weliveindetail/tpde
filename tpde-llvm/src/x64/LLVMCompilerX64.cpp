@@ -65,7 +65,6 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
     // TODO: move to LLVMCompilerBase
     Base::reset();
     EncCompiler::reset();
-    libfunc_syms.fill({});
   }
 
   [[nodiscard]] static tpde::x64::CallingConv

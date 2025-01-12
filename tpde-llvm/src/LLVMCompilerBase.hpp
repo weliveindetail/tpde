@@ -1020,6 +1020,12 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile(
     llvm::Module &mod) noexcept {
   this->adaptor->switch_module(mod);
+
+  type_info_syms.clear();
+  global_syms.clear();
+  global_sym_lookup.clear();
+  libfunc_syms.fill({});
+
   if (!Base::compile()) {
     return false;
   }
