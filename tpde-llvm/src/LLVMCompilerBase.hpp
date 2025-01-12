@@ -102,11 +102,7 @@ struct LLVMCompilerBase : public LLVMCompiler,
     smul
   };
 
-  // <is_func, idx>
-  llvm::DenseMap<const llvm::GlobalValue *, std::pair<bool, u32>>
-      global_sym_lookup{};
-  // TODO(ts): SmallVector?
-  std::vector<SymRef> global_syms;
+  llvm::DenseMap<const llvm::GlobalValue *, SymRef> global_syms;
 
   tpde::util::SmallVector<VarRefInfo, 16> variable_refs{};
   tpde::util::SmallVector<std::pair<IRValueRef, SymRef>, 16> type_info_syms;
@@ -216,7 +212,12 @@ public:
   IRValueRef llvm_val_idx(const llvm::Instruction *) const noexcept;
 
   SymRef get_libfunc_sym(LibFunc func) noexcept;
-  SymRef global_sym(const llvm::GlobalValue *global) const noexcept;
+
+  SymRef global_sym(const llvm::GlobalValue *global) const noexcept {
+    SymRef res = global_syms.lookup(global);
+    assert(res.valid());
+    return res;
+  }
 
   void setup_var_ref_assignments() noexcept;
 
@@ -507,7 +508,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
 template <typename Adaptor, typename Derived, typename Config>
 void LLVMCompilerBase<Adaptor, Derived, Config>::define_func_idx(
     IRFuncRef func, const u32 idx) noexcept {
-  global_sym_lookup[func] = std::make_pair(true, idx);
+  global_syms[func] = this->func_syms[idx];
 }
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -521,7 +522,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
   const auto &llvm_mod = *this->adaptor->mod;
   auto &data_layout = llvm_mod.getDataLayout();
 
-  global_sym_lookup.reserve(2 * llvm_mod.global_size());
+  global_syms.reserve(2 * llvm_mod.global_size());
 
   // create the symbols first so that later relocations don't try to look up
   // non-existant symbols
@@ -545,27 +546,16 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
     // lookup
     auto binding = convert_linkage(gv);
     if (!gv->isDeclarationForLinker()) {
-      auto sym = this->assembler.sym_predef_data(gv->getName(), binding);
-
-      const auto idx = global_syms.size();
-      global_syms.push_back(sym);
-      global_sym_lookup.insert_or_assign(gv, std::make_pair(false, idx));
+      global_syms[gv] = this->assembler.sym_predef_data(gv->getName(), binding);
     } else {
-      // TODO(ts): should we use getValueName here?
-      auto sym = this->assembler.sym_add_undef(gv->getName(), binding);
-      const auto idx = global_syms.size();
-      global_syms.push_back(sym);
-      global_sym_lookup.insert_or_assign(gv, std::make_pair(false, idx));
+      global_syms[gv] = this->assembler.sym_add_undef(gv->getName(), binding);
     }
   }
 
   for (auto it = llvm_mod.alias_begin(); it != llvm_mod.alias_end(); ++it) {
     const llvm::GlobalAlias *ga = &*it;
     auto binding = convert_linkage(ga);
-    const auto sym = this->assembler.sym_add_undef(ga->getName(), binding);
-    const auto idx = global_syms.size();
-    global_syms.push_back(sym);
-    global_sym_lookup.insert_or_assign(ga, std::make_pair(false, idx));
+    global_syms[ga] = this->assembler.sym_add_undef(ga->getName(), binding);
   }
 
   if (!llvm_mod.ifunc_empty()) {
@@ -616,7 +606,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
             llvm::dyn_cast<llvm::GlobalValue>(entry->getAggregateElement(1));
         assert(ptr);
         // we should not need to care about the third element
-        assert(global_sym_lookup.contains(ptr));
         functions.emplace_back(global_sym(ptr), prio->getZExtValue());
       }
 
@@ -766,16 +755,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
   }
   if (auto *GV = llvm::dyn_cast<llvm::GlobalVariable>(constant); GV) {
     assert(alloc_size == 8);
-    const auto sym = global_sym(GV);
-    assert(sym.valid());
-    relocs.push_back({off, 0, sym});
+    relocs.push_back({off, 0, global_sym(GV)});
     return true;
   }
   if (auto *GA = llvm::dyn_cast<llvm::GlobalAlias>(constant); GA) {
     assert(alloc_size == 8);
-    const auto sym = global_sym(GA);
-    assert(sym.valid());
-    relocs.push_back({off, 0, sym});
+    relocs.push_back({off, 0, global_sym(GA)});
     return true;
   }
   if (auto *FN = llvm::dyn_cast<llvm::Function>(constant); FN) {
@@ -783,9 +768,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
     // fix this sometime
     assert(!FN->isIntrinsic());
     assert(alloc_size == 8);
-    const auto sym = global_sym(FN);
-    assert(sym.valid());
-    relocs.push_back({off, 0, sym});
+    relocs.push_back({off, 0, global_sym(FN)});
     return true;
   }
   if (auto *CE = llvm::dyn_cast<llvm::ConstantExpr>(constant); CE) {
@@ -866,8 +849,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_const_expr_to_data(
             rhs_ptr_to_int->getOpcode() == llvm::Instruction::PtrToInt) {
           if (rhs_ptr_to_int->getOperand(0) == reloc_base &&
               llvm::isa<llvm::GlobalVariable>(lhs_ptr_to_int->getOperand(0))) {
-            auto ptr_sym = global_sym(llvm::dyn_cast<llvm::GlobalValue>(
-                lhs_ptr_to_int->getOperand(0)));
+            auto ptr_sym = global_sym(
+                llvm::cast<llvm::GlobalValue>(lhs_ptr_to_int->getOperand(0)));
 
             relocs.push_back({off,
                               static_cast<int32_t>(off),
@@ -951,20 +934,6 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
 }
 
 template <typename Adaptor, typename Derived, typename Config>
-typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
-    LLVMCompilerBase<Adaptor, Derived, Config>::global_sym(
-        const llvm::GlobalValue *global) const noexcept {
-  assert(global != nullptr);
-  auto it = global_sym_lookup.find(global);
-  if (it == global_sym_lookup.end()) {
-    assert(0);
-    return {};
-  }
-  return it->second.first ? this->func_syms[it->second.second]
-                          : global_syms[it->second.second];
-}
-
-template <typename Adaptor, typename Derived, typename Config>
 void LLVMCompilerBase<Adaptor, Derived, Config>::
     setup_var_ref_assignments() noexcept {
   using AssignmentPartRef = typename Base::AssignmentPartRef;
@@ -1023,7 +992,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile(
 
   type_info_syms.clear();
   global_syms.clear();
-  global_sym_lookup.clear();
   libfunc_syms.fill({});
 
   if (!Base::compile()) {

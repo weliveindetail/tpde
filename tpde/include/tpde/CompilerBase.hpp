@@ -385,7 +385,6 @@ bool CompilerBase<Adaptor, Derived, Config>::compile() {
 
   assert(func_syms.empty());
   for (const IRFuncRef func : adaptor->funcs()) {
-    derived()->define_func_idx(func, func_syms.size());
     auto binding = Assembler::SymBinding::GLOBAL;
     if (adaptor->func_has_weak_linkage(func)) {
       binding = Assembler::SymBinding::WEAK;
@@ -399,6 +398,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile() {
       func_syms.push_back(derived()->assembler.sym_predef_func(
           adaptor->func_link_name(func), binding));
     }
+    derived()->define_func_idx(func, func_syms.size() - 1);
   }
 
   if (!derived()->hook_post_func_sym_init()) {
