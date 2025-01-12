@@ -111,6 +111,21 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+#ifndef NDEBUG
+  // In debug builds, assert that compiling the module a second time in the same
+  // compiler instance yields the same result.
+  std::vector<uint8_t> buf2;
+  if (!compiler->compile_to_elf(*mod, buf2)) {
+    assert(false && "second compilation failed");
+  }
+  if (buf.size() != buf2.size() ||
+      !std::equal(buf.begin(), buf.end(), buf2.begin())) {
+    std::cerr << "result mismatch from second compilation!\n";
+    std::cerr << "  sizeA=" << buf.size() << " sizeB=" << buf2.size() << "\n";
+    assert(false);
+  }
+#endif
+
   if (!obj_out_path || obj_out_path.Get() == "-") {
     std::cout.write(reinterpret_cast<const char *>(buf.data()), buf.size());
   } else {
