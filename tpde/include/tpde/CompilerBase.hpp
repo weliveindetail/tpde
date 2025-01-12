@@ -126,7 +126,7 @@ struct CompilerBase {
   struct {
     util::SmallVector<AssignmentBuffer, 8> buffers = {};
     u32 cur_buf = 0;
-    u32 cur_fixed_assignment_count[Config::NUM_BANKS] = {};
+    std::array<u32, Config::NUM_BANKS> cur_fixed_assignment_count = {};
     util::SmallVector<ValueAssignment *, Analyzer<Adaptor>::SMALL_VALUE_NUM>
         value_ptrs;
 
@@ -444,6 +444,7 @@ void CompilerBase<Adaptor, Derived, Config>::reset() {
   assignments.value_ptrs.clear();
   assignments.buffers.clear();
   assignments.cur_buf = 0;
+  assignments.cur_fixed_assignment_count = {};
   assignments.fixed_free_lists[0] = assignments.fixed_free_lists[1] = nullptr;
   assignments.dynamic_free_lists.clear();
   assignments.delayed_free_lists.clear();
