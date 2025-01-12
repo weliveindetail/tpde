@@ -15,31 +15,6 @@
 #include "util/SmallVector.hpp"
 #include "util/misc.hpp"
 
-#if defined(__unix__)
-  #include <sys/mman.h>
-  #ifdef __x86_64__
-    #include <fadec-enc2.h>
-  #endif
-  #ifdef __aarch64__
-    #include <disarm64.h>
-  #endif
-
-extern "C" void __register_frame(void *);
-extern "C" void __deregister_frame(void *);
-
-namespace tpde {
-  #ifdef __x86_64__
-constexpr size_t PAGE_SIZE = 4096;
-  #elif defined(__aarch64__)
-// TODO(ts): I think on arm64 we need to ask the kernel for the current page
-// size
-constexpr size_t PAGE_SIZE = 16384;
-  #endif
-} // namespace tpde
-#else
-  #error "unsupported architecture/os combo"
-#endif
-
 namespace tpde {
 
 namespace dwarf {
@@ -157,16 +132,10 @@ constexpr u8 DW_reg_pc = 32;
 
 } // namespace dwarf
 
-template <typename T>
-concept SymbolResolver = requires(T a) {
-  {
-    a.resolve_symbol(std::declval<std::string_view>())
-  } -> std::same_as<void *>;
-};
-
 struct AssemblerElfBase {
   template <class Derived>
   friend struct AssemblerElf;
+  friend class ElfMapper;
 
   struct TargetInfo {
     /// The OS ABI for the ELF header.
@@ -230,6 +199,8 @@ struct AssemblerElfBase {
     DataSection() = default;
     DataSection(unsigned type, unsigned flags, unsigned name_off)
         : hdr{.sh_name = name_off, .sh_type = type, .sh_flags = flags} {}
+
+    size_t size() const { return data.size(); }
   };
 
 private:
@@ -331,6 +302,11 @@ public:
     return sections[static_cast<u32>(ref)];
   }
 
+  const DataSection &get_section(SecRef ref) const noexcept {
+    assert(ref != INVALID_SEC_REF);
+    return sections[static_cast<u32>(ref)];
+  }
+
 private:
   void init_sections() noexcept;
 
@@ -345,6 +321,8 @@ public:
   SecRef get_data_section(bool rodata, bool relro = false) noexcept;
   SecRef get_structor_section(bool init) noexcept;
   SecRef get_eh_frame_section() const noexcept { return secref_eh_frame; }
+
+  const char *sec_name(SecRef ref) const noexcept;
 
   // Symbols
 
@@ -405,6 +383,10 @@ public:
   /// Forcefully set value of symbol, doesn't change section.
   void sym_set_value(SymRef sym, u64 value) noexcept {
     sym_ptr(sym)->st_value = value;
+  }
+
+  const char *sym_name(SymRef sym) const noexcept {
+    return strtab.data() + sym_ptr(sym)->st_name;
   }
 
   Label label_create() noexcept {
@@ -537,30 +519,6 @@ struct AssemblerElf : public AssemblerElfBase {
 #ifdef TPDE_ASSERTS
   bool currently_in_func = false;
 #endif
-
-  template <SymbolResolver SymbolResolver>
-  struct Mapper {
-    u8 *mapped_addr = nullptr;
-    size_t mapped_size = 0;
-    u32 registered_frame_off = 0;
-
-    u32 local_sym_count = 0;
-    util::SmallVector<void *, 64> sym_addrs;
-
-    Mapper() = default;
-    ~Mapper();
-
-    bool map(Derived *, SymbolResolver *, std::span<const SymRef> func_syms);
-
-    void *get_sym_addr(SymRef sym) {
-      auto idx = AssemblerElf::sym_idx(sym);
-      if (!AssemblerElf::sym_is_local(sym)) {
-        idx += local_sym_count;
-      }
-      assert(idx < sym_addrs.size());
-      return sym_addrs[idx];
-    }
-  };
 
   explicit AssemblerElf(const bool generating_object)
       : AssemblerElfBase(Derived::TARGET_INFO, generating_object) {
@@ -711,329 +669,4 @@ void AssemblerElf<Derived>::reset() noexcept {
   text_begin = text_write_ptr = text_reserve_end = nullptr;
 }
 
-template <typename Derived>
-template <SymbolResolver SymbolResolver>
-AssemblerElf<Derived>::Mapper<SymbolResolver>::~Mapper() {
-  if (!mapped_addr) {
-    return;
-  }
-
-  if (registered_frame_off) {
-    __deregister_frame(mapped_addr + registered_frame_off);
-  }
-
-  munmap(mapped_addr, mapped_size);
-  registered_frame_off = 0;
-  mapped_addr = nullptr;
-  mapped_size = 0;
-}
-
-#if 0
-template <typename Derived>
-template <SymbolResolver SymbolResolver>
-bool AssemblerElf<Derived>::Mapper<SymbolResolver>::map(
-    Derived *ad, SymbolResolver *resolver, std::span<const SymRef> func_syms) {
-  assert(!mapped_addr);
-
-  AssemblerElf<Derived> *a = static_cast<AssemblerElf<Derived> *>(ad);
-
-  // if (!a->sec_fini_array.data.empty() || !a->sec_init_array.data.empty()) {
-  //   assert(0);
-  //   return false;
-  // }
-
-  // zero-terminate eh_frame
-  // TODO(ts): this should probably go somewhere else
-  if (!a->sec_eh_frame.data.empty()) {
-    a->sec_eh_frame.data.resize(a->sec_eh_frame.data.size() + 4);
-  }
-
-  std::vector<u32> plt_or_got_offs{};
-  plt_or_got_offs.resize(a->local_symbols.size() + a->global_symbols.size());
-
-  u32 num_plt_entries = func_syms.size(), num_got_entries = 0;
-  // bad approximation but otherwise we would need a hashtable i think
-  for (const auto &r : a->sec_text.relocs) {
-    const auto ty = ELF64_R_TYPE(r.r_info);
-    if (ty == R_X86_64_GOTPCREL || ty == R_AARCH64_ADR_GOT_PAGE) {
-      ++num_got_entries;
-    }
-  }
-
-  #ifdef __x86_64__
-  constexpr size_t PLT_ENTRY_SIZE = 16;
-  #elif defined(__aarch64__)
-  constexpr size_t PLT_ENTRY_SIZE = 16;
-  #endif
-
-  const u32 plt_size = num_plt_entries * PLT_ENTRY_SIZE;
-  const u32 got_size = num_got_entries * 8;
-
-  std::array<u32, elf::sec_count() + 1> sec_offs = {};
-
-  const auto add_sec = [&](u32 idx, const DataSection &sec) {
-    sec_offs[idx] = util::align_up(sec.data.size(), PAGE_SIZE);
-  };
-
-  add_sec(elf::sec_idx(".eh_frame"), a->sec_eh_frame);
-  add_sec(elf::sec_idx(".data"), a->sec_data);
-  add_sec(elf::sec_idx(".rodata"), a->sec_rodata);
-  add_sec(elf::sec_idx(".gcc_except_table"), a->sec_except_table);
-
-  sec_offs[elf::sec_idx(".bss")] = util::align_up(a->sec_bss_size, PAGE_SIZE);
-  // TODO(ts): only copy the used parts of .text and not the reserved parts?
-  sec_offs[elf::sec_idx(".text")] = util::align_up(
-      util::align_up(a->sec_text.data.size(), 16) + plt_size, PAGE_SIZE);
-  sec_offs[elf::sec_idx(".data.rel.ro")] = util::align_up(
-      util::align_up(a->sec_relrodata.data.size(), 16) + got_size, PAGE_SIZE);
-
-  {
-    u32 off = 0;
-    for (auto &e : sec_offs) {
-      const auto size = e;
-      e = off;
-      off += size;
-    }
-  }
-
-  mapped_addr = static_cast<u8 *>(mmap(nullptr,
-                                       sec_offs.back(),
-                                       PROT_READ | PROT_WRITE,
-                                       MAP_PRIVATE | MAP_ANONYMOUS,
-                                       -1,
-                                       0));
-  if (mapped_addr == MAP_FAILED || !mapped_addr) {
-    return false;
-  }
-  mapped_size = sec_offs.back();
-
-  const auto copy_sec = [&](u32 idx, const DataSection &sec) {
-    std::memcpy(mapped_addr + sec_offs[idx], sec.data.data(), sec.data.size());
-  };
-  copy_sec(elf::sec_idx(".text"), a->sec_text);
-  copy_sec(elf::sec_idx(".eh_frame"), a->sec_eh_frame);
-  copy_sec(elf::sec_idx(".data"), a->sec_data);
-  copy_sec(elf::sec_idx(".rodata"), a->sec_rodata);
-  copy_sec(elf::sec_idx(".data.rel.ro"), a->sec_relrodata);
-  copy_sec(elf::sec_idx(".gcc_except_table"), a->sec_except_table);
-
-  const auto local_sym_count = a->local_symbols.size();
-  this->local_sym_count = local_sym_count;
-  sym_addrs.clear();
-  sym_addrs.resize(a->local_symbols.size() + a->global_symbols.size());
-
-  const auto sym_addr = [&](SymRef sym_ref) -> void * {
-    auto idx = AssemblerElf::sym_idx(sym_ref);
-    if (!AssemblerElf::sym_is_local(sym_ref)) {
-      idx += local_sym_count;
-    }
-    if (sym_addrs[idx]) {
-      return sym_addrs[idx];
-    }
-
-    const Elf64_Sym *sym = a->sym_ptr(sym_ref);
-    if (sym->st_shndx == SHN_UNDEF) {
-      auto name = std::string_view{a->strtab.data() + sym->st_name};
-      const auto addr = resolver->resolve_symbol(name);
-      assert(addr);
-      sym_addrs[idx] = addr;
-      return addr;
-    }
-
-    auto off = sec_offs[sym->st_shndx];
-    off += sym->st_value;
-    auto *addr = mapped_addr + off;
-    sym_addrs[idx] = addr;
-    return addr;
-  };
-
-  auto cur_plt_off = sec_offs[elf::sec_idx(".text")] +
-                     util::align_up(a->sec_text.data.size(), 16);
-  auto cur_got_off = sec_offs[elf::sec_idx(".data.rel.ro")] +
-                     util::align_up(a->sec_relrodata.data.size(), 16);
-  const auto fix_relocs = [&](u32 idx, const DataSection &sec) {
-    for (auto &reloc : sec.relocs) {
-      const auto reloc_ty = ELF64_R_TYPE(reloc.r_info);
-      const auto sym = static_cast<SymRef>(ELF64_R_SYM(reloc.r_info));
-      const auto s_addr = sym_addr(sym);
-
-      auto *r_addr = mapped_addr + sec_offs[idx] + reloc.r_offset;
-      switch (reloc_ty) {
-  #ifdef __x86_64__
-      case R_X86_64_64: {
-        *reinterpret_cast<u64 *>(r_addr) =
-            reinterpret_cast<i64>(s_addr) + reloc.r_addend;
-        break;
-      }
-      case R_X86_64_PC32: {
-        auto P = reinterpret_cast<uintptr_t>(r_addr);
-        auto val = reinterpret_cast<uintptr_t>(s_addr) + reloc.r_addend - P;
-        if (val >= 0xFFFF'FFFF && val <= 0xFFFF'FFFF'8000'0000) {
-          assert(0);
-          return false;
-        }
-        *reinterpret_cast<u32 *>(r_addr) = val;
-        break;
-      }
-      case R_X86_64_PLT32: {
-        assert(reloc.r_addend == -4);
-        const u64 orig_disp =
-            reinterpret_cast<u64>(s_addr) - (reinterpret_cast<u64>(r_addr) + 4);
-        if (orig_disp <= 0x7FFF'FFFF || orig_disp >= 0xFFFF'FFFF'8000'0000) {
-          // can just encode it directly in the call
-          *reinterpret_cast<i32 *>(r_addr) = orig_disp;
-          break;
-        }
-
-        auto idx = AssemblerElf::sym_idx(sym);
-        if (!AssemblerElf::sym_is_local(sym)) {
-          idx += local_sym_count;
-        }
-        auto &plt_off = plt_or_got_offs[idx];
-        u8 *code_ptr = nullptr;
-        if (plt_off != 0) {
-          code_ptr = mapped_addr + plt_off;
-        } else {
-          plt_off = cur_plt_off;
-          code_ptr = mapped_addr + cur_plt_off;
-
-          cur_plt_off += 16;
-          u64 jmp_addr = reinterpret_cast<u64>(code_ptr) + 5;
-          u64 disp = reinterpret_cast<u64>(s_addr) - jmp_addr;
-          if (disp <= 0x7FFF'FFFF || disp >= 0xFFFF'FFFF'8000'0000) {
-            // can just use a jump
-            fe64_JMP(code_ptr, FE_JMPL, s_addr);
-          } else {
-            auto off = fe64_MOV64ri(
-                code_ptr, 0, FE_R11, reinterpret_cast<i64>(s_addr));
-            fe64_JMPr(code_ptr + off, 0, FE_R11);
-          }
-        }
-
-        *reinterpret_cast<i32 *>(r_addr) = reinterpret_cast<i64>(code_ptr) +
-                                           reloc.r_addend -
-                                           reinterpret_cast<u64>(r_addr);
-        break;
-      }
-      case R_X86_64_GOTPCREL: {
-        auto idx = AssemblerElf::sym_idx(sym);
-        if (!AssemblerElf::sym_is_local(sym)) {
-          idx += local_sym_count;
-        }
-        auto &got_off = plt_or_got_offs[idx];
-
-        u8 *got_entry_ptr = nullptr;
-        if (got_off != 0) {
-          got_entry_ptr = mapped_addr + got_off;
-        } else {
-          got_off = cur_got_off;
-          got_entry_ptr = mapped_addr + cur_got_off;
-          cur_got_off += 8;
-          *reinterpret_cast<u64 *>(got_entry_ptr) =
-              reinterpret_cast<u64>(s_addr);
-        }
-
-        *reinterpret_cast<i32 *>(r_addr) =
-            reinterpret_cast<i64>(got_entry_ptr) + reloc.r_addend -
-            reinterpret_cast<u64>(r_addr);
-        break;
-      }
-  #elif defined(__aarch64__)
-      case R_AARCH64_PREL32: {
-        auto P = reinterpret_cast<uintptr_t>(r_addr);
-        auto val = reinterpret_cast<uintptr_t>(s_addr) + reloc.r_addend - P;
-        if (val >= 0xFFFF'FFFF && val <= 0xFFFF'FFFF'8000'0000) {
-          assert(0);
-          return false;
-        }
-        *reinterpret_cast<u32 *>(r_addr) = val;
-        break;
-      }
-      case R_AARCH64_CALL26: {
-        auto P = reinterpret_cast<u64>(r_addr);
-        i64 off = reinterpret_cast<i64>(s_addr) + reloc.r_addend - P;
-        if ((off << 2) == ((off << 38) >> 36)) {
-          *reinterpret_cast<u32 *>(r_addr) = de64_BL(off >> 2);
-          break;
-        }
-
-        // need to create a PLT entry
-        auto idx = AssemblerElf::sym_idx(sym);
-        if (!AssemblerElf::sym_is_local(sym)) {
-          idx += local_sym_count;
-        }
-        auto &plt_off = plt_or_got_offs[idx];
-        u32 *code_ptr = nullptr;
-        if (plt_off != 0) {
-          code_ptr = reinterpret_cast<u32 *>(mapped_addr + plt_off);
-        } else {
-          plt_off = cur_plt_off;
-          code_ptr = reinterpret_cast<u32 *>(mapped_addr + cur_plt_off);
-
-          cur_plt_off += 16;
-
-          *code_ptr++ = de64_LDRx_pcrel(DA_GP(16), 8 / 4);
-          *code_ptr++ = de64_BR(DA_GP(16));
-          *reinterpret_cast<u64 *>(code_ptr) = reinterpret_cast<u64>(s_addr);
-        }
-
-        off = reinterpret_cast<i64>(code_ptr) + reloc.r_addend -
-              reinterpret_cast<u64>(r_addr);
-        assert((off << 2) == ((off << 38) >> 36));
-        *reinterpret_cast<u32 *>(r_addr) = de64_BL((off << 38) >> 38);
-        break;
-      }
-  #endif
-      default:
-        TPDE_LOG_ERR("Encountered unknown relocation: {}", reloc_ty);
-        assert(0);
-        return false;
-      }
-    }
-    return true;
-  };
-
-  auto succ = true;
-  succ = succ && fix_relocs(elf::sec_idx(".text"), a->sec_text);
-  // TODO(ts): change eh frame generation when told to not generate an object?
-  succ = succ && fix_relocs(elf::sec_idx(".eh_frame"), a->sec_eh_frame);
-  succ = succ && fix_relocs(elf::sec_idx(".data"), a->sec_data);
-  succ = succ && fix_relocs(elf::sec_idx(".rodata"), a->sec_rodata);
-  succ = succ && fix_relocs(elf::sec_idx(".data.rel.ro"), a->sec_relrodata);
-  succ = succ &&
-         fix_relocs(elf::sec_idx(".gcc_except_table"), a->sec_except_table);
-  if (!succ) {
-    return false;
-  }
-
-  // make sure all function symbols are resolved
-  for (auto func : func_syms) {
-    sym_addr(func);
-  }
-
-  const auto sec_protect = [&](u32 idx, int protect) {
-    return mprotect(mapped_addr + sec_offs[idx],
-                    sec_offs[idx + 1] - sec_offs[idx],
-                    protect) == 0;
-  };
-
-  if (!sec_protect(elf::sec_idx(".text"), PROT_READ | PROT_EXEC)) {
-    return false;
-  }
-
-  if (!sec_protect(elf::sec_idx(".rodata"), PROT_READ)) {
-    return false;
-  }
-
-  if (!sec_protect(elf::sec_idx(".data.rel.ro"), PROT_READ)) {
-    return false;
-  }
-
-  registered_frame_off =
-      sec_offs[elf::sec_idx(".eh_frame")] + a->eh_first_fde_off;
-  __register_frame(mapped_addr + registered_frame_off);
-
-  return true;
-}
-#endif
 } // namespace tpde

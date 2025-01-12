@@ -151,6 +151,12 @@ AssemblerElfBase::DataSection &
   return get_section(ref);
 }
 
+const char *AssemblerElfBase::sec_name(SecRef ref) const noexcept {
+  const DataSection &sec = get_section(ref);
+  assert(sec.hdr.sh_name < elf::SHSTRTAB.size());
+  return elf::SHSTRTAB.data() + sec.hdr.sh_name;
+}
+
 AssemblerElfBase::SecRef
     AssemblerElfBase::get_data_section(bool rodata, bool relro) noexcept {
   SecRef &secref = !rodata ? secref_data : relro ? secref_relro : secref_rodata;

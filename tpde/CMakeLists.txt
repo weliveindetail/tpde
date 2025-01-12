@@ -40,6 +40,7 @@ target_link_libraries(tpde PUBLIC gch::small_vector)
 
 target_sources(tpde PRIVATE
     src/AssemblerElf.cpp
+    src/ElfMapper.cpp
 
     PUBLIC
     FILE_SET HEADERS
@@ -51,6 +52,7 @@ target_sources(tpde PRIVATE
         include/tpde/Compiler.hpp
         include/tpde/CompilerBase.hpp
         include/tpde/AssemblerElf.hpp
+        include/tpde/ElfMapper.hpp
         include/tpde/IRAdaptor.hpp
         include/tpde/RegisterFile.hpp
         include/tpde/ScratchReg.hpp

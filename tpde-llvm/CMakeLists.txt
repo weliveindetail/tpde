@@ -39,6 +39,7 @@ else ()
 endif ()
 
 target_sources(tpde_llvm PRIVATE
+    src/JITMapper.cpp
     src/LLVMAdaptor.cpp
     src/LLVMCompiler.cpp
 
@@ -53,6 +54,7 @@ target_sources(tpde_llvm PRIVATE
     BASE_DIRS src
     FILES
         src/base.hpp
+        src/JITMapper.hpp
         src/LLVMAdaptor.hpp
         src/LLVMCompilerBase.hpp
 )
@@ -132,7 +134,7 @@ if(TPDE_A64)
 endif()
 
 
-# tpde_llc binary
+# tpde-llc binary
 
 add_executable(tpde-llc tools/tpde-llc.cpp)
 target_link_libraries(tpde-llc PRIVATE tpde_llvm)
@@ -144,6 +146,18 @@ target_link_libraries(tpde-llc PRIVATE tpde)
 target_include_directories(tpde-llc PRIVATE ../deps/)
 
 
+# tpde-lli binary
+
+add_executable(tpde-lli tools/tpde-lli.cpp)
+target_link_libraries(tpde-lli PRIVATE tpde_llvm)
+# This is not really required, but is a simple way to make TPDE_LOGGING and
+# spdlog available, so that the wrapper can enable logging.
+target_link_libraries(tpde-lli PRIVATE tpde)
+
+# general deps directory (for args)
+target_include_directories(tpde-lli PRIVATE ../deps/)
+
+
 # Tests
 
 # configure lit.site.cfg.py
@@ -152,5 +166,5 @@ configure_file(test/lit.site.cfg.py.in test/lit.site.cfg.py @ONLY)
 # TODO(ts): make this configurable
 add_custom_target(tpde_llvm_filetest
     COMMAND ${LIT} -sv "${CMAKE_CURRENT_BINARY_DIR}/test"
-    DEPENDS tpde-llc
+    DEPENDS tpde-llc tpde-lli
     USES_TERMINAL)

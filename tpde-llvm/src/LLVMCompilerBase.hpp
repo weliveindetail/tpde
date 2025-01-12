@@ -17,6 +17,7 @@
 #include "tpde/base.hpp"
 #include "tpde/util/misc.hpp"
 
+#include "JITMapper.hpp"
 #include "LLVMAdaptor.hpp"
 #include "tpde-llvm/LLVMCompiler.hpp"
 
@@ -326,6 +327,10 @@ public:
 
   bool compile_to_elf(llvm::Module &mod,
                       std::vector<uint8_t> &buf) noexcept override;
+
+  JITMapper compile_and_map(
+      llvm::Module &mod,
+      std::function<void *(std::string_view)> resolver) noexcept override;
 };
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -4389,4 +4394,24 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_to_elf(
 
   return true;
 }
+
+template <typename Adaptor, typename Derived, typename Config>
+JITMapper LLVMCompilerBase<Adaptor, Derived, Config>::compile_and_map(
+    llvm::Module &mod,
+    std::function<void *(std::string_view)> resolver) noexcept {
+  if (this->adaptor->mod) {
+    derived()->reset();
+  }
+  if (!compile(mod)) {
+    return JITMapper{nullptr};
+  }
+
+  auto res = std::make_unique<JITMapperImpl>(std::move(global_syms));
+  if (!res->map(this->assembler, resolver)) {
+    return JITMapper{nullptr};
+  }
+
+  return JITMapper{std::move(res)};
+}
+
 } // namespace tpde_llvm
