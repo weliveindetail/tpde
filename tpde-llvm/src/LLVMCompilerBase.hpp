@@ -1695,38 +1695,39 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
   GenericValuePart rhs_op = std::move(rhs);
 
   unsigned ext_width = tpde::util::align_up(int_width, 32);
-  if (ext_width != int_width &&
-      (op == IntBinaryOp::udiv || op == IntBinaryOp::sdiv ||
-       op == IntBinaryOp::urem || op == IntBinaryOp::srem ||
-       op == IntBinaryOp::shl || op == IntBinaryOp::shr ||
-       op == IntBinaryOp::ashr)) {
-    if (op == IntBinaryOp::sdiv || op == IntBinaryOp::srem ||
-        op == IntBinaryOp::ashr) {
-      // need to sign-extend lhs
-      // TODO(ts): if lhs is constant, sign-extend as constant
-      lhs_op =
-          derived()->ext_int(std::move(lhs_op), true, int_width, ext_width);
-    } else if ((op == IntBinaryOp::udiv || op == IntBinaryOp::urem ||
-                op == IntBinaryOp::shr) &&
-               !lhs_const) {
-      // need to zero-extend lhs (if it is not an immediate)
-      lhs_op =
-          derived()->ext_int(std::move(lhs_op), false, int_width, ext_width);
+  if (ext_width != int_width) {
+    bool ext_lhs = false, ext_rhs = false, sext = false;
+    switch (op) {
+    case IntBinaryOp::add: break;
+    case IntBinaryOp::sub: break;
+    case IntBinaryOp::mul: break;
+    case IntBinaryOp::udiv: ext_lhs = ext_rhs = true; break;
+    case IntBinaryOp::sdiv: ext_lhs = ext_rhs = sext = true; break;
+    case IntBinaryOp::urem: ext_lhs = ext_rhs = true; break;
+    case IntBinaryOp::srem: ext_lhs = ext_rhs = sext = true; break;
+    case IntBinaryOp::land: break;
+    case IntBinaryOp::lor: break;
+    case IntBinaryOp::lxor: break;
+    case IntBinaryOp::shl: break;
+    case IntBinaryOp::shr: ext_lhs = true; break;
+    case IntBinaryOp::ashr: ext_lhs = sext = true; break;
     }
 
-    // rhs doesn't need extension for shift, if it is larger than the bit
-    // width, the result is poison.
-    if (op == IntBinaryOp::sdiv || op == IntBinaryOp::srem) {
-      // need to sign-extend rhs
-      // TODO(ts): if rhs is constant, sign-extend as constant
-      rhs_op =
-          derived()->ext_int(std::move(rhs_op), true, int_width, ext_width);
-    } else if ((op == IntBinaryOp::udiv || op == IntBinaryOp::urem) &&
-               !rhs_const) {
-      // need to zero-extend rhs (if it is not an immediate since then
-      // this is guaranteed by LLVM)
-      rhs_op =
-          derived()->ext_int(std::move(rhs_op), false, int_width, ext_width);
+    if (ext_lhs) {
+      if (!lhs_const) {
+        lhs_op =
+            derived()->ext_int(std::move(lhs_op), sext, int_width, ext_width);
+      } else if (sext) {
+        lhs_op = EncodeImm{u64(tpde::util::sext(lhs_op.imm64(), int_width))};
+      }
+    }
+    if (ext_rhs) {
+      if (!rhs_const) {
+        rhs_op =
+            derived()->ext_int(std::move(rhs_op), sext, int_width, ext_width);
+      } else if (sext) {
+        rhs_op = EncodeImm{u64(tpde::util::sext(rhs_op.imm64(), int_width))};
+      }
     }
   }
 

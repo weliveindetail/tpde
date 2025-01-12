@@ -13,16 +13,14 @@ define i8 @sdiv_i8_1(i8 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movsx edi, dil
-; X64-NEXT:    mov eax, 0x1
-; X64-NEXT:    movsx eax, al
-; X64-NEXT:    mov rcx, rax
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
+; X64-NEXT:    mov rcx, 0x1
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <sdiv_i8_1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -31,7 +29,6 @@ define i8 @sdiv_i8_1(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxtb w0, w0
 ; ARM64-NEXT:    mov x1, #0x1 // =1
-; ARM64-NEXT:    sxtb w1, w1
 ; ARM64-NEXT:    sdiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -48,16 +45,14 @@ define i8 @sdiv_i8_-1(i8 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movsx edi, dil
-; X64-NEXT:    mov eax, 0xff
-; X64-NEXT:    movsx eax, al
-; X64-NEXT:    mov rcx, rax
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
+; X64-NEXT:    mov rcx, -0x1
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <sdiv_i8_-1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -65,8 +60,7 @@ define i8 @sdiv_i8_-1(i8 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxtb w0, w0
-; ARM64-NEXT:    mov x1, #0xff // =255
-; ARM64-NEXT:    sxtb w1, w1
+; ARM64-NEXT:    mov x1, #-0x1 // =-1
 ; ARM64-NEXT:    sdiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -83,16 +77,14 @@ define i8 @sdiv_i8_28(i8 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movsx edi, dil
-; X64-NEXT:    mov eax, 0x1c
-; X64-NEXT:    movsx eax, al
-; X64-NEXT:    mov rcx, rax
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
+; X64-NEXT:    mov rcx, 0x1c
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <sdiv_i8_28>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -101,7 +93,6 @@ define i8 @sdiv_i8_28(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxtb w0, w0
 ; ARM64-NEXT:    mov x1, #0x1c // =28
-; ARM64-NEXT:    sxtb w1, w1
 ; ARM64-NEXT:    sdiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -150,16 +141,14 @@ define i8 @sdiv_i8_32(i8 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movsx edi, dil
-; X64-NEXT:    mov eax, 0x20
-; X64-NEXT:    movsx eax, al
-; X64-NEXT:    mov rcx, rax
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
+; X64-NEXT:    mov rcx, 0x20
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <sdiv_i8_32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -168,7 +157,6 @@ define i8 @sdiv_i8_32(i8 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxtb w0, w0
 ; ARM64-NEXT:    mov x1, #0x20 // =32
-; ARM64-NEXT:    sxtb w1, w1
 ; ARM64-NEXT:    sdiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -185,11 +173,9 @@ define i16 @sdiv_i16_1(i16 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movsx edi, di
-; X64-NEXT:    mov eax, 0x1
-; X64-NEXT:    movsx eax, ax
-; X64-NEXT:    mov rcx, rax
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
+; X64-NEXT:    mov rcx, 0x1
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -203,7 +189,6 @@ define i16 @sdiv_i16_1(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxth w0, w0
 ; ARM64-NEXT:    mov x1, #0x1 // =1
-; ARM64-NEXT:    sxth w1, w1
 ; ARM64-NEXT:    sdiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -220,11 +205,9 @@ define i16 @sdiv_i16_-1(i16 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movsx edi, di
-; X64-NEXT:    mov eax, 0xffff
-; X64-NEXT:    movsx eax, ax
-; X64-NEXT:    mov rcx, rax
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
+; X64-NEXT:    mov rcx, -0x1
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -237,8 +220,7 @@ define i16 @sdiv_i16_-1(i16 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxth w0, w0
-; ARM64-NEXT:    mov x1, #0xffff // =65535
-; ARM64-NEXT:    sxth w1, w1
+; ARM64-NEXT:    mov x1, #-0x1 // =-1
 ; ARM64-NEXT:    sdiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -255,11 +237,9 @@ define i16 @sdiv_i16_28(i16 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movsx edi, di
-; X64-NEXT:    mov eax, 0x1c
-; X64-NEXT:    movsx eax, ax
-; X64-NEXT:    mov rcx, rax
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
+; X64-NEXT:    mov rcx, 0x1c
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -273,7 +253,6 @@ define i16 @sdiv_i16_28(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxth w0, w0
 ; ARM64-NEXT:    mov x1, #0x1c // =28
-; ARM64-NEXT:    sxth w1, w1
 ; ARM64-NEXT:    sdiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -290,11 +269,9 @@ define i16 @sdiv_i16_32(i16 %0) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movsx edi, di
-; X64-NEXT:    mov eax, 0x20
-; X64-NEXT:    movsx eax, ax
-; X64-NEXT:    mov rcx, rax
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
+; X64-NEXT:    mov rcx, 0x20
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -308,7 +285,6 @@ define i16 @sdiv_i16_32(i16 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxth w0, w0
 ; ARM64-NEXT:    mov x1, #0x20 // =32
-; ARM64-NEXT:    sxth w1, w1
 ; ARM64-NEXT:    sdiv w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
