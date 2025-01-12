@@ -237,10 +237,7 @@ bool generate_cp_entry_sym(GenerationState &state,
                  sym_name,
                  state.func->getName().str(),
                  cp_idx);
-  state.fmt_line(buf,
-                 indent,
-                 "if ({} == Assembler::INVALID_SYM_REF) [[unlikely]] {{",
-                 sym_name);
+  state.fmt_line(buf, indent, "if (!{}.valid()) [[unlikely]] {{", sym_name);
   // TODO(ts): make this static so it does not get stack allocated?
   state.fmt_line(buf,
                  indent + 4,
@@ -2498,10 +2495,8 @@ bool create_encode_function(llvm::MachineFunction *func,
   impl_lines += "\n}\n\n";
 
   for (const auto cp_idx : state.const_pool_indices_used) {
-    sym_lines +=
-        std::format("    SymRef sym_{}_cp{} = Assembler::INVALID_SYM_REF;\n",
-                    state.func->getName().str(),
-                    cp_idx);
+    sym_lines += std::format(
+        "    SymRef sym_{}_cp{};\n", state.func->getName().str(), cp_idx);
   }
 
   return true;

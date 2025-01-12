@@ -149,7 +149,7 @@ struct LLVMCompilerBase : public LLVMCompiler,
       : Base{adaptor, generate_obj} {
     static_assert(tpde::Compiler<Derived, Config>);
     static_assert(std::is_same_v<Adaptor, LLVMAdaptor>);
-    libfunc_syms.fill(Assembler::INVALID_SYM_REF);
+    libfunc_syms.fill({});
   }
 
   Derived *derived() noexcept { return static_cast<Derived *>(this); }
@@ -767,14 +767,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
   if (auto *GV = llvm::dyn_cast<llvm::GlobalVariable>(constant); GV) {
     assert(alloc_size == 8);
     const auto sym = global_sym(GV);
-    assert(sym != Assembler::INVALID_SYM_REF);
+    assert(sym.valid());
     relocs.push_back({off, 0, sym});
     return true;
   }
   if (auto *GA = llvm::dyn_cast<llvm::GlobalAlias>(constant); GA) {
     assert(alloc_size == 8);
     const auto sym = global_sym(GA);
-    assert(sym != Assembler::INVALID_SYM_REF);
+    assert(sym.valid());
     relocs.push_back({off, 0, sym});
     return true;
   }
@@ -784,7 +784,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
     assert(!FN->isIntrinsic());
     assert(alloc_size == 8);
     const auto sym = global_sym(FN);
-    assert(sym != Assembler::INVALID_SYM_REF);
+    assert(sym.valid());
     relocs.push_back({off, 0, sym});
     return true;
   }
@@ -910,7 +910,7 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
         LibFunc func) noexcept {
   assert(func < LibFunc::MAX);
   SymRef &sym = libfunc_syms[static_cast<size_t>(func)];
-  if (sym != Assembler::INVALID_SYM_REF) [[likely]] {
+  if (sym.valid()) [[likely]] {
     return sym;
   }
 
@@ -958,7 +958,7 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
   auto it = global_sym_lookup.find(global);
   if (it == global_sym_lookup.end()) {
     assert(0);
-    return Assembler::INVALID_SYM_REF;
+    return {};
   }
   return it->second.first ? this->func_syms[it->second.second]
                           : global_syms[it->second.second];
@@ -1899,7 +1899,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
   auto res_ref = this->result_ref_lazy(inst_idx, 0);
 
   ScratchReg res_scratch{derived()};
-  SymRef sym = Assembler::INVALID_SYM_REF;
+  SymRef sym;
   if (src_ty->isDoubleTy() && dst_ty->isFloatTy()) {
     auto src_ref = this->val_ref(llvm_val_idx(src_val), 0);
     derived()->encode_f64tof32(std::move(src_ref), res_scratch);
@@ -1918,7 +1918,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
 
   if (res_scratch.cur_reg.valid()) {
     this->set_value(res_ref, res_scratch);
-  } else if (sym != Assembler::INVALID_SYM_REF) {
+  } else if (sym.valid()) {
     IRValueRef src_ref = llvm_val_idx(src_val);
     derived()->create_helper_call({&src_ref, 1}, {&res_ref, 1}, sym);
   } else {
@@ -2928,7 +2928,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
   }
 
   if (cmp_ty->isFP128Ty()) {
-    SymRef sym = Assembler::INVALID_SYM_REF;
+    SymRef sym;
     llvm::CmpInst::Predicate cmp_pred = llvm::CmpInst::ICMP_EQ;
     switch (pred) {
     case llvm::CmpInst::FCMP_OEQ:
@@ -3413,7 +3413,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
   for (auto i = 0u; i < num_clauses; ++i) {
     if (landing_pad->isCatch(i)) {
       auto *C = landing_pad->getClause(i);
-      SymRef sym = Assembler::INVALID_SYM_REF;
+      SymRef sym;
       if (!C->isNullValue()) {
         assert(llvm::dyn_cast<llvm::GlobalValue>(C));
         sym = lookup_type_info_sym(llvm_val_idx(C));

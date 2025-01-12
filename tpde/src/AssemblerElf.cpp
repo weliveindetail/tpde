@@ -107,7 +107,7 @@ void AssemblerElfBase::reset() noexcept {
   secref_eh_frame = INVALID_SEC_REF;
   secref_except_table = INVALID_SEC_REF;
   sec_bss_size = 0;
-  cur_func = INVALID_SYM_REF;
+  cur_func = SymRef();
 
   init_sections();
   eh_init_cie();
@@ -137,7 +137,7 @@ AssemblerElfBase::DataSection &
 
     DataSection &sec = get_section(ref);
     sec.hdr.sh_addralign = align;
-    sec.sym = static_cast<SymRef>(local_symbols.size());
+    sec.sym = SymRef(local_symbols.size());
     local_symbols.push_back(Elf64_Sym{
         .st_name = static_cast<Elf64_Word>(str_off),
         .st_info = ELF64_ST_INFO(STB_LOCAL, STT_SECTION),
@@ -220,11 +220,11 @@ AssemblerElfBase::SymRef AssemblerElfBase::sym_add(const std::string_view name,
   if (binding == SymBinding::LOCAL) {
     local_symbols.push_back(sym);
     assert(local_symbols.size() < 0x8000'0000);
-    return static_cast<SymRef>(local_symbols.size() - 1);
+    return SymRef(local_symbols.size() - 1);
   } else {
     global_symbols.push_back(sym);
     assert(global_symbols.size() < 0x8000'0000);
-    return static_cast<SymRef>((global_symbols.size() - 1) | 0x8000'0000);
+    return SymRef((global_symbols.size() - 1) | 0x8000'0000);
   }
 }
 
@@ -274,7 +274,7 @@ void AssemblerElfBase::reloc_sec(const SecRef sec_ref,
                                  const i64 addend) noexcept {
   Elf64_Rela rel{};
   rel.r_offset = offset;
-  rel.r_info = ELF64_R_INFO(static_cast<u32>(sym), type);
+  rel.r_info = ELF64_R_INFO(sym.id(), type);
   rel.r_addend = addend;
   DataSection &sec = get_section(sec_ref);
   sec.relocs.push_back(rel);
@@ -389,15 +389,14 @@ void AssemblerElfBase::eh_init_cie(SymRef personality_func_addr) noexcept {
   auto off = data.size();
   eh_cur_cie_off = off;
 
-  data.resize(data.size() +
-              (personality_func_addr == INVALID_SYM_REF ? 17 : 25));
+  data.resize(data.size() + (!personality_func_addr.valid() ? 17 : 25));
 
   // id is 0 for CIEs
 
   // version is 1
   data[off + 8] = 1;
 
-  if (personality_func_addr == INVALID_SYM_REF) {
+  if (!personality_func_addr.valid()) {
     // augmentation is "zR" for a CIE with no personality meaning there is
     // the augmentation_data_len and ptr_size field
     data[off + 9] = 'z';
@@ -412,7 +411,7 @@ void AssemblerElfBase::eh_init_cie(SymRef personality_func_addr) noexcept {
     data[off + 12] = 'R';
   }
 
-  u32 bias = (personality_func_addr == INVALID_SYM_REF) ? 0 : 2;
+  u32 bias = (!personality_func_addr.valid()) ? 0 : 2;
 
   // code_alignment_factor is 1
   data[off + 12 + bias] = 1;
@@ -424,9 +423,9 @@ void AssemblerElfBase::eh_init_cie(SymRef personality_func_addr) noexcept {
   data[off + 14 + bias] = target_info.cie_return_addr_register;
 
   // augmentation_data_len is 1 when no personality is present or 7 otherwise
-  data[off + 15 + bias] = (personality_func_addr == INVALID_SYM_REF) ? 1 : 7;
+  data[off + 15 + bias] = (!personality_func_addr.valid()) ? 1 : 7;
 
-  if (personality_func_addr != INVALID_SYM_REF) {
+  if (personality_func_addr.valid()) {
     // the personality encoding is a 4-byte pc-relative address where the
     // address of the personality func is stored
     data[off + 16 + bias] = dwarf::DW_EH_PE_pcrel | dwarf::DW_EH_PE_sdata4 |
@@ -481,8 +480,7 @@ u32 AssemblerElfBase::eh_begin_fde() noexcept {
   //
   // Total Size: 17 bytes or 21 bytes
 
-  data.resize(data.size() +
-              (cur_personality_func_addr == INVALID_SYM_REF ? 17 : 21));
+  data.resize(data.size() + (!cur_personality_func_addr.valid() ? 17 : 21));
 
   // we encode length later
 
@@ -493,7 +491,7 @@ u32 AssemblerElfBase::eh_begin_fde() noexcept {
   // func_start and func_size will be relocated at the end
 
   // augmentation_data_len is 0 with no personality or 4 otherwise
-  if (cur_personality_func_addr != INVALID_SYM_REF) {
+  if (cur_personality_func_addr.valid()) {
     data[fde_off + 16] = 4;
   }
 
@@ -521,7 +519,7 @@ void AssemblerElfBase::eh_end_fde(u32 fde_start, SymRef func) noexcept {
 
   const u32 len = eh_data.size() - fde_start - sizeof(u32);
   *reinterpret_cast<u32 *>(eh_data.data() + fde_start) = len;
-  if (cur_personality_func_addr != INVALID_SYM_REF) {
+  if (cur_personality_func_addr.valid()) {
     DataSection &except_table =
         get_or_create_section(secref_except_table,
                               elf::sec_off(".rela.gcc_except_table"),
@@ -538,7 +536,7 @@ void AssemblerElfBase::eh_end_fde(u32 fde_start, SymRef func) noexcept {
 }
 
 void AssemblerElfBase::except_encode_func() noexcept {
-  if (cur_personality_func_addr == INVALID_SYM_REF) {
+  if (!cur_personality_func_addr.valid()) {
     return;
   }
 
@@ -650,7 +648,7 @@ void AssemblerElfBase::except_add_action(const bool first_action,
   }
 
   auto idx = 0u;
-  if (type_sym != INVALID_SYM_REF) {
+  if (type_sym.valid()) {
     auto found = false;
     for (const auto &sym : except_type_info_table) {
       ++idx;

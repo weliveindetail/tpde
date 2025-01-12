@@ -64,7 +64,7 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
   void reset() noexcept {
     // TODO: move to LLVMCompilerBase
     Base::reset();
-    libfunc_syms.fill(Assembler::INVALID_SYM_REF);
+    libfunc_syms.fill({});
   }
 
   [[nodiscard]] static tpde::x64::CallingConv
@@ -267,7 +267,7 @@ void LLVMCompilerX64::load_address_of_var_reference(
   } else {
     const auto sym = global_sym(
         llvm::cast<llvm::GlobalValue>(adaptor->values[info.val].val));
-    assert(sym != Assembler::INVALID_SYM_REF);
+    assert(sym.valid());
     if (!info.local) {
       // mov the ptr from the GOT
       ASM(MOV64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));

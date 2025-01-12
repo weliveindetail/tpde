@@ -194,9 +194,21 @@ struct AssemblerElfBase {
     GLOBAL,
   };
 
-  enum class SymRef : u32 {
+  struct SymRef {
+  private:
+    u32 val;
+
+  public:
+    /// Invalid symbol reference
+    constexpr SymRef() : val(0) {}
+
+    explicit constexpr SymRef(u32 id) : val(id) {}
+
+    u32 id() const { return val; }
+    bool valid() const { return val != 0; }
+
+    bool operator==(const SymRef &other) const { return other.val == val; }
   };
-  static constexpr SymRef INVALID_SYM_REF = static_cast<SymRef>(0u);
 
   enum class SecRef : u32 {
   };
@@ -290,14 +302,14 @@ protected:
   /// Table for exception specs
   std::vector<u8> except_spec_table;
   /// The current personality function (if any)
-  SymRef cur_personality_func_addr = INVALID_SYM_REF;
+  SymRef cur_personality_func_addr;
   u32 eh_cur_cie_off = 0u;
   u32 eh_first_fde_off = 0;
 
   /// Is the objective(heh) to generate an object file or to map into memory?
   bool generating_object;
   /// The current function
-  SymRef cur_func = INVALID_SYM_REF;
+  SymRef cur_func;
 
 public:
   explicit AssemblerElfBase(const TargetInfo &target_info,
@@ -416,11 +428,11 @@ public:
 
 protected:
   [[nodiscard]] static bool sym_is_local(const SymRef sym) noexcept {
-    return (static_cast<u32>(sym) & 0x8000'0000) == 0;
+    return (sym.id() & 0x8000'0000) == 0;
   }
 
   [[nodiscard]] static u32 sym_idx(const SymRef sym) noexcept {
-    return static_cast<u32>(sym) & ~0x8000'0000;
+    return sym.id() & ~0x8000'0000;
   }
 
   [[nodiscard]] Elf64_Sym *sym_ptr(const SymRef sym) noexcept {
@@ -482,7 +494,7 @@ public:
   void eh_write_uleb(std::vector<u8> &dst, u64 value) noexcept;
   void eh_write_sleb(std::vector<u8> &dst, i64 value) noexcept;
 
-  void eh_init_cie(SymRef personality_func_addr = INVALID_SYM_REF) noexcept;
+  void eh_init_cie(SymRef personality_func_addr = SymRef()) noexcept;
   u32 eh_begin_fde() noexcept;
   void eh_end_fde(u32 fde_start, SymRef func) noexcept;
   void except_encode_func() noexcept;
@@ -499,7 +511,7 @@ public:
   void except_add_cleanup_action() noexcept;
 
   /// add an action to the action table
-  /// INVALID_SYM_REF signals a catch(...)
+  /// An invalid SymRef signals a catch(...)
   void except_add_action(bool first_action, SymRef type_sym) noexcept;
 
   void except_add_empty_spec_action(bool first_action) noexcept;
