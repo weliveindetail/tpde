@@ -107,6 +107,7 @@ void AssemblerElfBase::reset() noexcept {
   secref_eh_frame = INVALID_SEC_REF;
   secref_except_table = INVALID_SEC_REF;
   sec_bss_size = 0;
+  cur_personality_func_addr = SymRef();
   cur_func = SymRef();
 
   init_sections();
