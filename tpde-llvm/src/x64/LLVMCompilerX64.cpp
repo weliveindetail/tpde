@@ -64,6 +64,7 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
   void reset() noexcept {
     // TODO: move to LLVMCompilerBase
     Base::reset();
+    EncCompiler::reset();
     libfunc_syms.fill({});
   }
 

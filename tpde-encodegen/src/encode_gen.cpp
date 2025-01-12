@@ -80,7 +80,8 @@ struct GenerationState {
   bool is_first_block = false;
   std::vector<unsigned> return_regs = {};
   std::string one_bb_return_assignments = {};
-  std::unordered_set<unsigned> const_pool_indices_used = {};
+  unsigned &sym_count;
+  std::unordered_map<unsigned, unsigned> const_pool_indices_used = {};
 
   // Conditions on which fixed registers depend
   std::vector<std::string> asm_operand_early_conds;
@@ -192,7 +193,11 @@ bool generate_cp_entry_sym(GenerationState &state,
                            unsigned indent,
                            std::string_view sym_name,
                            unsigned cp_idx) {
-  state.const_pool_indices_used.insert(cp_idx);
+  auto [it, inserted] =
+      state.const_pool_indices_used.try_emplace(cp_idx, state.sym_count);
+  if (inserted) {
+    state.sym_count += 1;
+  }
 
   const llvm::MachineConstantPoolEntry &cp_entry =
       state.func->getConstantPool()->getConstants()[cp_idx];
@@ -231,12 +236,8 @@ bool generate_cp_entry_sym(GenerationState &state,
   }
   bytes_str += "}";
 
-  state.fmt_line(buf,
-                 indent,
-                 "SymRef &{} = this->sym_{}_cp{};",
-                 sym_name,
-                 state.func->getName().str(),
-                 cp_idx);
+  state.fmt_line(
+      buf, indent, "SymRef &{} = this->symbols[{}];", sym_name, it->second);
   state.fmt_line(buf, indent, "if (!{}.valid()) [[unlikely]] {{", sym_name);
   // TODO(ts): make this static so it does not get stack allocated?
   state.fmt_line(buf,
@@ -246,9 +247,7 @@ bool generate_cp_entry_sym(GenerationState &state,
                  bytes_str);
   state.fmt_line(buf,
                  indent + 4,
-                 "auto sec = derived()->assembler.get_data_section(true);",
-                 sym_name,
-                 align);
+                 "auto sec = derived()->assembler.get_data_section(true);");
   state.fmt_line(buf,
                  indent + 4,
                  "{} = derived()->assembler.sym_def_data(sec, \"\", data, {}, "
@@ -2108,7 +2107,7 @@ namespace tpde_encgen {
 bool create_encode_function(llvm::MachineFunction *func,
                             std::string_view name,
                             std::string &decl_lines,
-                            std::string &sym_lines,
+                            unsigned &sym_count,
                             std::string &impl_lines) {
   std::string write_buf{};
 
@@ -2154,8 +2153,10 @@ bool create_encode_function(llvm::MachineFunction *func,
     break;
   default: assert(false && "unsupported target"); abort();
   }
-  GenerationState state{
-      .func = func, .target = target.get(), .is_first_block = true};
+  GenerationState state{.func = func,
+                        .target = target.get(),
+                        .is_first_block = true,
+                        .sym_count = sym_count};
 
   if (!encode_prepass(func, state)) {
     std::cerr << "Prepass failed\n";
@@ -2493,11 +2494,6 @@ bool create_encode_function(llvm::MachineFunction *func,
   impl_lines += write_buf_inner;
 
   impl_lines += "\n}\n\n";
-
-  for (const auto cp_idx : state.const_pool_indices_used) {
-    sym_lines += std::format(
-        "    SymRef sym_{}_cp{};\n", state.func->getName().str(), cp_idx);
-  }
 
   return true;
 }

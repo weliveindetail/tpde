@@ -221,7 +221,8 @@ int main(const int argc, char *argv[]) {
   }
 
   // separate the declarations from the encode implementations
-  std::string decl_lines{}, impl_lines{}, sym_lines{};
+  std::string decl_lines{}, impl_lines{};
+  unsigned sym_count;
 
   const auto compile_mod = [&](llvm::Module &mod) {
     // TODO(ts): switch all functions to regcall so that the code does not
@@ -254,7 +255,7 @@ int main(const int argc, char *argv[]) {
       }
 
       if (!create_encode_function(
-              machine_func, fn.getName(), decl_lines, sym_lines, impl_lines)) {
+              machine_func, fn.getName(), decl_lines, sym_count, impl_lines)) {
         std::cerr << std::format("Failed to generate code for function {}\n",
                                  fn.getName().str());
         return 1;
@@ -276,7 +277,7 @@ int main(const int argc, char *argv[]) {
   case llvm::Triple::x86_64:
     output_file << x64::ENCODER_TEMPLATE_BEGIN << '\n';
     output_file << decl_lines << '\n';
-    output_file << '\n' << sym_lines << '\n';
+    output_file << "\n    std::array<SymRef, " << sym_count << "> symbols;\n";
     output_file << x64::ENCODER_TEMPLATE_END << '\n';
     output_file << x64::ENCODER_IMPL_TEMPLATE_BEGIN << '\n';
     output_file << impl_lines << '\n';
@@ -285,7 +286,7 @@ int main(const int argc, char *argv[]) {
   case llvm::Triple::aarch64:
     output_file << arm64::ENCODER_TEMPLATE_BEGIN << '\n';
     output_file << decl_lines << '\n';
-    output_file << '\n' << sym_lines << '\n';
+    output_file << "\n    std::array<SymRef, " << sym_count << "> symbols;\n";
     output_file << arm64::ENCODER_TEMPLATE_END << '\n';
     output_file << arm64::ENCODER_IMPL_TEMPLATE_BEGIN << '\n';
     output_file << impl_lines << '\n';

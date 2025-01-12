@@ -110,6 +110,10 @@ struct EncodeCompiler {
                                     FixedRegBackup &backup_reg,
                                     bool            is_ret_reg) noexcept;
 
+    void reset() noexcept {
+        symbols.fill({});
+    }
+
 // SPDX-SnippetEnd
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: CC0-1.0
