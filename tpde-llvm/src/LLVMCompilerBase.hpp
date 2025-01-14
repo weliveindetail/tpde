@@ -689,10 +689,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
     u32 off) noexcept {
   const auto alloc_size = layout.getTypeAllocSize(constant->getType());
   assert(off + alloc_size <= data.size());
-  // can't do this since for floats -0 is special
-  // if (constant->isZeroValue()) {
-  //    return true;
-  //}
+
+  // Handle all-zero values quickly.
+  if (constant->isNullValue() || llvm::isa<llvm::UndefValue>(constant)) {
+    return true;
+  }
 
   if (auto *CI = llvm::dyn_cast<llvm::ConstantInt>(constant); CI) {
     // TODO: endianess?
@@ -745,35 +746,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
     }
     return true;
   }
-  if (auto *ud = llvm::dyn_cast<llvm::UndefValue>(constant); ud) {
-    // just leave it at 0
-    return true;
-  }
-  if (auto *zero = llvm::dyn_cast<llvm::ConstantAggregateZero>(constant);
-      zero) {
-    // leave at 0
-    return true;
-  }
-  if (auto *null = llvm::dyn_cast<llvm::ConstantPointerNull>(constant); null) {
-    // leave at 0
-    return true;
-  }
-  if (auto *GV = llvm::dyn_cast<llvm::GlobalVariable>(constant); GV) {
+  if (auto *GV = llvm::dyn_cast<llvm::GlobalValue>(constant); GV) {
     assert(alloc_size == 8);
     relocs.push_back({off, 0, global_sym(GV)});
-    return true;
-  }
-  if (auto *GA = llvm::dyn_cast<llvm::GlobalAlias>(constant); GA) {
-    assert(alloc_size == 8);
-    relocs.push_back({off, 0, global_sym(GA)});
-    return true;
-  }
-  if (auto *FN = llvm::dyn_cast<llvm::Function>(constant); FN) {
-    // TODO: we create more work for the linker than we need so we should
-    // fix this sometime
-    assert(!FN->isIntrinsic());
-    assert(alloc_size == 8);
-    relocs.push_back({off, 0, global_sym(FN)});
     return true;
   }
   if (auto *CE = llvm::dyn_cast<llvm::ConstantExpr>(constant); CE) {
