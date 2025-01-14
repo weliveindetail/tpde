@@ -16,7 +16,7 @@ if (MSVC)
     # disable RTTI and exceptions
     add_compile_options(/GR- /EHsc /D_HAS_EXCEPTIONS=0)
 else ()
-    add_compile_options(-Wall -Wextra -Wpedantic -Werror -Wno-error=deprecated-declarations)
+    add_compile_options(-Wall -Wextra -Wpedantic)
     # disable RTTI and exceptions
     add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fno-rtti;-fno-exceptions>")
 
@@ -25,9 +25,13 @@ else ()
     # practically supported by every compiler
     add_compile_options(-Wno-nested-anon-types)
 
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        add_compile_options(-fsanitize=address)
-        add_link_options(-fsanitize=address)
+    # for development builds use -Werror and enable sanitizers
+    if (PROJECT_IS_TOP_LEVEL)
+        add_compile_options(-Werror -Wno-error=deprecated-declarations)
+        if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+            add_compile_options(-fsanitize=address)
+            add_link_options(-fsanitize=address)
+        endif ()
     endif ()
 endif ()
 
