@@ -906,6 +906,14 @@ void EncodingTargetArm64::get_inst_candidates(
     handle_default("FMAXs");
   } else if (Name == "FMAXDrr") {
     handle_default("FMAXd");
+  } else if (Name == "FMINNMSrr") {
+    handle_default("FMINNMs");
+  } else if (Name == "FMINNMDrr") {
+    handle_default("FMINNMd");
+  } else if (Name == "FMAXNMSrr") {
+    handle_default("FMAXNMs");
+  } else if (Name == "FMAXNMDrr") {
+    handle_default("FMAXNMd");
   } else if (Name == "FMOVSr") {
     handle_default("FMOVs");
   } else if (Name == "FMOVDr") {

@@ -603,6 +603,8 @@ void EncodingTargetX64::get_inst_candidates(
     handle_rm("MOVAPDrr", "MOVAPDrm", 1, "SSE_MOVAPDrr", "SSE_MOVAPDrm", 16);
     handle_rm("MOVUPSrr", "MOVUPSrm", 1, "SSE_MOVUPSrr", "SSE_MOVUPSrm");
     handle_rm("MOVUPDrr", "MOVUPDrm", 1, "SSE_MOVUPDrr", "SSE_MOVUPDrm");
+    handle_rm("MOVDQArr", "MOVDQArm", 1, "SSE_MOVDQArr", "SSE_MOVDQArm", 16);
+    handle_rm("MOVDQUrr", "MOVDQUrm", 1, "SSE_MOVDQUrr", "SSE_MOVDQUrm");
     handle_rm("ADDSSrr", "ADDSSrm", 2, "SSE_ADDSSrr", "SSE_ADDSSrm");
     handle_rm("ADDSDrr", "ADDSDrm", 2, "SSE_ADDSDrr", "SSE_ADDSDrm");
     handle_rm("ADDPSrr", "ADDPSrm", 2, "SSE_ADDPSrr", "SSE_ADDPSrm", 16);
@@ -619,6 +621,14 @@ void EncodingTargetX64::get_inst_candidates(
     handle_rm("DIVSDrr", "DIVSDrm", 2, "SSE_DIVSDrr", "SSE_DIVSDrm");
     handle_rm("DIVPSrr", "DIVPSrm", 2, "SSE_DIVPSrr", "SSE_DIVPSrm", 16);
     handle_rm("DIVPDrr", "DIVPDrm", 2, "SSE_DIVPDrr", "SSE_DIVPDrm", 16);
+    handle_rm("MINSSrr", "MINSSrm", 2, "SSE_MINSSrr", "SSE_MINSSrm");
+    handle_rm("MINSDrr", "MINSDrm", 2, "SSE_MINSDrr", "SSE_MINSDrm");
+    handle_rm("MINPSrr", "MINPSrm", 2, "SSE_MINPSrr", "SSE_MINPSrm", 16);
+    handle_rm("MINPDrr", "MINPDrm", 2, "SSE_MINPDrr", "SSE_MINPDrm", 16);
+    handle_rm("MAXSSrr", "MAXSSrm", 2, "SSE_MAXSSrr", "SSE_MAXSSrm");
+    handle_rm("MAXSDrr", "MAXSDrm", 2, "SSE_MAXSDrr", "SSE_MAXSDrm");
+    handle_rm("MAXPSrr", "MAXPSrm", 2, "SSE_MAXPSrr", "SSE_MAXPSrm", 16);
+    handle_rm("MAXPDrr", "MAXPDrm", 2, "SSE_MAXPDrr", "SSE_MAXPDrm", 16);
     handle_rm("CMPSSrri", "CMPSSrmi", 2, "SSE_CMPSSrri", "SSE_CMPSSrmi");
     handle_rm("CMPSDrri", "CMPSDrmi", 2, "SSE_CMPSDrri", "SSE_CMPSDrmi");
     handle_rm("CMPPSrri", "CMPPSrmi", 2, "SSE_CMPPSrri", "SSE_CMPPSrmi", 16);
@@ -697,8 +707,16 @@ void EncodingTargetX64::get_inst_candidates(
     handle_default("SSE_CVTTSS2SI64rr");
   } else if (Name == "MOV64toPQIrr") {
     handle_default("SSE_MOVQ_G2Xrr");
+  } else if (Name == "MOV64toSDrr") {
+    handle_default("SSE_MOVQ_G2Xrr");
   } else if (Name == "MOVSS2DIrr") {
     handle_default("SSE_MOVD_X2Grr");
+  } else if (Name == "MOVDI2PDIrm") {
+    handle_default("SSE_MOVD_G2Xrm", 1);
+  } else if (Name == "MOVQI2PQIrm") {
+    handle_default("SSE_MOVQ_G2Xrm", 1);
+  } else if (Name == "MOVDI2SSrr") {
+    handle_default("SSE_MOVD_G2Xrr");
   } else if (Name == "MOVSDto64rr") {
     handle_default("SSE_MOVQ_X2Grr");
   } else if (Name == "PUNPCKLDQrm") {

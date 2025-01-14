@@ -266,6 +266,7 @@ public:
   bool compile_shuffle_vector(IRValueRef, llvm::Instruction *) noexcept;
 
   bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
+  bool compile_atomicrmw(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_phi(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_freeze(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_call(IRValueRef, llvm::Instruction *) noexcept;
@@ -1049,6 +1050,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
   case llvm::Instruction::InsertElement: return compile_insert_element(val_idx, i);
   case llvm::Instruction::ShuffleVector: return compile_shuffle_vector(val_idx, i);
   case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(val_idx, i);
+  case llvm::Instruction::AtomicRMW: return compile_atomicrmw(val_idx, i);
   case llvm::Instruction::PHI: return compile_phi(val_idx, i);
   case llvm::Instruction::Freeze: return compile_freeze(val_idx, i);
   case llvm::Instruction::Unreachable: return derived()->compile_unreachable(val_idx, i);
@@ -2548,9 +2550,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
 
   auto *cmp_val = cmpxchg->getCompareOperand();
   auto *new_val = cmpxchg->getNewValOperand();
-
-  assert(new_val->getType()->isIntegerTy(64) ||
-         new_val->getType()->isPointerTy());
+  auto *val_ty = new_val->getType();
+  if (!val_ty->isIntegerTy(64) && !val_ty->isPointerTy()) {
+    return false;
+  }
 
   auto cmp_ref = this->val_ref(llvm_val_idx(cmp_val), 0);
   auto new_ref = this->val_ref(llvm_val_idx(new_val), 0);
@@ -2583,6 +2586,195 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
     // br i1 %5, label %7, label %2, !llvm.loop !3
   // clang-format on
 
+  return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_atomicrmw(
+    IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
+  auto *rmw = llvm::cast<llvm::AtomicRMWInst>(inst);
+
+  llvm::Type *ty = rmw->getType();
+  unsigned size = this->adaptor->mod->getDataLayout().getTypeSizeInBits(ty);
+  // This is checked by the IR verifier.
+  assert(size >= 8 && (size & (size - 1)) == 0 && "invalid atomicrmw size");
+  // Unaligned atomicrmw is very tricky to implement. While x86-64 supports
+  // unaligned atomics, this is not always supported (to prevent split locks
+  // from locking the bus in shared systems). Other platforms don't support
+  // unaligned accesses at all. Therefore, supporting this needs to go through
+  // library support from libgcc or compiler-rt with a cmpxchg loop.
+  // TODO: implement support for unaligned atomics
+  // TODO: do this check without consulting DataLayout
+  if (rmw->getAlign().value() < size / 8) {
+    TPDE_LOG_ERR("unaligned atomicrmw is not supported (align={} < size={})",
+                 rmw->getAlign().value(),
+                 size / 8);
+    return false;
+  }
+
+  auto bvt = this->adaptor->values[inst_idx].type;
+
+  // TODO: implement non-seq_cst orderings more efficiently
+  // TODO: use more efficient implementation when the result is not used. On
+  // x86-64, the current implementation gives many cmpxchg loops.
+  bool (Derived::*fn)(GenericValuePart &&, GenericValuePart &&, ScratchReg &) =
+      nullptr;
+  switch (rmw->getOperation()) {
+  case llvm::AtomicRMWInst::Xchg:
+    // TODO: support f32/f64
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case i8: fn = &Derived::encode_atomic_xchg_u8_seqcst; break;
+    case i16: fn = &Derived::encode_atomic_xchg_u16_seqcst; break;
+    case i32: fn = &Derived::encode_atomic_xchg_u32_seqcst; break;
+    case i64: fn = &Derived::encode_atomic_xchg_u64_seqcst; break;
+    case ptr: fn = &Derived::encode_atomic_xchg_u64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::Add:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case i8: fn = &Derived::encode_atomic_add_u8_seqcst; break;
+    case i16: fn = &Derived::encode_atomic_add_u16_seqcst; break;
+    case i32: fn = &Derived::encode_atomic_add_u32_seqcst; break;
+    case i64: fn = &Derived::encode_atomic_add_u64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::Sub:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case i8: fn = &Derived::encode_atomic_sub_u8_seqcst; break;
+    case i16: fn = &Derived::encode_atomic_sub_u16_seqcst; break;
+    case i32: fn = &Derived::encode_atomic_sub_u32_seqcst; break;
+    case i64: fn = &Derived::encode_atomic_sub_u64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::And:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case i8: fn = &Derived::encode_atomic_and_u8_seqcst; break;
+    case i16: fn = &Derived::encode_atomic_and_u16_seqcst; break;
+    case i32: fn = &Derived::encode_atomic_and_u32_seqcst; break;
+    case i64: fn = &Derived::encode_atomic_and_u64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::Nand:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case i8: fn = &Derived::encode_atomic_nand_u8_seqcst; break;
+    case i16: fn = &Derived::encode_atomic_nand_u16_seqcst; break;
+    case i32: fn = &Derived::encode_atomic_nand_u32_seqcst; break;
+    case i64: fn = &Derived::encode_atomic_nand_u64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::Or:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case i8: fn = &Derived::encode_atomic_or_u8_seqcst; break;
+    case i16: fn = &Derived::encode_atomic_or_u16_seqcst; break;
+    case i32: fn = &Derived::encode_atomic_or_u32_seqcst; break;
+    case i64: fn = &Derived::encode_atomic_or_u64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::Xor:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case i8: fn = &Derived::encode_atomic_xor_u8_seqcst; break;
+    case i16: fn = &Derived::encode_atomic_xor_u16_seqcst; break;
+    case i32: fn = &Derived::encode_atomic_xor_u32_seqcst; break;
+    case i64: fn = &Derived::encode_atomic_xor_u64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::Min:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case i8: fn = &Derived::encode_atomic_min_i8_seqcst; break;
+    case i16: fn = &Derived::encode_atomic_min_i16_seqcst; break;
+    case i32: fn = &Derived::encode_atomic_min_i32_seqcst; break;
+    case i64: fn = &Derived::encode_atomic_min_i64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::Max:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case i8: fn = &Derived::encode_atomic_max_i8_seqcst; break;
+    case i16: fn = &Derived::encode_atomic_max_i16_seqcst; break;
+    case i32: fn = &Derived::encode_atomic_max_i32_seqcst; break;
+    case i64: fn = &Derived::encode_atomic_max_i64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::UMin:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case i8: fn = &Derived::encode_atomic_min_u8_seqcst; break;
+    case i16: fn = &Derived::encode_atomic_min_u16_seqcst; break;
+    case i32: fn = &Derived::encode_atomic_min_u32_seqcst; break;
+    case i64: fn = &Derived::encode_atomic_min_u64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::UMax:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case i8: fn = &Derived::encode_atomic_max_u8_seqcst; break;
+    case i16: fn = &Derived::encode_atomic_max_u16_seqcst; break;
+    case i32: fn = &Derived::encode_atomic_max_u32_seqcst; break;
+    case i64: fn = &Derived::encode_atomic_max_u64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::FAdd:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case f32: fn = &Derived::encode_atomic_add_f32_seqcst; break;
+    case f64: fn = &Derived::encode_atomic_add_f64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::FSub:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case f32: fn = &Derived::encode_atomic_sub_f32_seqcst; break;
+    case f64: fn = &Derived::encode_atomic_sub_f64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::FMin:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case f32: fn = &Derived::encode_atomic_min_f32_seqcst; break;
+    case f64: fn = &Derived::encode_atomic_min_f64_seqcst; break;
+    default: return false;
+    }
+    break;
+  case llvm::AtomicRMWInst::FMax:
+    switch (bvt) {
+      using enum LLVMBasicValType;
+    case f32: fn = &Derived::encode_atomic_max_f32_seqcst; break;
+    case f64: fn = &Derived::encode_atomic_max_f64_seqcst; break;
+    default: return false;
+    }
+    break;
+  default: return false;
+  }
+
+  auto ptr_ref = this->val_ref(llvm_val_idx(rmw->getPointerOperand()), 0);
+  auto val_ref = this->val_ref(llvm_val_idx(rmw->getValOperand()), 0);
+  auto res_ref = this->result_ref_lazy(inst_idx, 0);
+  ScratchReg res{this};
+  if (!(derived()->*fn)(std::move(ptr_ref), std::move(val_ref), res)) {
+    return false;
+  }
+  this->set_value(res_ref, res);
   return true;
 }
 

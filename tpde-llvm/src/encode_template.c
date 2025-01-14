@@ -496,6 +496,59 @@ u32 TARGET_V1 atomic_load_u16_seqcst(u16* ptr) { return __atomic_load_n(ptr, __A
 u32 TARGET_V1 atomic_load_u32_seqcst(u32* ptr) { return __atomic_load_n(ptr, __ATOMIC_SEQ_CST); }
 u64 TARGET_V1 atomic_load_u64_seqcst(u64* ptr) { return __atomic_load_n(ptr, __ATOMIC_SEQ_CST); }
 
+u32 TARGET_V1 atomic_xchg_u8_seqcst(u8 *p, u8 v) { return __atomic_exchange_n(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_add_u8_seqcst(u8 *p, u8 v) { return __atomic_fetch_add(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_sub_u8_seqcst(u8 *p, u8 v) { return __atomic_fetch_sub(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_and_u8_seqcst(u8 *p, u8 v) { return __atomic_fetch_and(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_nand_u8_seqcst(u8 *p, u8 v) { return __atomic_fetch_nand(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_or_u8_seqcst(u8 *p, u8 v) { return __atomic_fetch_or(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_xor_u8_seqcst(u8 *p, u8 v) { return __atomic_fetch_xor(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_min_i8_seqcst(i8 *p, i8 v) { return __atomic_fetch_min(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_max_i8_seqcst(i8 *p, i8 v) { return __atomic_fetch_max(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_min_u8_seqcst(u8 *p, u8 v) { return __atomic_fetch_min(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_max_u8_seqcst(u8 *p, u8 v) { return __atomic_fetch_max(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_xchg_u16_seqcst(u16 *p, u16 v) { return __atomic_exchange_n(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_add_u16_seqcst(u16 *p, u16 v) { return __atomic_fetch_add(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_sub_u16_seqcst(u16 *p, u16 v) { return __atomic_fetch_sub(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_and_u16_seqcst(u16 *p, u16 v) { return __atomic_fetch_and(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_nand_u16_seqcst(u16 *p, u16 v) { return __atomic_fetch_nand(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_or_u16_seqcst(u16 *p, u16 v) { return __atomic_fetch_or(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_xor_u16_seqcst(u16 *p, u16 v) { return __atomic_fetch_xor(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_min_i16_seqcst(i16 *p, i16 v) { return __atomic_fetch_min(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_max_i16_seqcst(i16 *p, i16 v) { return __atomic_fetch_max(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_min_u16_seqcst(u16 *p, u16 v) { return __atomic_fetch_min(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_max_u16_seqcst(u16 *p, u16 v) { return __atomic_fetch_max(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_xchg_u32_seqcst(u32 *p, u32 v) { return __atomic_exchange_n(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_add_u32_seqcst(u32 *p, u32 v) { return __atomic_fetch_add(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_sub_u32_seqcst(u32 *p, u32 v) { return __atomic_fetch_sub(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_and_u32_seqcst(u32 *p, u32 v) { return __atomic_fetch_and(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_nand_u32_seqcst(u32 *p, u32 v) { return __atomic_fetch_nand(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_or_u32_seqcst(u32 *p, u32 v) { return __atomic_fetch_or(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_xor_u32_seqcst(u32 *p, u32 v) { return __atomic_fetch_xor(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_min_i32_seqcst(i32 *p, i32 v) { return __atomic_fetch_min(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_max_i32_seqcst(i32 *p, i32 v) { return __atomic_fetch_max(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_min_u32_seqcst(u32 *p, u32 v) { return __atomic_fetch_min(p, v, __ATOMIC_SEQ_CST); }
+u32 TARGET_V1 atomic_max_u32_seqcst(u32 *p, u32 v) { return __atomic_fetch_max(p, v, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_xchg_u64_seqcst(u64 *p, u64 v) { return __atomic_exchange_n(p, v, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_add_u64_seqcst(u64 *p, u64 v) { return __atomic_fetch_add(p, v, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_sub_u64_seqcst(u64 *p, u64 v) { return __atomic_fetch_sub(p, v, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_and_u64_seqcst(u64 *p, u64 v) { return __atomic_fetch_and(p, v, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_nand_u64_seqcst(u64 *p, u64 v) { return __atomic_fetch_nand(p, v, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_or_u64_seqcst(u64 *p, u64 v) { return __atomic_fetch_or(p, v, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_xor_u64_seqcst(u64 *p, u64 v) { return __atomic_fetch_xor(p, v, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_min_i64_seqcst(i64 *p, i64 v) { return __atomic_fetch_min(p, v, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_max_i64_seqcst(i64 *p, i64 v) { return __atomic_fetch_max(p, v, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_min_u64_seqcst(u64 *p, u64 v) { return __atomic_fetch_min(p, v, __ATOMIC_SEQ_CST); }
+u64 TARGET_V1 atomic_max_u64_seqcst(u64 *p, u64 v) { return __atomic_fetch_max(p, v, __ATOMIC_SEQ_CST); }
+float TARGET_V1 atomic_add_f32_seqcst(float *p, float v) { return __atomic_fetch_add(p, v, __ATOMIC_SEQ_CST); }
+float TARGET_V1 atomic_sub_f32_seqcst(float *p, float v) { return __atomic_fetch_sub(p, v, __ATOMIC_SEQ_CST); }
+float TARGET_V1 atomic_min_f32_seqcst(float *p, float v) { return __atomic_fetch_min(p, v, __ATOMIC_SEQ_CST); }
+float TARGET_V1 atomic_max_f32_seqcst(float *p, float v) { return __atomic_fetch_max(p, v, __ATOMIC_SEQ_CST); }
+double TARGET_V1 atomic_add_f64_seqcst(double *p, double v) { return __atomic_fetch_add(p, v, __ATOMIC_SEQ_CST); }
+double TARGET_V1 atomic_sub_f64_seqcst(double *p, double v) { return __atomic_fetch_sub(p, v, __ATOMIC_SEQ_CST); }
+double TARGET_V1 atomic_min_f64_seqcst(double *p, double v) { return __atomic_fetch_min(p, v, __ATOMIC_SEQ_CST); }
+double TARGET_V1 atomic_max_f64_seqcst(double *p, double v) { return __atomic_fetch_max(p, v, __ATOMIC_SEQ_CST); }
+
 // --------------------------
 // select
 // --------------------------
