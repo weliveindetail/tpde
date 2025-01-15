@@ -102,7 +102,7 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
 
     // TODO(ts): use clock here?
     reg = reg_file.find_first_nonfixed_excluding(bank, exclusion_mask);
-    if (reg.invalid()) {
+    if (reg.invalid()) [[unlikely]] {
       TPDE_LOG_ERR("ran out of registers for scratch registers");
       assert(0);
       exit(1);

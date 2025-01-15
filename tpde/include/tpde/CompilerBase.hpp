@@ -1896,7 +1896,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     const auto block_ref = analyzer.block_layout[i];
     TPDE_LOG_TRACE(
         "Compiling block {} ({})", i, adaptor->block_fmt_ref(block_ref));
-    if (!derived()->compile_block(block_ref, i)) {
+    if (!derived()->compile_block(block_ref, i)) [[unlikely]] {
       TPDE_LOG_ERR("Failed to compile block {} ({})",
                    i,
                    adaptor->block_fmt_ref(block_ref));
@@ -1929,7 +1929,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
 
     auto it_cpy = it;
     ++it_cpy;
-    if (!derived()->compile_inst(value, InstRange{.from = it_cpy, .to = end})) {
+    if (!derived()->compile_inst(value, InstRange{.from = it_cpy, .to = end}))
+        [[unlikely]] {
       TPDE_LOG_ERR("Failed to compile instruction {}",
                    this->adaptor->value_fmt_ref(value));
       return false;

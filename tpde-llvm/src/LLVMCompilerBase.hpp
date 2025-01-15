@@ -1067,12 +1067,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
   case llvm::Instruction::Resume: return compile_resume(val_idx, i);
     // clang-format on
 
-  default: {
-    TPDE_LOG_ERR("Encountered unknown instruction opcode {}: {}",
-                 opcode,
-                 i->getOpcodeName());
-    return false;
-  }
+  default: return false;
   }
 }
 
@@ -3782,7 +3777,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     auto *ty = val->getType();
 
     if (!ty->isFloatTy() && !ty->isDoubleTy()) {
-      TPDE_LOG_ERR("only float/double supported for fabs");
       return false;
     }
 
@@ -4297,7 +4291,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
   auto *op_ty = op->getType();
 
   if (!op_ty->isFloatTy() && !op_ty->isDoubleTy()) {
-    TPDE_LOG_ERR("is_fpclass only supports float and doubles");
     return false;
   }
   const auto is_double = op_ty->isDoubleTy();
@@ -4429,10 +4422,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
   case 16: width_idx = 1; break;
   case 32: width_idx = 2; break;
   case 64: width_idx = 3; break;
-  default:
-    assert(0);
-    TPDE_LOG_ERR("overflow op with width {} not supported", width);
-    return false;
+  default: return false;
   }
 
   using EncodeFnTy = bool (Derived::*)(

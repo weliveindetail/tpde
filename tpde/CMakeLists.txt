@@ -9,7 +9,7 @@ project(tpde)
 
 # tpde library
 
-set(TPDE_LOGGING "DebugOnly" CACHE STRING "Enable logging with spdlog (DebugOnly(default)/ON/OFF)")
+set(TPDE_LOGGING "ON" CACHE STRING "Enable logging with spdlog (DebugOnly/ON(default)/OFF)")
 set_property(CACHE TPDE_LOGGING PROPERTY STRINGS DebugOnly ON OFF)
 
 option(TPDE_X64 "enable x86-64 support" ON)

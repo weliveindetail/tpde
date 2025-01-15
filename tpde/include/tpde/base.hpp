@@ -25,8 +25,13 @@
   #include <spdlog/spdlog.h>
   #define TPDE_LOG(level, ...)                                                 \
     (spdlog::should_log(level) ? spdlog::log(level, __VA_ARGS__) : (void)0)
-  #define TPDE_LOG_TRACE(...) TPDE_LOG(spdlog::level::trace, __VA_ARGS__)
-  #define TPDE_LOG_DBG(...) TPDE_LOG(spdlog::level::debug, __VA_ARGS__)
+  #ifndef NDEBUG
+    #define TPDE_LOG_TRACE(...) TPDE_LOG(spdlog::level::trace, __VA_ARGS__)
+    #define TPDE_LOG_DBG(...) TPDE_LOG(spdlog::level::debug, __VA_ARGS__)
+  #else
+    #define TPDE_LOG_TRACE(...)
+    #define TPDE_LOG_DBG(...)
+  #endif
   #define TPDE_LOG_INFO(...) TPDE_LOG(spdlog::level::info, __VA_ARGS__)
   #define TPDE_LOG_WARN(...) TPDE_LOG(spdlog::level::warn, __VA_ARGS__)
   #define TPDE_LOG_ERR(...) TPDE_LOG(spdlog::level::err, __VA_ARGS__)
