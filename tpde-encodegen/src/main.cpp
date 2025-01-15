@@ -222,7 +222,7 @@ int main(const int argc, char *argv[]) {
 
   // separate the declarations from the encode implementations
   std::string decl_lines{}, impl_lines{};
-  unsigned sym_count;
+  unsigned sym_count = 0;
 
   const auto compile_mod = [&](llvm::Module &mod) {
     // TODO(ts): switch all functions to regcall so that the code does not
