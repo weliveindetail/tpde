@@ -1,0 +1,76 @@
+From be04fc1113bfeaf745e4d336613ae02e011929f5 Mon Sep 17 00:00:00 2001
+From: Alexis Engelke <engelke@in.tum.de>
+Date: Wed, 15 Jan 2025 11:00:36 +0100
+Subject: [PATCH] [Clang] Add TPDE back-end
+
+To compile, add the tpde2 repository to clang/lib/CodeGen/tpde2, e.g.
+via a symlink. TPDE can be enabled using "-mllvm -use-tpde".
+---
+ clang/lib/CodeGen/BackendUtil.cpp | 24 ++++++++++++++++++++++++
+ clang/lib/CodeGen/CMakeLists.txt  |  4 ++++
+ 2 files changed, 28 insertions(+)
+
+diff --git a/clang/lib/CodeGen/BackendUtil.cpp b/clang/lib/CodeGen/BackendUtil.cpp
+index e765bbf637a6..f0de56eb36d9 100644
+--- a/clang/lib/CodeGen/BackendUtil.cpp
++++ b/clang/lib/CodeGen/BackendUtil.cpp
+@@ -9,6 +9,7 @@
+ #include "clang/CodeGen/BackendUtil.h"
+ #include "BackendConsumer.h"
+ #include "LinkInModulesPass.h"
++#include "tpde-llvm/LLVMCompiler.hpp"
+ #include "clang/Basic/CodeGenOptions.h"
+ #include "clang/Basic/Diagnostic.h"
+ #include "clang/Basic/LangOptions.h"
+@@ -120,6 +121,9 @@ static cl::opt<PGOOptions::ColdFuncOpt> ClPGOColdFuncAttr(
+                           "Mark cold functions with optnone.")));
+ 
+ extern cl::opt<InstrProfCorrelator::ProfCorrelatorKind> ProfileCorrelate;
++
++static cl::opt<bool> ClUseTPDE("use-tpde", cl::Optional, cl::desc(""),
++                               cl::init(false));
+ } // namespace llvm
+ 
+ namespace {
+@@ -1118,6 +1122,26 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
+ void EmitAssemblyHelper::RunCodegenPipeline(
+     BackendAction Action, std::unique_ptr<raw_pwrite_stream> &OS,
+     std::unique_ptr<llvm::ToolOutputFile> &DwoOS) {
++  if (Action == Backend_EmitObj && ClUseTPDE.getValue()) {
++    PrettyStackTraceString CrashInfo("TPDE");
++    llvm::TimeTraceScope TimeScope("TPDE");
++
++    auto Compiler = tpde_llvm::LLVMCompiler::create(TargetTriple);
++    if (!Compiler) {
++      Diags.Report(Diags.getCustomDiagID(DiagnosticsEngine::Error,
++                                         "TPDE unsupported architecture"));
++      return;
++    }
++    std::vector<uint8_t> ObjectBuf;
++    if (!Compiler->compile_to_elf(*TheModule, ObjectBuf)) {
++      Diags.Report(Diags.getCustomDiagID(DiagnosticsEngine::Error,
++                                         "TPDE compilation failed"));
++      return;
++    }
++    OS->pwrite(reinterpret_cast<char *>(ObjectBuf.data()), ObjectBuf.size(), 0);
++    return;
++  }
++
+   // We still use the legacy PM to run the codegen pipeline since the new PM
+   // does not work with the codegen pipeline.
+   // FIXME: make the new PM work with the codegen pipeline.
+diff --git a/clang/lib/CodeGen/CMakeLists.txt b/clang/lib/CodeGen/CMakeLists.txt
+index 2a179deddcc3..83e28b027cf2 100644
+--- a/clang/lib/CodeGen/CMakeLists.txt
++++ b/clang/lib/CodeGen/CMakeLists.txt
+@@ -157,3 +157,7 @@ add_clang_library(clangCodeGen
+   clangLex
+   clangSerialization
+   )
++
++set(LLVM_Found TRUE)
++add_subdirectory(tpde2)
++target_link_libraries(clangCodeGen PRIVATE $<BUILD_LOCAL_INTERFACE:tpde_llvm>)
+-- 
+2.47.0
+
