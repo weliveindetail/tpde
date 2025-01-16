@@ -7,7 +7,6 @@
 #include "base.hpp"
 #include <concepts>
 #include <format>
-#include <ranges>
 #include <string_view>
 
 #ifdef ARG
@@ -26,10 +25,25 @@ concept CanBeFormatted = requires(T a) {
 template <bool B>
 concept IsFalse = (B == false);
 
-/// Concept describing a range of a specified type.
+/// Concept describing an iterator over some range
+///
+/// It is purposefully kept simple (and probably wrong)
 template <typename T, typename Value>
-concept IRRange =
-    std::ranges::range<T> && std::same_as<std::ranges::range_value_t<T>, Value>;
+concept IRIter = requires(T i, T i2) {
+  { *i } -> std::convertible_to<Value>;
+  { ++i } -> std::convertible_to<T>;
+  { i != i2 } -> std::convertible_to<bool>;
+};
+
+/// Concept describing a very simple range
+///
+/// It is purposefully kept simple since the full concepts from std::ranges want
+/// too much code
+template <typename T, typename Value>
+concept IRRange = requires(T r) {
+  { r.begin() } -> IRIter<Value>;
+  { r.end() } -> IRIter<Value>;
+};
 
 /// PHI-Nodes are a special case of IRValues and need to be inspected more
 /// thoroughly by the compiler. Therefore, they need to expose their special
@@ -113,6 +127,10 @@ concept IRAdaptor = requires(T a) {
   ///
   /// Note: One of these has to be true
   { T::TPDE_LIVENESS_VISIT_ARGS } -> SameBaseAs<bool>;
+
+  /// Iterator type for instructions
+  typename T::IRInstIter;
+  requires IRIter<typename T::IRInstIter, typename T::IRValueRef>;
 
   // Can the adaptor store two 32 bit values for efficient access through the
   // block reference?
@@ -224,6 +242,14 @@ concept IRAdaptor = requires(T a) {
   {
     a.block_values(ARG(typename T::IRBlockRef))
   } -> IRRange<typename T::IRValueRef>;
+
+  /// The iterator for values must be of type InstIter
+  {
+    a.block_values(ARG(typename T::IRBlockRef)).begin()
+  } -> std::convertible_to<typename T::IRInstIter>;
+  {
+    a.block_values(ARG(typename T::IRBlockRef)).end()
+  } -> std::convertible_to<typename T::IRInstIter>;
 
   /// Provides an iterator over the PHIs in a block
   {
