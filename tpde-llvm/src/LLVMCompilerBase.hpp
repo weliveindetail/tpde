@@ -520,9 +520,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::define_func_idx(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::
     hook_post_func_sym_init() noexcept {
-  if (llvm::timeTraceProfilerEnabled()) {
-    time_entry = llvm::timeTraceProfilerBegin("TPDE_GlobalGen", "");
-  }
+  llvm::TimeTraceScope time_scope("TPDE_GlobalGen");
 
   // create global symbols and their definitions
   const auto &llvm_mod = *this->adaptor->mod;
@@ -674,9 +672,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
     }
   }
 
-  if (llvm::timeTraceProfilerEnabled()) {
-    llvm::timeTraceProfilerEnd(time_entry);
-  }
   return true;
 }
 
@@ -4541,15 +4536,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_to_elf(
     return false;
   }
 
-  llvm::TimeTraceProfilerEntry *time_entry = nullptr;
-  if (llvm::timeTraceProfilerEnabled()) {
-    time_entry = llvm::timeTraceProfilerBegin("TPDE_EmitObj", "");
-  }
+  llvm::TimeTraceScope time_scope("TPDE_EmitObj");
   buf = this->assembler.build_object_file();
-  if (llvm::timeTraceProfilerEnabled()) {
-    llvm::timeTraceProfilerEnd(time_entry);
-  }
-
   return true;
 }
 

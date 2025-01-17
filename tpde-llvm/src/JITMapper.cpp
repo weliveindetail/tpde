@@ -12,15 +12,8 @@ namespace tpde_llvm {
 
 bool JITMapperImpl::map(tpde::AssemblerElfBase &assembler,
                         tpde::ElfMapper::SymbolResolver resolver) noexcept {
-  llvm::TimeTraceProfilerEntry *time_entry = nullptr;
-  if (llvm::timeTraceProfilerEnabled()) {
-    time_entry = llvm::timeTraceProfilerBegin("TPDE_JITMap", "");
-  }
-  bool success = mapper.map(assembler, resolver);
-  if (llvm::timeTraceProfilerEnabled()) {
-    llvm::timeTraceProfilerEnd(time_entry);
-  }
-  return success;
+  llvm::TimeTraceScope time_scope("TPDE_JITMap");
+  return mapper.map(assembler, resolver);
 }
 
 JITMapper::JITMapper(std::unique_ptr<JITMapperImpl> impl) noexcept

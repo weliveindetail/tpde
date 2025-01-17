@@ -7,6 +7,7 @@
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
+#include <llvm/Support/TimeProfiler.h>
 #include <llvm/TargetParser/Host.h>
 #include <llvm/TargetParser/Triple.h>
 
@@ -44,7 +45,14 @@ int main(int argc, char *argv[]) {
       "obj_path",
       "Path where the output object file should be written",
       {'o', "obj-out"},
-      args::Options::None);
+      "-");
+
+  args::ImplicitValueFlag<std::string> time_trace(
+    parser,
+    "time_trace",
+    "Enable time tracing and write output to specified file",
+    {"time-trace"},
+    args::Options::None);
 
   args::Positional<std::string> ir_path(
       parser, "ir_path", "Path to the input IR file", "-");
@@ -79,13 +87,21 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+  if (time_trace) {
+    llvm::timeTraceProfilerInitialize(0, argv[0]);
+  }
+
   llvm::LLVMContext context;
   llvm::SMDiagnostic diag{};
 
-  auto mod = llvm::parseIRFile(ir_path.Get(), diag, context);
-  if (!mod) {
-    diag.print(argv[0], llvm::errs());
-    return 1;
+  std::unique_ptr<llvm::Module> mod;
+  {
+    llvm::TimeTraceScope time_scope("Parse IR");
+    mod = llvm::parseIRFile(ir_path.Get(), diag, context);
+    if (!mod) {
+      diag.print(argv[0], llvm::errs());
+      return 1;
+    }
   }
 
   if (print_ir) {
@@ -106,9 +122,12 @@ int main(int argc, char *argv[]) {
   }
 
   std::vector<uint8_t> buf;
-  if (!compiler->compile_to_elf(*mod, buf)) {
-    std::cerr << "Failed to compile\n";
-    return 1;
+  {
+    llvm::TimeTraceScope time_scope("Compile");
+    if (!compiler->compile_to_elf(*mod, buf)) {
+      std::cerr << "Failed to compile\n";
+      return 1;
+    }
   }
 
 #ifndef NDEBUG
@@ -126,11 +145,26 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  if (!obj_out_path || obj_out_path.Get() == "-") {
+  if (obj_out_path.Get() == "-") {
     std::cout.write(reinterpret_cast<const char *>(buf.data()), buf.size());
   } else {
     std::ofstream out{obj_out_path.Get().c_str(), std::ios::binary};
     out.write(reinterpret_cast<const char *>(buf.data()), buf.size());
+  }
+
+  {
+    llvm::TimeTraceScope time_scope("Free Module");
+    mod.reset();
+  }
+
+  if (time_trace) {
+    if (auto err = llvm::timeTraceProfilerWrite(time_trace.Get(), obj_out_path.Get())) {
+      llvm::handleAllErrors(std::move(err), [&](const llvm::StringError &serr) {
+        llvm::errs() << serr.getMessage() << "\n";
+      });
+    } else {
+      llvm::timeTraceProfilerCleanup();
+    }
   }
 
   if (print_ir) {

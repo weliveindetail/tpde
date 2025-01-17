@@ -317,18 +317,13 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
 }
 
 bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
+  llvm::TimeTraceScope time_scope("TPDE_Prepass", function->getName());
+
   cur_func = function;
   func_unsupported = false;
 
   TPDE_LOG_DBG("Compiling func: {}",
                static_cast<std::string_view>(function->getName()));
-
-  const bool profile_time = llvm::timeTraceProfilerEnabled();
-  llvm::TimeTraceProfilerEntry *time_entry;
-  if (profile_time) {
-    time_entry = llvm::timeTraceProfilerBegin("TPDE_Prepass", "");
-  }
-
 
   // assign local ids
   value_lookup.clear();
@@ -467,10 +462,6 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     }
     block_succ_ranges.push_back(
         std::make_pair(start_idx, block_succ_indices.size()));
-  }
-
-  if (profile_time) {
-    llvm::timeTraceProfilerEnd(time_entry);
   }
 
   return !func_unsupported;
