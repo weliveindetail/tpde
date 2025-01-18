@@ -101,6 +101,9 @@ struct EncodingTargetX64 : EncodingTarget {
   }
 
   bool reg_should_be_ignored(const llvm::MCRegister reg) override {
+    if (!reg.isValid()) {
+      return true;
+    }
     const auto name =
         std::string_view{func->getSubtarget().getRegisterInfo()->getName(reg)};
     return (name == "EFLAGS" || name == "MXCSR" || name == "FPCW" ||

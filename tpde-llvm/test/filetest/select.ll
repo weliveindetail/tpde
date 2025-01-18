@@ -140,13 +140,13 @@ define float @select_f32_reg(i1 %0, float %1, float %2) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    test dil, 0x1
 ; X64-NEXT:    je <L0>
-; X64-NEXT:    movapd xmm1, xmm0
+; X64-NEXT:    movaps xmm1, xmm0
 ; X64-NEXT:  <L0>:
-; X64-NEXT:    movapd xmm0, xmm1
+; X64-NEXT:    movaps xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <select_f32_reg>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -172,13 +172,13 @@ define double @select_f64_reg(i1 %0, double %1, double %2) {
 ; X64-NEXT:    sub rsp, 0x50
 ; X64-NEXT:    test dil, 0x1
 ; X64-NEXT:    je <L0>
-; X64-NEXT:    movapd xmm1, xmm0
+; X64-NEXT:    movaps xmm1, xmm0
 ; X64-NEXT:  <L0>:
-; X64-NEXT:    movapd xmm0, xmm1
+; X64-NEXT:    movaps xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <select_f64_reg>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -303,9 +303,9 @@ define <2 x i64> @select_v2i64(i1 %0, <2 x i64> %1, <2 x i64> %2) {
 ; X64-NEXT:    sub rsp, 0x60
 ; X64-NEXT:    test dil, 0x1
 ; X64-NEXT:    je <L0>
-; X64-NEXT:    movapd xmm1, xmm0
+; X64-NEXT:    movaps xmm1, xmm0
 ; X64-NEXT:  <L0>:
-; X64-NEXT:    movapd xmm0, xmm1
+; X64-NEXT:    movaps xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret

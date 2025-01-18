@@ -12,7 +12,7 @@ define float @minnumf32(float %0, float %1) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movapd xmm2, xmm0
 ; X64-NEXT:    cmpunordss xmm2, xmm0
-; X64-NEXT:    movapd xmm3, xmm2
+; X64-NEXT:    movaps xmm3, xmm2
 ; X64-NEXT:    andps xmm3, xmm1
 ; X64-NEXT:    minss xmm1, xmm0
 ; X64-NEXT:    andnps xmm2, xmm1
@@ -21,7 +21,7 @@ define float @minnumf32(float %0, float %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <minnumf32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -76,7 +76,7 @@ define float @minnumf32_noreuse(float %0, float %1) {
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movapd xmm2, xmm0
 ; X64-NEXT:    cmpunordss xmm2, xmm0
-; X64-NEXT:    movapd xmm3, xmm2
+; X64-NEXT:    movaps xmm3, xmm2
 ; X64-NEXT:    andps xmm3, xmm1
 ; X64-NEXT:    minss xmm1, xmm0
 ; X64-NEXT:    andnps xmm2, xmm1
@@ -85,7 +85,7 @@ define float @minnumf32_noreuse(float %0, float %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <minnumf32_noreuse>:
 ; ARM64:         sub sp, sp, #0xb0

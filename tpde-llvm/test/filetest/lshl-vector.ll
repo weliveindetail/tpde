@@ -14,7 +14,7 @@ define <8 x i8> @shl_v8i8(<8 x i8> %a, <8 x i8> %b) {
 ; X64-NEXT:    pxor xmm2, xmm2
 ; X64-NEXT:    pxor xmm3, xmm3
 ; X64-NEXT:    pcmpgtb xmm3, xmm1
-; X64-NEXT:    movapd xmm4, xmm3
+; X64-NEXT:    movdqa xmm4, xmm3
 ; X64-NEXT:    pandn xmm4, xmm0
 ; X64-NEXT:    psllw xmm0, 0x4
 ; X64-NEXT:    pand xmm0, xmm3
@@ -24,7 +24,7 @@ define <8 x i8> @shl_v8i8(<8 x i8> %a, <8 x i8> %b) {
 ; X64-NEXT:    paddb xmm1, xmm1
 ; X64-NEXT:    pxor xmm3, xmm3
 ; X64-NEXT:    pcmpgtb xmm3, xmm1
-; X64-NEXT:    movapd xmm4, xmm3
+; X64-NEXT:    movdqa xmm4, xmm3
 ; X64-NEXT:    pandn xmm4, xmm0
 ; X64-NEXT:    psllw xmm0, 0x2
 ; X64-NEXT:    pand xmm0, xmm3
@@ -33,7 +33,7 @@ define <8 x i8> @shl_v8i8(<8 x i8> %a, <8 x i8> %b) {
 ; X64-NEXT:    por xmm0, xmm4
 ; X64-NEXT:    paddb xmm1, xmm1
 ; X64-NEXT:    pcmpgtb xmm2, xmm1
-; X64-NEXT:    movapd xmm1, xmm2
+; X64-NEXT:    movdqa xmm1, xmm2
 ; X64-NEXT:    pandn xmm1, xmm0
 ; X64-NEXT:    paddb xmm0, xmm0
 ; X64-NEXT:    pand xmm0, xmm2
@@ -68,7 +68,7 @@ define <8 x i8> @shl_v8i8_3(<8 x i8> %a) {
 ; X64-NEXT:    pxor xmm2, xmm2
 ; X64-NEXT:    pxor xmm3, xmm3
 ; X64-NEXT:    pcmpgtb xmm3, xmm1
-; X64-NEXT:    movapd xmm4, xmm3
+; X64-NEXT:    movdqa xmm4, xmm3
 ; X64-NEXT:    pandn xmm4, xmm0
 ; X64-NEXT:    psllw xmm0, 0x4
 ; X64-NEXT:    pand xmm0, xmm3
@@ -78,7 +78,7 @@ define <8 x i8> @shl_v8i8_3(<8 x i8> %a) {
 ; X64-NEXT:    paddb xmm1, xmm1
 ; X64-NEXT:    pxor xmm3, xmm3
 ; X64-NEXT:    pcmpgtb xmm3, xmm1
-; X64-NEXT:    movapd xmm4, xmm3
+; X64-NEXT:    movdqa xmm4, xmm3
 ; X64-NEXT:    pandn xmm4, xmm0
 ; X64-NEXT:    psllw xmm0, 0x2
 ; X64-NEXT:    pand xmm0, xmm3
@@ -87,7 +87,7 @@ define <8 x i8> @shl_v8i8_3(<8 x i8> %a) {
 ; X64-NEXT:    por xmm0, xmm4
 ; X64-NEXT:    paddb xmm1, xmm1
 ; X64-NEXT:    pcmpgtb xmm2, xmm1
-; X64-NEXT:    movapd xmm1, xmm2
+; X64-NEXT:    movdqa xmm1, xmm2
 ; X64-NEXT:    pandn xmm1, xmm0
 ; X64-NEXT:    paddb xmm0, xmm0
 ; X64-NEXT:    pand xmm0, xmm2
@@ -121,7 +121,7 @@ define <16 x i8> @shl_v16i8(<16 x i8> %a, <16 x i8> %b) {
 ; X64-NEXT:    pxor xmm2, xmm2
 ; X64-NEXT:    pxor xmm3, xmm3
 ; X64-NEXT:    pcmpgtb xmm3, xmm1
-; X64-NEXT:    movapd xmm4, xmm3
+; X64-NEXT:    movdqa xmm4, xmm3
 ; X64-NEXT:    pandn xmm4, xmm0
 ; X64-NEXT:    psllw xmm0, 0x4
 ; X64-NEXT:    pand xmm0, xmm3
@@ -131,7 +131,7 @@ define <16 x i8> @shl_v16i8(<16 x i8> %a, <16 x i8> %b) {
 ; X64-NEXT:    paddb xmm1, xmm1
 ; X64-NEXT:    pxor xmm3, xmm3
 ; X64-NEXT:    pcmpgtb xmm3, xmm1
-; X64-NEXT:    movapd xmm4, xmm3
+; X64-NEXT:    movdqa xmm4, xmm3
 ; X64-NEXT:    pandn xmm4, xmm0
 ; X64-NEXT:    psllw xmm0, 0x2
 ; X64-NEXT:    pand xmm0, xmm3
@@ -140,7 +140,7 @@ define <16 x i8> @shl_v16i8(<16 x i8> %a, <16 x i8> %b) {
 ; X64-NEXT:    por xmm0, xmm4
 ; X64-NEXT:    paddb xmm1, xmm1
 ; X64-NEXT:    pcmpgtb xmm2, xmm1
-; X64-NEXT:    movapd xmm1, xmm2
+; X64-NEXT:    movdqa xmm1, xmm2
 ; X64-NEXT:    pandn xmm1, xmm0
 ; X64-NEXT:    paddb xmm0, xmm0
 ; X64-NEXT:    pand xmm0, xmm2
@@ -175,7 +175,7 @@ define <16 x i8> @shl_v16i8_3(<16 x i8> %a) {
 ; X64-NEXT:    pxor xmm2, xmm2
 ; X64-NEXT:    pxor xmm3, xmm3
 ; X64-NEXT:    pcmpgtb xmm3, xmm1
-; X64-NEXT:    movapd xmm4, xmm3
+; X64-NEXT:    movdqa xmm4, xmm3
 ; X64-NEXT:    pandn xmm4, xmm0
 ; X64-NEXT:    psllw xmm0, 0x4
 ; X64-NEXT:    pand xmm0, xmm3
@@ -185,7 +185,7 @@ define <16 x i8> @shl_v16i8_3(<16 x i8> %a) {
 ; X64-NEXT:    paddb xmm1, xmm1
 ; X64-NEXT:    pxor xmm3, xmm3
 ; X64-NEXT:    pcmpgtb xmm3, xmm1
-; X64-NEXT:    movapd xmm4, xmm3
+; X64-NEXT:    movdqa xmm4, xmm3
 ; X64-NEXT:    pandn xmm4, xmm0
 ; X64-NEXT:    psllw xmm0, 0x2
 ; X64-NEXT:    pand xmm0, xmm3
@@ -194,7 +194,7 @@ define <16 x i8> @shl_v16i8_3(<16 x i8> %a) {
 ; X64-NEXT:    por xmm0, xmm4
 ; X64-NEXT:    paddb xmm1, xmm1
 ; X64-NEXT:    pcmpgtb xmm2, xmm1
-; X64-NEXT:    movapd xmm1, xmm2
+; X64-NEXT:    movdqa xmm1, xmm2
 ; X64-NEXT:    pandn xmm1, xmm0
 ; X64-NEXT:    paddb xmm0, xmm0
 ; X64-NEXT:    pand xmm0, xmm2

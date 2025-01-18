@@ -31,9 +31,9 @@ define i8 @atomicrmw_nand_i8_seq_cst(ptr %p, i8 %a) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ldrb w2, [x0]
 ; ARM64-NEXT:    mov w3, w2
-; ARM64-NEXT:    and w5, w2, w1
-; ARM64-NEXT:    mvn w5, w5
-; ARM64-NEXT:    casalb w3, w5, [x0]
+; ARM64-NEXT:    and w4, w2, w1
+; ARM64-NEXT:    mvn w4, w4
+; ARM64-NEXT:    casalb w3, w4, [x0]
 ; ARM64-NEXT:    cmp w3, w2, uxtb
 ; ARM64-NEXT:    mov w2, w3
 ; ARM64-NEXT:    b.ne 0x38 <atomicrmw_nand_i8_seq_cst+0x18>
@@ -72,9 +72,9 @@ define void @atomicrmw_nand_i8_seq_cst_nouse(ptr %p, i8 %a) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ldrb w2, [x0]
 ; ARM64-NEXT:    mov w3, w2
-; ARM64-NEXT:    and w5, w2, w1
-; ARM64-NEXT:    mvn w5, w5
-; ARM64-NEXT:    casalb w3, w5, [x0]
+; ARM64-NEXT:    and w4, w2, w1
+; ARM64-NEXT:    mvn w4, w4
+; ARM64-NEXT:    casalb w3, w4, [x0]
 ; ARM64-NEXT:    cmp w3, w2, uxtb
 ; ARM64-NEXT:    mov w2, w3
 ; ARM64-NEXT:    b.ne 0xc8 <atomicrmw_nand_i8_seq_cst_nouse+0x18>
@@ -113,9 +113,9 @@ define i16 @atomicrmw_nand_i16_seq_cst(ptr %p, i16 %a) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ldrh w2, [x0]
 ; ARM64-NEXT:    mov w3, w2
-; ARM64-NEXT:    and w5, w2, w1
-; ARM64-NEXT:    mvn w5, w5
-; ARM64-NEXT:    casalh w3, w5, [x0]
+; ARM64-NEXT:    and w4, w2, w1
+; ARM64-NEXT:    mvn w4, w4
+; ARM64-NEXT:    casalh w3, w4, [x0]
 ; ARM64-NEXT:    cmp w3, w2, uxth
 ; ARM64-NEXT:    mov w2, w3
 ; ARM64-NEXT:    b.ne 0x158 <atomicrmw_nand_i16_seq_cst+0x18>
@@ -154,9 +154,9 @@ define void @atomicrmw_nand_i16_seq_cst_nouse(ptr %p, i16 %a) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ldrh w2, [x0]
 ; ARM64-NEXT:    mov w3, w2
-; ARM64-NEXT:    and w5, w2, w1
-; ARM64-NEXT:    mvn w5, w5
-; ARM64-NEXT:    casalh w3, w5, [x0]
+; ARM64-NEXT:    and w4, w2, w1
+; ARM64-NEXT:    mvn w4, w4
+; ARM64-NEXT:    casalh w3, w4, [x0]
 ; ARM64-NEXT:    cmp w3, w2, uxth
 ; ARM64-NEXT:    mov w2, w3
 ; ARM64-NEXT:    b.ne 0x1e8 <atomicrmw_nand_i16_seq_cst_nouse+0x18>
@@ -194,9 +194,9 @@ define i32 @atomicrmw_nand_i32_seq_cst(ptr %p, i32 %a) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ldr w2, [x0]
 ; ARM64-NEXT:    mov w3, w2
-; ARM64-NEXT:    and w5, w2, w1
-; ARM64-NEXT:    mvn w5, w5
-; ARM64-NEXT:    casal w3, w5, [x0]
+; ARM64-NEXT:    and w4, w2, w1
+; ARM64-NEXT:    mvn w4, w4
+; ARM64-NEXT:    casal w3, w4, [x0]
 ; ARM64-NEXT:    cmp w3, w2
 ; ARM64-NEXT:    mov w2, w3
 ; ARM64-NEXT:    b.ne 0x278 <atomicrmw_nand_i32_seq_cst+0x18>
@@ -234,9 +234,9 @@ define void @atomicrmw_nand_i32_seq_cst_nouse(ptr %p, i32 %a) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ldr w2, [x0]
 ; ARM64-NEXT:    mov w3, w2
-; ARM64-NEXT:    and w5, w2, w1
-; ARM64-NEXT:    mvn w5, w5
-; ARM64-NEXT:    casal w3, w5, [x0]
+; ARM64-NEXT:    and w4, w2, w1
+; ARM64-NEXT:    mvn w4, w4
+; ARM64-NEXT:    casal w3, w4, [x0]
 ; ARM64-NEXT:    cmp w3, w2
 ; ARM64-NEXT:    mov w2, w3
 ; ARM64-NEXT:    b.ne 0x308 <atomicrmw_nand_i32_seq_cst_nouse+0x18>
@@ -273,12 +273,12 @@ define i64 @atomicrmw_nand_i64_seq_cst(ptr %p, i64 %a) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ldr x2, [x0]
-; ARM64-NEXT:    mov x5, x2
+; ARM64-NEXT:    mov x3, x2
 ; ARM64-NEXT:    and x4, x2, x1
 ; ARM64-NEXT:    mvn x4, x4
-; ARM64-NEXT:    casal x5, x4, [x0]
-; ARM64-NEXT:    cmp x5, x2
-; ARM64-NEXT:    mov x2, x5
+; ARM64-NEXT:    casal x3, x4, [x0]
+; ARM64-NEXT:    cmp x3, x2
+; ARM64-NEXT:    mov x2, x3
 ; ARM64-NEXT:    b.ne 0x398 <atomicrmw_nand_i64_seq_cst+0x18>
 ; ARM64-NEXT:    mov x0, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -312,12 +312,12 @@ define void @atomicrmw_nand_i64_seq_cst_nouse(ptr %p, i64 %a) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ldr x2, [x0]
-; ARM64-NEXT:    mov x5, x2
+; ARM64-NEXT:    mov x3, x2
 ; ARM64-NEXT:    and x4, x2, x1
 ; ARM64-NEXT:    mvn x4, x4
-; ARM64-NEXT:    casal x5, x4, [x0]
-; ARM64-NEXT:    cmp x5, x2
-; ARM64-NEXT:    mov x2, x5
+; ARM64-NEXT:    casal x3, x4, [x0]
+; ARM64-NEXT:    cmp x3, x2
+; ARM64-NEXT:    mov x2, x3
 ; ARM64-NEXT:    b.ne 0x428 <atomicrmw_nand_i64_seq_cst_nouse+0x18>
 ; ARM64-NEXT:    mov x0, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
