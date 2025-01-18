@@ -5,6 +5,7 @@
 #include <fstream>
 
 #include <llvm/IR/InlineAsm.h>
+#include <llvm/IR/IntrinsicsX86.h>
 
 #include "LLVMAdaptor.hpp"
 #include "LLVMCompilerBase.hpp"
@@ -963,6 +964,16 @@ bool LLVMCompilerX64::handle_intrin(IRValueRef inst_idx,
     ScratchReg scratch{this};
     auto val_reg = this->val_as_reg(val_ref, scratch);
     ASM(MOV64rr, FE_SP, val_reg);
+    return true;
+  }
+  case llvm::Intrinsic::x86_sse42_crc32_64_64: {
+    auto lhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto rhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    ScratchReg scratch{this};
+    auto res_ref = this->result_ref_must_salvage(inst_idx, 0, std::move(lhs_ref));
+    auto rhs_reg = this->val_as_reg(rhs_ref, scratch);
+    ASM(CRC32_64rr, res_ref.cur_reg(), rhs_reg);
+    this->set_value(res_ref, res_ref.cur_reg());
     return true;
   }
   case llvm::Intrinsic::trap: {
