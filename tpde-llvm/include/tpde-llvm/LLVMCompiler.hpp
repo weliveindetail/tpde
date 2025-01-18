@@ -26,7 +26,15 @@ public:
   explicit JITMapper(std::unique_ptr<JITMapperImpl> impl) noexcept;
   ~JITMapper();
 
+  JITMapper(const JITMapper &) = delete;
+  JITMapper(JITMapper &&other) noexcept;
+
+  JITMapper &operator=(const JITMapper &) = delete;
+  JITMapper &operator=(JITMapper &&other) noexcept;
+
   void *lookup_global(llvm::GlobalValue *) noexcept;
+
+  operator bool() const noexcept { return impl != nullptr; }
 };
 
 class LLVMCompiler {
