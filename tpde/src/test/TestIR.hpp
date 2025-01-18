@@ -3,9 +3,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <ranges>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "tpde/base.hpp"
@@ -113,12 +112,6 @@ struct TestIRAdaptor {
 
   enum class IRValueRef : u32 {
   };
-
-  /*constexpr friend bool operator<(const IRValueRef &lhs,
-                                  const IRValueRef &rhs) {
-      return static_cast<u32>(lhs) < static_cast<u32>(rhs);
-  }*/
-
   enum class IRBlockRef : u32 {
   };
   enum class IRFuncRef : u32 {
@@ -138,32 +131,8 @@ struct TestIRAdaptor {
   }
 
   auto funcs() const noexcept {
-    struct Range {
-      struct Iter {
-        u32 val;
-
-        Iter &operator++() {
-          ++val;
-          return *this;
-        }
-
-        bool operator!=(const Iter &other) const noexcept {
-          return other.val != val;
-        }
-
-        IRFuncRef operator*() const noexcept {
-          return static_cast<IRFuncRef>(val);
-        }
-      };
-
-      u32 func_count;
-
-      [[nodiscard]] Iter begin() const noexcept { return Iter{0}; }
-
-      [[nodiscard]] Iter end() const noexcept { return Iter{func_count}; }
-    };
-
-    return Range{.func_count = static_cast<u32>(ir->functions.size())};
+    return std::views::iota(size_t{0}, ir->functions.size()) |
+           std::views::transform([](u32 fn) { return IRFuncRef(fn); });
   }
 
   [[nodiscard]] auto funcs_to_compile() const noexcept { return funcs(); }
@@ -200,33 +169,9 @@ struct TestIRAdaptor {
   }
 
   [[nodiscard]] auto cur_args() const noexcept {
-    struct Range {
-      const u32 beg, last;
-
-      struct Iter {
-        u32 val;
-
-        Iter &operator++() {
-          ++val;
-          return *this;
-        }
-
-        bool operator!=(const Iter &other) const noexcept {
-          return other.val != val;
-        }
-
-        IRValueRef operator*() const noexcept {
-          return static_cast<IRValueRef>(val);
-        }
-      };
-
-      [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
-
-      [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
-    };
-
     const auto &func = ir->functions[cur_func];
-    return Range{.beg = func.arg_begin_idx, .last = func.arg_end_idx};
+    return std::views::iota(func.arg_begin_idx, func.arg_end_idx) |
+           std::views::transform([](u32 val) { return IRValueRef(val); });
   }
 
   [[nodiscard]] static bool cur_arg_is_byval(u32) noexcept { return false; }
@@ -238,63 +183,14 @@ struct TestIRAdaptor {
   [[nodiscard]] static bool cur_arg_is_sret(u32) noexcept { return false; }
 
   [[nodiscard]] auto cur_static_allocas() const noexcept {
-    struct Range {
-      const TestIR *self;
-      const u32 val_idx_beg, val_idx_end;
-
-      struct Iter {
-        const TestIR *self;
-        u32 val, val_idx_end;
-
-        Iter &operator++() noexcept {
-          if (val == val_idx_end) {
-            return *this;
-          }
-
-          while (val != val_idx_end) {
-            ++val;
-
-            if (self->values[val].op == TestIR::Value::Op::alloca) {
-              break;
-            }
-          }
-          return *this;
-        }
-
-        bool operator!=(const Iter &other) const noexcept {
-          assert(other.self == self);
-          assert(other.val_idx_end == val_idx_end);
-          return other.val != val;
-        }
-
-        IRValueRef operator*() const noexcept {
-          return static_cast<IRValueRef>(val);
-        }
-      };
-
-      [[nodiscard]] Iter begin() const noexcept {
-        return Iter{
-            .self = self, .val = val_idx_beg, .val_idx_end = val_idx_end};
-      }
-
-      [[nodiscard]] Iter end() const noexcept {
-        return Iter{
-            .self = self, .val = val_idx_end, .val_idx_end = val_idx_end};
-      }
-    };
-
-    const auto &entry = ir->blocks[ir->functions[cur_func].block_begin_idx];
     assert(ir->functions[cur_func].block_begin_idx !=
            ir->functions[cur_func].block_end_idx);
-
-    u32 first_alloca = entry.inst_begin_idx;
-    while (first_alloca != entry.inst_end_idx) {
-      if (ir->values[first_alloca].op == TestIR::Value::Op::alloca) {
-        break;
-      }
-      ++first_alloca;
-    }
-    return Range{ir, first_alloca, entry.inst_end_idx};
+    const auto &block = ir->blocks[ir->functions[cur_func].block_begin_idx];
+    return std::views::iota(block.inst_begin_idx, block.inst_end_idx) |
+           std::views::filter([ir = ir](u32 val) {
+             return ir->values[val].op == TestIR::Value::Op::alloca;
+           }) |
+           std::views::transform([](u32 val) { return IRValueRef(val); });
   }
 
   [[nodiscard]] static bool cur_has_dynamic_alloca() noexcept { return false; }
@@ -317,124 +213,26 @@ struct TestIRAdaptor {
   }
 
   [[nodiscard]] auto block_succs(const IRBlockRef block) const noexcept {
-    struct Range {
-      const u32 *beg, *last;
-
-      struct Iter {
-        const u32 *val;
-
-        Iter &operator++() {
-          ++val;
-          return *this;
-        }
-
-        bool operator!=(const Iter &other) const noexcept {
-          return other.val != val;
-        }
-
-        IRBlockRef operator*() const noexcept {
-          return static_cast<IRBlockRef>(*val);
-        }
-      };
-
-      [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
-
-      [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
-    };
-
     const auto &info = ir->blocks[static_cast<u32>(block)];
     const auto *data = ir->value_operands.data();
-    return Range{data + info.succ_begin_idx, data + info.succ_end_idx};
+    return std::ranges::subrange(data + info.succ_begin_idx,
+                                 data + info.succ_end_idx) |
+           std::views::transform([](u32 val) { return IRBlockRef(val); });
   }
-
-  struct BlockInstRange {
-    const u32 beg, last;
-
-    struct Iter {
-      u32 val;
-
-      Iter &operator++() {
-        ++val;
-        return *this;
-      }
-
-      bool operator!=(const Iter &other) const noexcept {
-        return other.val != val;
-      }
-
-      IRValueRef operator*() const noexcept {
-        return static_cast<IRValueRef>(val);
-      }
-    };
-
-    [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
-
-    [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
-  };
-
-  using IRInstIter = BlockInstRange::Iter;
 
   [[nodiscard]] auto block_values(const IRBlockRef block) const noexcept {
     const auto &info = ir->blocks[static_cast<u32>(block)];
-    return BlockInstRange{info.inst_begin_idx, info.inst_end_idx};
+    return std::views::iota(info.inst_begin_idx, info.inst_end_idx) |
+           std::views::transform([](u32 val) { return IRValueRef(val); });
   }
 
   [[nodiscard]] auto block_phis(const IRBlockRef block) const noexcept {
-    struct Range {
-      const TestIR *self;
-      const u32 val_idx_beg, val_idx_end;
-
-      struct Iter {
-        const TestIR *self;
-        u32 val, val_idx_end;
-
-        Iter &operator++() noexcept {
-          if (val == val_idx_end) {
-            return *this;
-          }
-
-          while (val != val_idx_end) {
-            ++val;
-
-            if (self->values[val].type == TestIR::Value::Type::phi) {
-              break;
-            } else {
-              val = val_idx_end;
-              break;
-            }
-          }
-          return *this;
-        }
-
-        bool operator!=(const Iter &other) const noexcept {
-          assert(other.self == self);
-          assert(other.val_idx_end == val_idx_end);
-          return other.val != val;
-        }
-
-        IRValueRef operator*() const noexcept {
-          return static_cast<IRValueRef>(val);
-        }
-      };
-
-      [[nodiscard]] Iter begin() const noexcept {
-        return Iter{
-            .self = self, .val = val_idx_beg, .val_idx_end = val_idx_end};
-      }
-
-      [[nodiscard]] Iter end() const noexcept {
-        return Iter{
-            .self = self, .val = val_idx_end, .val_idx_end = val_idx_end};
-      }
-    };
-
     const auto &info = ir->blocks[static_cast<u32>(block)];
-    if (info.inst_begin_idx == info.inst_end_idx ||
-        ir->values[info.inst_begin_idx].type != TestIR::Value::Type::phi) {
-      return Range{ir, info.inst_end_idx, info.inst_end_idx};
-    } else {
-      return Range{ir, info.inst_begin_idx, info.inst_end_idx};
-    }
+    return std::views::iota(info.inst_begin_idx, info.inst_end_idx) |
+           std::views::take_while([ir = ir](u32 val) {
+             return ir->values[val].type == TestIR::Value::Type::phi;
+           }) |
+           std::views::transform([](u32 val) { return IRValueRef(val); });
   }
 
   [[nodiscard]] u32 block_info(IRBlockRef block) const noexcept {
@@ -468,35 +266,11 @@ struct TestIRAdaptor {
   }
 
   [[nodiscard]] auto val_operands(IRValueRef val) {
-    struct Range {
-      const u32 *beg, *last;
-
-      struct Iter {
-        const u32 *val;
-
-        Iter &operator++() {
-          ++val;
-          return *this;
-        }
-
-        bool operator!=(const Iter &other) const noexcept {
-          return other.val != val;
-        }
-
-        IRValueRef operator*() const noexcept {
-          return static_cast<IRValueRef>(*val);
-        }
-      };
-
-      [[nodiscard]] Iter begin() const noexcept { return Iter{beg}; }
-
-      [[nodiscard]] Iter end() const noexcept { return Iter{last}; }
-    };
-
     const auto &info = ir->values[static_cast<u32>(val)];
     const auto *data = ir->value_operands.data();
-    return Range(data + info.op_begin_idx,
-                 data + info.op_begin_idx + info.op_count);
+    return std::ranges::subrange(data + info.op_begin_idx,
+                                 data + info.op_begin_idx + info.op_count) |
+           std::views::transform([](u32 val) { return IRValueRef(val); });
   }
 
   [[nodiscard]] bool

@@ -35,6 +35,11 @@ concept IRIter = requires(T i, T i2) {
   { i != i2 } -> std::convertible_to<bool>;
 };
 
+template <typename T, typename Value, typename IRIter>
+concept IREndIter = requires(IRIter i, T i2) {
+  { i != i2 } -> std::convertible_to<bool>;
+};
+
 /// Concept describing a very simple range
 ///
 /// It is purposefully kept simple since the full concepts from std::ranges want
@@ -42,7 +47,7 @@ concept IRIter = requires(T i, T i2) {
 template <typename T, typename Value>
 concept IRRange = requires(T r) {
   { r.begin() } -> IRIter<Value>;
-  { r.end() } -> IRIter<Value>;
+  { r.end() } -> IREndIter<Value, decltype(r.begin())>;
 };
 
 /// PHI-Nodes are a special case of IRValues and need to be inspected more
@@ -127,10 +132,6 @@ concept IRAdaptor = requires(T a) {
   ///
   /// Note: One of these has to be true
   { T::TPDE_LIVENESS_VISIT_ARGS } -> SameBaseAs<bool>;
-
-  /// Iterator type for instructions
-  typename T::IRInstIter;
-  requires IRIter<typename T::IRInstIter, typename T::IRValueRef>;
 
   // Can the adaptor store two 32 bit values for efficient access through the
   // block reference?
@@ -242,14 +243,6 @@ concept IRAdaptor = requires(T a) {
   {
     a.block_values(ARG(typename T::IRBlockRef))
   } -> IRRange<typename T::IRValueRef>;
-
-  /// The iterator for values must be of type InstIter
-  {
-    a.block_values(ARG(typename T::IRBlockRef)).begin()
-  } -> std::convertible_to<typename T::IRInstIter>;
-  {
-    a.block_values(ARG(typename T::IRBlockRef)).end()
-  } -> std::convertible_to<typename T::IRInstIter>;
 
   /// Provides an iterator over the PHIs in a block
   {
