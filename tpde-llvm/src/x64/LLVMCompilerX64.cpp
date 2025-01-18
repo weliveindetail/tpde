@@ -408,7 +408,7 @@ bool LLVMCompilerX64::compile_alloca(IRValueRef inst_idx,
         ASM(SHL64ri, res_reg, shift);
       }
     } else {
-      if (elem_size <= 0xFFFF'FFFF) [[likely]] {
+      if (elem_size <= 0x7FFF'FFFF) [[likely]] {
         ASM(IMUL64rri, res_reg, res_reg, elem_size);
       } else {
         auto tmp = scratch.alloc_gp();
