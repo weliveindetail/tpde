@@ -563,14 +563,12 @@ void EncodingTargetX64::get_inst_candidates(
     handle_ri_shift("ROL16rCL", "ROL16ri", 3, -1, "ROL16rr", "ROL16ri");
     handle_ri_shift("ROL32rCL", "ROL32ri", 3, -1, "ROL32rr", "ROL32ri");
     handle_ri_shift("ROL64rCL", "ROL64ri", 3, -1, "ROL64rr", "ROL64ri");
-    handle_ri_shift("SHRD8rCL", "SHRD8ri", 3, -1, "SHRD8rr", "SHRD8ri");
-    handle_ri_shift("SHRD16rCL", "SHRD16ri", 3, -1, "SHRD16rr", "SHRD16ri");
-    handle_ri_shift("SHRD32rCL", "SHRD32ri", 3, -1, "SHRD32rr", "SHRD32ri");
-    handle_ri_shift("SHRD64rCL", "SHRD64ri", 3, -1, "SHRD64rr", "SHRD64ri");
-    handle_ri_shift("SHLD8rCL", "SHLD8ri", 3, -1, "SHLD8rr", "SHLD8ri");
-    handle_ri_shift("SHLD16rCL", "SHLD16ri", 3, -1, "SHLD16rr", "SHLD16ri");
-    handle_ri_shift("SHLD32rCL", "SHLD32ri", 3, -1, "SHLD32rr", "SHLD32ri");
-    handle_ri_shift("SHLD64rCL", "SHLD64ri", 3, -1, "SHLD64rr", "SHLD64ri");
+    handle_ri_shift("SHRD16rrCL", "SHRD16rri", 4, -1, "SHRD16rrr", "SHRD16rri");
+    handle_ri_shift("SHRD32rrCL", "SHRD32rri", 4, -1, "SHRD32rrr", "SHRD32rri");
+    handle_ri_shift("SHRD64rrCL", "SHRD64rri", 4, -1, "SHRD64rrr", "SHRD64rri");
+    handle_ri_shift("SHLD16rrCL", "SHLD16rri", 4, -1, "SHLD16rrr", "SHLD16rri");
+    handle_ri_shift("SHLD32rrCL", "SHLD32rri", 4, -1, "SHLD32rrr", "SHLD32rri");
+    handle_ri_shift("SHLD64rrCL", "SHLD64rri", 4, -1, "SHLD64rrr", "SHLD64rri");
 
     handle_rm("MUL8r", "MUL8m", 0, "MUL8r", "MUL8m");
     handle_rm("MUL16r", "MUL16m", 0, "MUL16r", "MUL16m");
