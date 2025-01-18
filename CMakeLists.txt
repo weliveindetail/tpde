@@ -24,6 +24,8 @@ else ()
     add_compile_options(-Wno-missing-field-initializers)
     # practically supported by every compiler
     add_compile_options(-Wno-nested-anon-types)
+    # i want these sometimes
+    add_compile_options(-Wno-old-style-cast)
 
     # for development builds use -Werror and enable sanitizers
     if (PROJECT_IS_TOP_LEVEL)
