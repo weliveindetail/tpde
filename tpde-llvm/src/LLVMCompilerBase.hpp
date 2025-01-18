@@ -2489,6 +2489,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
     IRValueRef inst_idx, llvm::Instruction *inst) noexcept {
   auto *cmpxchg = llvm::cast<llvm::AtomicCmpXchgInst>(inst);
 
+  auto *cmp_val = cmpxchg->getCompareOperand();
+  auto *new_val = cmpxchg->getNewValOperand();
+  auto *val_ty = new_val->getType();
+  const bool is_32 = val_ty->isIntegerTy(32);
+  if (!is_32 && !val_ty->isIntegerTy(64) && !val_ty->isPointerTy()) {
+    return false;
+  }
+
   const auto succ_order = cmpxchg->getSuccessOrdering();
   const auto fail_order = cmpxchg->getFailureOrdering();
 
@@ -2501,49 +2509,52 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
 
   if (succ_order == llvm::AtomicOrdering::Monotonic) {
     assert(fail_order == llvm::AtomicOrdering::Monotonic);
-    encode_ptr = &Derived::encode_cmpxchg_u64_monotonic_monotonic;
+    encode_ptr = is_32 ? &Derived::encode_cmpxchg_u32_monotonic_monotonic
+                       : &Derived::encode_cmpxchg_u64_monotonic_monotonic;
   } else if (succ_order == llvm::AtomicOrdering::Acquire) {
     if (fail_order == llvm::AtomicOrdering::Acquire) {
-      encode_ptr = &Derived::encode_cmpxchg_u64_acquire_acquire;
+      encode_ptr = is_32 ? &Derived::encode_cmpxchg_u32_acquire_acquire
+                         : &Derived::encode_cmpxchg_u64_acquire_acquire;
     } else {
       assert(fail_order == llvm::AtomicOrdering::Monotonic);
-      encode_ptr = &Derived::encode_cmpxchg_u64_acquire_monotonic;
+      encode_ptr = is_32 ? &Derived::encode_cmpxchg_u32_acquire_monotonic
+                         : &Derived::encode_cmpxchg_u64_acquire_monotonic;
     }
   } else if (succ_order == llvm::AtomicOrdering::Release) {
     if (fail_order == llvm::AtomicOrdering::Acquire) {
-      encode_ptr = &Derived::encode_cmpxchg_u64_release_acquire;
+      encode_ptr = is_32 ? &Derived::encode_cmpxchg_u32_release_acquire
+                         : &Derived::encode_cmpxchg_u64_release_acquire;
     } else {
       assert(fail_order == llvm::AtomicOrdering::Monotonic);
-      encode_ptr = &Derived::encode_cmpxchg_u64_release_monotonic;
+      encode_ptr = is_32 ? &Derived::encode_cmpxchg_u32_release_monotonic
+                         : &Derived::encode_cmpxchg_u64_release_monotonic;
     }
   } else if (succ_order == llvm::AtomicOrdering::AcquireRelease) {
     if (fail_order == llvm::AtomicOrdering::Acquire) {
-      encode_ptr = &Derived::encode_cmpxchg_u64_acqrel_acquire;
+      encode_ptr = is_32 ? &Derived::encode_cmpxchg_u32_acqrel_acquire
+                         : &Derived::encode_cmpxchg_u64_acqrel_acquire;
     } else {
       assert(fail_order == llvm::AtomicOrdering::Monotonic);
-      encode_ptr = &Derived::encode_cmpxchg_u64_acqrel_monotonic;
+      encode_ptr = is_32 ? &Derived::encode_cmpxchg_u32_acqrel_monotonic
+                         : &Derived::encode_cmpxchg_u64_acqrel_monotonic;
     }
   } else if (succ_order == llvm::AtomicOrdering::SequentiallyConsistent) {
     if (fail_order == llvm::AtomicOrdering::SequentiallyConsistent) {
-      encode_ptr = &Derived::encode_cmpxchg_u64_seqcst_seqcst;
+      encode_ptr = is_32 ? &Derived::encode_cmpxchg_u32_seqcst_seqcst
+                         : &Derived::encode_cmpxchg_u64_seqcst_seqcst;
     } else if (fail_order == llvm::AtomicOrdering::Acquire) {
-      encode_ptr = &Derived::encode_cmpxchg_u64_seqcst_acquire;
+      encode_ptr = is_32 ? &Derived::encode_cmpxchg_u32_seqcst_acquire
+                         : &Derived::encode_cmpxchg_u64_seqcst_acquire;
     } else {
       assert(fail_order == llvm::AtomicOrdering::Monotonic);
-      encode_ptr = &Derived::encode_cmpxchg_u64_seqcst_monotonic;
+      encode_ptr = is_32 ? &Derived::encode_cmpxchg_u32_seqcst_monotonic
+                         : &Derived::encode_cmpxchg_u64_seqcst_monotonic;
     }
   }
 
   auto *ptr_val = cmpxchg->getPointerOperand();
   assert(ptr_val->getType()->isPointerTy());
   auto ptr_ref = this->val_ref(llvm_val_idx(ptr_val), 0);
-
-  auto *cmp_val = cmpxchg->getCompareOperand();
-  auto *new_val = cmpxchg->getNewValOperand();
-  auto *val_ty = new_val->getType();
-  if (!val_ty->isIntegerTy(64) && !val_ty->isPointerTy()) {
-    return false;
-  }
 
   auto cmp_ref = this->val_ref(llvm_val_idx(cmp_val), 0);
   auto new_ref = this->val_ref(llvm_val_idx(new_val), 0);

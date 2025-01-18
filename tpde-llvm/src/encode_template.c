@@ -438,50 +438,56 @@ u64 TARGET_V1 zext_32_to_64(i32 a) { return (u64)(u32)a; }
 
 typedef struct CmpXchgRes { u64 orig; bool success; } CmpXchgRes;
 
-CmpXchgRes TARGET_V1 cmpxchg_u64_monotonic_monotonic(u64* ptr, u64 cmp, u64 new_val) {
-    bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
-    return (CmpXchgRes){cmp, res};
-}
+#define CMPXCHG(ty) \
+  CmpXchgRes TARGET_V1 cmpxchg_##ty##_monotonic_monotonic(ty* ptr, ty cmp, ty new_val) { \
+      bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED); \
+      return (CmpXchgRes){cmp, res}; \
+  } \
+  \
+  CmpXchgRes TARGET_V1 cmpxchg_##ty##_acquire_monotonic(ty* ptr, ty cmp, ty new_val) { \
+      bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED); \
+      return (CmpXchgRes){cmp, res}; \
+  } \
+  CmpXchgRes TARGET_V1 cmpxchg_##ty##_acquire_acquire(ty* ptr, ty cmp, ty new_val) { \
+      bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE); \
+      return (CmpXchgRes){cmp, res}; \
+  } \
+  \
+  CmpXchgRes TARGET_V1 cmpxchg_##ty##_release_monotonic(ty* ptr, ty cmp, ty new_val) { \
+      bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_RELEASE, __ATOMIC_RELAXED); \
+      return (CmpXchgRes){cmp, res}; \
+  } \
+  CmpXchgRes TARGET_V1 cmpxchg_##ty##_release_acquire(ty* ptr, ty cmp, ty new_val) { \
+      bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_RELEASE, __ATOMIC_ACQUIRE); \
+      return (CmpXchgRes){cmp, res}; \
+  } \
+  \
+  CmpXchgRes TARGET_V1 cmpxchg_##ty##_acqrel_monotonic(ty* ptr, ty cmp, ty new_val) { \
+      bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED); \
+      return (CmpXchgRes){cmp, res}; \
+  } \
+  CmpXchgRes TARGET_V1 cmpxchg_##ty##_acqrel_acquire(ty* ptr, ty cmp, ty new_val) { \
+      bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE); \
+      return (CmpXchgRes){cmp, res}; \
+  } \
+  \
+  CmpXchgRes TARGET_V1 cmpxchg_##ty##_seqcst_monotonic(ty* ptr, ty cmp, ty new_val) { \
+      bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED); \
+      return (CmpXchgRes){cmp, res}; \
+  } \
+  CmpXchgRes TARGET_V1 cmpxchg_##ty##_seqcst_acquire(ty* ptr, ty cmp, ty new_val) { \
+      bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE); \
+      return (CmpXchgRes){cmp, res}; \
+  } \
+  CmpXchgRes TARGET_V1 cmpxchg_##ty##_seqcst_seqcst(ty* ptr, ty cmp, ty new_val) { \
+      bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST); \
+      return (CmpXchgRes){cmp, res}; \
+  }
 
-CmpXchgRes TARGET_V1 cmpxchg_u64_acquire_monotonic(u64* ptr, u64 cmp, u64 new_val) {
-    bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
-    return (CmpXchgRes){cmp, res};
-}
-CmpXchgRes TARGET_V1 cmpxchg_u64_acquire_acquire(u64* ptr, u64 cmp, u64 new_val) {
-    bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
-    return (CmpXchgRes){cmp, res};
-}
+CMPXCHG(u64)
+CMPXCHG(u32)
 
-CmpXchgRes TARGET_V1 cmpxchg_u64_release_monotonic(u64* ptr, u64 cmp, u64 new_val) {
-    bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_RELEASE, __ATOMIC_RELAXED);
-    return (CmpXchgRes){cmp, res};
-}
-CmpXchgRes TARGET_V1 cmpxchg_u64_release_acquire(u64* ptr, u64 cmp, u64 new_val) {
-    bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_RELEASE, __ATOMIC_ACQUIRE);
-    return (CmpXchgRes){cmp, res};
-}
-
-CmpXchgRes TARGET_V1 cmpxchg_u64_acqrel_monotonic(u64* ptr, u64 cmp, u64 new_val) {
-    bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
-    return (CmpXchgRes){cmp, res};
-}
-CmpXchgRes TARGET_V1 cmpxchg_u64_acqrel_acquire(u64* ptr, u64 cmp, u64 new_val) {
-    bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
-    return (CmpXchgRes){cmp, res};
-}
-
-CmpXchgRes TARGET_V1 cmpxchg_u64_seqcst_monotonic(u64* ptr, u64 cmp, u64 new_val) {
-    bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED);
-    return (CmpXchgRes){cmp, res};
-}
-CmpXchgRes TARGET_V1 cmpxchg_u64_seqcst_acquire(u64* ptr, u64 cmp, u64 new_val) {
-    bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE);
-    return (CmpXchgRes){cmp, res};
-}
-CmpXchgRes TARGET_V1 cmpxchg_u64_seqcst_seqcst(u64* ptr, u64 cmp, u64 new_val) {
-    bool res = __atomic_compare_exchange_n(ptr, &cmp, new_val, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-    return (CmpXchgRes){cmp, res};
-}
+#undef CMPXCHG
 
 u32 TARGET_V1 atomic_load_u8_mono(u8* ptr) { return __atomic_load_n(ptr, __ATOMIC_RELAXED); }
 u32 TARGET_V1 atomic_load_u16_mono(u16* ptr) { return __atomic_load_n(ptr, __ATOMIC_RELAXED); }
