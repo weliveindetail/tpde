@@ -106,7 +106,6 @@ void AssemblerElfBase::reset() noexcept {
   secref_fini_array = INVALID_SEC_REF;
   secref_eh_frame = INVALID_SEC_REF;
   secref_except_table = INVALID_SEC_REF;
-  sec_bss_size = 0;
   cur_personality_func_addr = SymRef();
   cur_func = SymRef();
 
@@ -181,6 +180,13 @@ AssemblerElfBase::SecRef
 
 void AssemblerElfBase::init_sections() noexcept {
   sections.resize(elf::sec_count());
+
+  // setup bss
+  sections[elf::sec_idx(".bss")].hdr.sh_flags = SHF_ALLOC | SHF_WRITE;
+  sections[elf::sec_idx(".bss")].hdr.sh_type = SHT_NOBITS;
+  sections[elf::sec_idx(".bss")].hdr.sh_addralign = 16;
+  sections[elf::sec_idx(".bss")].hdr.sh_size = 0;
+
   unsigned off_text = elf::sec_off(".rela.text");
   (void)get_or_create_section(
       secref_text, off_text, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 16);
@@ -262,8 +268,9 @@ void AssemblerElfBase::sym_def_predef_bss(const SymRef sym_ref,
   Elf64_Sym *sym = sym_ptr(sym_ref);
 
   assert((align & (align - 1)) == 0);
-  const u32 pos = util::align_up(sec_bss_size, align);
-  sec_bss_size = pos + size;
+  auto& bss_size = sections[elf::sec_idx(".bss")].hdr.sh_size;
+  const u32 pos = util::align_up(u32(bss_size), align);
+  bss_size = pos + size;
 
   if (off) {
     *off = pos;
@@ -828,7 +835,7 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
 
   // .bss
   {
-    const auto size = util::align_up(sec_bss_size, 16);
+    const auto size = util::align_up(sections[elf::sec_idx(".bss")].hdr.sh_size, 16);
     const auto sh_off = out.size();
 
     auto *hdr = sec_hdr(sec_idx(".bss"));

@@ -200,7 +200,7 @@ struct AssemblerElfBase {
     DataSection(unsigned type, unsigned flags, unsigned name_off)
         : hdr{.sh_name = name_off, .sh_type = type, .sh_flags = flags} {}
 
-    size_t size() const { return data.size(); }
+    size_t size() const { return (hdr.sh_type == SHT_NOBITS) ? hdr.sh_size : data.size(); }
   };
 
 private:
@@ -234,7 +234,6 @@ private:
   u32 next_free_tsfixup = ~0u;
 
   std::vector<char> strtab;
-  u32 sec_bss_size = 0;
 
 protected:
   SecRef secref_text = INVALID_SEC_REF;
