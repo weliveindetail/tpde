@@ -26,6 +26,8 @@ else ()
     add_compile_options(-Wno-nested-anon-types)
     # i want these sometimes
     add_compile_options(-Wno-old-style-cast)
+    # We often add unreachable() to default cases
+    add_compile_options(-Wno-covered-switch-default)
 
     # for development builds use -Werror and enable sanitizers
     if (PROJECT_IS_TOP_LEVEL)
