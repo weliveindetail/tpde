@@ -13,6 +13,7 @@
 
 #include "tpde-llvm/LLVMCompiler.hpp"
 
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -147,14 +148,10 @@ int main(int argc, char *argv[]) {
 
   if (obj_out_path.Get() == "-") {
     std::cout.write(reinterpret_cast<const char *>(buf.data()), buf.size());
+    std::cout << std::flush;
   } else {
     std::ofstream out{obj_out_path.Get().c_str(), std::ios::binary};
     out.write(reinterpret_cast<const char *>(buf.data()), buf.size());
-  }
-
-  {
-    llvm::TimeTraceScope time_scope("Free Module");
-    mod.reset();
   }
 
   if (time_trace) {
@@ -172,5 +169,5 @@ int main(int argc, char *argv[]) {
     mod->print(llvm::outs(), nullptr);
   }
 
-  return 0;
+  std::_Exit(0);
 }
