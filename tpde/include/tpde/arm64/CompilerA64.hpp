@@ -1062,7 +1062,7 @@ u32 CallingConv::handle_call_args(
             break;
           }
             // can't guarantee the alignment on the stack
-          default: assert(0); exit(1);
+          default: TPDE_FATAL("invalid size for passing vector register");
           }
         }
       }
@@ -1590,16 +1590,16 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_reg(
     case 2: ASMNC(STRHu, reg, addr_base, off); break;
     case 4: ASMNC(STRwu, reg, addr_base, off); break;
     case 8: ASMNC(STRxu, reg, addr_base, off); break;
-    default: assert(0); __builtin_unreachable();
+    default: TPDE_UNREACHABLE("invalid register spill size");
     }
   } else {
     switch (size) {
+    case 1: ASMNC(STRbu, reg, addr_base, off); break;
+    case 2: ASMNC(STRhu, reg, addr_base, off); break;
     case 4: ASMNC(STRsu, reg, addr_base, off); break;
     case 8: ASMNC(STRdu, reg, addr_base, off); break;
     case 16: ASMNC(STRqu, reg, addr_base, off); break;
-    case 1: assert(0);
-    case 2: assert(0);
-    default: assert(0); __builtin_unreachable();
+    default: TPDE_UNREACHABLE("invalid register spill size");
     }
   }
 
@@ -1642,7 +1642,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
       case 2: ASMNC(LDRHu, dst, addr_base, off); break;
       case 4: ASMNC(LDRwu, dst, addr_base, off); break;
       case 8: ASMNC(LDRxu, dst, addr_base, off); break;
-      default: assert(0); __builtin_unreachable();
+      default: TPDE_UNREACHABLE("invalid register spill size");
       }
     } else {
       switch (size) {
@@ -1650,7 +1650,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
       case 2: ASMNC(LDRSHwu, dst, addr_base, off); break;
       case 4: ASMNC(LDRSWxu, dst, addr_base, off); break;
       case 8: ASMNC(LDRxu, dst, addr_base, off); break;
-      default: assert(0); __builtin_unreachable();
+      default: TPDE_UNREACHABLE("invalid register spill size");
       }
     }
     return;
@@ -1659,15 +1659,12 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
   assert(!sign_extend);
 
   switch (size) {
+  case 1: ASMNC(LDRbu, dst, addr_base, off); break;
+  case 2: ASMNC(LDRhu, dst, addr_base, off); break;
   case 4: ASMNC(LDRsu, dst, addr_base, off); break;
   case 8: ASMNC(LDRdu, dst, addr_base, off); break;
-  case 16:
-    ASMNC(LDRqu, dst, addr_base, off);
-    break;
-    // TODO(ts): 32/64 with feature flag?
-  case 1: assert(0);
-  case 2: assert(0);
-  default: assert(0); __builtin_unreachable();
+  case 16: ASMNC(LDRqu, dst, addr_base, off); break;
+  default: TPDE_UNREACHABLE("invalid register spill size");
   }
 }
 
@@ -1793,7 +1790,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
       ASM(MOVx, dst, base_reg);
     }
   } else {
-    assert(0);
+    TPDE_UNREACHABLE("inconsistent GenericValuePart::Expr");
   }
 
   AsmReg dst = scratch.cur_reg;
@@ -1919,8 +1916,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     return;
   }
 
-  assert(0);
-  exit(1);
+  TPDE_FATAL("unable to materialize constant");
 }
 
 template <IRAdaptor Adaptor,
@@ -2042,8 +2038,8 @@ typename CompilerA64<Adaptor, Derived, BaseTy, Config>::Jump
   case Jump::Cbnz: return jmp.change_kind(Jump::Cbz);
   case Jump::Tbz: return jmp.change_kind(Jump::Tbnz);
   case Jump::Tbnz: return jmp.change_kind(Jump::Tbz);
+  default: TPDE_UNREACHABLE("invalid jump kind");
   }
-  __builtin_unreachable();
 }
 
 template <IRAdaptor Adaptor,
@@ -2058,10 +2054,6 @@ typename CompilerA64<Adaptor, Derived, BaseTy, Config>::Jump
   case Jump::Jne: return jmp.change_kind(Jump::Jne);
   case Jump::Jcc: return jmp.change_kind(Jump::Jhi);
   case Jump::Jcs: return jmp.change_kind(Jump::Jls);
-  case Jump::Jmi:
-  case Jump::Jpl: assert(0); exit(1);
-  case Jump::Jvs: return jmp.change_kind(Jump::Jvs);
-  case Jump::Jvc: return jmp.change_kind(Jump::Jvc);
   case Jump::Jhi: return jmp.change_kind(Jump::Jcc);
   case Jump::Jls: return jmp.change_kind(Jump::Jcs);
   case Jump::Jge: return jmp.change_kind(Jump::Jle);
@@ -2069,12 +2061,16 @@ typename CompilerA64<Adaptor, Derived, BaseTy, Config>::Jump
   case Jump::Jgt: return jmp.change_kind(Jump::Jlt);
   case Jump::Jle: return jmp.change_kind(Jump::Jge);
   case Jump::jmp: return jmp;
-  case Jump::Cbz: return jmp.change_kind(Jump::Cbz);
-  case Jump::Cbnz: return jmp.change_kind(Jump::Cbnz);
-  case Jump::Tbz: return jmp.change_kind(Jump::Tbz);
-  case Jump::Tbnz: return jmp.change_kind(Jump::Tbnz);
+  case Jump::Jmi:
+  case Jump::Jpl:
+  case Jump::Jvs:
+  case Jump::Jvc:
+  case Jump::Cbz:
+  case Jump::Cbnz:
+  case Jump::Tbz:
+  case Jump::Tbnz:
+  default: TPDE_UNREACHABLE("invalid jump kind for swap_jump");
   }
-  __builtin_unreachable();
 }
 
 template <IRAdaptor Adaptor,
@@ -2287,7 +2283,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
     cond = DA_LE;
     cond_compl = DA_GT;
     break;
-  default: __builtin_unreachable();
+  default: TPDE_UNREACHABLE("invalid jump kind");
   }
 
 
@@ -2344,7 +2340,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_set(
   case Jump::Jgt: ASMNC(CSETw, dst, DA_GT); break;
   case Jump::Jle: ASMNC(CSETw, dst, DA_LE); break;
   case Jump::jmp: ASMNC(CSETw, dst, DA_AL); break;
-  default: assert(0); __builtin_unreachable();
+  default: TPDE_UNREACHABLE("invalid condition for set/mask");
   }
 }
 

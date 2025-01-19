@@ -921,7 +921,7 @@ u32 CallingConv::handle_call_args(
             break;
           }
             // can't guarantee the alignment on the stack
-          default: assert(0); exit(1);
+          default: TPDE_FATAL("invalid size for passing vector register");
           }
         }
       }
@@ -1390,7 +1390,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::spill_reg(
     case 2: ASMNC(MOV16mr, mem, reg); break;
     case 4: ASMNC(MOV32mr, mem, reg); break;
     case 8: ASMNC(MOV64mr, mem, reg); break;
-    default: assert(0); __builtin_unreachable();
+    default: TPDE_UNREACHABLE("invalid spill size");
     }
     return;
   }
@@ -1398,13 +1398,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::spill_reg(
   switch (size) {
   case 4: ASMNC(SSE_MOVD_X2Gmr, mem, reg); break;
   case 8: ASMNC(SSE_MOVQ_X2Gmr, mem, reg); break;
-  case 16:
-    ASMNC(SSE_MOVAPDmr, mem, reg);
-    break;
-    // TODO(ts): 32/64 with feature flag?
-  case 1: assert(0);
-  case 2: assert(0);
-  default: assert(0); __builtin_unreachable();
+  case 16: ASMNC(SSE_MOVAPDmr, mem, reg); break;
+  default: TPDE_UNREACHABLE("invalid spill size");
   }
 }
 
@@ -1428,7 +1423,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
       case 2: ASMNC(MOVZXr32m16, dst, mem); break;
       case 4: ASMNC(MOV32rm, dst, mem); break;
       case 8: ASMNC(MOV64rm, dst, mem); break;
-      default: assert(0); __builtin_unreachable();
+      default: TPDE_UNREACHABLE("invalid spill size");
       }
     } else {
       switch (size) {
@@ -1436,7 +1431,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
       case 2: ASMNC(MOVSXr64m16, dst, mem); break;
       case 4: ASMNC(MOVSXr64m32, dst, mem); break;
       case 8: ASMNC(MOV64rm, dst, mem); break;
-      default: assert(0); __builtin_unreachable();
+      default: TPDE_UNREACHABLE("invalid spill size");
       }
     }
     return;
@@ -1447,13 +1442,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
   switch (size) {
   case 4: ASMNC(SSE_MOVD_G2Xrm, dst, mem); break;
   case 8: ASMNC(SSE_MOVQ_G2Xrm, dst, mem); break;
-  case 16:
-    ASMNC(SSE_MOVAPDrm, dst, mem);
-    break;
-    // TODO(ts): 32/64 with feature flag?
-  case 1: assert(0);
-  case 2: assert(0);
-  default: assert(0); __builtin_unreachable();
+  case 16: ASMNC(SSE_MOVAPDrm, dst, mem); break;
+  default: TPDE_UNREACHABLE("invalid spill size");
   }
 }
 
@@ -1751,8 +1741,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
   }
 
   // TODO(ts): have some facility to use a constant pool
-  assert(0);
-  exit(1);
+  TPDE_FATAL("unable to materialize constant");
 }
 
 template <IRAdaptor Adaptor,

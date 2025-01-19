@@ -677,9 +677,8 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
 
 #ifdef TPDE_ASSERTS
   for (auto reg_id : register_file.used_regs()) {
-    if (register_file.reg_local_idx(AsmReg{reg_id}) == local_idx) {
-      assert(0);
-    }
+    assert(register_file.reg_local_idx(AsmReg{reg_id}) != local_idx &&
+           "freeing assignment that is still referenced by a register");
   }
 #endif
 
@@ -1159,8 +1158,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     }
     return derived()->gval_expr_as_reg(gv);
   }
-  assert(0);
-  return AsmReg::make_invalid();
+  TPDE_UNREACHABLE("gval_as_reg on empty GenericValuePart");
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -1450,9 +1448,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
         // TODO(ts): use clock here?
         reg = reg_file.find_first_nonfixed_excluding(bank, 0);
         if (reg.invalid()) {
-          TPDE_LOG_ERR("ran out of registers for scratch registers");
-          assert(0);
-          exit(1);
+          TPDE_FATAL("ran out of registers for scratch registers");
         }
 
         backed_up = true;

@@ -48,6 +48,11 @@
 #else
   #define TPDE_UNREACHABLE(msg) __builtin_unreachable()
 #endif
+#define TPDE_FATAL(...)                                                        \
+  do {                                                                         \
+    TPDE_LOG_ERR(__VA_ARGS__);                                                 \
+    abort();                                                                   \
+  } while (0)
 
 namespace tpde {
 // NOTE(ts): someone's gonna hate me...

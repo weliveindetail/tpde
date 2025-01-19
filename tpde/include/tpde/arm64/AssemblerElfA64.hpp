@@ -135,8 +135,7 @@ inline void
 inline void AssemblerElfA64::text_more_space(u32 size) noexcept {
   if (text_reserve_end - text_begin >= (128 * 1024 * 1024)) {
     // we do not support multiple text sections currently
-    assert(0);
-    exit(1);
+    TPDE_FATAL("AArch64 doesn't support sections larger than 128 MiB");
   }
 
   u32 veneer_size = sizeof(u32) * (unresolved_test_brs + unresolved_cond_brs);

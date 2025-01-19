@@ -36,7 +36,7 @@ constexpr static std::span<const char> SHSTRTAB = {
 static void fail_constexpr_compile(const char *) {
   assert(0);
   exit(1);
-};
+}
 
 consteval static u32 sec_idx(const std::string_view name) {
   // skip the first null string

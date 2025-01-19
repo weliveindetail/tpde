@@ -574,10 +574,7 @@ void TestIR::dump_debug() const noexcept {
           }
           break;
         }
-        case arg: {
-          assert(0);
-          exit(1);
-        }
+        case arg: TPDE_UNREACHABLE("argument must not be in instruction list");
         case phi: {
           TPDE_LOG_DBG("    PHI {}", val_idx);
           for (u32 op = 0; op < val.op_count; ++op) {
@@ -659,10 +656,7 @@ void TestIR::print() const noexcept {
           }
           break;
         }
-        case arg: {
-          assert(0);
-          exit(1);
-        }
+        case arg: TPDE_UNREACHABLE("argument must not be in instruction list");
         case phi: {
           std::cout << std::format("    PHI {}\n", values[val_idx].name);
           for (u32 op = 0; op < val.op_count; ++op) {

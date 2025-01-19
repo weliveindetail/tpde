@@ -224,8 +224,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
     const auto bank = derived()->register_file.reg_bank(reg);
     if (bank != 0) {
         // TODO(ts): need to know the size
-        assert(0);
-        exit(1);
+        TPDE_FATAL("fixed non-gp regs not supported");
     }
 
     const auto alloc_backup = [this, &backup_reg, &scratch, reg, bank]() {

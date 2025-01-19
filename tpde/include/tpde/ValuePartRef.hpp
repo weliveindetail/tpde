@@ -258,9 +258,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     reg = reg_file.find_clocked_nonfixed_excluding(pa.bank(), 0);
 
     if (reg.invalid()) [[unlikely]] {
-      TPDE_LOG_ERR("ran out of registers for value part");
-      assert(0);
-      exit(1);
+      TPDE_FATAL("ran out of registers for value part");
     }
 
     AssignmentPartRef part{

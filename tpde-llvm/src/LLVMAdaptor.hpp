@@ -10,6 +10,7 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "base.hpp"
 #include "tpde/base.hpp"
@@ -588,8 +589,9 @@ public:
     if (llvm::isa<llvm::InlineAsm, llvm::MetadataAsValue>(val)) {
       return INVALID_VALUE_REF;
     }
-    llvm::errs() << "unhandled value: " << *val << "\n";
-    assert(0);
+    std::string val_str;
+    llvm::raw_string_ostream(val_str) << *val;
+    TPDE_LOG_WARN("ignoring unhandled value {}");
     return INVALID_VALUE_REF;
   }
 

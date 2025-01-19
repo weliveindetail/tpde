@@ -652,7 +652,7 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
     jump = Jump::Jle;
     is_signed = true;
     break;
-  default: __builtin_unreachable();
+  default: TPDE_UNREACHABLE("invalid icmp predicate");
   }
 
   llvm::BranchInst *fuse_br = nullptr;
@@ -811,7 +811,7 @@ void LLVMCompilerArm64::compile_i32_cmp_zero(
   case llvm::CmpInst::ICMP_UGE: cond = DA_HS; break;
   case llvm::CmpInst::ICMP_ULT: cond = DA_LO; break;
   case llvm::CmpInst::ICMP_ULE: cond = DA_LS; break;
-  default: assert(0);
+  default: TPDE_UNREACHABLE("invalid icmp_zero predicate");
   }
   ASM(CMPwi, reg, 0);
   ASM(CSETw, reg, cond);
@@ -1133,7 +1133,7 @@ bool LLVMCompilerArm64::handle_overflow_intrin_128(
     return false;
   }
 
-  default: __builtin_unreachable();
+  default: TPDE_UNREACHABLE("invalid operation");
   }
 }
 

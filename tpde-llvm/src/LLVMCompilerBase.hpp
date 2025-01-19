@@ -447,8 +447,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
 
   if (llvm::isa<llvm::ConstantVector>(const_val)) {
     // TODO(ts): check how to handle this
-    assert(0);
-    exit(1);
+    TPDE_FATAL("non-sequential vector constants should not be legal");
   }
 
   if (const auto *const_int = llvm::dyn_cast<llvm::ConstantInt>(const_val);
@@ -473,7 +472,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
           const_int->getValue().extractBitsAsZExtValue(64, 64 * sub_part),
           Config::GP_BANK,
           8);
-    default: assert(0); exit(1);
+    default: TPDE_FATAL("illegal integer constant");
     }
   }
 
@@ -500,15 +499,13 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
       return ValuePartRef({raw_data, num_bytes}, Config::FP_BANK);
     }
       // TODO(ts): support the rest
-    default: assert(0); exit(1);
+    default: TPDE_FATAL("illegal fp constant");
     }
   }
 
   std::string const_str;
   llvm::raw_string_ostream(const_str) << *const_val;
-  TPDE_LOG_ERR("Encountered unknown constant type: {}", const_str);
-  assert(0);
-  exit(1);
+  TPDE_FATAL("Encountered unknown constant type: {}", const_str);
 }
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -539,7 +536,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
           gv->getName() != "llvm.compiler.used") {
         TPDE_LOG_ERR("Unknown global with appending linkage: {}\n",
                      static_cast<std::string_view>(gv->getName()));
-        assert(0);
         return false;
       }
       continue;
@@ -1124,7 +1120,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
       case 16: encode_fn = &Derived::encode_atomic_load_u16_mono; break;
       case 32: encode_fn = &Derived::encode_atomic_load_u32_mono; break;
       case 64: encode_fn = &Derived::encode_atomic_load_u64_mono; break;
-      default: __builtin_unreachable();
+      default: TPDE_UNREACHABLE("invalid size");
       }
     } else if (order == llvm::AtomicOrdering::Acquire) {
       switch (width) {
@@ -1132,7 +1128,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
       case 16: encode_fn = &Derived::encode_atomic_load_u16_acq; break;
       case 32: encode_fn = &Derived::encode_atomic_load_u32_acq; break;
       case 64: encode_fn = &Derived::encode_atomic_load_u64_acq; break;
-      default: __builtin_unreachable();
+      default: TPDE_UNREACHABLE("invalid size");
       }
     } else {
       assert(order == llvm::AtomicOrdering::SequentiallyConsistent);
@@ -1141,7 +1137,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
       case 16: encode_fn = &Derived::encode_atomic_load_u16_seqcst; break;
       case 32: encode_fn = &Derived::encode_atomic_load_u32_seqcst; break;
       case 64: encode_fn = &Derived::encode_atomic_load_u64_seqcst; break;
-      default: __builtin_unreachable();
+      default: TPDE_UNREACHABLE("invalid size");
       }
     }
 
@@ -3923,7 +3919,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       case llvm::Intrinsic::umax: encode_fn = &Derived::encode_umaxi32; break;
       case llvm::Intrinsic::smin: encode_fn = &Derived::encode_smini32; break;
       case llvm::Intrinsic::smax: encode_fn = &Derived::encode_smaxi32; break;
-      default: __builtin_unreachable();
+      default: TPDE_UNREACHABLE("invalid intrinsic");
       }
     } else {
       switch (intrin_id) {
@@ -3931,7 +3927,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       case llvm::Intrinsic::umax: encode_fn = &Derived::encode_umaxi64; break;
       case llvm::Intrinsic::smin: encode_fn = &Derived::encode_smini64; break;
       case llvm::Intrinsic::smax: encode_fn = &Derived::encode_smaxi64; break;
-      default: __builtin_unreachable();
+      default: TPDE_UNREACHABLE("invalid intrinsic");
       }
     }
     if (!(derived()->*encode_fn)(std::move(lhs), std::move(rhs), res)) {
@@ -4151,7 +4147,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
           derived()->encode_ctlzi64(std::move(val_ref), res);
         }
         break;
-      default: __builtin_unreachable();
+      default: TPDE_UNREACHABLE("invalid size");
       }
     } else {
       assert(intrin_id == llvm::Intrinsic::cttz);
@@ -4184,7 +4180,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
           derived()->encode_cttzi64(std::move(val_ref), res);
         }
         break;
-      default: __builtin_unreachable();
+      default: TPDE_UNREACHABLE("invalid size");
       }
     }
 
@@ -4239,8 +4235,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       case 0: derived()->encode_prefetch_rl0(std::move(ptr_ref)); break;
       case 1: derived()->encode_prefetch_rl1(std::move(ptr_ref)); break;
       case 2: derived()->encode_prefetch_rl2(std::move(ptr_ref)); break;
-      default: assert(0);
       case 3: derived()->encode_prefetch_rl3(std::move(ptr_ref)); break;
+      default: TPDE_UNREACHABLE("invalid prefetch locality");
       }
     } else {
       assert(rw == 1);
@@ -4249,8 +4245,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       case 0: derived()->encode_prefetch_wl0(std::move(ptr_ref)); break;
       case 1: derived()->encode_prefetch_wl1(std::move(ptr_ref)); break;
       case 2: derived()->encode_prefetch_wl2(std::move(ptr_ref)); break;
-      default: assert(0);
       case 3: derived()->encode_prefetch_wl3(std::move(ptr_ref)); break;
+      default: TPDE_UNREACHABLE("invalid prefetch locality");
       }
     }
     return true;

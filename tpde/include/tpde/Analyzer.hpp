@@ -747,12 +747,7 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
     }
 
     auto &liveness = liveness_maybe(value);
-#ifdef TPDE_ASSERTS
-    if (liveness.ref_count == ~0u) {
-      // value without a definition used
-      assert(0);
-    }
-#endif
+    assert(liveness.ref_count != ~0u && "used value without definition");
 
     if (liveness.ref_count == 0) {
       TPDE_LOG_TRACE("    initializing liveness info, lcl is {}",

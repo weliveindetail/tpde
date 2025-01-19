@@ -755,7 +755,7 @@ void LLVMCompilerX64::compile_i32_cmp_zero(
   case llvm::CmpInst::ICMP_UGE: ASM(SETNC8r, reg); break;
   case llvm::CmpInst::ICMP_ULT: ASM(SETC8r, reg); break;
   case llvm::CmpInst::ICMP_ULE: ASM(SETBE8r, reg); break;
-  default: assert(0);
+  default: TPDE_UNREACHABLE("invalid icmp_zero predicate");
   }
   ASM(MOVZXr32r8, reg, reg);
 }
@@ -1019,7 +1019,7 @@ bool LLVMCompilerX64::handle_overflow_intrin_128(OverflowOp op,
   case OverflowOp::smul:
     encode_fn = &LLVMCompilerX64::encode_of_mul_i128;
     break;
-  default: __builtin_unreachable();
+  default: TPDE_UNREACHABLE("invalid operation");
   }
 
   return (this->*encode_fn)(std::move(lhs_lo),
