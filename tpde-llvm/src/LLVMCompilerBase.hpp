@@ -3,12 +3,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Operator.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TimeProfiler.h>
 #include <llvm/Support/raw_ostream.h>
@@ -202,12 +204,6 @@ public:
                            const llvm::DataLayout &layout,
                            const llvm::Constant *constant,
                            u32 off) noexcept;
-  bool global_const_expr_to_data(const llvm::Value *reloc_base,
-                                 tpde::util::SmallVector<u8, 64> &data,
-                                 tpde::util::SmallVector<RelocInfo, 8> &relocs,
-                                 const llvm::DataLayout &layout,
-                                 llvm::Instruction *expr,
-                                 u32 off) noexcept;
 
   IRValueRef llvm_val_idx(const llvm::Value *) const noexcept;
   IRValueRef llvm_val_idx(const llvm::Instruction *) const noexcept;
@@ -744,105 +740,79 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
     relocs.push_back({off, 0, global_sym(GV)});
     return true;
   }
-  if (auto *CE = llvm::dyn_cast<llvm::ConstantExpr>(constant); CE) {
-    auto *inst = CE->getAsInstruction();
-    const auto res =
-        global_const_expr_to_data(reloc_base, data, relocs, layout, inst, off);
-    inst->deleteValue();
-    return res;
-  }
 
-  TPDE_LOG_ERR("Encountered unknown constant in global initializer");
-  constant->print(llvm::errs(), true);
-  llvm::errs() << "\n";
+  if (auto *expr = llvm::dyn_cast<llvm::ConstantExpr>(constant)) {
+    // idk about this design, currently just hardcoding stuff i see
+    // in theory i think this needs a new data buffer so we can recursively call
+    // parseConstIntoByteArray
+    switch (expr->getOpcode()) {
+    case llvm::Instruction::IntToPtr:
+      if (auto *CI = llvm::dyn_cast<llvm::ConstantInt>(expr->getOperand(0))) {
+        auto alloc_size = layout.getTypeAllocSize(expr->getType());
+        // TODO: endianess?
+        llvm::StoreIntToMemory(CI->getValue(), data.data() + off, alloc_size);
+        return true;
+      }
+      break;
+    case llvm::Instruction::GetElementPtr: {
+      auto *gep = llvm::cast<llvm::GEPOperator>(expr);
+      auto *ptr = gep->getPointerOperand();
+      if (auto *GV = llvm::dyn_cast<llvm::GlobalVariable>(ptr); GV) {
+        auto indices = tpde::util::SmallVector<llvm::Value *, 8>{};
+        for (auto &idx : gep->indices()) {
+          indices.push_back(idx.get());
+        }
 
-  return false;
-}
+        const auto ty_off = layout.getIndexedOffsetInType(
+            gep->getSourceElementType(),
+            llvm::ArrayRef{indices.data(), indices.size()});
+        relocs.push_back({off, static_cast<int32_t>(ty_off), global_sym(GV)});
 
-template <typename Adaptor, typename Derived, typename Config>
-bool LLVMCompilerBase<Adaptor, Derived, Config>::global_const_expr_to_data(
-    const llvm::Value *reloc_base,
-    tpde::util::SmallVector<u8, 64> &data,
-    tpde::util::SmallVector<RelocInfo, 8> &relocs,
-    const llvm::DataLayout &layout,
-    llvm::Instruction *expr,
-    u32 off) noexcept {
-  // idk about this design, currently just hardcoding stuff i see
-  // in theory i think this needs a new data buffer so we can recursively call
-  // parseConstIntoByteArray
-  switch (expr->getOpcode()) {
-  case llvm::Instruction::IntToPtr: {
-    auto *op = expr->getOperand(0);
-    if (auto *CI = llvm::dyn_cast<llvm::ConstantInt>(op); CI) {
-      auto alloc_size = layout.getTypeAllocSize(expr->getType());
-      // TODO: endianess?
-      llvm::StoreIntToMemory(CI->getValue(), data.data() + off, alloc_size);
-      return true;
-    } else {
-      TPDE_LOG_ERR("Operand to IntToPtr is not a constant int");
-      return false;
+        return true;
+      }
+      break;
     }
-  }
-  case llvm::Instruction::GetElementPtr: {
-    auto *gep = llvm::cast<llvm::GetElementPtrInst>(expr);
-    auto *ptr = gep->getPointerOperand();
-    SymRef ptr_sym;
-    if (auto *GV = llvm::dyn_cast<llvm::GlobalVariable>(ptr); GV) {
-      ptr_sym = global_sym(GV);
-    } else {
-      return false;
-    }
+    case llvm::Instruction::Trunc:
+      // recognize a truncation pattern where we need to emit PC32 relocations
+      // i32 trunc (i64 sub (i64 ptrtoint (ptr <someglobal> to i64), i64
+      // ptrtoint (ptr <relocBase> to i64)))
+      if (expr->getType()->isIntegerTy(32)) {
+        if (auto *sub = llvm::dyn_cast<llvm::ConstantExpr>(expr->getOperand(0));
+            sub && sub->getOpcode() == llvm::Instruction::Sub &&
+            sub->getType()->isIntegerTy(64)) {
+          auto *lhs = llvm::dyn_cast<llvm::ConstantExpr>(sub->getOperand(0));
+          auto *rhs = llvm::dyn_cast<llvm::ConstantExpr>(sub->getOperand(1));
+          if (lhs && rhs && lhs->getOpcode() == llvm::Instruction::PtrToInt &&
+              rhs->getOpcode() == llvm::Instruction::PtrToInt) {
+            if (rhs->getOperand(0) == reloc_base &&
+                llvm::isa<llvm::GlobalVariable>(lhs->getOperand(0))) {
+              auto ptr_sym =
+                  global_sym(llvm::cast<llvm::GlobalValue>(lhs->getOperand(0)));
 
-    auto indices = tpde::util::SmallVector<llvm::Value *, 8>{};
-    for (auto &idx : gep->indices()) {
-      indices.push_back(idx.get());
-    }
-
-    const auto ty_off = layout.getIndexedOffsetInType(
-        gep->getSourceElementType(),
-        llvm::ArrayRef{indices.data(), indices.size()});
-    relocs.push_back({off, static_cast<int32_t>(ty_off), ptr_sym});
-
-    return true;
-  }
-  case llvm::Instruction::Trunc: {
-    // recognize a truncation pattern where we need to emit PC32 relocations
-    // i32 trunc (i64 sub (i64 ptrtoint (ptr <someglobal> to i64), i64
-    // ptrtoint (ptr <relocBase> to i64)))
-    if (expr->getType()->isIntegerTy(32)) {
-      if (auto *sub = llvm::dyn_cast<llvm::ConstantExpr>(expr->getOperand(0));
-          sub && sub->getOpcode() == llvm::Instruction::Sub &&
-          sub->getType()->isIntegerTy(64)) {
-        if (auto *lhs_ptr_to_int =
-                llvm::dyn_cast<llvm::ConstantExpr>(sub->getOperand(0)),
-            *rhs_ptr_to_int =
-                llvm::dyn_cast<llvm::ConstantExpr>(sub->getOperand(1));
-            lhs_ptr_to_int && rhs_ptr_to_int &&
-            lhs_ptr_to_int->getOpcode() == llvm::Instruction::PtrToInt &&
-            rhs_ptr_to_int->getOpcode() == llvm::Instruction::PtrToInt) {
-          if (rhs_ptr_to_int->getOperand(0) == reloc_base &&
-              llvm::isa<llvm::GlobalVariable>(lhs_ptr_to_int->getOperand(0))) {
-            auto ptr_sym = global_sym(
-                llvm::cast<llvm::GlobalValue>(lhs_ptr_to_int->getOperand(0)));
-
-            relocs.push_back({off,
-                              static_cast<int32_t>(off),
-                              ptr_sym,
-                              RelocInfo::RELOC_PC32});
-            return true;
+              relocs.push_back({off,
+                                static_cast<int32_t>(off),
+                                ptr_sym,
+                                RelocInfo::RELOC_PC32});
+              return true;
+            }
           }
         }
       }
+      break;
+    default: break;
     }
-    return false;
-  }
-  default: {
-    TPDE_LOG_ERR("Unknown constant expression in global initializer");
-    llvm::errs() << *expr << "\n";
-    return false;
-  }
   }
 
+  // It's not a simple constant that we can handle, probably some ConstantExpr.
+  // Try constant folding to increase the change that we can handle it. Some
+  // front-ends like flang like to generate trivially foldable expressions.
+  if (auto *fc = llvm::ConstantFoldConstant(constant, layout); constant != fc) {
+    // We folded the constant, so try again.
+    return global_init_to_data(reloc_base, data, relocs, layout, fc, off);
+  }
+
+  TPDE_LOG_ERR("Encountered unknown constant in global initializer");
+  llvm::errs() << *constant << "\n";
   return false;
 }
 
