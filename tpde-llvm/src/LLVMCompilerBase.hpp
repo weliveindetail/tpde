@@ -505,7 +505,8 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
 
   std::string const_str;
   llvm::raw_string_ostream(const_str) << *const_val;
-  TPDE_FATAL("Encountered unknown constant type: {}", const_str);
+  TPDE_LOG_ERR("encountered unhandled constant {}", const_str);
+  TPDE_FATAL("unhandled constant type");
 }
 
 template <typename Adaptor, typename Derived, typename Config>

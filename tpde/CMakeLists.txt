@@ -40,6 +40,7 @@ target_link_libraries(tpde PUBLIC gch::small_vector)
 
 target_sources(tpde PRIVATE
     src/AssemblerElf.cpp
+    src/base.cpp
     src/ElfMapper.cpp
 
     PUBLIC

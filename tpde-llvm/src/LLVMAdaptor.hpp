@@ -589,10 +589,7 @@ public:
     if (llvm::isa<llvm::InlineAsm, llvm::MetadataAsValue>(val)) {
       return INVALID_VALUE_REF;
     }
-    std::string val_str;
-    llvm::raw_string_ostream(val_str) << *val;
-    TPDE_LOG_WARN("ignoring unhandled value {}");
-    return INVALID_VALUE_REF;
+    TPDE_FATAL("unhandled value type");
   }
 
   [[nodiscard]] u32

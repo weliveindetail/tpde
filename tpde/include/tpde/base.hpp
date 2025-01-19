@@ -48,11 +48,7 @@
 #else
   #define TPDE_UNREACHABLE(msg) __builtin_unreachable()
 #endif
-#define TPDE_FATAL(...)                                                        \
-  do {                                                                         \
-    TPDE_LOG_ERR(__VA_ARGS__);                                                 \
-    abort();                                                                   \
-  } while (0)
+#define TPDE_FATAL(msg) ::tpde::fatal_error(msg)
 
 namespace tpde {
 // NOTE(ts): someone's gonna hate me...
@@ -65,5 +61,8 @@ using i8 = int8_t;
 using i16 = int16_t;
 using i32 = int32_t;
 using i64 = int64_t;
+
+/// Abort program with a fatal error
+[[noreturn]] void fatal_error(const char *msg) noexcept;
 
 } // namespace tpde
