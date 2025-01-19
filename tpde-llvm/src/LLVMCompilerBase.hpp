@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instruction.h>
@@ -127,6 +128,16 @@ struct LLVMCompilerBase : public LLVMCompiler,
     powidf2,
     trunc,
     truncf,
+    pow,
+    powf,
+    sin,
+    sinf,
+    cos,
+    cosf,
+    log,
+    logf,
+    exp,
+    expf,
     trunctfsf2,
     trunctfdf2,
     extendsftf2,
@@ -858,6 +869,16 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
   case LibFunc::powidf2: name = "__powidf2"; break;
   case LibFunc::trunc: name = "trunc"; break;
   case LibFunc::truncf: name = "truncf"; break;
+  case LibFunc::pow: name = "pow"; break;
+  case LibFunc::powf: name = "powf"; break;
+  case LibFunc::sin: name = "sin"; break;
+  case LibFunc::sinf: name = "sinf"; break;
+  case LibFunc::cos: name = "cos"; break;
+  case LibFunc::cosf: name = "cosf"; break;
+  case LibFunc::log: name = "log"; break;
+  case LibFunc::logf: name = "logf"; break;
+  case LibFunc::exp: name = "exp"; break;
+  case LibFunc::expf: name = "expf"; break;
   case LibFunc::trunctfsf2: name = "__trunctfsf2"; break;
   case LibFunc::trunctfdf2: name = "__trunctfdf2"; break;
   case LibFunc::extendsftf2: name = "__extendsftf2"; break;
@@ -3690,40 +3711,41 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
   case llvm::Intrinsic::floor:
   case llvm::Intrinsic::ceil:
   case llvm::Intrinsic::round:
-  case llvm::Intrinsic::trunc: {
-    auto val = llvm_val_idx(inst->getOperand(0));
-
-    const auto is_double = inst->getOperand(0)->getType()->isDoubleTy();
-    auto res_ref = this->result_ref_lazy(inst_idx, 0);
-    SymRef sym;
-    if (intrin_id == llvm::Intrinsic::floor) {
-      if (is_double) {
-        sym = get_libfunc_sym(LibFunc::floor);
-      } else {
-        sym = get_libfunc_sym(LibFunc::floorf);
-      }
-    } else if (intrin_id == llvm::Intrinsic::ceil) {
-      if (is_double) {
-        sym = get_libfunc_sym(LibFunc::ceil);
-      } else {
-        sym = get_libfunc_sym(LibFunc::ceilf);
-      }
-    } else if (intrin_id == llvm::Intrinsic::round) {
-      if (is_double) {
-        sym = get_libfunc_sym(LibFunc::round);
-      } else {
-        sym = get_libfunc_sym(LibFunc::roundf);
-      }
-    } else {
-      assert(intrin_id == llvm::Intrinsic::trunc);
-      if (is_double) {
-        sym = get_libfunc_sym(LibFunc::trunc);
-      } else {
-        sym = get_libfunc_sym(LibFunc::truncf);
-      }
+  case llvm::Intrinsic::trunc:
+  case llvm::Intrinsic::pow:
+  case llvm::Intrinsic::powi:
+  case llvm::Intrinsic::sin:
+  case llvm::Intrinsic::cos:
+  case llvm::Intrinsic::log:
+  case llvm::Intrinsic::exp: {
+    // Floating-point intrinsics that can be mapped directly to libcalls.
+    const auto is_double = inst->getType()->isDoubleTy();
+    if (!is_double && !inst->getType()->isFloatTy()) {
+      return false;
     }
 
-    derived()->create_helper_call({&val, 1}, {&res_ref, 1}, sym);
+    LibFunc func;
+    switch (intrin_id) {
+      using enum llvm::Intrinsic::IndependentIntrinsics;
+    case floor: func = is_double ? LibFunc::floor : LibFunc::floorf; break;
+    case ceil: func = is_double ? LibFunc::ceil : LibFunc::ceilf; break;
+    case round: func = is_double ? LibFunc::round : LibFunc::roundf; break;
+    case trunc: func = is_double ? LibFunc::trunc : LibFunc::truncf; break;
+    case pow: func = is_double ? LibFunc::pow : LibFunc::powf; break;
+    case powi: func = is_double ? LibFunc::powidf2 : LibFunc::powisf2; break;
+    case sin: func = is_double ? LibFunc::sin : LibFunc::sinf; break;
+    case cos: func = is_double ? LibFunc::cos : LibFunc::cosf; break;
+    case log: func = is_double ? LibFunc::log : LibFunc::logf; break;
+    case exp: func = is_double ? LibFunc::exp : LibFunc::expf; break;
+    default: TPDE_UNREACHABLE("invalid library fp intrinsic");
+    }
+
+    llvm::SmallVector<IRValueRef, 2> ops;
+    for (auto &op : intrinsic->args()) {
+      ops.push_back(llvm_val_idx(op));
+    }
+    ValuePartRef res_ref = this->result_ref_lazy(inst_idx, 0);
+    derived()->create_helper_call(ops, {&res_ref, 1}, get_libfunc_sym(func));
     return true;
   }
   case llvm::Intrinsic::copysign: {
@@ -3808,27 +3830,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
                                res_scratch);
     }
     this->set_value(res_ref, res_scratch);
-    return true;
-  }
-  case llvm::Intrinsic::powi: {
-    std::array<IRValueRef, 2> args = {
-        {llvm_val_idx(inst->getOperand(0)), llvm_val_idx(inst->getOperand(1))}
-    };
-
-    auto *ty = inst->getOperand(0)->getType();
-    if (!ty->isDoubleTy() && !ty->isFloatTy()) {
-      return false;
-    }
-    const auto is_double = inst->getOperand(0)->getType()->isDoubleTy();
-    SymRef sym;
-    if (is_double) {
-      sym = get_libfunc_sym(LibFunc::powidf2);
-    } else {
-      sym = get_libfunc_sym(LibFunc::powisf2);
-    }
-    auto res_ref = this->result_ref_lazy(inst_idx, 0);
-
-    derived()->create_helper_call(args, {&res_ref, 1}, sym);
     return true;
   }
   case llvm::Intrinsic::abs: {
