@@ -199,10 +199,13 @@ struct CompilerBase {
   void reset();
 
 protected:
+  /// Return assignment (size, free_list_idx).
+  static std::pair<u32, u32> get_assignment_alloc_info(u32 part_count) noexcept;
+
   ValueAssignment *allocate_assignment(u32 part_count,
                                        bool skip_free_list = false) noexcept;
   /// Puts an assignment back into the free list
-  void deallocate_assignment(ValLocalIdx local_idx) noexcept;
+  void deallocate_assignment(u32 part_count, ValLocalIdx local_idx) noexcept;
 
   void init_assignment(IRValueRef value, ValLocalIdx local_idx) noexcept;
 
@@ -453,26 +456,29 @@ void CompilerBase<Adaptor, Derived, Config>::reset() {
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
-    CompilerBase<Adaptor, Derived, Config>::allocate_assignment(
-        const u32 part_count, bool skip_free_list) noexcept {
+std::pair<u32, u32>
+    CompilerBase<Adaptor, Derived, Config>::get_assignment_alloc_info(
+        const u32 part_count) noexcept {
   u32 size = sizeof(ValueAssignment);
 
   constexpr u32 PARTS_INCLUDED =
       (sizeof(ValueAssignment) - offsetof(ValueAssignment, parts)) /
       sizeof(ValueAssignment::first_part);
-  u32 free_list_idx = 0;
   if (part_count > PARTS_INCLUDED) {
     size += (part_count - PARTS_INCLUDED) * sizeof(ValueAssignment::first_part);
     size = util::align_up(size, alignof(ValueAssignment));
-    assert((size & (alignof(ValueAssignment) - 1)) == 0);
-
-    free_list_idx =
-        (((part_count - PARTS_INCLUDED) * sizeof(ValueAssignment::first_part)) /
-         alignof(ValueAssignment)) +
-        1;
   }
   assert(size <= ASSIGNMENT_BUF_SIZE);
+
+  u32 list_idx = (size - sizeof(ValueAssignment)) / alignof(ValueAssignment);
+  return {size, list_idx};
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
+    CompilerBase<Adaptor, Derived, Config>::allocate_assignment(
+        const u32 part_count, bool skip_free_list) noexcept {
+  auto [size, free_list_idx] = get_assignment_alloc_info(part_count);
 
   if (!skip_free_list) {
     if (free_list_idx <= 1) [[likely]] {
@@ -522,29 +528,10 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::deallocate_assignment(
-    ValLocalIdx local_idx) noexcept {
-  ValueAssignment *assignment =
-      assignments.value_ptrs[static_cast<u32>(local_idx)];
+    u32 part_count, ValLocalIdx local_idx) noexcept {
+  auto [size, free_list_idx] = get_assignment_alloc_info(part_count);
 
-  u32 part_count = 0;
-  while (true) {
-    auto ap = AssignmentPartRef{assignment, part_count++};
-    if (!ap.has_next_part()) {
-      break;
-    }
-  }
-
-  constexpr u32 PARTS_INCLUDED =
-      (sizeof(ValueAssignment) - offsetof(ValueAssignment, parts)) /
-      sizeof(ValueAssignment::first_part);
-  u32 free_list_idx = 0;
-  if (part_count > PARTS_INCLUDED) {
-    free_list_idx =
-        (((part_count - PARTS_INCLUDED) * sizeof(ValueAssignment::first_part)) /
-         alignof(ValueAssignment)) +
-        1;
-  }
-
+  ValueAssignment *assignment = val_assignment(local_idx);
   if (free_list_idx <= 1) [[likely]] {
     assignment->next_free_list_entry =
         assignments.fixed_free_lists[free_list_idx];
@@ -682,10 +669,10 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
       register_file.unmark_used(reg);
       ap.set_register_valid(false);
     }
+    ++part_idx;
     if (!ap.has_next_part()) {
       break;
     }
-    ++part_idx;
   }
 
 #ifdef TPDE_ASSERTS
@@ -702,8 +689,7 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
     free_stack_slot(slot, assignment->size);
   }
 
-  // TODO(ts): calculating part count twice here
-  deallocate_assignment(local_idx);
+  deallocate_assignment(part_idx, local_idx);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
