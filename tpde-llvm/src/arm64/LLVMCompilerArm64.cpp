@@ -6,6 +6,7 @@
 
 #include <llvm/IR/InlineAsm.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicsAArch64.h>
 
 #include "LLVMAdaptor.hpp"
 #include "LLVMCompilerBase.hpp"
@@ -1035,6 +1036,17 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef inst_idx,
   }
   case llvm::Intrinsic::trap: {
     ASM(UDF, 1);
+    return true;
+  }
+  case llvm::Intrinsic::aarch64_crc32cx: {
+    auto lhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto rhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    ScratchReg scratch{this};
+    AsmReg lhs_reg;
+    auto res_ref = this->result_ref_salvage_with_original(inst_idx, 0, std::move(lhs_ref), lhs_reg);
+    auto rhs_reg = this->val_as_reg(rhs_ref, scratch);
+    ASM(CRC32CX, res_ref.cur_reg(), lhs_reg, rhs_reg);
+    this->set_value(res_ref, res_ref.cur_reg());
     return true;
   }
   default: return false;
