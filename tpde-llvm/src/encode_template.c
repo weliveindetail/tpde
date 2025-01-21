@@ -380,6 +380,21 @@ double TARGET_V1 copysignf64(double a, double b) { return __builtin_copysign(a, 
 float TARGET_V1 sqrtf32(float a) { return __builtin_sqrtf(a); }
 double TARGET_V1 sqrtf64(double a) { return __builtin_sqrt(a); }
 
+float TARGET_V1 minnumf32(float a, float b) { return __builtin_fminf(a, b); }
+double TARGET_V1 minnumf64(double a, double b) { return __builtin_fmin(a, b); }
+float TARGET_V1 maxnumf32(float a, float b) { return __builtin_fmaxf(a, b); }
+double TARGET_V1 maxnumf64(double a, double b) { return __builtin_fmax(a, b); }
+// TODO: enable when Clang exposes llvm.minimum/maximum
+//float TARGET_V1 minimumf32(float a, float b) { return __builtin_fminimumf(a, b); }
+//double TARGET_V1 minimumf64(double a, double b) { return __builtin_fminimum(a, b); }
+//float TARGET_V1 maximumf32(float a, float b) { return __builtin_fmaximumf(a, b); }
+//double TARGET_V1 maximumf64(double a, double b) { return __builtin_fmaximum(a, b); }
+// TODO: enable in C23 mode when Clang exposes llvm.minimumnum/maximumnum
+//float TARGET_V1 minimumnumf32(float a, float b) { return __builtin_fminimum_numf(a, b); }
+//double TARGET_V1 minimumnumf64(double a, double b) { return __builtin_fminimum_num(a, b); }
+//float TARGET_V1 maximumnumf32(float a, float b) { return __builtin_fmaximum_numf(a, b); }
+//double TARGET_V1 maximumnumf64(double a, double b) { return __builtin_fmaximum_num(a, b); }
+
 // --------------------------
 // float conversions
 // --------------------------

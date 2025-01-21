@@ -3747,21 +3747,39 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     derived()->create_helper_call(ops, {&res_ref, 1}, get_libfunc_sym(func));
     return true;
   }
+  case llvm::Intrinsic::minnum:
+  case llvm::Intrinsic::maxnum:
   case llvm::Intrinsic::copysign: {
-    auto *ty = inst->getType();
-    if (!ty->isFloatTy() && !ty->isDoubleTy()) {
+    // Floating-point intrinsics with two operands
+    const auto is_double = inst->getType()->isDoubleTy();
+    if (!is_double && !inst->getType()->isFloatTy()) {
       return false;
+    }
+
+    using EncodeFnTy = bool (Derived::*)(
+        GenericValuePart &&, GenericValuePart &&, ScratchReg &);
+    EncodeFnTy fn;
+    switch (intrin_id) {
+      using enum llvm::Intrinsic::IndependentIntrinsics;
+    case minnum:
+      fn = is_double ? &Derived::encode_minnumf64 : &Derived::encode_minnumf32;
+      break;
+    case maxnum:
+      fn = is_double ? &Derived::encode_maxnumf64 : &Derived::encode_maxnumf32;
+      break;
+    case copysign:
+      fn = is_double ? &Derived::encode_copysignf64
+                     : &Derived::encode_copysignf32;
+      break;
+    default: TPDE_UNREACHABLE("invalid binary fp intrinsic");
     }
 
     auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
     auto rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
     auto res_ref = this->result_ref_lazy(inst_idx, 0);
     ScratchReg res{derived()};
-
-    if (ty->isDoubleTy()) {
-      derived()->encode_copysignf64(std::move(lhs), std::move(rhs), res);
-    } else {
-      derived()->encode_copysignf32(std::move(lhs), std::move(rhs), res);
+    if (!(derived()->*fn)(std::move(lhs), std::move(rhs), res)) {
+      return false;
     }
     this->set_value(res_ref, res);
     return true;
