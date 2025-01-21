@@ -78,6 +78,19 @@ define i32 @main() {
   %log_f64_1 = call double @llvm.log(double 1.0)
   call void @print_f64(double %log_f64_1)
 
+; CHECK: 0.000000
+  %log10_f32_1 = call float @llvm.log10(float 1.0)
+  call void @print_f32(float %log10_f32_1)
+; CHECK: 2.000000
+  %log10_f32_2 = call float @llvm.log10(float 100.0)
+  call void @print_f32(float %log10_f32_2)
+; CHECK: 0.000000
+  %log10_f64_1 = call double @llvm.log10(double 1.0)
+  call void @print_f64(double %log10_f64_1)
+; CHECK: 2.000000
+  %log10_f64_2 = call double @llvm.log10(double 100.0)
+  call void @print_f64(double %log10_f64_2)
+
 ; CHECK: 1.000000
   %exp_f32_1 = call float @llvm.exp(float 0.0)
   call void @print_f32(float %exp_f32_1)
