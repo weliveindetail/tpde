@@ -240,6 +240,7 @@ protected:
   SecRef secref_rodata = INVALID_SEC_REF;
   SecRef secref_relro = INVALID_SEC_REF;
   SecRef secref_data = INVALID_SEC_REF;
+  SecRef secref_bss = INVALID_SEC_REF;
 
   SecRef secref_init_array = INVALID_SEC_REF;
   SecRef secref_fini_array = INVALID_SEC_REF;
@@ -318,6 +319,7 @@ private:
 
 public:
   SecRef get_data_section(bool rodata, bool relro = false) noexcept;
+  SecRef get_bss_section() noexcept;
   SecRef get_structor_section(bool init) noexcept;
   SecRef get_eh_frame_section() const noexcept { return secref_eh_frame; }
 
@@ -364,19 +366,19 @@ public:
     return sym;
   }
 
-  void sym_def_predef_bss(SymRef sym_ref,
-                          u32 size,
-                          u32 align,
-                          u32 *off = nullptr) noexcept;
+  void sym_def_predef_zero(SecRef sec_ref,
+                           SymRef sym_ref,
+                           u32 size,
+                           u32 align,
+                           u32 *off = nullptr) noexcept;
 
-  [[nodiscard]] SymRef sym_def_bss(std::string_view name,
-                                   u32 size,
-                                   u32 align,
-                                   SymBinding binding,
-                                   u32 *off = nullptr) noexcept {
-    SymRef sym = sym_predef_data(name, binding);
-    sym_def_predef_bss(sym, size, align, off);
-    return sym;
+  void sym_def(SymRef sym_ref, SecRef sec_ref, u64 pos, u64 size) noexcept {
+    Elf64_Sym *sym = sym_ptr(sym_ref);
+    assert(sym->st_shndx == SHN_UNDEF && "cannot redefined symbol");
+    sym->st_shndx = static_cast<Elf64_Section>(sec_ref);
+    sym->st_value = pos;
+    sym->st_size = size;
+    // TODO: handle fixups?
   }
 
   /// Forcefully set value of symbol, doesn't change section.

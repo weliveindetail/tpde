@@ -5,9 +5,9 @@
 ; RUN: tpde-llc --target=aarch64 %s | llvm-readelf -SrW - | FileCheck %s -check-prefixes=ARM64,CHECK
 
 ; COM: Check symbol table
-; CHECK: [[[INIT_ARRAY_IDX:[0-9]+]]] .init_array INIT_ARRAY {{[0-9a-f]+}} {{[0-9a-f]+}} {{0*8}} {{0+}} WA 0 0 8
+; CHECK: [{{ *}}[[INIT_ARRAY_IDX:[0-9]+]]] .init_array INIT_ARRAY {{[0-9a-f]+}} {{[0-9a-f]+}} {{0*8}} {{0+}} WA 0 0 8
 ; CHECK-NEXT: .rela.init_array RELA {{[0-9a-f]+}} {{[0-9a-f]+}} {{0*18}} {{0*18}} I {{[0-9]+}} [[INIT_ARRAY_IDX]] 8
-; CHECK: [[[FINI_ARRAY_IDX:[0-9]+]]] .fini_array FINI_ARRAY {{[0-9a-f]+}} {{[0-9a-f]+}} {{0*10}} {{0+}} WA 0 0 8
+; CHECK: [{{ *}}[[FINI_ARRAY_IDX:[0-9]+]]] .fini_array FINI_ARRAY {{[0-9a-f]+}} {{[0-9a-f]+}} {{0*10}} {{0+}} WA 0 0 8
 ; CHECK-NEXT: .rela.fini_array RELA {{[0-9a-f]+}} {{[0-9a-f]+}} {{0*30}} {{0*18}} I {{[0-9]+}} [[FINI_ARRAY_IDX]] 8
 
 ; COM: Check relocations

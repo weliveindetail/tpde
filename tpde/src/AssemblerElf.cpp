@@ -2,6 +2,8 @@
 
 #include "tpde/AssemblerElf.hpp"
 
+#include <elf.h>
+
 namespace tpde {
 
 // TODO(ts): maybe just outsource this to a helper func that can live in a cpp
@@ -13,8 +15,7 @@ constexpr static std::span<const char> SECTION_NAMES = {
     ".note.GNU-stack\0"
     ".symtab\0"
     ".strtab\0"
-    ".shstrtab\0"
-    ".bss\0"};
+    ".shstrtab\0"};
 
 // TODO(ts): this is linux-specific, no?
 constexpr static std::span<const char> SHSTRTAB = {
@@ -102,6 +103,7 @@ void AssemblerElfBase::reset() noexcept {
   secref_rodata = INVALID_SEC_REF;
   secref_relro = INVALID_SEC_REF;
   secref_data = INVALID_SEC_REF;
+  secref_bss = INVALID_SEC_REF;
   secref_init_array = INVALID_SEC_REF;
   secref_fini_array = INVALID_SEC_REF;
   secref_eh_frame = INVALID_SEC_REF;
@@ -167,6 +169,13 @@ AssemblerElfBase::SecRef
   return secref;
 }
 
+AssemblerElfBase::SecRef AssemblerElfBase::get_bss_section() noexcept {
+  unsigned off = elf::sec_off(".bss");
+  unsigned flags = SHF_ALLOC | SHF_WRITE;
+  (void)get_or_create_section(secref_bss, off, SHT_NOBITS, flags, 16, false);
+  return secref_bss;
+}
+
 AssemblerElfBase::SecRef
     AssemblerElfBase::get_structor_section(bool init) noexcept {
   // TODO: comdat, priorities
@@ -180,12 +189,6 @@ AssemblerElfBase::SecRef
 
 void AssemblerElfBase::init_sections() noexcept {
   sections.resize(elf::sec_count());
-
-  // setup bss
-  sections[elf::sec_idx(".bss")].hdr.sh_flags = SHF_ALLOC | SHF_WRITE;
-  sections[elf::sec_idx(".bss")].hdr.sh_type = SHT_NOBITS;
-  sections[elf::sec_idx(".bss")].hdr.sh_addralign = 16;
-  sections[elf::sec_idx(".bss")].hdr.sh_size = 0;
 
   unsigned off_text = elf::sec_off(".rela.text");
   (void)get_or_create_section(
@@ -247,38 +250,31 @@ void AssemblerElfBase::sym_def_predef_data(SecRef sec_ref,
                                            const u32 align,
                                            u32 *off) noexcept {
   DataSection &sec = get_section(sec_ref);
-  size_t pos = util::align_up(sec.data.size(), align);
+  size_t pos = util::align_up(sec.size(), align);
+  sym_def(sym_ref, sec_ref, pos, data.size());
+  assert(sec.hdr.sh_type != SHT_NOBITS && "cannot add data to SHT_NOBITS");
   sec.data.resize(pos);
   sec.data.insert(sec.data.end(), data.begin(), data.end());
 
   if (off) {
     *off = pos;
   }
-
-  Elf64_Sym *sym = sym_ptr(sym_ref);
-  sym->st_shndx = static_cast<Elf64_Section>(sec_ref);
-  sym->st_value = pos;
-  sym->st_size = data.size();
 }
 
-void AssemblerElfBase::sym_def_predef_bss(const SymRef sym_ref,
-                                          const u32 size,
-                                          const u32 align,
-                                          u32 *off) noexcept {
-  Elf64_Sym *sym = sym_ptr(sym_ref);
-
-  assert((align & (align - 1)) == 0);
-  auto& bss_size = sections[elf::sec_idx(".bss")].hdr.sh_size;
-  const u32 pos = util::align_up(u32(bss_size), align);
-  bss_size = pos + size;
+void AssemblerElfBase::sym_def_predef_zero(
+    SecRef sec_ref, SymRef sym_ref, u32 size, u32 align, u32 *off) noexcept {
+  DataSection &sec = get_section(sec_ref);
+  size_t pos = util::align_up(sec.size(), align);
+  sym_def(sym_ref, sec_ref, pos, size);
+  if (sec.hdr.sh_type == SHT_NOBITS) {
+    sec.hdr.sh_size = pos + size;
+  } else {
+    sec.data.resize(pos + size);
+  }
 
   if (off) {
     *off = pos;
   }
-
-  sym->st_shndx = static_cast<Elf64_Section>(elf::sec_idx(".bss"));
-  sym->st_value = pos;
-  sym->st_size = size;
 }
 
 void AssemblerElfBase::reloc_sec(const SecRef sec_ref,
@@ -833,24 +829,10 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
     hdr->sh_addralign = 1;
   }
 
-  // .bss
-  {
-    const auto size = util::align_up(sections[elf::sec_idx(".bss")].hdr.sh_size, 16);
-    const auto sh_off = out.size();
-
-    auto *hdr = sec_hdr(sec_idx(".bss"));
-    hdr->sh_name = sec_off(".bss");
-    hdr->sh_type = SHT_NOBITS;
-    hdr->sh_flags = SHF_ALLOC | SHF_WRITE;
-    hdr->sh_offset = sh_off;
-    hdr->sh_size = size;
-    hdr->sh_addralign = 16;
-  }
-
   for (size_t i = sec_count(); i < sections.size(); ++i) {
     DataSection &sec = sections[i];
     sec.hdr.sh_offset = out.size();
-    sec.hdr.sh_size = sec.data.size();
+    sec.hdr.sh_size = sec.size();
     *sec_hdr(i) = sec.hdr;
 
     const auto pad = util::align_up(sec.data.size(), 8) - sec.data.size();

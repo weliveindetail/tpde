@@ -641,21 +641,22 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
       continue;
     }
 
+    auto size = data_layout.getTypeAllocSize(init->getType());
+    auto align = gv->getAlign().valueOrOne().value();
+    auto sym = global_sym(gv);
+
     // check if the data value is a zero aggregate and put into bss if that
     // is the case
     if (llvm::isa<llvm::ConstantAggregateZero>(init)) {
-      auto sym = global_sym(gv);
-      this->assembler.sym_def_predef_bss(
-          sym,
-          data_layout.getTypeAllocSize(init->getType()),
-          gv->getAlign().valueOrOne().value());
+      auto secref = this->assembler.get_bss_section();
+      this->assembler.sym_def_predef_zero(secref, sym, size, align);
       continue;
     }
 
     data.clear();
     relocs.clear();
 
-    data.resize(data_layout.getTypeAllocSize(init->getType()));
+    data.resize(size);
     if (!global_init_to_data(gv, data, relocs, data_layout, init, 0)) {
       return false;
     }
@@ -663,9 +664,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
     u32 off;
     auto read_only = gv->isConstant();
     auto sec = this->assembler.get_data_section(read_only, !relocs.empty());
-    auto sym = global_sym(gv);
-    this->assembler.sym_def_predef_data(
-        sec, sym, data, gv->getAlign().valueOrOne().value(), &off);
+    this->assembler.sym_def_predef_data(sec, sym, data, align, &off);
     for (auto &[inner_off, addend, target, type] : relocs) {
       if (type == RelocInfo::RELOC_ABS) {
         this->assembler.reloc_abs(sec, target, off + inner_off, addend);
