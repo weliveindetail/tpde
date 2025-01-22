@@ -1913,29 +1913,26 @@ define ptr @gep_stf_one_zero_fuse_zero(ptr %0) {
     ret ptr %2
 }
 
-; COM: This is currently not fused
 define ptr @gep_stf_one_zero_fuse_one(ptr %0) {
 ; X64-LABEL: <gep_stf_one_zero_fuse_one>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
-; X64-NEXT:    lea rdi, [rdi + 0xc]
-; X64-NEXT:    lea rdi, [rdi + 0x4]
+; X64-NEXT:    lea rdi, [rdi + 0x10]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <gep_stf_one_zero_fuse_one>:
 ; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x0, x0, #0xc
-; ARM64-NEXT:    add x0, x0, #0x4
+; ARM64-NEXT:    add x0, x0, #0x10
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -1951,27 +1948,24 @@ define ptr @gep_stf_one_zero_fuse_one_no_salvage(ptr %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
-; X64-NEXT:    lea rax, [rdi + 0xc]
-; X64-NEXT:    lea rax, [rax + 0x4]
-; X64-NEXT:    lea rdi, [rdi + 0xc]
-; X64-NEXT:    lea rdi, [rdi + 0x4]
+; X64-NEXT:    lea rax, [rdi + 0x10]
+; X64-NEXT:    lea rdi, [rdi + 0x10]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <gep_stf_one_zero_fuse_one_no_salvage>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x1, x0, #0xc
-; ARM64-NEXT:    add x1, x1, #0x4
-; ARM64-NEXT:    add x0, x0, #0xc
-; ARM64-NEXT:    add x0, x0, #0x4
+; ARM64-NEXT:    add x1, x0, #0x10
+; ARM64-NEXT:    add x0, x0, #0x10
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
   entry:
     %1 = getelementptr inbounds %struct.three_floats, ptr %0, i64 1, i32 0
@@ -2010,29 +2004,26 @@ define ptr @gep_stf_one_one_fuse_zero(ptr %0) {
     ret ptr %2
 }
 
-; COM: Also not fused currently
 define ptr @gep_stf_one_one_fuse_one(ptr %0) {
 ; X64-LABEL: <gep_stf_one_one_fuse_one>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
-; X64-NEXT:    lea rdi, [rdi + 0x10]
-; X64-NEXT:    lea rdi, [rdi + 0x4]
+; X64-NEXT:    lea rdi, [rdi + 0x14]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <gep_stf_one_one_fuse_one>:
 ; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x0, x0, #0x10
-; ARM64-NEXT:    add x0, x0, #0x4
+; ARM64-NEXT:    add x0, x0, #0x14
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -2048,27 +2039,24 @@ define ptr @gep_stf_one_one_fuse_one_no_salvage(ptr %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
-; X64-NEXT:    lea rax, [rdi + 0x10]
-; X64-NEXT:    lea rax, [rax + 0x4]
-; X64-NEXT:    lea rdi, [rdi + 0xc]
-; X64-NEXT:    lea rdi, [rdi + 0x4]
+; X64-NEXT:    lea rax, [rdi + 0x14]
+; X64-NEXT:    lea rdi, [rdi + 0x10]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <gep_stf_one_one_fuse_one_no_salvage>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x1, x0, #0x10
-; ARM64-NEXT:    add x1, x1, #0x4
-; ARM64-NEXT:    add x0, x0, #0xc
-; ARM64-NEXT:    add x0, x0, #0x4
+; ARM64-NEXT:    add x1, x0, #0x14
+; ARM64-NEXT:    add x0, x0, #0x10
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
   entry:
     %1 = getelementptr inbounds %struct.three_floats, ptr %0, i64 1, i32 1
@@ -2109,21 +2097,19 @@ define ptr @gep_ptr_varoff_fuse_zero(ptr %0, i64 %1) {
     ret ptr %3
 }
 
-; COM: also not fused! very sad...
 define ptr @gep_ptr_varoff_fuse_one(ptr %0, i64 %1) {
 ; X64-LABEL: <gep_ptr_varoff_fuse_one>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
-; X64-NEXT:    lea rdi, [rdi + 8*rsi]
-; X64-NEXT:    lea rdi, [rdi + 0x8]
+; X64-NEXT:    lea rdi, [rdi + 8*rsi + 0x8]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <gep_ptr_varoff_fuse_one>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -2205,7 +2191,6 @@ define ptr @gep_stf_varoff_zero_fuse_zero(ptr %0, i64 %1) {
     ret ptr %3
 }
 
-; COM: someone should really work on this fusing stuff...
 define ptr @gep_stf_varoff_zero_fuse_one(ptr %0, i64 %1) {
 ; X64-LABEL: <gep_stf_varoff_zero_fuse_one>:
 ; X64:         push rbp
@@ -2213,13 +2198,13 @@ define ptr @gep_stf_varoff_zero_fuse_one(ptr %0, i64 %1) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rdi, [rdi + rax]
-; X64-NEXT:    lea rdi, [rdi + 0x4]
+; X64-NEXT:    lea rdi, [rdi + rax + 0x4]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <gep_stf_varoff_zero_fuse_one>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -2244,18 +2229,15 @@ define ptr @gep_stf_varoff_zero_fuse_one_no_salvage(ptr %0, i64 %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rax, [rdi + rax]
-; X64-NEXT:    lea rax, [rax + 0x4]
+; X64-NEXT:    lea rax, [rdi + rax + 0x4]
 ; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rdi, [rdi + rax]
-; X64-NEXT:    lea rdi, [rdi + 0x4]
+; X64-NEXT:    lea rdi, [rdi + rax + 0x4]
 ; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    add rsp, 0x50
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <gep_stf_varoff_zero_fuse_one_no_salvage>:

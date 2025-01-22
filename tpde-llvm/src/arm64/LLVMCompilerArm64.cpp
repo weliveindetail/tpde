@@ -135,6 +135,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
   void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
   GenericValuePart resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
+  void resolved_gep_to_base_reg(ResolvedGEP &gep) noexcept;
   GenericValuePart create_addr_for_alloca(u32 ref_idx) noexcept;
 
   void switch_emit_cmp(ScratchReg &scratch,
@@ -818,40 +819,53 @@ void LLVMCompilerArm64::compile_i32_cmp_zero(
 
 LLVMCompilerArm64::GenericValuePart
     LLVMCompilerArm64::resolved_gep_to_addr(ResolvedGEP &resolved) noexcept {
-  ScratchReg base_scratch{this}, index_scratch{this};
-  const AsmReg base = this->val_as_reg(resolved.base, base_scratch);
-
+  ScratchReg index_scratch{this};
   GenericValuePart::Expr addr{};
-  if (base_scratch.cur_reg.valid()) {
-    addr.base = std::move(base_scratch);
+  if (std::holds_alternative<ScratchReg>(resolved.base)) {
+    addr.base = std::move(std::get<ScratchReg>(resolved.base));
   } else {
-    if (resolved.base.can_salvage()) {
-      base_scratch.alloc_specific(resolved.base.salvage());
-      addr.base = std::move(base_scratch);
+    auto &ref = std::get<ValuePartRef>(resolved.base);
+    auto scratch = ScratchReg{this};
+    auto reg = this->val_as_reg(ref, scratch);
+    if (ref.can_salvage()) {
+      scratch.alloc_specific(ref.salvage());
+      addr.base = std::move(scratch);
     } else {
-      addr.base = base;
+      if (scratch.cur_reg.valid()) {
+        addr.base = std::move(scratch);
+      } else {
+        addr.base = reg;
+      }
     }
   }
 
   if (resolved.scale) {
     assert(resolved.index);
-    // check for sign-extension
-    // TODO(ts): I think technically we need the LLVM bitwidth, no?
-    const auto idx_size = resolved.index->part_size();
-    if (idx_size == 1 || idx_size == 2 || idx_size == 4) {
-      ScratchReg scratch{this};
-      if (idx_size == 1) {
-        this->encode_sext_8_to_64(std::move(*resolved.index), scratch);
-      } else if (idx_size == 2) {
-        this->encode_sext_16_to_64(std::move(*resolved.index), scratch);
-      } else {
-        assert(idx_size == 4);
-        this->encode_sext_32_to_64(std::move(*resolved.index), scratch);
-      }
-      addr.index = std::move(scratch);
+    if (std::holds_alternative<ScratchReg>(*resolved.index)) {
+      assert(resolved.idx_size == 8);
+      addr.index = std::move(std::get<ScratchReg>(*resolved.index));
     } else {
-      assert(idx_size == 8);
-      addr.index = this->val_as_reg(*resolved.index, index_scratch);
+      // check for sign-extension
+      auto &ref = std::get<ValuePartRef>(*resolved.index);
+      const auto idx_size = resolved.idx_size;
+      if (idx_size == 1 || idx_size == 2 || idx_size == 4) {
+        ScratchReg scratch{this};
+        if (idx_size == 1) {
+          this->encode_sext_8_to_64(std::move(ref), scratch);
+        } else if (idx_size == 2) {
+          this->encode_sext_16_to_64(std::move(ref), scratch);
+        } else {
+          assert(idx_size == 4);
+          this->encode_sext_32_to_64(std::move(ref), scratch);
+        }
+        addr.index = std::move(scratch);
+      } else {
+        assert(idx_size == 8);
+        addr.index = this->val_as_reg(ref, index_scratch);
+        if (index_scratch.cur_reg.valid()) {
+          addr.index = std::move(index_scratch);
+        }
+      }
     }
   }
 
@@ -859,6 +873,24 @@ LLVMCompilerArm64::GenericValuePart
   addr.disp = resolved.displacement;
 
   return addr;
+}
+void LLVMCompilerArm64::resolved_gep_to_base_reg(ResolvedGEP &gep) noexcept {
+  GenericValuePart operand = resolved_gep_to_addr(gep);
+  AsmReg res_reg = gval_as_reg(operand);
+
+  if (auto *op_reg = std::get_if<ScratchReg>(&operand.state)) {
+    gep.base = std::move(*op_reg);
+  } else {
+    ScratchReg result{this};
+    AsmReg copy_reg = result.alloc_gp();
+    ASM(MOVx, copy_reg, res_reg);
+    gep.base = std::move(result);
+  }
+
+  gep.index = ScratchReg{this};
+  gep.displacement = 0;
+  gep.idx_size = 0;
+  gep.scale = 0;
 }
 
 LLVMCompilerArm64::GenericValuePart

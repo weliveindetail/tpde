@@ -62,9 +62,10 @@ struct LLVMCompilerBase : public LLVMCompiler,
   };
 
   struct ResolvedGEP {
-    ValuePartRef base;
-    std::optional<ValuePartRef> index;
+    std::variant<ValuePartRef, ScratchReg> base;
+    std::optional<std::variant<ValuePartRef, ScratchReg>> index;
     u64 scale;
+    u32 idx_size; // 1,2,4 or 8
     i64 displacement;
   };
 
@@ -3352,19 +3353,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
   auto ptr = gep->getPointerOperand();
   tpde::util::SmallVector<llvm::Value *, 8> indices;
-  std::optional<IRValueRef> variable_off = {};
 
   if (gep->hasIndices()) {
     auto idx_begin = gep->idx_begin(), idx_end = gep->idx_end();
-    if (llvm::dyn_cast<llvm::Constant>(idx_begin->get()) == nullptr) {
-      variable_off = llvm_val_idx(idx_begin->get());
-      indices.push_back(llvm::ConstantInt::get(
-          llvm::IntegerType::getInt64Ty(*this->adaptor->context), 0));
-      ++idx_begin;
-    }
 
     for (auto it = idx_begin; it != idx_end; ++it) {
-      assert(llvm::dyn_cast<llvm::Constant>(it->get()) != nullptr);
       indices.push_back(it->get());
     }
   }
@@ -3388,18 +3381,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     auto *next_val = this->adaptor->values[next_inst_idx].val;
     auto *next_gep = llvm::dyn_cast<llvm::GetElementPtrInst>(next_val);
     if (!next_gep || next_gep->getPointerOperand() != gep ||
-        gep->getResultElementType() != next_gep->getResultElementType() ||
-        !next_gep->hasAllConstantIndices()) {
+        gep->getResultElementType() != next_gep->getResultElementType()) {
       break;
     }
 
     if (next_gep->hasIndices()) {
-      // TODO: we should be able to fuse as long as this is a constant int
-      auto *idx = llvm::cast<llvm::ConstantInt>(next_gep->idx_begin()->get());
-      if (!idx->isZero()) {
-        break;
-      }
-
       u32 start = indices.size();
       indices.append(next_gep->idx_begin(), next_gep->idx_end());
       types.push_back({.ty = next_gep->getSourceElementType(),
@@ -3415,29 +3401,66 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
   auto resolved = ResolvedGEP{};
   resolved.base = this->val_ref(llvm_val_idx(ptr), 0);
+  resolved.index = ScratchReg{derived()};
+  resolved.scale = 0;
+  resolved.displacement = 0;
+  resolved.idx_size = 0;
 
   auto &data_layout = this->adaptor->mod->getDataLayout();
 
-  if (variable_off) {
-    resolved.index = this->val_ref(*variable_off, 0);
-    const auto base_ty_size = data_layout.getTypeAllocSize(types[0].ty);
-    resolved.scale = base_ty_size;
-  }
-
-  i64 disp = 0;
   for (auto &[ty, start, end] : types) {
     if (start == end) {
       continue;
     }
 
-    assert(start < indices.size());
-    assert(end <= indices.size());
-    disp += data_layout.getIndexedOffsetInType(
-        ty,
-        llvm::ArrayRef<llvm::Value *>{indices.data() + start,
-                                      indices.data() + end});
+    auto *cur_ty = ty;
+    auto beg_it = indices.data() + start;
+    auto end_it = indices.data() + end;
+    for (auto it = beg_it; it != end_it; ++it) {
+      if (auto *Const = llvm::dyn_cast<llvm::ConstantInt>(*it)) {
+        i64 off_disp;
+        if (it == beg_it) {
+          // array index
+          off_disp =
+              data_layout.getTypeAllocSize(cur_ty) * Const->getSExtValue();
+        } else {
+          if (cur_ty->isStructTy()) {
+            auto *struct_layout = data_layout.getStructLayout(
+                llvm::cast<llvm::StructType>(cur_ty));
+            cur_ty = cur_ty->getStructElementType(Const->getZExtValue());
+            off_disp = struct_layout->getElementOffset(Const->getZExtValue());
+          } else {
+            assert(cur_ty->isArrayTy());
+            cur_ty = cur_ty->getArrayElementType();
+            off_disp =
+                data_layout.getTypeAllocSize(cur_ty) * Const->getSExtValue();
+          }
+        }
+        resolved.displacement += off_disp;
+        continue;
+      }
+
+      // A non-constant GEP. This must either be an offset calculation (for
+      // index == 0) or an array traversal
+      assert(it == beg_it || cur_ty->isArrayTy());
+      if (it != beg_it) {
+        cur_ty = cur_ty->getArrayElementType();
+      }
+
+      if (resolved.scale) {
+        // need to convert to simple base register
+        derived()->resolved_gep_to_base_reg(resolved);
+      }
+
+      auto idx_ref = this->val_ref(llvm_val_idx(*it), 0);
+      const auto part_size = idx_ref.part_size();
+      assert(part_size == 1 || part_size == 2 || part_size == 4 ||
+             part_size == 8);
+      resolved.idx_size = part_size;
+      resolved.index = std::move(idx_ref);
+      resolved.scale = data_layout.getTypeAllocSize(cur_ty);
+    }
   }
-  resolved.displacement = disp;
 
   GenericValuePart addr = derived()->resolved_gep_to_addr(resolved);
 
