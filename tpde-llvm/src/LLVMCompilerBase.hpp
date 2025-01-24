@@ -258,6 +258,12 @@ public:
 
   void setup_var_ref_assignments() noexcept;
 
+  bool compile_func(IRFuncRef func, u32 idx) noexcept {
+    // We might encounter types that are unsupported during compilation, which
+    // cause the flag in the adaptor to be set. In such cases, return false.
+    return Base::compile_func(func, idx) && !this->adaptor->func_unsupported;
+  }
+
   bool compile(llvm::Module &mod) noexcept;
 
   bool compile_inst(IRValueRef, InstRange) noexcept;
@@ -378,12 +384,10 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
         IRValueRef val, u32 part) noexcept {
   auto *const_val = llvm::cast<llvm::Constant>(val);
 
-  const auto &info = this->adaptor->val_info(val);
-  auto ty = info.type;
+  auto [ty, ty_idx] = this->adaptor->val_basic_type_uncached(val, true);
   unsigned sub_part = part;
 
   if (const_val && ty == LLVMBasicValType::complex) {
-    unsigned ty_idx = info.complex_part_tys_idx;
     LLVMComplexPart *part_descs =
         &this->adaptor->complex_part_types[ty_idx + 1];
 
@@ -454,11 +458,15 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
       llvm::isa<llvm::UndefValue>(const_val) ||
       llvm::isa<llvm::ConstantPointerNull>(const_val) ||
       llvm::isa<llvm::ConstantAggregateZero>(const_val)) {
-    auto parts = this->adaptor->val_parts(val);
-    return ValuePartRef(0, parts.reg_bank(part), parts.size_bytes(part));
+    u32 size = this->adaptor->basic_ty_part_size(ty);
+    u32 bank = this->adaptor->basic_ty_part_bank(ty);
+    return ValuePartRef(0, bank, size);
   }
 
   if (auto *cdv = llvm::dyn_cast<llvm::ConstantDataVector>(const_val)) {
+    if (ty == LLVMBasicValType::invalid) {
+      TPDE_FATAL("illegal vector constant of unsupported type");
+    }
     assert(part == 0 && "multi-part vector constants not implemented");
     llvm::StringRef data = cdv->getRawDataValues();
     std::span<const u8> span{reinterpret_cast<const u8 *>(data.data()),
@@ -1378,7 +1386,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
     return true;
   }
 
-  switch (this->adaptor->val_info(op_val).type) {
+  // TODO: don't recompute this, this is currently computed for every val part
+  auto [ty, ty_idx] = this->adaptor->val_basic_type_uncached(op_val, true);
+
+  switch (ty) {
     using enum LLVMBasicValType;
   case i1:
   case i8:
@@ -1446,7 +1457,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
   case complex: {
     op_ref.reset_without_refcount();
 
-    const auto ty_idx = this->adaptor->val_info(op_val).complex_part_tys_idx;
     const LLVMComplexPart *part_descs =
         &this->adaptor->complex_part_types[ty_idx + 1];
     unsigned part_count = part_descs[-1].num_parts;
@@ -1459,6 +1469,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
       auto part_ref = this->val_ref(op_val, i);
       auto part_addr =
           typename GenericValuePart::Expr{ptr_reg, static_cast<tpde::i32>(off)};
+      // Note: val_ref might call val_ref_special, which calls val_parts, which
+      // calls val_basic_type_uncached, which will invalidate part_descs.
+      // TODO: don't recompute value parts for every constant part
+      const LLVMComplexPart *part_descs =
+          &this->adaptor->complex_part_types[ty_idx + 1];
       auto part_ty = part_descs[i].part.type;
       switch (part_ty) {
       case i1:
@@ -2535,7 +2550,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_value(
 
   unsigned part_count = this->adaptor->val_part_count(agg);
   auto [first_part, last_part] =
-      this->adaptor->complex_part_for_index(agg, insert->getIndices());
+      this->adaptor->complex_part_for_index(insert, insert->getIndices());
 
   for (unsigned i = 0; i < part_count; i++) {
     ValuePartRef val_ref;
@@ -2704,7 +2719,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
   ValuePartRef val = this->val_ref(ins, 0);
 
   ValuePartRef result = this->result_ref_lazy(inst, 0);
-  LLVMBasicValType bvt = this->adaptor->val_info(ins).type; // insert type
+  auto [bvt, _] = this->adaptor->val_basic_type_uncached(ins, false);
+  assert(bvt != LLVMBasicValType::complex);
 
   // We do the dynamic insert in the spill slot of result.
   // TODO: reuse spill slot of vec_ref if possible.

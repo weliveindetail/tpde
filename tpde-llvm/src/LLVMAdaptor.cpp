@@ -147,15 +147,9 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
         auto [repl, ins_begin] = fixup_constant(cst, ins_before);
         if (repl) {
           phi.setIncomingValueForBlock(inst->getParent(), repl);
-          if (!ins_begin) {
-            block_constants.push_back(llvm::cast<llvm::Constant>(repl));
-          } else if (!restart_from) {
+          if (!restart_from) {
             restart_from = ins_begin;
           }
-        } else if (!value_lookup.contains(cst)) {
-          // we insert constants inbetween block so that instructions
-          // in a block are consecutive
-          block_constants.push_back(cst);
         }
       }
     }
@@ -183,15 +177,9 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
       if (auto [repl, ins_begin] = fixup_constant(cst, inst); repl)
           [[unlikely]] {
         use = repl;
-        if (!ins_begin) {
-          block_constants.push_back(llvm::cast<llvm::Constant>(repl));
-        } else if (!restart_from) {
+        if (!restart_from) {
           restart_from = ins_begin;
         }
-      } else if (!value_lookup.contains(use.get())) {
-        // we insert constants inbetween block so that instructions in a
-        // block are consecutive
-        block_constants.push_back(llvm::cast<llvm::Constant>(use.get()));
       }
     }
   }
@@ -235,8 +223,8 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
                static_cast<std::string_view>(function->getName()));
 
   // assign local ids
-  value_lookup.clear();
 #ifndef NDEBUG
+  value_lookup.clear();
   block_lookup.clear();
 #endif
   blocks.clear();
@@ -300,9 +288,6 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     complex_part_types.resize(global_complex_part_types_end_idx);
   }
 
-  // reserve a constant size and optimize for smaller functions
-  value_lookup.reserve(512);
-
   const size_t arg_count = function->arg_size();
   for (size_t i = 0; i < arg_count; ++i) {
     llvm::Argument *arg = function->getArg(i);
@@ -345,17 +330,6 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     block_lookup[&block] = block_idx;
 #endif
     block_embedded_idx(&block) = block_idx;
-
-    for (auto *C : block_constants) {
-      if (value_lookup.find(C) == value_lookup.end()) {
-        value_lookup.insert_or_assign(C, values.size());
-        const auto [ty, complex_part_idx] = val_basic_type_uncached(C, true);
-        values.push_back(ValInfo{.type = ty,
-                                 .fused = false,
-                                 .complex_part_tys_idx = complex_part_idx});
-      }
-    }
-    block_constants.clear();
   }
 
   for (const auto &info : blocks) {
@@ -383,8 +357,8 @@ void LLVMAdaptor::reset() noexcept {
   mod = nullptr;
   values.clear();
   global_lookup.clear();
-  value_lookup.clear();
 #ifndef NDEBUG
+  value_lookup.clear();
   block_lookup.clear();
 #endif
   complex_part_types.clear();
@@ -393,7 +367,6 @@ void LLVMAdaptor::reset() noexcept {
   globals_init = false;
   global_idx_end = 0;
   global_complex_part_types_end_idx = 0;
-  block_constants.clear();
   blocks.clear();
   block_succ_indices.clear();
   block_succ_ranges.clear();

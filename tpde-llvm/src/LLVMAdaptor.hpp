@@ -142,11 +142,8 @@ struct LLVMAdaptor {
   /// Keep them separate so that we don't have to repeatedly insert them for
   /// every function.
   llvm::DenseMap<const llvm::GlobalValue *, u32> global_lookup;
-  /// Map from non-global value to value index. This map contains constants
-  /// that are not globals, arguments, and basic blocks. Instructions are
-  /// only included in debug builds.
-  llvm::DenseMap<const llvm::Value *, u32> value_lookup;
 #ifndef NDEBUG
+  llvm::DenseMap<const llvm::Value *, u32> value_lookup;
   llvm::DenseMap<const llvm::BasicBlock *, u32> block_lookup;
 #endif
   tpde::util::SmallVector<LLVMComplexPart, 32> complex_part_types;
@@ -163,7 +160,6 @@ struct LLVMAdaptor {
   u32 global_idx_end = 0;
   u32 global_complex_part_types_end_idx = 0;
 
-  tpde::util::SmallVector<llvm::Constant *, 32> block_constants;
   tpde::util::SmallVector<BlockInfo, 128> blocks;
   tpde::util::SmallVector<u32, 256> block_succ_indices;
   tpde::util::SmallVector<std::pair<u32, u32>, 128> block_succ_ranges;
@@ -467,7 +463,14 @@ public:
     u8 reg_bank(u32 n) const { return basic_ty_part_bank(type(n)); }
   };
 
-  ValueParts val_parts(const IRValueRef value) const {
+  ValueParts val_parts(const IRValueRef value) {
+    if (llvm::isa<llvm::Constant>(value)) {
+      auto [ty, ty_idx] = val_basic_type_uncached(value, false);
+      if (ty == LLVMBasicValType::complex) {
+        return ValueParts{ty, &complex_part_types[ty_idx]};
+      }
+      return ValueParts{ty, nullptr};
+    }
     const ValInfo &info = values[val_lookup_idx(value)];
     if (info.type == LLVMBasicValType::complex) {
       unsigned ty_idx = info.complex_part_tys_idx;
@@ -477,7 +480,7 @@ public:
   }
 
   // other public stuff for the compiler impl
-  u32 val_part_count(const IRValueRef idx) const noexcept {
+  u32 val_part_count(const IRValueRef idx) noexcept {
     return val_parts(idx).count();
   }
 
@@ -501,10 +504,6 @@ public:
     }
     if (auto *arg = llvm::dyn_cast<llvm::Argument>(val)) {
       return arg_lookup_idx(arg);
-    }
-    const auto it = value_lookup.find(val);
-    if (it != value_lookup.end()) {
-      return it->second;
     }
     TPDE_FATAL("unhandled value type");
   }
@@ -629,11 +628,11 @@ private:
   /// allocation size in bytes and the alignment.
   std::pair<unsigned, unsigned> complex_types_append(llvm::Type *type) noexcept;
 
+public:
   [[nodiscard]] std::pair<LLVMBasicValType, u32>
       val_basic_type_uncached(const llvm::Value *val,
                               const bool const_or_global) noexcept;
 
-public:
   /// Map insertvalue/extractvalue indices to parts. Returns (first part,
   /// last part (inclusive)).
   std::pair<unsigned, unsigned>

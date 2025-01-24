@@ -1499,6 +1499,8 @@ define void @store_packed(ptr %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <store_packed>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -1514,5 +1516,103 @@ define void @store_packed(ptr %0) {
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
   store %struct_i16_i32_packed <{i16 1, i32 2}>, ptr %0
+  ret void
+}
+
+define void @store_mult_const(ptr %p) {
+; X64-LABEL: <store_mult_const>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    mov qword ptr [rdi], 0x0
+; X64-NEXT:    mov qword ptr [rdi + 0x8], 0x0
+; X64-NEXT:    mov qword ptr [rdi], 0x0
+; X64-NEXT:    mov qword ptr [rdi + 0x8], 0x0
+; X64-NEXT:    mov qword ptr [rdi], 0x0
+; X64-NEXT:    mov qword ptr [rdi + 0x8], 0x0
+; X64-NEXT:    mov qword ptr [rdi], 0x0
+; X64-NEXT:    mov qword ptr [rdi + 0x8], 0x0
+; X64-NEXT:    mov qword ptr [rdi], 0x0
+; X64-NEXT:    mov qword ptr [rdi + 0x8], 0x0
+; X64-NEXT:    mov qword ptr [rdi], 0x0
+; X64-NEXT:    mov qword ptr [rdi + 0x8], 0x0
+; X64-NEXT:    mov qword ptr [rdi], 0x0
+; X64-NEXT:    mov qword ptr [rdi + 0x8], 0x0
+; X64-NEXT:    mov qword ptr [rdi], 0x0
+; X64-NEXT:    mov qword ptr [rdi + 0x8], 0x0
+; X64-NEXT:    mov qword ptr [rdi], 0x0
+; X64-NEXT:    mov qword ptr [rdi + 0x8], 0x0
+; X64-NEXT:    mov qword ptr [rdi], 0x0
+; X64-NEXT:    mov qword ptr [rdi + 0x8], 0x0
+; X64-NEXT:    mov qword ptr [rdi], 0x0
+; X64-NEXT:    mov qword ptr [rdi + 0x8], 0x0
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <store_mult_const>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0, #0x8]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0, #0x8]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0, #0x8]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0, #0x8]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0, #0x8]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0, #0x8]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0, #0x8]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0, #0x8]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0, #0x8]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0, #0x8]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0]
+; ARM64-NEXT:    mov w1, #0x0 // =0
+; ARM64-NEXT:    str x1, [x0, #0x8]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+  store { i64, i64 } zeroinitializer, ptr %p, align 8
+  store { i64, i64 } zeroinitializer, ptr %p, align 8
+  store { i64, i64 } zeroinitializer, ptr %p, align 8
+  store { i64, i64 } zeroinitializer, ptr %p, align 8
+  store { i64, i64 } zeroinitializer, ptr %p, align 8
+  store { i64, i64 } zeroinitializer, ptr %p, align 8
+  store { i64, i64 } zeroinitializer, ptr %p, align 8
+  store { i64, i64 } zeroinitializer, ptr %p, align 8
+  store { i64, i64 } zeroinitializer, ptr %p, align 8
+  store { i64, i64 } zeroinitializer, ptr %p, align 8
+  store { i64, i64 } zeroinitializer, ptr %p, align 8
   ret void
 }

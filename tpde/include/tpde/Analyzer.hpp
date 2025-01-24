@@ -750,7 +750,7 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
 
   const auto visit = [this](const IRValueRef value, const u32 block_idx) {
     TPDE_LOG_TRACE("  Visiting value {} in block {}",
-                   adaptor->val_local_idx(value),
+                   adaptor->value_fmt_ref(value),
                    block_idx);
     if (adaptor->val_ignore_in_liveness_analysis(value)) {
       TPDE_LOG_TRACE("    value is ignored");
@@ -957,10 +957,6 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
             continue;
           }
           const auto incoming_block_idx = adaptor->block_info(incoming_block);
-          TPDE_LOG_TRACE("got value {} from block {} ('{})",
-                         adaptor->val_local_idx(incoming_value),
-                         incoming_block_idx,
-                         adaptor->block_fmt_ref(incoming_block));
 
           // mark the incoming value as used in the incoming block
           visit(incoming_value, incoming_block_idx);

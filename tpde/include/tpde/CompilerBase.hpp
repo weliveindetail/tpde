@@ -1132,17 +1132,13 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
     for (const IRValueRef phi_val : adaptor->block_phis(succ)) {
       const auto phi_ref = adaptor->val_as_phi(phi_val);
       const IRValueRef inc_val = phi_ref.incoming_val_for_block(cur_block_ref);
-      auto *assignment = val_assignment(val_idx(inc_val));
-      if (assignment == nullptr) {
-        // val_ref_special can lazily create Assignments
-        auto ref = derived()->val_ref(inc_val, 0);
-        if (ref.is_const) {
-          continue;
-        }
-        assignment = ref.state.v.assignment;
-        ref.reset_without_refcount();
-        assert(assignment && "non-const value without assignment");
+      // TODO: we should query all parts here
+      auto ref = derived()->val_ref(inc_val, 0);
+      if (ref.is_const) {
+        continue;
       }
+      auto *assignment = ref.state.v.assignment;
+      ref.reset_without_refcount();
       u32 part_count = derived()->val_parts(inc_val).count();
       for (u32 i = 0; i < part_count; ++i) {
         auto ap = AssignmentPartRef{assignment, i};
