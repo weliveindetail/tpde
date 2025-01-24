@@ -304,6 +304,7 @@ public:
   bool compile_freeze(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_call(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_select(IRValueRef, llvm::Instruction *) noexcept;
+  GenericValuePart resolved_gep_to_addr(ResolvedGEP &gep) noexcept;
   bool compile_gep(IRValueRef, llvm::Instruction *, InstRange) noexcept;
   bool compile_fcmp(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_switch(IRValueRef, llvm::Instruction *) noexcept;
@@ -3345,59 +3346,72 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
 }
 
 template <typename Adaptor, typename Derived, typename Config>
+typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
+    LLVMCompilerBase<Adaptor, Derived, Config>::resolved_gep_to_addr(
+        ResolvedGEP &gep) noexcept {
+  ScratchReg index_scratch{this};
+  typename GenericValuePart::Expr addr{};
+  if (std::holds_alternative<ScratchReg>(gep.base)) {
+    addr.base = std::move(std::get<ScratchReg>(gep.base));
+  } else {
+    auto &ref = std::get<ValuePartRef>(gep.base);
+    auto scratch = ScratchReg{this};
+    auto reg = this->val_as_reg(ref, scratch);
+    if (ref.can_salvage()) {
+      scratch.alloc_specific(ref.salvage());
+      addr.base = std::move(scratch);
+    } else {
+      if (scratch.cur_reg.valid()) {
+        addr.base = std::move(scratch);
+      } else {
+        addr.base = reg;
+      }
+    }
+  }
+
+  if (gep.scale) {
+    assert(gep.index);
+    if (std::holds_alternative<ScratchReg>(*gep.index)) {
+      assert(gep.idx_size == 8);
+      addr.index = std::move(std::get<ScratchReg>(*gep.index));
+    } else {
+      // check for sign-extension
+      auto &ref = std::get<ValuePartRef>(*gep.index);
+      const auto idx_size = gep.idx_size;
+      if (idx_size == 1 || idx_size == 2 || idx_size == 4) {
+        ScratchReg scratch{this};
+        if (idx_size == 1) {
+          derived()->encode_sext_8_to_64(std::move(ref), scratch);
+        } else if (idx_size == 2) {
+          derived()->encode_sext_16_to_64(std::move(ref), scratch);
+        } else {
+          assert(idx_size == 4);
+          derived()->encode_sext_32_to_64(std::move(ref), scratch);
+        }
+        addr.index = std::move(scratch);
+      } else {
+        assert(idx_size == 8);
+        addr.index = this->val_as_reg(ref, index_scratch);
+        if (index_scratch.cur_reg.valid()) {
+          addr.index = std::move(index_scratch);
+        }
+      }
+    }
+  }
+
+  addr.scale = gep.scale;
+  addr.disp = gep.displacement;
+
+  return addr;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     IRValueRef inst_idx,
     llvm::Instruction *inst,
     InstRange remaining) noexcept {
   auto *gep = llvm::cast<llvm::GetElementPtrInst>(inst);
-
   auto ptr = gep->getPointerOperand();
-  tpde::util::SmallVector<llvm::Value *, 8> indices;
-
-  if (gep->hasIndices()) {
-    auto idx_begin = gep->idx_begin(), idx_end = gep->idx_end();
-
-    for (auto it = idx_begin; it != idx_end; ++it) {
-      indices.push_back(it->get());
-    }
-  }
-
-  struct GEPTypeRange {
-    llvm::Type *ty;
-    uint32_t start;
-    uint32_t end;
-  };
-
-  tpde::util::SmallVector<GEPTypeRange, 8> types;
-  types.push_back({.ty = gep->getSourceElementType(),
-                   .start = 0,
-                   .end = (u32)indices.size()});
-
-  // fuse geps
-  // TODO: use llvm statistic or analyzer liveness stat?
-  auto final_idx = inst_idx;
-  while (gep->hasOneUse() && remaining.from != remaining.to) {
-    auto next_inst_idx = *remaining.from;
-    auto *next_val = this->adaptor->values[next_inst_idx].val;
-    auto *next_gep = llvm::dyn_cast<llvm::GetElementPtrInst>(next_val);
-    if (!next_gep || next_gep->getPointerOperand() != gep ||
-        gep->getResultElementType() != next_gep->getResultElementType()) {
-      break;
-    }
-
-    if (next_gep->hasIndices()) {
-      u32 start = indices.size();
-      indices.append(next_gep->idx_begin(), next_gep->idx_end());
-      types.push_back({.ty = next_gep->getSourceElementType(),
-                       .start = start,
-                       .end = (u32)indices.size()});
-    }
-
-    this->adaptor->val_set_fused(next_inst_idx, true);
-    final_idx = next_inst_idx; // we set the result for nextInst
-    gep = next_gep;
-    ++remaining.from;
-  }
 
   auto resolved = ResolvedGEP{};
   resolved.base = this->val_ref(llvm_val_idx(ptr), 0);
@@ -3408,18 +3422,19 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
   auto &data_layout = this->adaptor->mod->getDataLayout();
 
-  for (auto &[ty, start, end] : types) {
-    if (start == end) {
-      continue;
+  const auto handle_gep_indices = [this, &data_layout, &resolved](
+                                      llvm::Type *source_ty,
+                                      const llvm::Use *idx_start,
+                                      const llvm::Use *idx_end) {
+    if (idx_start == idx_end) {
+      return;
     }
 
-    auto *cur_ty = ty;
-    auto beg_it = indices.data() + start;
-    auto end_it = indices.data() + end;
-    for (auto it = beg_it; it != end_it; ++it) {
-      if (auto *Const = llvm::dyn_cast<llvm::ConstantInt>(*it)) {
+    auto *cur_ty = source_ty;
+    for (auto it = idx_start; it != idx_end; ++it) {
+      if (auto *Const = llvm::dyn_cast<llvm::ConstantInt>(it->get())) {
         i64 off_disp;
-        if (it == beg_it) {
+        if (it == idx_start) {
           // array index
           off_disp =
               data_layout.getTypeAllocSize(cur_ty) * Const->getSExtValue();
@@ -3442,8 +3457,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
       // A non-constant GEP. This must either be an offset calculation (for
       // index == 0) or an array traversal
-      assert(it == beg_it || cur_ty->isArrayTy());
-      if (it != beg_it) {
+      assert(it == idx_start || cur_ty->isArrayTy());
+      if (it != idx_start) {
         cur_ty = cur_ty->getArrayElementType();
       }
 
@@ -3452,7 +3467,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
         derived()->resolved_gep_to_base_reg(resolved);
       }
 
-      auto idx_ref = this->val_ref(llvm_val_idx(*it), 0);
+      auto idx_ref = this->val_ref(llvm_val_idx(it->get()), 0);
+
+      [[maybe_unused]] auto *idx_ty = it->get()->getType();
+      assert(idx_ty->isIntegerTy(8) || idx_ty->isIntegerTy(16) ||
+             idx_ty->isIntegerTy(32) || idx_ty->isIntegerTy(64));
+
       const auto part_size = idx_ref.part_size();
       assert(part_size == 1 || part_size == 2 || part_size == 4 ||
              part_size == 8);
@@ -3460,9 +3480,36 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
       resolved.index = std::move(idx_ref);
       resolved.scale = data_layout.getTypeAllocSize(cur_ty);
     }
+  };
+
+  handle_gep_indices(
+      gep->getSourceElementType(), gep->idx_begin(), gep->idx_end());
+
+  // fuse geps
+  // TODO: use llvm statistic or analyzer liveness stat?
+  auto final_idx = inst_idx;
+  while (gep->hasOneUse() && remaining.from != remaining.to) {
+    auto next_inst_idx = *remaining.from;
+    auto *next_val = this->adaptor->values[next_inst_idx].val;
+    auto *next_gep = llvm::dyn_cast<llvm::GetElementPtrInst>(next_val);
+    if (!next_gep || next_gep->getPointerOperand() != gep ||
+        gep->getResultElementType() != next_gep->getResultElementType()) {
+      break;
+    }
+
+    if (next_gep->hasIndices()) {
+      handle_gep_indices(next_gep->getSourceElementType(),
+                         next_gep->idx_begin(),
+                         next_gep->idx_end());
+    }
+
+    this->adaptor->val_set_fused(next_inst_idx, true);
+    final_idx = next_inst_idx; // we set the result for nextInst
+    gep = next_gep;
+    ++remaining.from;
   }
 
-  GenericValuePart addr = derived()->resolved_gep_to_addr(resolved);
+  GenericValuePart addr = this->resolved_gep_to_addr(resolved);
 
   if (gep->hasOneUse() && remaining.from != remaining.to) {
     auto next_inst_idx = *remaining.from;

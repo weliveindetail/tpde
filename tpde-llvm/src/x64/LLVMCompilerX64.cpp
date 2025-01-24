@@ -117,7 +117,6 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
   bool compile_icmp(IRValueRef, llvm::Instruction *, InstRange) noexcept;
   void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
-  GenericValuePart resolved_gep_to_addr(ResolvedGEP &resolved) noexcept;
   void resolved_gep_to_base_reg(ResolvedGEP &resolved) noexcept;
   GenericValuePart create_addr_for_alloca(u32 ref_idx) noexcept;
 
@@ -745,63 +744,6 @@ void LLVMCompilerX64::compile_i32_cmp_zero(
   ASM(MOVZXr32r8, reg, reg);
 }
 
-LLVMCompilerX64::GenericValuePart
-    LLVMCompilerX64::resolved_gep_to_addr(ResolvedGEP &resolved) noexcept {
-  ScratchReg index_scratch{this};
-  GenericValuePart::Expr addr{};
-  if (std::holds_alternative<ScratchReg>(resolved.base)) {
-    addr.base = std::move(std::get<ScratchReg>(resolved.base));
-  } else {
-    auto &ref = std::get<ValuePartRef>(resolved.base);
-    auto scratch = ScratchReg{this};
-    auto reg = this->val_as_reg(ref, scratch);
-    if (ref.can_salvage()) {
-      scratch.alloc_specific(ref.salvage());
-      addr.base = std::move(scratch);
-    } else {
-      if (scratch.cur_reg.valid()) {
-        addr.base = std::move(scratch);
-      } else {
-        addr.base = reg;
-      }
-    }
-  }
-
-  if (resolved.scale) {
-    assert(resolved.index);
-    if (std::holds_alternative<ScratchReg>(*resolved.index)) {
-      assert(resolved.idx_size == 8);
-      addr.index = std::move(std::get<ScratchReg>(*resolved.index));
-    } else {
-      // check for sign-extension
-      auto &ref = std::get<ValuePartRef>(*resolved.index);
-      const auto idx_size = resolved.idx_size;
-      if (idx_size == 1 || idx_size == 2 || idx_size == 4) {
-        ScratchReg scratch{this};
-        if (idx_size == 1) {
-          this->encode_sext_8_to_64(std::move(ref), scratch);
-        } else if (idx_size == 2) {
-          this->encode_sext_16_to_64(std::move(ref), scratch);
-        } else {
-          assert(idx_size == 4);
-          this->encode_sext_32_to_64(std::move(ref), scratch);
-        }
-        addr.index = std::move(scratch);
-      } else {
-        assert(idx_size == 8);
-        addr.index = this->val_as_reg(ref, index_scratch);
-        if (index_scratch.cur_reg.valid()) {
-          addr.index = std::move(index_scratch);
-        }
-      }
-    }
-  }
-
-  addr.scale = resolved.scale;
-  addr.disp = resolved.displacement;
-
-  return addr;
-}
 void LLVMCompilerX64::resolved_gep_to_base_reg(ResolvedGEP &gep) noexcept {
   GenericValuePart operand = resolved_gep_to_addr(gep);
   AsmReg res_reg = gval_as_reg(operand);
