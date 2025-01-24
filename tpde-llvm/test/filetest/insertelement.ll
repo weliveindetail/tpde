@@ -290,6 +290,7 @@ define <2 x double> @ins_v2f64_dyn(<2 x double> %v, double %e, i32 %i) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <ins_v2f64_dyn>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -305,5 +306,34 @@ define <2 x double> @ins_v2f64_dyn(<2 x double> %v, double %e, i32 %i) {
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
   %r = insertelement <2 x double> %v, double %e, i32 %i
+  ret <2 x double> %r
+}
+
+define <2 x double> @ins_v2f64_const(<2 x double> %v) {
+; X64-LABEL: <ins_v2f64_const>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    movapd xmmword ptr [rbp - 0x50], xmm0
+; X64-NEXT:    movabs rax, 0x3ff0000000000000
+; X64-NEXT:    movq xmm0, rax
+; X64-NEXT:    movsd qword ptr [rbp - 0x48], xmm0
+; X64-NEXT:    movapd xmm0, xmmword ptr [rbp - 0x50]
+; X64-NEXT:    add rsp, 0x50
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <ins_v2f64_const>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    fmov d1, #1.00000000
+; ARM64-NEXT:    mov v0.d[1], v1.d[0]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+  %r = insertelement <2 x double> %v, double 1.0, i32 1
   ret <2 x double> %r
 }
