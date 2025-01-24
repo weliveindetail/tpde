@@ -31,15 +31,15 @@ define i8 @fshr_i8_3(i8 %a, i8 %b) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov w2, #0x18 // =24
 ; ARM64-NEXT:    lsl w1, w1, #24
-; ARM64-NEXT:    mov x3, #0x3 // =3
-; ARM64-NEXT:    mvn w4, w3
-; ARM64-NEXT:    bfxil w2, w3, #0, #3
+; ARM64-NEXT:    orr w3, wzr, #0xfffffffc
+; ARM64-NEXT:    mov x4, #0x3 // =3
+; ARM64-NEXT:    bfxil w2, w4, #0, #3
 ; ARM64-NEXT:    lsl w0, w0, #1
-; ARM64-NEXT:    and x4, x4, #0x7
+; ARM64-NEXT:    and x3, x3, #0x7
 ; ARM64-NEXT:    lsr w2, w1, w2
-; ARM64-NEXT:    lsl w1, w0, w4
-; ARM64-NEXT:    orr w3, w1, w2
-; ARM64-NEXT:    mov w0, w3
+; ARM64-NEXT:    lsl w1, w0, w3
+; ARM64-NEXT:    orr w4, w1, w2
+; ARM64-NEXT:    mov w0, w4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -254,15 +254,15 @@ define i16 @fshr_i16_3(i16 %a, i16 %b) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov w2, #0x10 // =16
 ; ARM64-NEXT:    lsl w1, w1, #16
-; ARM64-NEXT:    mov x3, #0x3 // =3
-; ARM64-NEXT:    mvn w4, w3
-; ARM64-NEXT:    bfxil w2, w3, #0, #4
+; ARM64-NEXT:    orr w3, wzr, #0xfffffffc
+; ARM64-NEXT:    mov x4, #0x3 // =3
+; ARM64-NEXT:    bfxil w2, w4, #0, #4
 ; ARM64-NEXT:    lsl w0, w0, #1
-; ARM64-NEXT:    and x4, x4, #0xf
+; ARM64-NEXT:    and x3, x3, #0xf
 ; ARM64-NEXT:    lsr w2, w1, w2
-; ARM64-NEXT:    lsl w1, w0, w4
-; ARM64-NEXT:    orr w3, w1, w2
-; ARM64-NEXT:    mov w0, w3
+; ARM64-NEXT:    lsl w1, w0, w3
+; ARM64-NEXT:    orr w4, w1, w2
+; ARM64-NEXT:    mov w0, w4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -477,12 +477,11 @@ define i32 @fshr_i32_3(i32 %a, i32 %b) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsl w0, w0, #1
-; ARM64-NEXT:    mov x2, #0x3 // =3
-; ARM64-NEXT:    mvn w3, w2
-; ARM64-NEXT:    lsr w1, w1, w2
-; ARM64-NEXT:    lsl w0, w0, w3
-; ARM64-NEXT:    orr w2, w0, w1
-; ARM64-NEXT:    mov w0, w2
+; ARM64-NEXT:    orr w2, wzr, #0xfffffffc
+; ARM64-NEXT:    lsr w1, w1, #3
+; ARM64-NEXT:    lsl w0, w0, w2
+; ARM64-NEXT:    orr w3, w0, w1
+; ARM64-NEXT:    mov w0, w3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret

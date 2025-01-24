@@ -463,12 +463,11 @@ define i32 @fshl_i32_3(i32 %a, i32 %b) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsr w1, w1, #1
-; ARM64-NEXT:    mov x2, #0x3 // =3
-; ARM64-NEXT:    mvn w3, w2
-; ARM64-NEXT:    lsl w0, w0, w2
-; ARM64-NEXT:    lsr w1, w1, w3
-; ARM64-NEXT:    orr w2, w0, w1
-; ARM64-NEXT:    mov w0, w2
+; ARM64-NEXT:    orr w2, wzr, #0xfffffffc
+; ARM64-NEXT:    lsl w0, w0, #3
+; ARM64-NEXT:    lsr w1, w1, w2
+; ARM64-NEXT:    orr w3, w0, w1
+; ARM64-NEXT:    mov w0, w3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret

@@ -23,8 +23,7 @@ define void @and_i8_3(i8 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x3 // =3
-; ARM64-NEXT:    and w1, w1, w0
+; ARM64-NEXT:    and w0, w0, #0x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -102,8 +101,7 @@ define void @and_i16_1ff0(i16 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1ff0 // =8176
-; ARM64-NEXT:    and w1, w1, w0
+; ARM64-NEXT:    and w0, w0, #0x1ff0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -180,8 +178,7 @@ define void @and_i32_1fffff0(i32 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x1, #0x1fffff0 // =33554416
-; ARM64-NEXT:    and w1, w1, w0
+; ARM64-NEXT:    and w0, w0, #0x1fffff0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
