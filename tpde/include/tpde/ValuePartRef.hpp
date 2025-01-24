@@ -110,6 +110,9 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   /// Increment the reference count artificially
   void inc_ref_count() noexcept;
 
+  /// Decrement the reference count artificially
+  void dec_ref_count() noexcept;
+
   /// Spill the value part to the stack frame
   void spill() noexcept;
 
@@ -193,6 +196,16 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
   }
 
   ++state.v.assignment->references_left;
+}
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
+    dec_ref_count() noexcept {
+  if (is_const) {
+    return;
+  }
+
+  assert(state.v.assignment->references_left > 0);
+  --state.v.assignment->references_left;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
