@@ -2438,6 +2438,7 @@ define dso_local ptr @gep_array(ptr noundef %0) #0 {
 ; X64-NEXT:    add rsp, 0x110
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <gep_array>:
 ; ARM64:         sub sp, sp, #0x180
@@ -2454,6 +2455,140 @@ define dso_local ptr @gep_array(ptr noundef %0) #0 {
   %array = alloca [201 x i8], align 1
   %gep = getelementptr inbounds [201 x i8], ptr %array, i64 0, i64 0
   ret ptr %gep
+}
+
+
+define ptr @gep_ptr_i21(ptr %0, i21 %1) {
+; X64-LABEL: <gep_ptr_i21>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    shl rsi, 0x2b
+; X64-NEXT:    sar rsi, 0x2b
+; X64-NEXT:    lea rdi, [rdi + 8*rsi]
+; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop dword ptr [rax]
+;
+; ARM64-LABEL: <gep_ptr_i21>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    sbfx x1, x1, #0, #21
+; ARM64-NEXT:    add x0, x0, x1, lsl #3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+entry:
+  %2 = getelementptr inbounds ptr, ptr %0, i21 %1
+  ret ptr %2
+}
+
+define ptr @gep_ptr_i37(ptr %0, i37 %1) {
+; X64-LABEL: <gep_ptr_i37>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    shl rsi, 0x1b
+; X64-NEXT:    sar rsi, 0x1b
+; X64-NEXT:    lea rdi, [rdi + 8*rsi]
+; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop dword ptr [rax]
+;
+; ARM64-LABEL: <gep_ptr_i37>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    sbfx x1, x1, #0, #37
+; ARM64-NEXT:    add x0, x0, x1, lsl #3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+entry:
+  %2 = getelementptr inbounds ptr, ptr %0, i37 %1
+  ret ptr %2
+}
+
+define ptr @gep_ptr_i21_nosalvage(ptr %0, i21 %1) {
+; X64-LABEL: <gep_ptr_i21_nosalvage>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    shl rax, 0x2b
+; X64-NEXT:    sar rax, 0x2b
+; X64-NEXT:    lea rax, [rdi + 8*rax]
+; X64-NEXT:    shl rsi, 0x2b
+; X64-NEXT:    sar rsi, 0x2b
+; X64-NEXT:    lea rdi, [rdi + 8*rsi]
+; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop dword ptr [rax + rax]
+;
+; ARM64-LABEL: <gep_ptr_i21_nosalvage>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    sbfx x2, x1, #0, #21
+; ARM64-NEXT:    add x2, x0, x2, lsl #3
+; ARM64-NEXT:    sbfx x1, x1, #0, #21
+; ARM64-NEXT:    add x0, x0, x1, lsl #3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+entry:
+  %2 = getelementptr inbounds ptr, ptr %0, i21 %1
+  %3 = getelementptr inbounds ptr, ptr %0, i21 %1
+  ret ptr %3
+}
+
+define ptr @gep_ptr_i37_nosalvage(ptr %0, i37 %1) {
+; X64-LABEL: <gep_ptr_i37_nosalvage>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    shl rax, 0x1b
+; X64-NEXT:    sar rax, 0x1b
+; X64-NEXT:    lea rax, [rdi + 8*rax]
+; X64-NEXT:    shl rsi, 0x1b
+; X64-NEXT:    sar rsi, 0x1b
+; X64-NEXT:    lea rdi, [rdi + 8*rsi]
+; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <gep_ptr_i37_nosalvage>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    sbfx x2, x1, #0, #37
+; ARM64-NEXT:    add x2, x0, x2, lsl #3
+; ARM64-NEXT:    sbfx x1, x1, #0, #37
+; ARM64-NEXT:    add x0, x0, x1, lsl #3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+entry:
+  %2 = getelementptr inbounds ptr, ptr %0, i37 %1
+  %3 = getelementptr inbounds ptr, ptr %0, i37 %1
+  ret ptr %3
 }
 
 

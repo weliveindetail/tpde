@@ -65,7 +65,7 @@ struct LLVMCompilerBase : public LLVMCompiler,
     std::variant<ValuePartRef, ScratchReg> base;
     std::optional<std::variant<ValuePartRef, ScratchReg>> index;
     u64 scale;
-    u32 idx_size; // 1,2,4 or 8
+    u32 idx_size_bits;
     i64 displacement;
   };
 
@@ -3372,25 +3372,27 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
   if (gep.scale) {
     assert(gep.index);
     if (std::holds_alternative<ScratchReg>(*gep.index)) {
-      assert(gep.idx_size == 8);
+      assert(gep.idx_size_bits == 64);
       addr.index = std::move(std::get<ScratchReg>(*gep.index));
     } else {
       // check for sign-extension
       auto &ref = std::get<ValuePartRef>(*gep.index);
-      const auto idx_size = gep.idx_size;
-      if (idx_size == 1 || idx_size == 2 || idx_size == 4) {
+      const auto idx_size_bits = gep.idx_size_bits;
+      if (idx_size_bits < 64) {
         ScratchReg scratch{this};
-        if (idx_size == 1) {
-          derived()->encode_sext_8_to_64(std::move(ref), scratch);
-        } else if (idx_size == 2) {
-          derived()->encode_sext_16_to_64(std::move(ref), scratch);
+        AsmReg src_reg = this->val_as_reg(ref, scratch);
+        AsmReg dst_reg;
+        if (ref.is_const) {
+          dst_reg = src_reg;
+        } else if (ref.can_salvage()) {
+          dst_reg = scratch.alloc_specific(ref.salvage());
         } else {
-          assert(idx_size == 4);
-          derived()->encode_sext_32_to_64(std::move(ref), scratch);
+          dst_reg = scratch.alloc_gp();
         }
+        derived()->ext_int(dst_reg, src_reg, true, idx_size_bits, 64);
         addr.index = std::move(scratch);
       } else {
-        assert(idx_size == 8);
+        assert(idx_size_bits == 64);
         addr.index = this->val_as_reg(ref, index_scratch);
         if (index_scratch.cur_reg.valid()) {
           addr.index = std::move(index_scratch);
@@ -3418,7 +3420,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
   resolved.index = ScratchReg{derived()};
   resolved.scale = 0;
   resolved.displacement = 0;
-  resolved.idx_size = 0;
+  resolved.idx_size_bits = 0;
 
   auto &data_layout = this->adaptor->mod->getDataLayout();
 
@@ -3469,14 +3471,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
       auto idx_ref = this->val_ref(llvm_val_idx(it->get()), 0);
 
-      [[maybe_unused]] auto *idx_ty = it->get()->getType();
-      assert(idx_ty->isIntegerTy(8) || idx_ty->isIntegerTy(16) ||
-             idx_ty->isIntegerTy(32) || idx_ty->isIntegerTy(64));
+      auto *idx_ty = it->get()->getType();
+      const auto idx_width = idx_ty->getIntegerBitWidth();
+      assert(idx_width > 0 && idx_width <= 64);
 
-      const auto part_size = idx_ref.part_size();
-      assert(part_size == 1 || part_size == 2 || part_size == 4 ||
-             part_size == 8);
-      resolved.idx_size = part_size;
+      resolved.idx_size_bits = idx_width;
       resolved.index = std::move(idx_ref);
       resolved.scale = data_layout.getTypeAllocSize(cur_ty);
     }

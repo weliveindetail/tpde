@@ -831,7 +831,7 @@ void LLVMCompilerArm64::resolved_gep_to_base_reg(ResolvedGEP &gep) noexcept {
 
   gep.index = ScratchReg{this};
   gep.displacement = 0;
-  gep.idx_size = 0;
+  gep.idx_size_bits = 0;
   gep.scale = 0;
 }
 
