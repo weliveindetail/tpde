@@ -74,8 +74,8 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
     return tpde::x64::CallingConv::SYSV_CC;
   }
 
-  bool arg_is_int128(const IRValueRef val_idx) const noexcept {
-    return this->adaptor->values[val_idx].type == LLVMBasicValType::i128;
+  bool arg_is_int128(const IRValueRef value) const noexcept {
+    return value->getType()->isIntegerTy(128);
   }
 
   bool arg_allow_split_reg_stack_passing(
@@ -234,7 +234,7 @@ void LLVMCompilerX64::load_address_of_var_reference(
         dst,
         FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(info.alloca_frame_off)));
   } else {
-    auto *global = llvm::cast<llvm::GlobalValue>(adaptor->values[info.val].val);
+    auto *global = llvm::cast<llvm::GlobalValue>(info.val);
     const auto sym = global_sym(global);
     assert(sym.valid());
     if (global->isThreadLocal()) {

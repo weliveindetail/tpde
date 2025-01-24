@@ -5,6 +5,7 @@
 #include <format>
 
 #include <llvm/ADT/STLExtras.h>
+#include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/GlobalValue.h>
@@ -198,7 +199,7 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
   auto fused = false;
   if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(inst)) {
     if (is_static_alloca(alloca)) {
-      initial_stack_slot_indices.push_back(values.size());
+      initial_stack_slot_indices.push_back(alloca);
       // fuse static alloca's in the initial block so we dont try
       // to dynamically allocate them
       fused = true;
@@ -332,8 +333,7 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
   }
 
   for (llvm::BasicBlock &block : *function) {
-    const u32 idx_start = values.size();
-    u32 phi_end = idx_start;
+    std::optional<llvm::BasicBlock::iterator> last_phi;
 
     for (auto it = block.begin(), end = block.end(); it != end;) {
       auto *restart_from = handle_inst_in_block(&block, &*it);
@@ -341,13 +341,16 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
         it = restart_from->getIterator();
       } else {
         if (llvm::isa<llvm::PHINode>(&*it)) {
-          phi_end = static_cast<u32>(values.size());
+          last_phi = it;
         }
         ++it;
       }
     }
 
-    u32 idx_end = values.size();
+    llvm::BasicBlock::iterator phi_end = block.begin();
+    if (last_phi) {
+      phi_end = ++*last_phi;
+    }
 
     const auto block_idx = blocks.size();
     if (!blocks.empty()) {
@@ -356,10 +359,7 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
 
     blocks.push_back(BlockInfo{
         .block = &block,
-        .aux = BlockAux{.idx_start = idx_start,
-                        .idx_end = idx_end,
-                        .idx_phi_end = phi_end,
-                        .sibling = INVALID_BLOCK_REF}
+        .aux = BlockAux{.sibling = INVALID_BLOCK_REF, .phi_end = phi_end}
     });
 
 #ifndef NDEBUG
@@ -643,10 +643,11 @@ std::pair<unsigned, unsigned>
 }
 
 std::pair<unsigned, unsigned>
-    LLVMAdaptor::complex_part_for_index(IRValueRef val_idx,
+    LLVMAdaptor::complex_part_for_index(IRValueRef value,
                                         llvm::ArrayRef<unsigned> search) {
-  assert(values[val_idx].type == LLVMBasicValType::complex);
-  const auto ty_idx = values[val_idx].complex_part_tys_idx;
+  const ValInfo &info = values[val_lookup_idx(value)];
+  assert(info.type == LLVMBasicValType::complex);
+  const auto ty_idx = info.complex_part_tys_idx;
   const LLVMComplexPart *part_descs = &complex_part_types[ty_idx + 1];
   unsigned part_count = part_descs[-1].num_parts;
 

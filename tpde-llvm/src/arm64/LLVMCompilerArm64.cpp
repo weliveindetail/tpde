@@ -74,23 +74,15 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
     return tpde::a64::CallingConv::SYSV_CC;
   }
 
-  bool arg_is_int128(const IRValueRef val_idx) const noexcept {
-    return this->adaptor->values[val_idx].type == LLVMBasicValType::i128;
+  bool arg_is_int128(const IRValueRef value) const noexcept {
+    return value->getType()->isIntegerTy(128);
   }
 
-  bool arg_allow_split_reg_stack_passing(
-      const IRValueRef val_idx) const noexcept {
+  bool arg_allow_split_reg_stack_passing(IRValueRef value) const noexcept {
     // we allow splitting the value if it is an aggregate but not if it is an
     // i128 or array
-    if (arg_is_int128(val_idx)) {
-      return false;
-    }
-    if (this->adaptor->values[val_idx].type == LLVMBasicValType::complex) {
-      if (this->adaptor->values[val_idx].val->getType()->isArrayTy()) {
-        return false;
-      }
-    }
-    return true;
+    llvm::Type *ty = value->getType();
+    return !ty->isIntegerTy(128) && !ty->isArrayTy();
   }
 
   void finish_func(u32 func_idx) noexcept;
@@ -251,7 +243,7 @@ void LLVMCompilerArm64::load_address_of_var_reference(
       ASM(ADDx_uxtw, dst, DA_GP(29), dst, 0);
     }
   } else {
-    auto *global = llvm::cast<llvm::GlobalValue>(adaptor->values[info.val].val);
+    auto *global = llvm::cast<llvm::GlobalValue>(info.val);
     const auto sym = global_sym(global);
     assert(sym.valid());
     if (global->isThreadLocal()) {

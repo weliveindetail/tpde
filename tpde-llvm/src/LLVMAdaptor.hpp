@@ -103,6 +103,15 @@ union LLVMComplexPart {
 static_assert(sizeof(LLVMComplexPart) == 4);
 
 struct LLVMAdaptor {
+  using IRValueRef = const llvm::Value *;
+  using IRBlockRef = u32;
+  using IRFuncRef = llvm::Function *;
+
+  static constexpr IRValueRef INVALID_VALUE_REF = nullptr;
+  static constexpr IRBlockRef INVALID_BLOCK_REF = static_cast<IRBlockRef>(~0u);
+  static constexpr IRFuncRef INVALID_FUNC_REF =
+      nullptr; // NOLINT(*-misplaced-const)
+
   llvm::LLVMContext *context = nullptr;
   llvm::Module *mod = nullptr;
 
@@ -118,10 +127,8 @@ struct LLVMAdaptor {
   struct BlockAux {
     u32 aux1;
     u32 aux2;
-    u32 idx_start;
-    u32 idx_end;
-    u32 idx_phi_end;
     u32 sibling;
+    llvm::BasicBlock::iterator phi_end;
   };
 
   struct BlockInfo {
@@ -150,7 +157,8 @@ struct LLVMAdaptor {
 
   // helpers for faster lookup
   tpde::util::SmallVector<u32, 8> func_arg_indices;
-  tpde::util::SmallVector<u32, 16> initial_stack_slot_indices;
+  tpde::util::SmallVector<const llvm::AllocaInst *, 16>
+      initial_stack_slot_indices;
 
   llvm::Function *cur_func = nullptr;
   bool func_unsupported = false;
@@ -169,15 +177,6 @@ struct LLVMAdaptor {
 
   LLVMAdaptor() = default;
 
-  using IRValueRef = u32;
-  using IRBlockRef = u32;
-  using IRFuncRef = llvm::Function *;
-
-  static constexpr IRValueRef INVALID_VALUE_REF = static_cast<IRValueRef>(~0u);
-  static constexpr IRBlockRef INVALID_BLOCK_REF = static_cast<IRBlockRef>(~0u);
-  static constexpr IRFuncRef INVALID_FUNC_REF =
-      nullptr; // NOLINT(*-misplaced-const)
-
   static constexpr bool TPDE_PROVIDES_HIGHEST_VAL_IDX = true;
   static constexpr bool TPDE_LIVENESS_VISIT_ARGS = true;
 
@@ -194,34 +193,8 @@ struct LLVMAdaptor {
   [[nodiscard]] auto funcs_to_compile() const noexcept { return funcs(); }
 
   [[nodiscard]] auto globals() const noexcept {
-    struct GlobalIter {
-      IRValueRef end_idx;
-
-      struct iterator {
-        IRValueRef it;
-
-        iterator &operator++() noexcept {
-          ++it;
-          return *this;
-        }
-
-        IRValueRef operator*() const noexcept { return it; }
-
-        bool operator!=(const iterator &rhs) const noexcept {
-          return it != rhs.it;
-        }
-      };
-
-      [[nodiscard]] static iterator begin() noexcept {
-        return iterator{.it = 0};
-      }
-
-      [[nodiscard]] iterator end() const noexcept {
-        return iterator{.it = end_idx};
-      }
-    };
-
-    return GlobalIter{.end_idx = global_idx_end};
+    return std::views::iota(u32{0}, global_idx_end) |
+           std::views::transform([this](u32 idx) { return values[idx].val; });
   }
 
   [[nodiscard]] static std::string_view
@@ -262,8 +235,9 @@ struct LLVMAdaptor {
     return llvm::cast<llvm::Function>(cur_func->getPersonalityFn());
   }
 
-  [[nodiscard]] const auto &cur_args() const noexcept {
-    return func_arg_indices;
+  [[nodiscard]] auto cur_args() const noexcept {
+    return cur_func->args() |
+           std::views::transform([](llvm::Argument &arg) { return &arg; });
   }
 
   [[nodiscard]] const auto &cur_static_allocas() const noexcept {
@@ -307,43 +281,17 @@ struct LLVMAdaptor {
                       block_succ_indices.data() + end};
   }
 
-  struct BlockValIter {
-    IRValueRef start_idx, end_idx;
-
-    struct Iterator {
-      IRValueRef it;
-
-      Iterator &operator++() noexcept {
-        ++it;
-        return *this;
-      }
-
-      [[nodiscard]] IRValueRef operator*() const noexcept { return it; }
-
-      bool operator!=(const Iterator &rhs) const noexcept {
-        return it != rhs.it;
-      }
-    };
-
-    [[nodiscard]] Iterator begin() const noexcept {
-      return Iterator{.it = start_idx};
-    }
-
-    [[nodiscard]] Iterator end() const noexcept {
-      return Iterator{.it = end_idx};
-    }
-  };
-
-  using IRInstIter = BlockValIter::Iterator;
-
   [[nodiscard]] auto block_values(const IRBlockRef block) const noexcept {
-    const auto &aux = blocks[block].aux;
-    return BlockValIter{.start_idx = aux.idx_start, .end_idx = aux.idx_end};
+    return *blocks[block].block |
+           std::views::transform(
+               [](llvm::Instruction &instr) { return &instr; });
   }
 
   [[nodiscard]] auto block_phis(const IRBlockRef block) const noexcept {
     const auto &aux = blocks[block].aux;
-    return BlockValIter{.start_idx = aux.idx_start, .end_idx = aux.idx_phi_end};
+    return std::ranges::subrange(blocks[block].block->begin(), aux.phi_end) |
+           std::views::transform(
+               [](llvm::Instruction &instr) { return &instr; });
   }
 
   [[nodiscard]] u32 block_info(const IRBlockRef block) const noexcept {
@@ -373,30 +321,30 @@ struct LLVMAdaptor {
   [[nodiscard]] std::string
       value_fmt_ref(const IRValueRef value) const noexcept {
     std::string buf;
-    llvm::raw_string_ostream os{buf};
-    values[value].val->print(os);
+    llvm::raw_string_ostream(buf) << *value;
     return buf;
   }
 
 
-  [[nodiscard]] static u32 val_local_idx(const IRValueRef value) noexcept {
-    return value;
+  [[nodiscard]] u32 val_local_idx(const IRValueRef value) const noexcept {
+    return val_lookup_idx(value);
   }
 
-  [[nodiscard]] auto val_operands(const IRValueRef idx) const noexcept {
-    auto *inst = llvm::cast<llvm::Instruction>(values[idx].val);
-    return inst->operands() | std::views::transform([this](llvm::Use &use) {
-             return val_lookup_idx(use.get());
+  [[nodiscard]] auto val_operands(const IRValueRef value) const noexcept {
+    auto *inst = llvm::cast<llvm::Instruction>(value);
+    return inst->operands() | std::views::transform([](const llvm::Use &use) {
+             return use.get();
            });
   }
 
   [[nodiscard]] bool
-      val_ignore_in_liveness_analysis(const IRValueRef idx) const noexcept {
-    return idx == INVALID_VALUE_REF || values[idx].skip_liveness;
+      val_ignore_in_liveness_analysis(const IRValueRef value) const noexcept {
+    return !llvm::isa<llvm::Instruction, llvm::Argument>(value);
   }
 
-  [[nodiscard]] bool val_produces_result(const IRValueRef idx) const noexcept {
-    const auto *inst = llvm::dyn_cast<llvm::Instruction>(values[idx].val);
+  [[nodiscard]] bool
+      val_produces_result(const IRValueRef value) const noexcept {
+    const auto *inst = llvm::dyn_cast<llvm::Instruction>(value);
     if (!inst) {
       return true;
     }
@@ -404,15 +352,15 @@ struct LLVMAdaptor {
     return !inst->getType()->isVoidTy();
   }
 
-  [[nodiscard]] bool val_is_arg(const IRValueRef idx) const noexcept {
-    return values[idx].argument;
+  [[nodiscard]] bool val_is_arg(const IRValueRef value) const noexcept {
+    return llvm::isa<llvm::Argument>(value);
   }
 
-  [[nodiscard]] bool val_is_phi(const IRValueRef idx) const noexcept {
-    return llvm::isa<llvm::PHINode>(values[idx].val);
+  [[nodiscard]] bool val_is_phi(const IRValueRef value) const noexcept {
+    return llvm::isa<llvm::PHINode>(value);
   }
 
-  [[nodiscard]] auto val_as_phi(const IRValueRef idx) const noexcept {
+  [[nodiscard]] auto val_as_phi(const IRValueRef value) const noexcept {
     struct PHIRef {
       const llvm::PHINode *phi;
       const LLVMAdaptor *self;
@@ -423,8 +371,7 @@ struct LLVMAdaptor {
 
       [[nodiscard]] IRValueRef
           incoming_val_for_slot(const u32 slot) const noexcept {
-        auto *val = phi->getIncomingValue(slot);
-        return self->val_lookup_idx(val);
+        return phi->getIncomingValue(slot);
       }
 
       [[nodiscard]] IRBlockRef
@@ -434,13 +381,12 @@ struct LLVMAdaptor {
 
       [[nodiscard]] IRValueRef
           incoming_val_for_block(const IRBlockRef block) const noexcept {
-        auto *val = phi->getIncomingValueForBlock(self->blocks[block].block);
-        return self->val_lookup_idx(val);
+        return phi->getIncomingValueForBlock(self->blocks[block].block);
       }
     };
 
     return PHIRef{
-        .phi = llvm::cast<llvm::PHINode>(values[idx].val),
+        .phi = llvm::cast<llvm::PHINode>(value),
         .self = this,
     };
   }
@@ -455,16 +401,16 @@ private:
   }
 
 public:
-  [[nodiscard]] u32 val_alloca_size(const IRValueRef idx) const noexcept {
-    const auto *alloca = llvm::cast<llvm::AllocaInst>(values[idx].val);
+  [[nodiscard]] u32 val_alloca_size(const IRValueRef value) const noexcept {
+    const auto *alloca = llvm::cast<llvm::AllocaInst>(value);
     assert(alloca->isStaticAlloca());
     const u64 size = *alloca->getAllocationSize(mod->getDataLayout());
     assert(size <= std::numeric_limits<u32>::max());
     return size;
   }
 
-  [[nodiscard]] u32 val_alloca_align(const IRValueRef idx) const noexcept {
-    const auto *alloca = llvm::cast<llvm::AllocaInst>(values[idx].val);
+  [[nodiscard]] u32 val_alloca_align(const IRValueRef value) const noexcept {
+    const auto *alloca = llvm::cast<llvm::AllocaInst>(value);
     assert(alloca->isStaticAlloca());
     const u64 align = alloca->getAlign().value();
     assert(align <= 16);
@@ -533,13 +479,13 @@ public:
     u8 reg_bank(u32 n) const { return basic_ty_part_bank(type(n)); }
   };
 
-  ValueParts val_parts(const IRValueRef idx) const {
-    auto bvt = values[idx].type;
-    if (bvt == LLVMBasicValType::complex) {
-      unsigned ty_idx = values[idx].complex_part_tys_idx;
-      return ValueParts{bvt, &complex_part_types[ty_idx]};
+  ValueParts val_parts(const IRValueRef value) const {
+    const ValInfo &info = values[val_lookup_idx(value)];
+    if (info.type == LLVMBasicValType::complex) {
+      unsigned ty_idx = info.complex_part_tys_idx;
+      return ValueParts{info.type, &complex_part_types[ty_idx]};
     }
-    return ValueParts{bvt, nullptr};
+    return ValueParts{info.type, nullptr};
   }
 
   // other public stuff for the compiler impl
@@ -547,12 +493,12 @@ public:
     return val_parts(idx).count();
   }
 
-  [[nodiscard]] bool val_fused(const IRValueRef idx) const noexcept {
-    return values[idx].fused;
+  [[nodiscard]] bool val_fused(const IRValueRef value) const noexcept {
+    return values[val_lookup_idx(value)].fused;
   }
 
-  void val_set_fused(const IRValueRef idx, const bool fused) noexcept {
-    values[idx].fused = fused;
+  void val_set_fused(const IRValueRef value, const bool fused) noexcept {
+    values[val_lookup_idx(value)].fused = fused;
   }
 
   [[nodiscard]] u32 val_lookup_idx(const llvm::Value *val) const noexcept {
@@ -578,9 +524,13 @@ public:
     // Ignore inlineasm, which can only occur in calls, and metadata, which
     // can only occur in intrinsics.
     if (llvm::isa<llvm::InlineAsm, llvm::MetadataAsValue>(val)) {
-      return INVALID_VALUE_REF;
+      return -1u;
     }
     TPDE_FATAL("unhandled value type");
+  }
+
+  const ValInfo &val_info(const IRValueRef value) const noexcept {
+    return values[val_lookup_idx(value)];
   }
 
   [[nodiscard]] u32

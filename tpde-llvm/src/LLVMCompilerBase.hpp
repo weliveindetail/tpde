@@ -201,17 +201,10 @@ struct LLVMCompilerBase : public LLVMCompiler,
     return this->adaptor->val_parts(val);
   }
 
-  std::optional<ValuePartRef> val_ref_special(IRValueRef val_idx,
+  std::optional<ValuePartRef> val_ref_special(IRValueRef value,
                                               u32 part) noexcept {
-    // As a first approximation, a value is definitely not a constant if it has
-    // some liveness information. Non-constants without liveness are static
-    // allocas and basic blocks. This is faster than querying the type of every
-    // operand.
-    if (!this->adaptor->values[val_idx].skip_liveness) [[likely]] {
-      return std::nullopt;
-    }
-    if (llvm::isa<llvm::Constant>(this->adaptor->values[val_idx].val)) {
-      return val_ref_constant(val_idx, part);
+    if (llvm::isa<llvm::Constant>(value)) {
+      return val_ref_constant(value, part);
     }
     return std::nullopt;
   }
@@ -386,15 +379,15 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::analysis_end() noexcept {
 template <typename Adaptor, typename Derived, typename Config>
 std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     LLVMCompilerBase<Adaptor, Derived, Config>::val_ref_constant(
-        IRValueRef val_idx, u32 part) noexcept {
-  auto *val = this->adaptor->values[val_idx].val;
+        IRValueRef val, u32 part) noexcept {
   auto *const_val = llvm::cast<llvm::Constant>(val);
 
-  auto ty = this->adaptor->values[val_idx].type;
+  const auto &info = this->adaptor->val_info(val);
+  auto ty = info.type;
   unsigned sub_part = part;
 
   if (const_val && ty == LLVMBasicValType::complex) {
-    unsigned ty_idx = this->adaptor->values[val_idx].complex_part_tys_idx;
+    unsigned ty_idx = info.complex_part_tys_idx;
     LLVMComplexPart *part_descs =
         &this->adaptor->complex_part_types[ty_idx + 1];
 
@@ -442,12 +435,11 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
 
   if (llvm::isa<llvm::GlobalValue>(const_val)) {
     assert(ty == LLVMBasicValType::ptr && sub_part == 0);
-    u32 global_idx = this->adaptor->val_lookup_idx(const_val);
     auto local_idx =
-        static_cast<ValLocalIdx>(this->adaptor->val_local_idx(global_idx));
+        static_cast<ValLocalIdx>(this->adaptor->val_local_idx(const_val));
     if (!this->val_assignment(local_idx)) {
       auto *assignment = this->allocate_assignment(1);
-      assignment->initialize(global_idx,
+      assignment->initialize(u32(local_idx),
                              Config::PLATFORM_POINTER_SIZE,
                              0,
                              Config::PLATFORM_POINTER_SIZE);
@@ -466,7 +458,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
       llvm::isa<llvm::UndefValue>(const_val) ||
       llvm::isa<llvm::ConstantPointerNull>(const_val) ||
       llvm::isa<llvm::ConstantAggregateZero>(const_val)) {
-    auto parts = this->adaptor->val_parts(val_idx);
+    auto parts = this->adaptor->val_parts(val);
     return ValuePartRef(0, parts.reg_bank(part), parts.size_bytes(part));
   }
 
@@ -885,14 +877,14 @@ template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef
     LLVMCompilerBase<Adaptor, Derived, Config>::llvm_val_idx(
         const llvm::Value *val) const noexcept {
-  return this->adaptor->val_lookup_idx(val);
+  return val;
 }
 
 template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::IRValueRef
     LLVMCompilerBase<Adaptor, Derived, Config>::llvm_val_idx(
         const llvm::Instruction *inst) const noexcept {
-  return this->adaptor->inst_lookup_idx(inst);
+  return inst;
 }
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -981,7 +973,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
   // Allocate regs for globals
   if (needs_globals) {
     for (u32 v = 0; v < this->adaptor->global_idx_end; ++v) {
-      variable_refs[v].val = v;
+      variable_refs[v].val = this->adaptor->values[v].val;
       variable_refs[v].alloca = false;
       variable_refs[v].local =
           llvm::cast<llvm::GlobalValue>(this->adaptor->values[v].val)
@@ -1056,14 +1048,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     IRValueRef val_idx, InstRange remaining) noexcept {
-  TPDE_LOG_TRACE(
-      "Compiling inst {} ({})", val_idx, this->adaptor->value_fmt_ref(val_idx));
+  TPDE_LOG_TRACE("Compiling inst {}", this->adaptor->value_fmt_ref(val_idx));
 
+  // TODO: const-correctness
   auto *i =
-      llvm::dyn_cast<llvm::Instruction>(this->adaptor->values[val_idx].val);
-  const auto opcode = i->getOpcode();
-  // TODO(ts): loads are next
-  switch (opcode) {
+      const_cast<llvm::Instruction *>(llvm::cast<llvm::Instruction>(val_idx));
+  switch (i->getOpcode()) {
     // clang-format off
   case llvm::Instruction::Ret: return compile_ret(val_idx, i);
   case llvm::Instruction::Load: return compile_load(val_idx, i);
@@ -1216,7 +1206,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
   }
 
   ScratchReg res_scratch{this};
-  switch (this->adaptor->values[load_idx].type) {
+  switch (this->adaptor->val_info(load_idx).type) {
     using enum LLVMBasicValType;
   case i1:
   case i8:
@@ -1271,7 +1261,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
   case complex: {
     res.reset_without_refcount();
 
-    auto ty_idx = this->adaptor->values[load_idx].complex_part_tys_idx;
+    auto ty_idx = this->adaptor->val_info(load_idx).complex_part_tys_idx;
     const LLVMComplexPart *part_descs =
         &this->adaptor->complex_part_types[ty_idx + 1];
     unsigned part_count = part_descs[-1].num_parts;
@@ -1414,7 +1404,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
     return true;
   }
 
-  switch (this->adaptor->values[op_idx].type) {
+  switch (this->adaptor->val_info(op_idx).type) {
     using enum LLVMBasicValType;
   case i1:
   case i8:
@@ -1482,7 +1472,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
   case complex: {
     op_ref.reset_without_refcount();
 
-    const auto ty_idx = this->adaptor->values[op_idx].complex_part_tys_idx;
+    const auto ty_idx = this->adaptor->val_info(op_idx).complex_part_tys_idx;
     const LLVMComplexPart *part_descs =
         &this->adaptor->complex_part_types[ty_idx + 1];
     unsigned part_count = part_descs[-1].num_parts;
@@ -1572,9 +1562,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     using EncodeFnTy = bool (Derived::*)(
         GenericValuePart &&, GenericValuePart &&, ScratchReg &);
     EncodeFnTy encode_fn = nullptr;
+    LLVMBasicValType bvt = this->adaptor->val_info(inst).type;
     switch (op) {
     case IntBinaryOp::add:
-      switch (this->adaptor->values[inst_idx].type) {
+      switch (bvt) {
         using enum LLVMBasicValType;
       case v64:
         switch (int_width) {
@@ -1597,7 +1588,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       }
       break;
     case IntBinaryOp::sub:
-      switch (this->adaptor->values[inst_idx].type) {
+      switch (bvt) {
         using enum LLVMBasicValType;
       case v64:
         switch (int_width) {
@@ -1620,7 +1611,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       }
       break;
     case IntBinaryOp::mul:
-      switch (this->adaptor->values[inst_idx].type) {
+      switch (bvt) {
         using enum LLVMBasicValType;
       case v64:
         switch (int_width) {
@@ -1643,7 +1634,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       }
       break;
     case IntBinaryOp::land:
-      switch (this->adaptor->values[inst_idx].type) {
+      switch (bvt) {
         using enum LLVMBasicValType;
       case v64:
         switch (int_width) {
@@ -1666,7 +1657,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       }
       break;
     case IntBinaryOp::lxor:
-      switch (this->adaptor->values[inst_idx].type) {
+      switch (bvt) {
         using enum LLVMBasicValType;
       case v64:
         switch (int_width) {
@@ -1689,7 +1680,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       }
       break;
     case IntBinaryOp::lor:
-      switch (this->adaptor->values[inst_idx].type) {
+      switch (bvt) {
         using enum LLVMBasicValType;
       case v64:
         switch (int_width) {
@@ -1712,7 +1703,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       }
       break;
     case IntBinaryOp::shl:
-      switch (this->adaptor->values[inst_idx].type) {
+      switch (bvt) {
         using enum LLVMBasicValType;
       case v64:
         switch (int_width) {
@@ -1735,7 +1726,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       }
       break;
     case IntBinaryOp::shr:
-      switch (this->adaptor->values[inst_idx].type) {
+      switch (bvt) {
         using enum LLVMBasicValType;
       case v64:
         switch (int_width) {
@@ -1758,7 +1749,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       }
       break;
     case IntBinaryOp::ashr:
-      switch (this->adaptor->values[inst_idx].type) {
+      switch (bvt) {
         using enum LLVMBasicValType;
       case v64:
         switch (int_width) {
@@ -2100,7 +2091,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
       bool (Derived::*)(GenericValuePart &&, GenericValuePart &&, ScratchReg &);
   EncodeFnTy encode_fn = nullptr;
 
-  switch (this->adaptor->values[inst_idx].type) {
+  switch (this->adaptor->val_info(inst_idx).type) {
     using enum LLVMBasicValType;
   case f32:
     assert(!is_double);
@@ -2177,7 +2168,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fneg(
   auto src_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
   auto res_ref = this->result_ref_lazy(inst_idx, 0);
   auto res_scratch = ScratchReg{derived()};
-  switch (this->adaptor->values[inst_idx].type) {
+  switch (this->adaptor->val_info(inst_idx).type) {
     using enum LLVMBasicValType;
   case f32: derived()->encode_fnegf32(std::move(src_ref), res_scratch); break;
   case f64: derived()->encode_fnegf64(std::move(src_ref), res_scratch); break;
@@ -2690,7 +2681,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_element(
   assert(index->getType()->getIntegerBitWidth() >= 8);
 
   ValuePartRef result = this->result_ref_lazy(inst_idx, 0);
-  LLVMBasicValType bvt = this->adaptor->values[inst_idx].type;
+  LLVMBasicValType bvt = this->adaptor->val_info(inst_idx).type;
 
   ScratchReg scratch_res{this};
   if (auto *ci = llvm::dyn_cast<llvm::ConstantInt>(index)) {
@@ -2750,7 +2741,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
   ValuePartRef val = this->val_ref(ins_idx, 0);
 
   ValuePartRef result = this->result_ref_lazy(inst_idx, 0);
-  LLVMBasicValType bvt = this->adaptor->values[ins_idx].type; // insert type
+  LLVMBasicValType bvt = this->adaptor->val_info(ins_idx).type; // insert type
 
   // We do the dynamic insert in the spill slot of result.
   // TODO: reuse spill slot of vec_ref if possible.
@@ -2857,7 +2848,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
       continue;
     }
     IRValueRef src = unsigned(mask[i]) < nelem ? lhs : rhs;
-    auto *cst = llvm::dyn_cast<llvm::Constant>(this->adaptor->values[src].val);
+    auto *cst =
+        llvm::dyn_cast<llvm::Constant>(this->adaptor->val_info(src).val);
     if (cst) {
       auto *cst_elem = cst->getAggregateElement(i);
       u64 const_elem;
@@ -3005,7 +2997,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_atomicrmw(
     return false;
   }
 
-  auto bvt = this->adaptor->values[inst_idx].type;
+  auto bvt = this->adaptor->val_info(inst_idx).type;
 
   // TODO: implement non-seq_cst orderings more efficiently
   // TODO: use more efficient implementation when the result is not used. On
@@ -3280,7 +3272,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
   ScratchReg res_scratch{derived()};
   auto res_ref = this->result_ref_lazy(inst_idx, 0);
 
-  switch (this->adaptor->values[inst_idx].type) {
+  switch (this->adaptor->val_info(inst_idx).type) {
     using enum LLVMBasicValType;
   case i1:
   case i8:
@@ -3488,8 +3480,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
   // TODO: use llvm statistic or analyzer liveness stat?
   auto final_idx = inst_idx;
   while (gep->hasOneUse() && remaining.from != remaining.to) {
-    auto next_inst_idx = *remaining.from;
-    auto *next_val = this->adaptor->values[next_inst_idx].val;
+    auto *next_val = *remaining.from;
     auto *next_gep = llvm::dyn_cast<llvm::GetElementPtrInst>(next_val);
     if (!next_gep || next_gep->getPointerOperand() != gep ||
         gep->getResultElementType() != next_gep->getResultElementType()) {
@@ -3502,8 +3493,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
                          next_gep->idx_end());
     }
 
-    this->adaptor->val_set_fused(next_inst_idx, true);
-    final_idx = next_inst_idx; // we set the result for nextInst
+    this->adaptor->val_set_fused(next_val, true);
+    final_idx = next_val; // we set the result for nextInst
     gep = next_gep;
     ++remaining.from;
   }
@@ -3511,17 +3502,16 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
   GenericValuePart addr = this->resolved_gep_to_addr(resolved);
 
   if (gep->hasOneUse() && remaining.from != remaining.to) {
-    auto next_inst_idx = *remaining.from;
-    auto *next_val = this->adaptor->values[next_inst_idx].val;
+    auto *next_val = *remaining.from;
     if (auto *store = llvm::dyn_cast<llvm::StoreInst>(next_val);
         store && store->getPointerOperand() == gep) {
-      this->adaptor->val_set_fused(next_inst_idx, true);
+      this->adaptor->val_set_fused(next_val, true);
       return compile_store_generic(store, std::move(addr));
     }
     if (auto *load = llvm::dyn_cast<llvm::LoadInst>(next_val);
         load && load->getPointerOperand() == gep) {
-      this->adaptor->val_set_fused(next_inst_idx, true);
-      return compile_load_generic(next_inst_idx, load, std::move(addr));
+      this->adaptor->val_set_fused(next_val, true);
+      return compile_load_generic(next_val, load, std::move(addr));
     }
   }
 
@@ -3966,8 +3956,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
     // no need to spill if only the phi-nodes in the (normal) successor read
     // the value
     if (a->references_left <= num_phi_reads &&
-        (u32)this->analyzer.liveness_info(call_res_idx).last <=
-            (u32)this->cur_block_idx) {
+        (u32)this->analyzer
+                .liveness_info(this->adaptor->val_local_idx(call_res_idx))
+                .last <= (u32)this->cur_block_idx) {
       return;
     }
 
@@ -4104,8 +4095,7 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
     }
   }
 
-  const auto sym = global_sym(
-      llvm::dyn_cast<llvm::GlobalValue>(this->adaptor->values[value].val));
+  const auto sym = global_sym(llvm::cast<llvm::GlobalValue>(value));
 
   u32 off;
   u8 tmp[8] = {};
