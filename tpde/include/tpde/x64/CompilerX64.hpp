@@ -612,9 +612,10 @@ void CallingConv::handle_func_args(
     }
 
     const u32 part_count = compiler->derived()->val_part_count(arg);
+    auto must_pass_stack = false;
     if (compiler->derived()->arg_is_int128(arg)) {
       if (scalar_reg_count + 1 >= gp_regs.size()) {
-        scalar_reg_count = gp_regs.size();
+        must_pass_stack = true;
       }
     }
 
@@ -622,7 +623,7 @@ void CallingConv::handle_func_args(
       auto part_ref = compiler->result_ref_lazy(arg, part_idx);
 
       if (compiler->derived()->val_part_bank(arg, part_idx) == 0) {
-        if (scalar_reg_count < gp_regs.size()) {
+        if (!must_pass_stack && scalar_reg_count < gp_regs.size()) {
           compiler->set_value(part_ref, gp_regs[scalar_reg_count++]);
         } else {
           const auto size = compiler->derived()->val_part_size(arg, part_idx);
@@ -644,7 +645,7 @@ void CallingConv::handle_func_args(
           frame_off += 8;
         }
       } else {
-        if (xmm_reg_count < xmm_regs.size()) {
+        if (!must_pass_stack && xmm_reg_count < xmm_regs.size()) {
           compiler->set_value(part_ref, xmm_regs[xmm_reg_count++]);
         } else {
           auto ap = part_ref.assignment();
@@ -721,9 +722,10 @@ u32 CallingConv::calculate_call_stack_space(
 
     const u32 part_count = compiler->derived()->val_part_count(arg.value);
 
+    auto must_pass_stack = false;
     if (compiler->derived()->arg_is_int128(arg.value)) {
       if (gp_reg_count + 1 >= gp_regs.size()) {
-        gp_reg_count = gp_regs.size();
+        must_pass_stack = true;
       }
     }
 
@@ -731,14 +733,14 @@ u32 CallingConv::calculate_call_stack_space(
       auto ref = compiler->val_ref(arg.value, part_idx);
 
       if (ref.bank() == 0) {
-        if (gp_reg_count < gp_regs.size()) {
+        if (!must_pass_stack && gp_reg_count < gp_regs.size()) {
           ++gp_reg_count;
         } else {
           stack_space += 8;
         }
       } else {
         assert(ref.bank() == 1);
-        if (xmm_reg_count < xmm_regs.size()) {
+        if (!must_pass_stack && xmm_reg_count < xmm_regs.size()) {
           ++xmm_reg_count;
         } else {
           stack_space += util::align_up(ref.part_size(), 8);
@@ -837,9 +839,10 @@ u32 CallingConv::handle_call_args(
 
     const u32 part_count = compiler->derived()->val_part_count(arg.value);
 
+    auto must_pass_stack = false;
     if (compiler->derived()->arg_is_int128(arg.value)) {
       if (gp_reg_count + 1 >= gp_regs.size()) {
-        gp_reg_count = gp_regs.size();
+        must_pass_stack = true;
       }
     }
 
@@ -866,7 +869,7 @@ u32 CallingConv::handle_call_args(
           }
         };
 
-        if (gp_reg_count < gp_regs.size()) {
+        if (!must_pass_stack && gp_reg_count < gp_regs.size()) {
           const AsmReg target_reg = gp_regs[gp_reg_count++];
           if (ref.is_in_reg(target_reg) && ref.can_salvage()) {
             scratch.alloc_specific(ref.salvage());
@@ -885,7 +888,7 @@ u32 CallingConv::handle_call_args(
         }
       } else {
         assert(ref.bank() == 1);
-        if (xmm_reg_count < xmm_regs.size()) {
+        if (!must_pass_stack && xmm_reg_count < xmm_regs.size()) {
           const AsmReg target_reg = xmm_regs[xmm_reg_count++];
           if (ref.is_in_reg(target_reg) && ref.can_salvage()) {
             scratch.alloc_specific(ref.salvage());
