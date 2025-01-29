@@ -81,8 +81,16 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
   bool arg_allow_split_reg_stack_passing(
       const IRValueRef val_idx) const noexcept {
     // we allow splitting the value if it is an aggregate but not if it is an
-    // i128
-    return !arg_is_int128(val_idx);
+    // i128 or array
+    if (arg_is_int128(val_idx)) {
+      return false;
+    }
+    if (this->adaptor->values[val_idx].type == LLVMBasicValType::complex) {
+      if (this->adaptor->values[val_idx].val->getType()->isArrayTy()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void finish_func(u32 func_idx) noexcept;

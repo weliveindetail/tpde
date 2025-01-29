@@ -1016,6 +1016,254 @@ entry:
   ret i32 %res
 }
 
+; Check splitting of [2 x i64]
+declare i32 @fn_i64_i64_i64_i64_i64_2xi64(i64, i64, i64, i64, i64, [2 x i64]);
+define i32 @call_i64_i64_i64_i64_i64_2xi64(i64 %0, [2 x i64] %1) {
+; X64-LABEL: <call_i64_i64_i64_i64_i64_2xi64>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    sub rsp, 0x10
+; X64-NEXT:    mov qword ptr [rbp - 0x30], rdi
+; X64-NEXT:    mov qword ptr [rbp - 0x40], rsi
+; X64-NEXT:    mov rsi, qword ptr [rbp - 0x30]
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rdx
+; X64-NEXT:    mov rdx, qword ptr [rbp - 0x30]
+; X64-NEXT:    mov rcx, qword ptr [rbp - 0x30]
+; X64-NEXT:    mov r8, qword ptr [rbp - 0x30]
+; X64-NEXT:    mov r9, qword ptr [rbp - 0x40]
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x38]
+; X64-NEXT:    mov qword ptr [rsp], rax
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 fn_i64_i64_i64_i64_i64_2xi64-0x4
+; X64-NEXT:    add rsp, 0x10
+; X64-NEXT:    add rsp, 0x50
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop
+;
+; ARM64-LABEL: <call_i64_i64_i64_i64_i64_2xi64>:
+; ARM64:         sub sp, sp, #0xd0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    str x0, [x29, #0xa0]
+; ARM64-NEXT:    str x1, [x29, #0xb0]
+; ARM64-NEXT:    ldr x1, [x29, #0xa0]
+; ARM64-NEXT:    str x2, [x29, #0xb8]
+; ARM64-NEXT:    ldr x2, [x29, #0xa0]
+; ARM64-NEXT:    ldr x3, [x29, #0xa0]
+; ARM64-NEXT:    ldr x4, [x29, #0xa0]
+; ARM64-NEXT:    ldr x5, [x29, #0xb0]
+; ARM64-NEXT:    ldr x6, [x29, #0xb8]
+; ARM64-NEXT:    bl 0xc44 <call_i64_i64_i64_i64_i64_2xi64+0x34>
+; ARM64-NEXT:     R_AARCH64_CALL26 fn_i64_i64_i64_i64_i64_2xi64
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    ret
+entry:
+  %2 = call i32 @fn_i64_i64_i64_i64_i64_2xi64(i64 %0, i64 %0, i64 %0, i64 %0, i64 %0, [2 x i64] %1)
+  ret i32 %2
+}
+
+declare i32 @fn_i64_i64_i64_i64_i64_i64_i64_2xi64(i64, i64, i64, i64, i64, i64, i64, [2 x i64]);
+define i32 @call_i64_i64_i64_i64_i64_i64_i64_2xi64(i64 %0, [2 x i64] %1) {
+; X64-LABEL: <call_i64_i64_i64_i64_i64_i64_i64_2xi64>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    sub rsp, 0x20
+; X64-NEXT:    mov qword ptr [rbp - 0x30], rdi
+; X64-NEXT:    mov qword ptr [rbp - 0x40], rsi
+; X64-NEXT:    mov rsi, qword ptr [rbp - 0x30]
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rdx
+; X64-NEXT:    mov rdx, qword ptr [rbp - 0x30]
+; X64-NEXT:    mov rcx, qword ptr [rbp - 0x30]
+; X64-NEXT:    mov r8, qword ptr [rbp - 0x30]
+; X64-NEXT:    mov r9, qword ptr [rbp - 0x30]
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x30]
+; X64-NEXT:    mov qword ptr [rsp], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x40]
+; X64-NEXT:    mov qword ptr [rsp + 0x8], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x38]
+; X64-NEXT:    mov qword ptr [rsp + 0x10], rax
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 fn_i64_i64_i64_i64_i64_i64_i64_2xi64-0x4
+; X64-NEXT:    add rsp, 0x20
+; X64-NEXT:    add rsp, 0x50
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop word ptr [rax + rax]
+;
+; ARM64-LABEL: <call_i64_i64_i64_i64_i64_i64_i64_2xi64>:
+; ARM64:         sub sp, sp, #0xd0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    sub sp, sp, #0x10
+; ARM64-NEXT:    str x0, [x29, #0xa0]
+; ARM64-NEXT:    str x1, [x29, #0xb0]
+; ARM64-NEXT:    ldr x1, [x29, #0xa0]
+; ARM64-NEXT:    str x2, [x29, #0xb8]
+; ARM64-NEXT:    ldr x2, [x29, #0xa0]
+; ARM64-NEXT:    ldr x3, [x29, #0xa0]
+; ARM64-NEXT:    ldr x4, [x29, #0xa0]
+; ARM64-NEXT:    ldr x5, [x29, #0xa0]
+; ARM64-NEXT:    ldr x6, [x29, #0xa0]
+; ARM64-NEXT:    ldr x7, [x29, #0xb0]
+; ARM64-NEXT:    str x7, [sp]
+; ARM64-NEXT:    ldr x7, [x29, #0xb8]
+; ARM64-NEXT:    str x7, [sp, #0x8]
+; ARM64-NEXT:    bl 0xce8 <call_i64_i64_i64_i64_i64_i64_i64_2xi64+0x48>
+; ARM64-NEXT:     R_AARCH64_CALL26 fn_i64_i64_i64_i64_i64_i64_i64_2xi64
+; ARM64-NEXT:    add sp, sp, #0x10
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    ret
+entry:
+  %2 = call i32 @fn_i64_i64_i64_i64_i64_i64_i64_2xi64(i64 %0, i64 %0, i64 %0, i64 %0, i64 %0, i64 %0, i64 %0, [2 x i64] %1)
+  ret i32 %2
+}
+
+define i64 @ret_i64_i64_i64_i64_i64_2xi64_0(i64 %0, i64 %1, i64 %2, i64 %3, i64 %4, [2 x i64] %5) {
+; X64-LABEL: <ret_i64_i64_i64_i64_i64_2xi64_0>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x10]
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
+; X64-NEXT:    mov rax, r9
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
+;
+; ARM64-LABEL: <ret_i64_i64_i64_i64_i64_2xi64_0>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov x0, x5
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+entry:
+  %6 = extractvalue [2 x i64] %5, 0
+  ret i64 %6
+}
+
+define i64 @ret_i64_i64_i64_i64_i64_2xi64_1(i64 %0, i64 %1, i64 %2, i64 %3, i64 %4, [2 x i64] %5) {
+; X64-LABEL: <ret_i64_i64_i64_i64_i64_2xi64_1>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x10]
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x38]
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
+;
+; ARM64-LABEL: <ret_i64_i64_i64_i64_i64_2xi64_1>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov x0, x6
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+entry:
+  %6 = extractvalue [2 x i64] %5, 1
+  ret i64 %6
+}
+
+define i64 @ret_i64_i64_i64_i64_i64_i64_i64_2xi64_0(i64 %0, i64 %1, i64 %2, i64 %3, i64 %4, i64 %z, i64 %y, [2 x i64] %5) {
+; X64-LABEL: <ret_i64_i64_i64_i64_i64_i64_i64_2xi64_0>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x10]
+; X64-NEXT:    mov qword ptr [rbp - 0x30], rax
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x18]
+; X64-NEXT:    mov qword ptr [rbp - 0x40], rax
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x20]
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x40]
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
+;
+; ARM64-LABEL: <ret_i64_i64_i64_i64_i64_i64_i64_2xi64_0>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x8, sp, #0xc0
+; ARM64-NEXT:    ldr x0, [x8]
+; ARM64-NEXT:    str x0, [x29, #0xb0]
+; ARM64-NEXT:    ldr x0, [x8, #0x8]
+; ARM64-NEXT:    str x0, [x29, #0xb8]
+; ARM64-NEXT:    ldr x0, [x29, #0xb0]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+entry:
+  %6 = extractvalue [2 x i64] %5, 0
+  ret i64 %6
+}
+
+define i64 @ret_i64_i64_i64_i64_i64_i64_i64_2xi64_1(i64 %0, i64 %1, i64 %2, i64 %3, i64 %4, i64 %z, i64 %y, [2 x i64] %5) {
+; X64-LABEL: <ret_i64_i64_i64_i64_i64_i64_i64_2xi64_1>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x10]
+; X64-NEXT:    mov qword ptr [rbp - 0x30], rax
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x18]
+; X64-NEXT:    mov qword ptr [rbp - 0x40], rax
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x20]
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x38]
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
+;
+; ARM64-LABEL: <ret_i64_i64_i64_i64_i64_i64_i64_2xi64_1>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x8, sp, #0xc0
+; ARM64-NEXT:    ldr x0, [x8]
+; ARM64-NEXT:    str x0, [x29, #0xb0]
+; ARM64-NEXT:    ldr x0, [x8, #0x8]
+; ARM64-NEXT:    str x0, [x29, #0xb8]
+; ARM64-NEXT:    ldr x0, [x29, #0xb8]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+entry:
+  %6 = extractvalue [2 x i64] %5, 1
+  ret i64 %6
+}
+
 define i32 @call_byval(i32 %0) {
 ; X64-LABEL: <call_byval>:
 ; X64:         push rbp
@@ -1048,7 +1296,7 @@ define i32 @call_byval(i32 %0) {
 ; ARM64-NEXT:    str x2, [sp]
 ; ARM64-NEXT:    ldr x2, [x1, #0x8]
 ; ARM64-NEXT:    str x2, [sp, #0x8]
-; ARM64-NEXT:    bl 0xc38 <call_byval+0x28>
+; ARM64-NEXT:    bl 0xf48 <call_byval+0x28>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_i32_byval_ptr_i32_i32
 ; ARM64-NEXT:    add sp, sp, #0x10
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -1122,7 +1370,7 @@ define void @call_sret() {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    add x8, x29, #0xa0
-; ARM64-NEXT:    bl 0xd24 <call_sret+0x14>
+; ARM64-NEXT:    bl 0x1034 <call_sret+0x14>
 ; ARM64-NEXT:     R_AARCH64_CALL26 call_sret_tgt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
@@ -1171,7 +1419,7 @@ define i32 @alloca_call(i32 %a1, i32 %a2, i32 %a3, i32 %a4) {
 ; ARM64-NEXT:    str w2, [x4, #0x924]
 ; ARM64-NEXT:    add x2, x29, #0x13, lsl #12 // =0x13000
 ; ARM64-NEXT:    str w3, [x2, #0x928]
-; ARM64-NEXT:    bl 0xdb0 <alloca_call+0x30>
+; ARM64-NEXT:    bl 0x10c0 <alloca_call+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 alloca_call_tgt
 ; ARM64-NEXT:    add x1, x29, #0x13, lsl #12 // =0x13000
 ; ARM64-NEXT:    ldr w1, [x1, #0x920]
