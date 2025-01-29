@@ -719,7 +719,6 @@ void CallingConv::handle_func_args(
         ++scalar_reg_count;
       }
       if (scalar_reg_count + 1 >= gp_regs.size()) {
-        // TODO(ts): also fix on X64, can we do better code?
         frame_off = util::align_up(frame_off, 16);
       }
     }
@@ -858,7 +857,6 @@ u32 CallingConv::calculate_call_stack_space(
         ++gp_reg_count;
       }
       if (gp_reg_count + 1 >= gp_regs.size()) {
-        // TODO(ts): also fix on X64, can we do better code?
         stack_space = util::align_up(stack_space, 16);
       }
     }
@@ -982,7 +980,6 @@ u32 CallingConv::handle_call_args(
         ++gp_reg_count;
       }
       if (gp_reg_count + 1 >= gp_regs.size()) {
-        // TODO(ts): also fix on X64, can we do better code?
         stack_off = util::align_up(stack_off, 16);
       }
     }

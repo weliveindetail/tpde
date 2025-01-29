@@ -616,6 +616,7 @@ void CallingConv::handle_func_args(
     if (compiler->derived()->arg_is_int128(arg)) {
       if (scalar_reg_count + 1 >= gp_regs.size()) {
         must_pass_stack = true;
+        frame_off = util::align_up(frame_off, 16);
       }
     }
 
@@ -726,6 +727,7 @@ u32 CallingConv::calculate_call_stack_space(
     if (compiler->derived()->arg_is_int128(arg.value)) {
       if (gp_reg_count + 1 >= gp_regs.size()) {
         must_pass_stack = true;
+        stack_space = util::align_up(stack_space, 16);
       }
     }
 
@@ -843,6 +845,7 @@ u32 CallingConv::handle_call_args(
     if (compiler->derived()->arg_is_int128(arg.value)) {
       if (gp_reg_count + 1 >= gp_regs.size()) {
         must_pass_stack = true;
+        stack_off = util::align_up(stack_off, 16);
       }
     }
 
