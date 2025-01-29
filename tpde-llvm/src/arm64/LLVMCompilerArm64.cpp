@@ -78,6 +78,13 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
     return this->adaptor->values[val_idx].type == LLVMBasicValType::i128;
   }
 
+  bool arg_allow_split_reg_stack_passing(
+      const IRValueRef val_idx) const noexcept {
+    // we allow splitting the value if it is an aggregate but not if it is an
+    // i128
+    return !arg_is_int128(val_idx);
+  }
+
   void finish_func(u32 func_idx) noexcept;
 
   u32 val_part_count(IRValueRef) const noexcept;
@@ -1043,7 +1050,8 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef inst_idx,
     auto rhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
     ScratchReg scratch{this};
     AsmReg lhs_reg;
-    auto res_ref = this->result_ref_salvage_with_original(inst_idx, 0, std::move(lhs_ref), lhs_reg);
+    auto res_ref = this->result_ref_salvage_with_original(
+        inst_idx, 0, std::move(lhs_ref), lhs_reg);
     auto rhs_reg = this->val_as_reg(rhs_ref, scratch);
     ASM(CRC32CX, res_ref.cur_reg(), lhs_reg, rhs_reg);
     this->set_value(res_ref, res_ref.cur_reg());

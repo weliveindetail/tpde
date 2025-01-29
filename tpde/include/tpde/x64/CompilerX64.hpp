@@ -346,6 +346,10 @@ concept Compiler = tpde::Compiler<T, Config> && requires(T a) {
     a.arg_is_int128(std::declval<typename T::IRValueRef>())
   } -> std::convertible_to<bool>;
 
+  {
+    a.arg_allow_split_reg_stack_passing(std::declval<typename T::IRValueRef>())
+  } -> std::convertible_to<bool>;
+
   { a.cur_calling_convention() } -> SameBaseAs<CallingConv>;
 };
 } // namespace concepts
@@ -618,6 +622,12 @@ void CallingConv::handle_func_args(
         must_pass_stack = true;
         frame_off = util::align_up(frame_off, 16);
       }
+    } else if (part_count > 1 &&
+               !compiler->derived()->arg_allow_split_reg_stack_passing(arg)) {
+      if (scalar_reg_count + part_count - 1 >= gp_regs.size()) {
+        must_pass_stack = true;
+        // TODO(ts): alignment?
+      }
     }
 
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
@@ -728,6 +738,12 @@ u32 CallingConv::calculate_call_stack_space(
       if (gp_reg_count + 1 >= gp_regs.size()) {
         must_pass_stack = true;
         stack_space = util::align_up(stack_space, 16);
+      }
+    } else if (part_count > 1 &&
+               !compiler->derived()->arg_allow_split_reg_stack_passing(
+                   arg.value)) {
+      if (gp_reg_count + part_count - 1 >= gp_regs.size()) {
+        must_pass_stack = true;
       }
     }
 
@@ -846,6 +862,12 @@ u32 CallingConv::handle_call_args(
       if (gp_reg_count + 1 >= gp_regs.size()) {
         must_pass_stack = true;
         stack_off = util::align_up(stack_off, 16);
+      }
+    } else if (part_count > 1 &&
+               !compiler->derived()->arg_allow_split_reg_stack_passing(
+                   arg.value)) {
+      if (gp_reg_count + part_count - 1 >= gp_regs.size()) {
+        must_pass_stack = true;
       }
     }
 

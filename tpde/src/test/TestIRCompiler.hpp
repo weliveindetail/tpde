@@ -28,6 +28,9 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
   }
 
   static bool arg_is_int128(IRValueRef) noexcept { return false; }
+  static bool arg_allow_split_reg_stack_passing(IRValueRef) noexcept {
+    return false;
+  }
 
   bool cur_func_may_emit_calls() const noexcept {
     return this->ir()->functions[this->adaptor->cur_func].has_call;

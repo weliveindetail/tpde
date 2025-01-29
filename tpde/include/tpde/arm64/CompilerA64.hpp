@@ -407,6 +407,10 @@ concept Compiler = tpde::Compiler<T, Config> && requires(T a) {
     a.arg_is_int128(std::declval<typename T::IRValueRef>())
   } -> std::convertible_to<bool>;
 
+  {
+    a.arg_allow_split_reg_stack_passing(std::declval<typename T::IRValueRef>())
+  } -> std::convertible_to<bool>;
+
   { a.cur_calling_convention() } -> SameBaseAs<CallingConv>;
 };
 } // namespace concepts
@@ -713,6 +717,8 @@ void CallingConv::handle_func_args(
       }
     }
 
+    // TODO(ts): replace with arg_reg_alignment, arg_stack_alignment and
+    // allow_split_reg_stack_passing?
     if (compiler->derived()->arg_is_int128(arg)) {
       if (scalar_reg_count & 1) {
         // 128 bit integers are always passed in even positions
@@ -721,8 +727,8 @@ void CallingConv::handle_func_args(
       if (scalar_reg_count + 1 >= gp_regs.size()) {
         frame_off = util::align_up(frame_off, 16);
       }
-    }
-    if (part_count > 1) {
+    } else if (part_count > 1 &&
+               !compiler->derived()->arg_allow_split_reg_stack_passing(arg)) {
       if (scalar_reg_count + part_count - 1 >= gp_regs.size()) {
         // multipart values are either completely passed in registers
         // or not at all
@@ -859,9 +865,9 @@ u32 CallingConv::calculate_call_stack_space(
       if (gp_reg_count + 1 >= gp_regs.size()) {
         stack_space = util::align_up(stack_space, 16);
       }
-    }
-
-    if (part_count > 1) {
+    } else if (part_count > 1 &&
+               !compiler->derived()->arg_allow_split_reg_stack_passing(
+                   arg.value)) {
       if (gp_reg_count + part_count - 1 >= gp_regs.size()) {
         gp_reg_count = gp_regs.size();
       }
@@ -982,9 +988,9 @@ u32 CallingConv::handle_call_args(
       if (gp_reg_count + 1 >= gp_regs.size()) {
         stack_off = util::align_up(stack_off, 16);
       }
-    }
-
-    if (part_count > 1) {
+    } else if (part_count > 1 &&
+               !compiler->derived()->arg_allow_split_reg_stack_passing(
+                   arg.value)) {
       if (gp_reg_count + part_count - 1 >= gp_regs.size()) {
         gp_reg_count = gp_regs.size();
       }
