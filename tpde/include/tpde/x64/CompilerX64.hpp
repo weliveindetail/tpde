@@ -615,7 +615,8 @@ void CallingConv::handle_func_args(
       continue;
     }
 
-    const u32 part_count = compiler->derived()->val_part_count(arg);
+    const auto parts = compiler->derived()->val_parts(arg);
+    const u32 part_count = parts.count();
     auto must_pass_stack = false;
     if (compiler->derived()->arg_is_int128(arg)) {
       if (scalar_reg_count + 1 >= gp_regs.size()) {
@@ -633,11 +634,11 @@ void CallingConv::handle_func_args(
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
       auto part_ref = compiler->result_ref_lazy(arg, part_idx);
 
-      if (compiler->derived()->val_part_bank(arg, part_idx) == 0) {
+      if (parts.reg_bank(part_idx) == 0) {
         if (!must_pass_stack && scalar_reg_count < gp_regs.size()) {
           compiler->set_value(part_ref, gp_regs[scalar_reg_count++]);
         } else {
-          const auto size = compiler->derived()->val_part_size(arg, part_idx);
+          const auto size = parts.size_bytes(part_idx);
           //  TODO(ts): maybe allow negative frame offsets for value
           //  assignments so we can simply reference this?
           //  but this probably doesn't work with multi-part values
@@ -731,7 +732,7 @@ u32 CallingConv::calculate_call_stack_space(
       continue;
     }
 
-    const u32 part_count = compiler->derived()->val_part_count(arg.value);
+    const u32 part_count = compiler->derived()->val_parts(arg.value).count();
 
     auto must_pass_stack = false;
     if (compiler->derived()->arg_is_int128(arg.value)) {
@@ -855,7 +856,7 @@ u32 CallingConv::handle_call_args(
       continue;
     }
 
-    const u32 part_count = compiler->derived()->val_part_count(arg.value);
+    const u32 part_count = compiler->derived()->val_parts(arg.value).count();
 
     auto must_pass_stack = false;
     if (compiler->derived()->arg_is_int128(arg.value)) {

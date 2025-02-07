@@ -533,27 +533,40 @@ public:
 
   void reset() noexcept;
 
-  // other public stuff for the compiler impl
-  [[nodiscard]] LLVMBasicValType val_part_ty(const IRValueRef idx,
-                                             u32 part_idx) const noexcept {
-    auto ty = values[idx].type;
-    if (ty == LLVMBasicValType::complex) {
+  struct ValueParts {
+    LLVMBasicValType bvt;
+    const LLVMComplexPart *complex;
+
+    u32 count() const {
+      if (bvt != LLVMBasicValType::complex) {
+        return LLVMAdaptor::basic_ty_part_count(bvt);
+      }
+      return complex->num_parts;
+    }
+
+    LLVMBasicValType type(u32 n) const {
+      return bvt != LLVMBasicValType::complex ? bvt : complex[n + 1].part.type;
+    }
+
+    u32 size_bytes(u32 n) const {
+      return LLVMAdaptor::basic_ty_part_size(type(n));
+    }
+
+    u8 reg_bank(u32 n) const { return basic_ty_part_bank(type(n)); }
+  };
+
+  ValueParts val_parts(const IRValueRef idx) const {
+    auto bvt = values[idx].type;
+    if (bvt == LLVMBasicValType::complex) {
       unsigned ty_idx = values[idx].complex_part_tys_idx;
-      ty = complex_part_types[ty_idx + 1 + part_idx].part.type;
+      return ValueParts{bvt, &complex_part_types[ty_idx]};
     }
-    assert(ty != LLVMBasicValType::complex);
-    return ty;
+    return ValueParts{bvt, nullptr};
   }
 
+  // other public stuff for the compiler impl
   u32 val_part_count(const IRValueRef idx) const noexcept {
-    if (values[idx].type != LLVMBasicValType::complex) {
-      return basic_ty_part_count(values[idx].type);
-    }
-    return complex_part_types[values[idx].complex_part_tys_idx].num_parts;
-  }
-
-  u32 val_part_size(IRValueRef idx, u32 part_idx) const noexcept {
-    return basic_ty_part_size(val_part_ty(idx, part_idx));
+    return val_parts(idx).count();
   }
 
   [[nodiscard]] bool val_fused(const IRValueRef idx) const noexcept {

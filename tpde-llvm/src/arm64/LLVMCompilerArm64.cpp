@@ -95,12 +95,6 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
 
   void finish_func(u32 func_idx) noexcept;
 
-  u32 val_part_count(IRValueRef) const noexcept;
-
-  u32 val_part_size(IRValueRef, u32) const noexcept;
-
-  u8 val_part_bank(IRValueRef, u32) const noexcept;
-
   void move_val_to_ret_regs(llvm::Value *) noexcept;
 
   void load_address_of_var_reference(AsmReg dst, AssignmentPartRef ap) noexcept;
@@ -189,21 +183,6 @@ void LLVMCompilerArm64::finish_func(u32 func_idx) noexcept {
   }
 }
 
-u32 LLVMCompilerArm64::val_part_count(const IRValueRef val_idx) const noexcept {
-  return this->adaptor->val_part_count(val_idx);
-}
-
-u32 LLVMCompilerArm64::val_part_size(const IRValueRef val_idx,
-                                     const u32 part_idx) const noexcept {
-  return this->adaptor->val_part_size(val_idx, part_idx);
-}
-
-u8 LLVMCompilerArm64::val_part_bank(const IRValueRef val_idx,
-                                    const u32 part_idx) const noexcept {
-  auto ty = this->adaptor->val_part_ty(val_idx, part_idx);
-  return this->adaptor->basic_ty_part_bank(ty);
-}
-
 void LLVMCompilerArm64::move_val_to_ret_regs(llvm::Value *val) noexcept {
   unsigned zext_width = 0;
   unsigned sext_width = 0;
@@ -221,7 +200,8 @@ void LLVMCompilerArm64::move_val_to_ret_regs(llvm::Value *val) noexcept {
   const auto val_idx = llvm_val_idx(val);
   unsigned gp_reg_idx = 0;
   unsigned fp_reg_idx = 0;
-  for (unsigned i = 0, cnt = val_part_count(val_idx); i != cnt; i++) {
+  unsigned cnt = this->adaptor->val_part_count(val_idx);
+  for (unsigned i = 0; i != cnt; i++) {
     auto val_ref = this->val_ref(val_idx, i);
     if (i != cnt - 1) {
       val_ref.inc_ref_count();
@@ -329,7 +309,7 @@ void LLVMCompilerArm64::extract_element(IRValueRef vec,
                                         unsigned idx,
                                         LLVMBasicValType ty,
                                         ScratchReg &out_reg) noexcept {
-  assert(this->val_part_count(vec) == 1);
+  assert(this->adaptor->val_part_count(vec) == 1);
 
   ScratchReg tmp{this};
   ValuePartRef vec_ref = this->val_ref(vec, 0);
@@ -355,7 +335,7 @@ void LLVMCompilerArm64::insert_element(IRValueRef vec,
                                        unsigned idx,
                                        LLVMBasicValType ty,
                                        GenericValuePart el) noexcept {
-  assert(this->val_part_count(vec) == 1);
+  assert(this->adaptor->val_part_count(vec) == 1);
 
   ScratchReg tmp{this};
   ValuePartRef vec_ref = this->val_ref(vec, 0);
@@ -605,7 +585,7 @@ bool LLVMCompilerArm64::compile_call_inner(
   }
 
   if (!call->getType()->isVoidTy()) {
-    const auto res_part_count = val_part_count(inst_idx);
+    const auto res_part_count = this->adaptor->val_part_count(inst_idx);
     for (u32 part_idx = 0; part_idx < res_part_count; ++part_idx) {
       auto res_ref = this->result_ref_lazy(inst_idx, part_idx);
       if (part_idx != res_part_count - 1) {

@@ -178,6 +178,10 @@ struct LLVMCompilerBase : public LLVMCompiler,
   void analysis_start() noexcept;
   void analysis_end() noexcept;
 
+  LLVMAdaptor::ValueParts val_parts(IRValueRef val) const noexcept {
+    return this->adaptor->val_parts(val);
+  }
+
   std::optional<ValuePartRef> val_ref_special(IRValueRef val_idx,
                                               u32 part) noexcept {
     // As a first approximation, a value is definitely not a constant if it has
@@ -440,9 +444,8 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
       llvm::isa<llvm::UndefValue>(const_val) ||
       llvm::isa<llvm::ConstantPointerNull>(const_val) ||
       llvm::isa<llvm::ConstantAggregateZero>(const_val)) {
-    u32 size = this->adaptor->val_part_size(val_idx, part);
-    u32 bank = derived()->val_part_bank(val_idx, part);
-    return ValuePartRef(0, bank, size);
+    auto parts = this->adaptor->val_parts(val_idx);
+    return ValuePartRef(0, parts.reg_bank(part), parts.size_bytes(part));
   }
 
   if (auto *cdv = llvm::dyn_cast<llvm::ConstantDataVector>(const_val)) {
@@ -2100,9 +2103,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
   // as the values cannot be aggregates
   const auto src_idx = llvm_val_idx(inst->getOperand(0));
 
+  const auto src_parts = this->adaptor->val_parts(src_idx);
+  const auto dst_parts = this->adaptor->val_parts(inst_idx);
   // TODO(ts): support 128bit values
-  if (derived()->val_part_count(src_idx) != 1 ||
-      derived()->val_part_count(inst_idx) != 1) {
+  if (src_parts.count() != 1 || dst_parts.count() != 1) {
     return false;
   }
 
@@ -2111,8 +2115,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
   ScratchReg orig_scratch{derived()};
   AsmReg orig;
   ValuePartRef res_ref;
-  if (derived()->val_part_bank(src_idx, 0) ==
-      derived()->val_part_bank(inst_idx, 0)) {
+  if (src_parts.reg_bank(0) == dst_parts.reg_bank(0)) {
     res_ref = this->result_ref_salvage_with_original(
         inst_idx, 0, std::move(src_ref), orig);
   } else {
@@ -2208,7 +2211,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::extract_element(
     unsigned idx,
     LLVMBasicValType ty,
     ScratchReg &out_reg) noexcept {
-  assert(derived()->val_part_count(vec) == 1);
+  assert(this->adaptor->val_part_count(vec) == 1);
 
   ValuePartRef vec_ref = this->val_ref(vec, 0);
   vec_ref.spill();
@@ -2239,7 +2242,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::insert_element(
     unsigned idx,
     LLVMBasicValType ty,
     GenericValuePart el) noexcept {
-  assert(derived()->val_part_count(vec) == 1);
+  assert(this->adaptor->val_part_count(vec) == 1);
 
   ValuePartRef vec_ref = this->val_ref(vec, 0);
   vec_ref.spill();
@@ -2306,7 +2309,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_element(
                             typename Derived::EncodeImm{u64{nelem - 1}},
                             idx_scratch);
   assert(expr.scale == 0);
-  expr.scale = derived()->val_part_size(inst_idx, 0);
+  expr.scale = this->adaptor->basic_ty_part_size(bvt);
   expr.index = std::move(idx_scratch);
 
   // Third, do the load.
@@ -2784,7 +2787,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_freeze(
   auto *src_val = inst->getOperand(0);
   const auto src_idx = llvm_val_idx(src_val);
 
-  const auto part_count = derived()->val_part_count(src_idx);
+  const auto part_count = this->adaptor->val_part_count(src_idx);
 
   for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
     const auto last_part = (part_idx == part_count - 1);
@@ -2885,14 +2888,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
     derived()->encode_select_v2u64(
         std::move(cond), std::move(lhs), std::move(rhs), res_scratch);
     break;
-  case complex:
+  case complex: {
     // Handle case of complex with two i64 as i128, this is extremely hacky...
     // TODO(ts): support full complex types using branches
-    if (derived()->val_part_count(inst_idx) != 2 ||
-        derived()->val_part_bank(inst_idx, 0) != 0 ||
-        derived()->val_part_bank(inst_idx, 1) != 0) {
+    const auto parts = this->adaptor->val_parts(inst_idx);
+    if (parts.count() != 2 || parts.reg_bank(0) != 0 ||
+        parts.reg_bank(1) != 0) {
       return false;
     }
+  }
     [[fallthrough]];
   case i128: {
     lhs.inc_ref_count();

@@ -18,6 +18,18 @@ namespace tpde {
 template <bool B>
 concept IsTrue = (B == true);
 
+template <typename T>
+concept ValueParts = requires(T a) {
+  /// Provides the number of parts for a value
+  { a.count() } -> std::convertible_to<u32>;
+
+  /// Provides the size in bytes of a value part (must be a power of two)
+  { a.size_bytes(ARG(u32)) } -> std::convertible_to<u32>;
+
+  /// Provides the bank for a value part
+  { a.reg_bank(ARG(u32)) } -> std::convertible_to<u8>;
+};
+
 template <typename T, typename Config>
 concept Compiler = CompilerConfig<Config> && requires(T a) {
   // mostly platform things
@@ -69,18 +81,7 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
     a.try_force_fixed_assignment(ARG(typename T::IRValueRef))
   } -> std::convertible_to<bool>;
 
-  /// Provides the number of parts for a value
-  { a.val_part_count(ARG(typename T::IRValueRef)) } -> std::convertible_to<u32>;
-
-  /// Provides the size in bytes of a value part (must be a power of two)
-  {
-    a.val_part_size(ARG(typename T::IRValueRef), ARG(u32))
-  } -> std::convertible_to<u32>;
-
-  /// Provides the bank for a value part
-  {
-    a.val_part_bank(ARG(typename T::IRValueRef), ARG(u32))
-  } -> std::convertible_to<u8>;
+  { a.val_parts(ARG(typename T::IRValueRef)) } -> ValueParts;
 
   /// Provides the implementation to return special ValuePartRefs, e.g. for
   /// constants/globals

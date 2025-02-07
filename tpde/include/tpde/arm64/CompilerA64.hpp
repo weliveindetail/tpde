@@ -706,7 +706,8 @@ void CallingConv::handle_func_args(
       continue;
     }
 
-    const u32 part_count = compiler->derived()->val_part_count(arg);
+    const auto parts = compiler->derived()->val_parts(arg);
+    const u32 part_count = parts.count();
     if (compiler->adaptor->cur_arg_is_sret(arg_idx)) {
       if (auto target_reg = sret_reg(); target_reg) {
         assert(part_count == 1 && "sret must be single-part");
@@ -740,7 +741,7 @@ void CallingConv::handle_func_args(
       auto part_ref = compiler->result_ref_lazy(arg, part_idx);
       auto ap = part_ref.assignment();
       unsigned size = ap.part_size();
-      unsigned bank = compiler->derived()->val_part_bank(arg, part_idx);
+      unsigned bank = parts.reg_bank(part_idx);
       ScratchReg scratch{compiler};
 
       if (bank == 0) {
@@ -855,7 +856,7 @@ u32 CallingConv::calculate_call_stack_space(
       continue;
     }
 
-    const u32 part_count = compiler->derived()->val_part_count(arg.value);
+    const u32 part_count = compiler->derived()->val_parts(arg.value).count();
 
     if (compiler->derived()->arg_is_int128(arg.value)) {
       if (gp_reg_count & 1) {
@@ -978,7 +979,7 @@ u32 CallingConv::handle_call_args(
       }
     }
 
-    const u32 part_count = compiler->derived()->val_part_count(arg.value);
+    const u32 part_count = compiler->derived()->val_parts(arg.value).count();
 
     if (compiler->derived()->arg_is_int128(arg.value)) {
       if (gp_reg_count & 1) {

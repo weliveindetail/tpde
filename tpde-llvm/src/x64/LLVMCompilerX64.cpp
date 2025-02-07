@@ -86,12 +86,6 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
 
   void finish_func(u32 func_idx) noexcept;
 
-  u32 val_part_count(IRValueRef) const noexcept;
-
-  u32 val_part_size(IRValueRef, u32) const noexcept;
-
-  u8 val_part_bank(IRValueRef, u32) const noexcept;
-
   void move_val_to_ret_regs(llvm::Value *) noexcept;
 
   void load_address_of_var_reference(AsmReg dst, AssignmentPartRef ap) noexcept;
@@ -171,41 +165,6 @@ void LLVMCompilerX64::finish_func(u32 func_idx) noexcept {
   }
 }
 
-u32 LLVMCompilerX64::val_part_count(const IRValueRef val_idx) const noexcept {
-  return this->adaptor->val_part_count(val_idx);
-}
-
-u32 LLVMCompilerX64::val_part_size(const IRValueRef val_idx,
-                                   const u32 part_idx) const noexcept {
-  return this->adaptor->val_part_size(val_idx, part_idx);
-}
-
-u8 LLVMCompilerX64::val_part_bank(const IRValueRef val_idx,
-                                  const u32 part_idx) const noexcept {
-  auto ty = this->adaptor->val_part_ty(val_idx, part_idx);
-  switch (ty) {
-    using enum LLVMBasicValType;
-  case i1:
-  case i8:
-  case i16:
-  case i32:
-  case i64:
-  case i128:
-  case ptr: return 0;
-  case f32:
-  case f64:
-  case v32:
-  case v64:
-  case v128:
-  case v256:
-  case v512: return 1;
-  case none:
-  case invalid:
-  case complex:
-  default: TPDE_UNREACHABLE("invalid basic type");
-  }
-}
-
 void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
   unsigned zext_width = 0;
   unsigned sext_width = 0;
@@ -226,7 +185,8 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
   const auto val_idx = llvm_val_idx(val);
   unsigned gp_reg_idx = 0;
   unsigned xmm_reg_idx = 0;
-  for (unsigned i = 0, cnt = val_part_count(val_idx); i != cnt; i++) {
+  unsigned cnt = this->adaptor->val_part_count(val_idx);
+  for (unsigned i = 0; i != cnt; i++) {
     auto val_ref = this->val_ref(val_idx, i);
     if (i != cnt - 1) {
       val_ref.inc_ref_count();
@@ -557,7 +517,7 @@ bool LLVMCompilerX64::compile_call_inner(
   }
 
   if (!call->getType()->isVoidTy()) {
-    const auto res_part_count = val_part_count(inst_idx);
+    const auto res_part_count = this->adaptor->val_part_count(inst_idx);
     for (u32 part_idx = 0; part_idx < res_part_count; ++part_idx) {
       auto res_ref = this->result_ref_lazy(inst_idx, part_idx);
       if (part_idx != res_part_count - 1) {

@@ -36,11 +36,13 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
     return this->ir()->functions[this->adaptor->cur_func].has_call;
   }
 
-  u32 val_part_count(IRValueRef) const noexcept { return 1; }
+  struct ValueParts {
+    static u32 count() noexcept { return 1; }
+    static u32 size_bytes(u32) noexcept { return 8; }
+    static u8 reg_bank(u32) noexcept { return 0; }
+  };
 
-  u32 val_part_size(IRValueRef, u32) const noexcept { return 8; }
-
-  u8 val_part_bank(IRValueRef, u32) const noexcept { return 0; }
+  ValueParts val_parts(IRValueRef) { return ValueParts{}; }
 
   AsmReg select_fixed_assignment_reg(const u32 bank,
                                      const IRValueRef value) noexcept {

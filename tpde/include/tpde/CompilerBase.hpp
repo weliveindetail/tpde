@@ -515,7 +515,8 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
   TPDE_LOG_TRACE("Initializing assignment for value {}",
                  static_cast<u32>(local_idx));
 
-  const u32 part_count = derived()->val_part_count(value);
+  const auto parts = derived()->val_parts(value);
+  const u32 part_count = parts.count();
   assert(part_count > 0);
   auto *assignment = allocate_assignment(part_count);
   assignments.value_ptrs[static_cast<u32>(local_idx)] = assignment;
@@ -524,8 +525,8 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
   for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
     auto ap = AssignmentPartRef{assignment, part_idx};
     ap.reset();
-    ap.set_bank(derived()->val_part_bank(value, part_idx));
-    const u32 size = derived()->val_part_size(value, part_idx);
+    ap.set_bank(parts.reg_bank(part_idx));
+    const u32 size = parts.size_bytes(part_idx);
     assert(size > 0);
     max_part_size = std::max(max_part_size, size);
     ap.set_part_size(size);
@@ -1133,7 +1134,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
         ref.reset_without_refcount();
         assert(assignment && "non-const value without assignment");
       }
-      u32 part_count = derived()->val_part_count(inc_val);
+      u32 part_count = derived()->val_parts(inc_val).count();
       for (u32 i = 0; i < part_count; ++i) {
         auto ap = AssignmentPartRef{assignment, i};
         if (ap.register_valid()) {
@@ -1370,7 +1371,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
     // TODO(ts): if phi==incoming_val, we should be able to elide the move
     // even if the phi is in a fixed register, no?
 
-    u32 part_count = derived()->val_part_count(incoming_val);
+    const auto parts = derived()->val_parts(incoming_val);
+    u32 part_count = parts.count();
     for (u32 i = 0; i < part_count; ++i) {
       // TODO(ts): just have this outside the loop and change the part
       // index? :P
@@ -1388,8 +1390,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
         reg = AsmReg{val_ref.assignment().full_reg_id()};
       } else {
         reg = val_ref.reload_into_specific_fixed(
-            this,
-            scratch.alloc_from_bank(derived()->val_part_bank(incoming_val, i)));
+            this, scratch.alloc_from_bank(parts.reg_bank(i)));
       }
 
       auto phi_ap = phi_ref.assignment();
@@ -1541,7 +1542,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
       assert(cur_tmp_val == Adaptor::INVALID_VALUE_REF);
 
       auto phi_val = nodes[cur_idx].val;
-      cur_tmp_part_count = derived()->val_part_count(phi_val);
+      cur_tmp_part_count = derived()->val_parts(phi_val).count();
       cur_tmp_val = phi_val;
 
       if (cur_tmp_part_count > 2) {
