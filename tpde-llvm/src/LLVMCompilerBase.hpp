@@ -178,9 +178,8 @@ struct LLVMCompilerBase : public LLVMCompiler,
   void analysis_start() noexcept;
   void analysis_end() noexcept;
 
-  std::optional<ValuePartRef> val_ref_special(ValLocalIdx local_idx,
+  std::optional<ValuePartRef> val_ref_special(IRValueRef val_idx,
                                               u32 part) noexcept {
-    auto val_idx = static_cast<LLVMAdaptor::IRValueRef>(local_idx);
     // As a first approximation, a value is definitely not a constant if it has
     // some liveness information. Non-constants without liveness are static
     // allocas and basic blocks. This is faster than querying the type of every

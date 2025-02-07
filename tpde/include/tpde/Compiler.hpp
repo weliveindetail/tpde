@@ -85,9 +85,9 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
   /// Provides the implementation to return special ValuePartRefs, e.g. for
   /// constants/globals
   ///
-  /// (local_idx, part)
+  /// (value, part)
   {
-    a.val_ref_special(ARG(typename T::ValLocalIdx), ARG(u32))
+    a.val_ref_special(ARG(typename T::IRValueRef), ARG(u32))
   } -> std::same_as<std::optional<typename T::ValuePartRef>>;
 
   /// The compiler numbers functions and this gives the derived implementation

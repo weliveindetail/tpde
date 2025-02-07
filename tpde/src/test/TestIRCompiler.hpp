@@ -55,9 +55,9 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
     return ir()->values[static_cast<u32>(value)].force_fixed_assignment;
   }
 
-  std::optional<ValuePartRef> val_ref_special(ValLocalIdx local_idx,
+  std::optional<ValuePartRef> val_ref_special(IRValueRef value,
                                               u32 part) noexcept {
-    (void)local_idx;
+    (void)value;
     (void)part;
     return {};
   }

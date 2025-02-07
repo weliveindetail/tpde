@@ -218,11 +218,6 @@ protected:
 public:
   ValuePartRef val_ref(IRValueRef value, u32 part) noexcept;
 
-  /// Create a reference to a value using its local index
-  /// \note The assignment must already exist, if that could not be the case
-  /// use val_ref using an IRValueRef
-  ValuePartRef val_ref(ValLocalIdx local_idx, u32 part) noexcept;
-
   /// Try to salvage the register of a value (i.e. if it does not have any
   /// references left) or get it into another register.
   ///
@@ -249,25 +244,11 @@ public:
   AsmReg val_as_specific_reg(ValuePartRef &val_ref, AsmReg reg) noexcept;
 
   /// Get a defining reference to a value
-  ValuePartRef result_ref_lazy(ValLocalIdx local_idx, u32 part) noexcept;
-
-  /// Get a defining reference to a value
   ValuePartRef result_ref_lazy(IRValueRef value, u32 part) noexcept;
 
   /// Get a defining reference to a value which will already have a register
   /// allocated that can be directly used as a result register
-  ValuePartRef result_ref_eager(ValLocalIdx local_idx, u32 part) noexcept;
-
-  /// Get a defining reference to a value which will already have a register
-  /// allocated that can be directly used as a result register
   ValuePartRef result_ref_eager(IRValueRef value, u32 part) noexcept;
-
-  /// Get a defining reference to a value and try to salvage the register of
-  /// another value if possible, otherwise allocate a register
-  ValuePartRef result_ref_salvage(ValLocalIdx local_idx,
-                                  u32 part,
-                                  ValuePartRef &&arg,
-                                  u32 ref_adjust = 1) noexcept;
 
   /// Get a defining reference to a value and try to salvage the register of
   /// another value if possible, otherwise allocate a register
@@ -280,28 +261,10 @@ public:
   /// value and spills it if necessary. This is useful if the implemented
   /// operation overwrites a register and therefore the original value cannot
   /// be kept
-  ValuePartRef result_ref_must_salvage(ValLocalIdx local_idx,
-                                       u32 part,
-                                       ValuePartRef &&arg,
-                                       u32 ref_adjust = 1) noexcept;
-
-  /// Get a defining reference to a value that reuses a register of another
-  /// value and spills it if necessary. This is useful if the implemented
-  /// operation overwrites a register and therefore the original value cannot
-  /// be kept
   ValuePartRef result_ref_must_salvage(IRValueRef value,
                                        u32 part,
                                        ValuePartRef &&arg,
                                        u32 ref_adjust = 1) noexcept;
-
-  /// Get a defining reference to a value and try to salvage the register of
-  /// another value if possible, otherwise allocate a register. The register
-  /// where the other value is located is also returned
-  ValuePartRef result_ref_salvage_with_original(ValLocalIdx local_idx,
-                                                u32 part,
-                                                ValuePartRef &&arg,
-                                                AsmReg &lhs_reg,
-                                                u32 ref_adjust = 1);
 
   /// Get a defining reference to a value and try to salvage the register of
   /// another value if possible, otherwise allocate a register. The register
@@ -758,31 +721,18 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::val_ref(IRValueRef value,
                                                     u32 part) noexcept {
-  const auto local_idx =
-      static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
-
-  // TODO(ts): use an overload with the IRValueRef?
-  if (auto ref = derived()->val_ref_special(local_idx, part); ref) {
+  if (auto ref = derived()->val_ref_special(value, part); ref) {
     return std::move(*ref);
   }
+
+  const auto local_idx =
+      static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
 
   if (val_assignment(local_idx) == nullptr) {
     init_assignment(value, local_idx);
   }
   assert(val_assignment(local_idx) != nullptr);
 
-  return ValuePartRef{this, local_idx, part};
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::val_ref(ValLocalIdx local_idx,
-                                                    u32 part) noexcept {
-  if (auto ref = derived()->val_ref_special(local_idx, part); ref) {
-    return *ref;
-  }
-
-  assert(assignments.value_ptrs[static_cast<u32>(local_idx)] != nullptr);
   return ValuePartRef{this, local_idx, part};
 }
 
@@ -816,14 +766,6 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::result_ref_lazy(
-        const ValLocalIdx local_idx, const u32 part) noexcept {
-  assert(val_assignment(local_idx) != nullptr);
-  return ValuePartRef{this, local_idx, part};
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::result_ref_lazy(IRValueRef value,
                                                             u32 part) noexcept {
   const auto local_idx =
@@ -840,38 +782,10 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::result_ref_eager(
-        ValLocalIdx local_idx, u32 part) noexcept {
-  assert(val_assignment(local_idx) != nullptr);
-  auto res_ref = ValuePartRef{this, local_idx, part};
+        IRValueRef value, u32 part) noexcept {
+  auto res_ref = this->result_ref_lazy(value, part);
   res_ref.alloc_reg(false);
   return res_ref;
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::result_ref_eager(
-        IRValueRef value, u32 part) noexcept {
-  const auto local_idx =
-      static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
-
-  if (val_assignment(local_idx) == nullptr) {
-    init_assignment(value, local_idx);
-  }
-  assert(val_assignment(local_idx) != nullptr);
-
-  return result_ref_eager(local_idx, part);
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::result_ref_salvage(
-        ValLocalIdx local_idx,
-        u32 part,
-        ValuePartRef &&arg,
-        u32 ref_adjust) noexcept {
-  AsmReg orig;
-  return result_ref_salvage_with_original(
-      local_idx, part, std::move(arg), orig, ref_adjust);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -889,12 +803,11 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::result_ref_must_salvage(
-        ValLocalIdx local_idx,
+        IRValueRef value,
         u32 part,
         ValuePartRef &&arg,
         u32 ref_adjust) noexcept {
-  assert(val_assignment(local_idx) != nullptr);
-  auto res_ref = ValuePartRef{this, local_idx, part};
+  auto res_ref = this->result_ref_lazy(value, part);
   auto ap_res = res_ref.assignment();
   (void)ap_res;
   assert(ap_res.bank() == arg.bank());
@@ -924,33 +837,13 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::result_ref_must_salvage(
-        IRValueRef value,
-        u32 part,
-        ValuePartRef &&arg,
-        u32 ref_adjust) noexcept {
-  const auto local_idx =
-      static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
-
-  if (val_assignment(local_idx) == nullptr) {
-    init_assignment(value, local_idx);
-  }
-  assert(val_assignment(local_idx) != nullptr);
-
-  return result_ref_must_salvage(local_idx, part, std::move(arg), ref_adjust);
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::result_ref_salvage_with_original(
-        ValLocalIdx local_idx,
+        IRValueRef value,
         u32 part,
         ValuePartRef &&arg,
         AsmReg &lhs_reg,
         u32 ref_adjust) {
-  assert(val_assignment(local_idx) != nullptr);
-
-  auto res_ref = ValuePartRef{this, local_idx, part};
+  auto res_ref = this->result_ref_lazy(value, part);
   auto ap_res = res_ref.assignment();
   assert(ap_res.bank() == arg.bank());
 
@@ -976,26 +869,6 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
   }
 
   return res_ref;
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::result_ref_salvage_with_original(
-        IRValueRef value,
-        u32 part,
-        ValuePartRef &&arg,
-        AsmReg &lhs_reg,
-        u32 ref_adjust) {
-  const auto local_idx =
-      static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
-
-  if (val_assignment(local_idx) == nullptr) {
-    init_assignment(value, local_idx);
-  }
-  assert(val_assignment(local_idx) != nullptr);
-
-  return result_ref_salvage_with_original(
-      local_idx, part, std::move(arg), lhs_reg, ref_adjust);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
