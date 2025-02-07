@@ -471,7 +471,15 @@ public:
       }
       return ValueParts{ty, nullptr};
     }
-    const ValInfo &info = values[val_lookup_idx(value)];
+    assert((llvm::isa<llvm::Instruction, llvm::Argument>(value)) &&
+           "val_parts called on non-instruction/argument");
+    size_t idx;
+    if (auto *inst = llvm::dyn_cast<llvm::Instruction>(value)) {
+      idx = inst_lookup_idx(inst);
+    } else {
+      idx = arg_lookup_idx(llvm::cast<llvm::Argument>(value));
+    }
+    const ValInfo &info = values[idx];
     if (info.type == LLVMBasicValType::complex) {
       unsigned ty_idx = info.complex_part_tys_idx;
       return ValueParts{info.type, &complex_part_types[ty_idx]};
@@ -485,11 +493,11 @@ public:
   }
 
   [[nodiscard]] bool val_fused(const IRValueRef value) const noexcept {
-    return values[val_lookup_idx(value)].fused;
+    return val_info(llvm::cast<llvm::Instruction>(value)).fused;
   }
 
   void val_set_fused(const IRValueRef value, const bool fused) noexcept {
-    values[val_lookup_idx(value)].fused = fused;
+    values[inst_lookup_idx(llvm::cast<llvm::Instruction>(value))].fused = fused;
   }
 
   [[nodiscard]] u32 val_lookup_idx(const llvm::Value *val) const noexcept {
@@ -508,8 +516,8 @@ public:
     TPDE_FATAL("unhandled value type");
   }
 
-  const ValInfo &val_info(const IRValueRef value) const noexcept {
-    return values[val_lookup_idx(value)];
+  const ValInfo &val_info(const llvm::Instruction *inst) const noexcept {
+    return values[inst_lookup_idx(inst)];
   }
 
   u32 arg_lookup_idx(const llvm::Argument *arg) const noexcept {

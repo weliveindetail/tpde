@@ -582,11 +582,9 @@ std::pair<unsigned, unsigned>
 std::pair<unsigned, unsigned>
     LLVMAdaptor::complex_part_for_index(IRValueRef value,
                                         llvm::ArrayRef<unsigned> search) {
-  const ValInfo &info = values[val_lookup_idx(value)];
-  assert(info.type == LLVMBasicValType::complex);
-  const auto ty_idx = info.complex_part_tys_idx;
-  const LLVMComplexPart *part_descs = &complex_part_types[ty_idx + 1];
-  unsigned part_count = part_descs[-1].num_parts;
+  ValueParts parts = val_parts(value);
+  assert(parts.bvt == LLVMBasicValType::complex && parts.complex);
+  unsigned part_count = parts.count();
 
   assert(search.size() > 0);
 
@@ -594,7 +592,7 @@ std::pair<unsigned, unsigned>
   tpde::util::SmallVector<unsigned, 16> indices;
   unsigned first_part = -1u;
   for (unsigned i = 0; i < part_count; i++) {
-    indices.resize(indices.size() + part_descs[i].part.nest_inc);
+    indices.resize(indices.size() + parts.complex[i + 1].part.nest_inc);
     while (first_part == -1u && indices[depth] == search[depth]) {
       if (depth + 1 < search.size()) {
         depth++;
@@ -603,8 +601,8 @@ std::pair<unsigned, unsigned>
       }
     }
 
-    indices.resize(indices.size() - part_descs[i].part.nest_dec);
-    if (part_descs[i].part.ends_value && !indices.empty()) {
+    indices.resize(indices.size() - parts.complex[i + 1].part.nest_dec);
+    if (parts.complex[i + 1].part.ends_value && !indices.empty()) {
       indices.back()++;
     }
 
