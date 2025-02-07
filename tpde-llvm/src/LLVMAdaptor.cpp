@@ -220,12 +220,8 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
   value_lookup.insert_or_assign(inst, val_idx);
 #endif
   auto [ty, complex_part_idx] = val_basic_type_uncached(inst, false);
-  values.push_back(ValInfo{.val = static_cast<llvm::Value *>(inst),
-                           .type = ty,
-                           .fused = fused,
-                           .argument = false,
-                           .skip_liveness = fused,
-                           .complex_part_tys_idx = complex_part_idx});
+  values.push_back(ValInfo{
+      .type = ty, .fused = fused, .complex_part_tys_idx = complex_part_idx});
   return nullptr;
 }
 
@@ -246,7 +242,6 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
   blocks.clear();
   block_succ_indices.clear();
   block_succ_ranges.clear();
-  func_arg_indices.clear();
   initial_stack_slot_indices.clear();
   func_has_dynamic_alloca = false;
 
@@ -260,11 +255,8 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
       assert(global_lookup.find(gv) == global_lookup.end());
       global_lookup.insert_or_assign(gv, values.size());
       const auto [ty, complex_part_idx] = val_basic_type_uncached(gv, true);
-      values.push_back(ValInfo{.val = gv,
-                               .type = ty,
+      values.push_back(ValInfo{.type = ty,
                                .fused = false,
-                               .argument = false,
-                               .skip_liveness = true,
                                .complex_part_tys_idx = complex_part_idx});
 
       if (gv->isThreadLocal()) [[unlikely]] {
@@ -321,15 +313,9 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
   arg_idx_end = block_idx_end + arg_count;
   for (size_t i = 0; i < arg_count; ++i) {
     llvm::Argument *arg = function->getArg(i);
-    // value_lookup.insert_or_assign(arg, values.size());
-    func_arg_indices.push_back(values.size());
     const auto [ty, complex_part_idx] = val_basic_type_uncached(arg, false);
-    values.push_back(ValInfo{.val = static_cast<llvm::Value *>(arg),
-                             .type = ty,
-                             .fused = false,
-                             .argument = true,
-                             .skip_liveness = false,
-                             .complex_part_tys_idx = complex_part_idx});
+    values.push_back(ValInfo{
+        .type = ty, .fused = false, .complex_part_tys_idx = complex_part_idx});
   }
 
   for (llvm::BasicBlock &block : *function) {
@@ -370,22 +356,16 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     // blocks are also used as operands for branches so they need an
     // IRValueRef, too
     values[global_idx_end + block_idx] = ValInfo{
-        .val = static_cast<llvm::Value *>(&block),
         .type = LLVMBasicValType::invalid,
         .fused = false,
-        .argument = false,
-        .skip_liveness = true,
     };
 
     for (auto *C : block_constants) {
       if (value_lookup.find(C) == value_lookup.end()) {
         value_lookup.insert_or_assign(C, values.size());
         const auto [ty, complex_part_idx] = val_basic_type_uncached(C, true);
-        values.push_back(ValInfo{.val = static_cast<llvm::Value *>(C),
-                                 .type = ty,
+        values.push_back(ValInfo{.type = ty,
                                  .fused = false,
-                                 .argument = false,
-                                 .skip_liveness = true,
                                  .complex_part_tys_idx = complex_part_idx});
       }
     }
@@ -423,7 +403,6 @@ void LLVMAdaptor::reset() noexcept {
   block_lookup.clear();
 #endif
   complex_part_types.clear();
-  func_arg_indices.clear();
   initial_stack_slot_indices.clear();
   cur_func = nullptr;
   globals_init = false;

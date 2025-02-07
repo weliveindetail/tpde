@@ -116,11 +116,8 @@ struct LLVMAdaptor {
   llvm::Module *mod = nullptr;
 
   struct ValInfo {
-    llvm::Value *val;
     LLVMBasicValType type;
     bool fused;
-    bool argument;
-    bool skip_liveness;
     u32 complex_part_tys_idx;
   };
 
@@ -156,7 +153,6 @@ struct LLVMAdaptor {
   tpde::util::SmallVector<LLVMComplexPart, 32> complex_part_types;
 
   // helpers for faster lookup
-  tpde::util::SmallVector<u32, 8> func_arg_indices;
   tpde::util::SmallVector<const llvm::AllocaInst *, 16>
       initial_stack_slot_indices;
 
@@ -191,11 +187,6 @@ struct LLVMAdaptor {
   }
 
   [[nodiscard]] auto funcs_to_compile() const noexcept { return funcs(); }
-
-  [[nodiscard]] auto globals() const noexcept {
-    return std::views::iota(u32{0}, global_idx_end) |
-           std::views::transform([this](u32 idx) { return values[idx].val; });
-  }
 
   [[nodiscard]] static std::string_view
       func_link_name(const IRFuncRef func) noexcept {

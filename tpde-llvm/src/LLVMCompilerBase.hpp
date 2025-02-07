@@ -972,12 +972,10 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
 
   // Allocate regs for globals
   if (needs_globals) {
-    for (u32 v = 0; v < this->adaptor->global_idx_end; ++v) {
-      variable_refs[v].val = this->adaptor->values[v].val;
-      variable_refs[v].alloca = false;
-      variable_refs[v].local =
-          llvm::cast<llvm::GlobalValue>(this->adaptor->values[v].val)
-              ->hasLocalLinkage();
+    for (auto entry : this->adaptor->global_lookup) {
+      variable_refs[entry.second].val = entry.first;
+      variable_refs[entry.second].alloca = false;
+      variable_refs[entry.second].local = entry.first->hasLocalLinkage();
       // assignments are initialized lazily in val_ref_special.
     }
   }
@@ -2848,9 +2846,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
       continue;
     }
     IRValueRef src = unsigned(mask[i]) < nelem ? lhs : rhs;
-    auto *cst =
-        llvm::dyn_cast<llvm::Constant>(this->adaptor->val_info(src).val);
-    if (cst) {
+    if (auto *cst = llvm::dyn_cast<llvm::Constant>(src)) {
       auto *cst_elem = cst->getAggregateElement(i);
       u64 const_elem;
       if (llvm::isa<llvm::PoisonValue>(cst_elem)) {
