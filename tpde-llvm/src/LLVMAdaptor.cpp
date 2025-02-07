@@ -254,10 +254,9 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     auto add_global = [&](llvm::GlobalValue *gv) {
       assert(global_lookup.find(gv) == global_lookup.end());
       global_lookup.insert_or_assign(gv, values.size());
-      const auto [ty, complex_part_idx] = val_basic_type_uncached(gv, true);
-      values.push_back(ValInfo{.type = ty,
+      values.push_back(ValInfo{.type = LLVMBasicValType::ptr,
                                .fused = false,
-                               .complex_part_tys_idx = complex_part_idx});
+                               .complex_part_tys_idx = ~0u});
 
       if (gv->isThreadLocal()) [[unlikely]] {
         // Rewrite all accesses to thread-local variables to go through the
@@ -304,13 +303,7 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
   // reserve a constant size and optimize for smaller functions
   value_lookup.reserve(512);
 
-  // NB: this iterates over all basic blocks.
-  const size_t block_count = function->size();
-  block_idx_end = global_idx_end + block_count;
-  values.resize(block_idx_end);
-
   const size_t arg_count = function->arg_size();
-  arg_idx_end = block_idx_end + arg_count;
   for (size_t i = 0; i < arg_count; ++i) {
     llvm::Argument *arg = function->getArg(i);
     const auto [ty, complex_part_idx] = val_basic_type_uncached(arg, false);
@@ -353,13 +346,6 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
 #endif
     block_embedded_idx(&block) = block_idx;
 
-    // blocks are also used as operands for branches so they need an
-    // IRValueRef, too
-    values[global_idx_end + block_idx] = ValInfo{
-        .type = LLVMBasicValType::invalid,
-        .fused = false,
-    };
-
     for (auto *C : block_constants) {
       if (value_lookup.find(C) == value_lookup.end()) {
         value_lookup.insert_or_assign(C, values.size());
@@ -375,7 +361,6 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
   for (const auto &info : blocks) {
     const u32 start_idx = block_succ_indices.size();
     for (auto *succ : llvm::successors(info.block)) {
-      // blockSuccs.push_back(blockLookup[succ]);
       block_succ_indices.push_back(block_embedded_idx(succ));
     }
     block_succ_ranges.push_back(
