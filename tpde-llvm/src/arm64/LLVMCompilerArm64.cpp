@@ -112,18 +112,17 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                          ValuePartRef &&res,
                          bool is_double) noexcept;
 
-  bool compile_unreachable(IRValueRef, llvm::Instruction *) noexcept;
-  bool compile_alloca(IRValueRef, llvm::Instruction *) noexcept;
-  bool compile_br(IRValueRef, llvm::Instruction *) noexcept;
+  bool compile_unreachable(const llvm::UnreachableInst *) noexcept;
+  bool compile_alloca(const llvm::AllocaInst *) noexcept;
+  bool compile_br(const llvm::BranchInst *) noexcept;
   void generate_conditional_branch(Jump jmp,
                                    IRBlockRef true_target,
                                    IRBlockRef false_target) noexcept;
-  bool compile_inline_asm(IRValueRef, llvm::CallBase *) noexcept;
-  bool compile_call_inner(IRValueRef,
-                          llvm::CallBase *,
+  bool compile_inline_asm(const llvm::CallBase *) noexcept;
+  bool compile_call_inner(const llvm::CallBase *,
                           std::variant<SymRef, ValuePartRef> &,
                           bool) noexcept;
-  bool compile_icmp(IRValueRef, llvm::Instruction *, InstRange) noexcept;
+  bool compile_icmp(const llvm::ICmpInst *, InstRange) noexcept;
   void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
   void resolved_gep_to_base_reg(ResolvedGEP &gep) noexcept;
@@ -153,8 +152,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                           std::span<ValuePartRef> results,
                           SymRef sym) noexcept;
 
-  bool
-      handle_intrin(IRValueRef, llvm::Instruction *, llvm::Function *) noexcept;
+  bool handle_intrin(const llvm::IntrinsicInst *) noexcept;
 
   bool handle_overflow_intrin_128(OverflowOp op,
                                   GenericValuePart lhs_lo,
@@ -189,12 +187,11 @@ void LLVMCompilerArm64::move_val_to_ret_regs(llvm::Value *val) noexcept {
     }
   }
 
-  const auto val_idx = llvm_val_idx(val);
   unsigned gp_reg_idx = 0;
   unsigned fp_reg_idx = 0;
-  unsigned cnt = this->adaptor->val_part_count(val_idx);
+  unsigned cnt = this->adaptor->val_part_count(val);
   for (unsigned i = 0; i != cnt; i++) {
-    auto val_ref = this->val_ref(val_idx, i);
+    auto val_ref = this->val_ref(val, i);
     if (i != cnt - 1) {
       val_ref.inc_ref_count();
     }
@@ -376,25 +373,24 @@ void LLVMCompilerArm64::create_frem_calls(const IRValueRef lhs,
       sym, args, std::span{&res, 1}, tpde::a64::CallingConv::SYSV_CC, false);
 }
 
-bool LLVMCompilerArm64::compile_unreachable(IRValueRef,
-                                            llvm::Instruction *) noexcept {
+bool LLVMCompilerArm64::compile_unreachable(
+    const llvm::UnreachableInst *) noexcept {
   ASM(UDF, 1);
   this->release_regs_after_return();
   return true;
 }
 
-bool LLVMCompilerArm64::compile_alloca(IRValueRef inst_idx,
-                                       llvm::Instruction *inst) noexcept {
-  auto alloca = llvm::cast<llvm::AllocaInst>(inst);
+bool LLVMCompilerArm64::compile_alloca(
+    const llvm::AllocaInst *alloca) noexcept {
   assert(this->adaptor->cur_has_dynamic_alloca());
 
   // refcount
-  auto size_ref = this->val_ref(llvm_val_idx(alloca->getArraySize()), 0);
+  auto size_ref = this->val_ref(alloca->getArraySize(), 0);
   ValuePartRef res_ref;
 
   auto &layout = adaptor->mod->getDataLayout();
   if (auto opt = alloca->getAllocationSize(layout); opt) {
-    res_ref = this->result_ref_eager(inst_idx, 0);
+    res_ref = this->result_ref_eager(alloca, 0);
 
     const auto size = *opt;
     assert(!size.isScalable());
@@ -427,7 +423,7 @@ bool LLVMCompilerArm64::compile_alloca(IRValueRef inst_idx,
 
   const auto elem_size = layout.getTypeAllocSize(alloca->getAllocatedType());
   ScratchReg scratch{this};
-  res_ref = this->result_ref_must_salvage(inst_idx, 0, std::move(size_ref));
+  res_ref = this->result_ref_must_salvage(alloca, 0, std::move(size_ref));
   const auto res_reg = res_ref.cur_reg();
 
   if (elem_size == 0) {
@@ -463,10 +459,7 @@ bool LLVMCompilerArm64::compile_alloca(IRValueRef inst_idx,
   return true;
 }
 
-bool LLVMCompilerArm64::compile_br(IRValueRef,
-                                   llvm::Instruction *inst) noexcept {
-  auto *br = llvm::cast<llvm::BranchInst>(inst);
-
+bool LLVMCompilerArm64::compile_br(const llvm::BranchInst *br) noexcept {
   if (br->isUnconditional()) {
     auto spilled = this->spill_before_branch();
 
@@ -483,7 +476,7 @@ bool LLVMCompilerArm64::compile_br(IRValueRef,
   // TODO: use Tbz/Tbnz. Must retain register until branch.
   {
     ScratchReg scratch{this};
-    auto cond_ref = this->val_ref(llvm_val_idx(br->getCondition()), 0);
+    auto cond_ref = this->val_ref(br->getCondition(), 0);
     const auto cond_reg = this->val_as_reg(cond_ref, scratch);
     ASM(TSTwi, cond_reg, 1);
   }
@@ -519,8 +512,8 @@ void LLVMCompilerArm64::generate_conditional_branch(
   this->release_spilled_regs(spilled);
 }
 
-bool LLVMCompilerArm64::compile_inline_asm(IRValueRef,
-                                           llvm::CallBase *call) noexcept {
+bool LLVMCompilerArm64::compile_inline_asm(
+    const llvm::CallBase *call) noexcept {
   auto inline_asm = llvm::cast<llvm::InlineAsm>(call->getCalledOperand());
   // TODO: handle inline assembly that actually does something
   if (!inline_asm->getAsmString().empty() || inline_asm->isAlignStack() ||
@@ -544,8 +537,7 @@ bool LLVMCompilerArm64::compile_inline_asm(IRValueRef,
 }
 
 bool LLVMCompilerArm64::compile_call_inner(
-    IRValueRef inst_idx,
-    llvm::CallBase *call,
+    const llvm::CallBase *call,
     std::variant<SymRef, ValuePartRef> &target,
     bool var_arg) noexcept {
   tpde::util::SmallVector<CallArg, 16> args;
@@ -558,7 +550,6 @@ bool LLVMCompilerArm64::compile_call_inner(
 
   for (u32 i = 0; i < num_args; ++i) {
     auto *op = call->getArgOperand(i);
-    const auto op_idx = llvm_val_idx(op);
     auto flag = CallArg::Flag::none;
     u32 byval_align = 0, byval_size = 0;
 
@@ -577,13 +568,13 @@ bool LLVMCompilerArm64::compile_call_inner(
     assert(!call->paramHasAttr(i, llvm::Attribute::AttrKind::InAlloca));
     assert(!call->paramHasAttr(i, llvm::Attribute::AttrKind::Preallocated));
 
-    args.push_back(CallArg{op_idx, flag, byval_align, byval_size});
+    args.push_back(CallArg{op, flag, byval_align, byval_size});
   }
 
   if (!call->getType()->isVoidTy()) {
-    const auto res_part_count = this->adaptor->val_part_count(inst_idx);
+    const auto res_part_count = this->adaptor->val_part_count(call);
     for (u32 part_idx = 0; part_idx < res_part_count; ++part_idx) {
-      auto res_ref = this->result_ref_lazy(inst_idx, part_idx);
+      auto res_ref = this->result_ref_lazy(call, part_idx);
       if (part_idx != res_part_count - 1) {
         res_ref.inc_ref_count();
       }
@@ -606,10 +597,8 @@ bool LLVMCompilerArm64::compile_call_inner(
   return true;
 }
 
-bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
-                                     llvm::Instruction *inst,
+bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
                                      InstRange remaining) noexcept {
-  auto *cmp = llvm::cast<llvm::ICmpInst>(inst);
   auto *cmp_ty = cmp->getOperand(0)->getType();
   assert(cmp_ty->isIntegerTy() || cmp_ty->isPointerTy());
   u32 int_width = 64;
@@ -646,10 +635,10 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
   default: TPDE_UNREACHABLE("invalid icmp predicate");
   }
 
-  llvm::BranchInst *fuse_br = nullptr;
-  llvm::Instruction *fuse_ext = nullptr;
+  const llvm::BranchInst *fuse_br = nullptr;
+  const llvm::Instruction *fuse_ext = nullptr;
   if (!cmp->user_empty() && remaining.from != remaining.to &&
-      (analyzer.liveness_info((u32)val_idx(inst_idx)).ref_count <= 2) &&
+      (analyzer.liveness_info((u32)val_idx(cmp)).ref_count <= 2) &&
       *cmp->user_begin() == cmp->getNextNode()) {
     auto *fuse_inst = cmp->getNextNode();
     assert(cmp->hasNUses(1));
@@ -662,13 +651,13 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
     }
   }
 
-  auto lhs = this->val_ref(llvm_val_idx(cmp->getOperand(0)), 0);
-  auto rhs = this->val_ref(llvm_val_idx(cmp->getOperand(1)), 0);
+  auto lhs = this->val_ref(cmp->getOperand(0), 0);
+  auto rhs = this->val_ref(cmp->getOperand(1), 0);
   ScratchReg res_scratch{this};
 
   if (int_width == 128) {
-    auto lhs_high = this->val_ref(llvm_val_idx(cmp->getOperand(0)), 1);
-    auto rhs_high = this->val_ref(llvm_val_idx(cmp->getOperand(1)), 1);
+    auto lhs_high = this->val_ref(cmp->getOperand(0), 1);
+    auto rhs_high = this->val_ref(cmp->getOperand(1), 1);
 
     ScratchReg scratch1{this}, scratch2{this}, scratch3{this}, scratch4{this};
     const auto lhs_reg = this->val_as_reg(lhs, scratch1);
@@ -780,7 +769,7 @@ bool LLVMCompilerArm64::compile_icmp(IRValueRef inst_idx,
     set_value(res_ref, res_scratch);
     this->adaptor->val_set_fused(*remaining.from, true);
   } else {
-    auto res_ref = result_ref_lazy(inst_idx, 0);
+    auto res_ref = result_ref_lazy(cmp, 0);
     generate_raw_set(jump, res_scratch.alloc_gp());
     set_value(res_ref, res_scratch);
   }
@@ -938,13 +927,12 @@ void LLVMCompilerArm64::create_helper_call(std::span<IRValueRef> args,
   generate_call(sym, arg_vec, res_vec, tpde::a64::CallingConv::SYSV_CC, false);
 }
 
-bool LLVMCompilerArm64::handle_intrin(IRValueRef inst_idx,
-                                      llvm::Instruction *inst,
-                                      llvm::Function *fn) noexcept {
-  const auto intrin_id = fn->getIntrinsicID();
+bool LLVMCompilerArm64::handle_intrin(
+    const llvm::IntrinsicInst *inst) noexcept {
+  const auto intrin_id = inst->getIntrinsicID();
   switch (intrin_id) {
   case llvm::Intrinsic::vastart: {
-    auto list_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto list_ref = this->val_ref(inst->getOperand(0), 0);
     ScratchReg scratch1{this}, scratch2{this};
     auto list_reg = this->val_as_reg(list_ref, scratch1);
     auto tmp_reg = scratch1.alloc_gp();
@@ -972,8 +960,8 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef inst_idx,
     return true;
   }
   case llvm::Intrinsic::vacopy: {
-    auto dst_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
-    auto src_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    auto dst_ref = this->val_ref(inst->getOperand(0), 0);
+    auto src_ref = this->val_ref(inst->getOperand(1), 0);
 
     ScratchReg scratch1{this}, scratch2{this};
     ScratchReg scratch3{this}, scratch4{this};
@@ -987,20 +975,20 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef inst_idx,
     return true;
   }
   case llvm::Intrinsic::stacksave: {
-    auto res_ref = this->result_ref_eager(inst_idx, 0);
+    auto res_ref = this->result_ref_eager(inst, 0);
     ASM(MOV_SPx, res_ref.cur_reg(), DA_SP);
     this->set_value(res_ref, res_ref.cur_reg());
     return true;
   }
   case llvm::Intrinsic::stackrestore: {
-    auto val_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto val_ref = this->val_ref(inst->getOperand(0), 0);
     ScratchReg scratch{this};
     auto val_reg = this->val_as_reg(val_ref, scratch);
     ASM(MOV_SPx, DA_SP, val_reg);
     return true;
   }
   case llvm::Intrinsic::returnaddress: {
-    auto res_ref = this->result_ref_eager(inst_idx, 0);
+    auto res_ref = this->result_ref_eager(inst, 0);
     auto op = llvm::cast<llvm::ConstantInt>(inst->getOperand(0));
     if (op->isZero()) {
       ASM(LDRxu, res_ref.cur_reg(), DA_GP(29), 8);
@@ -1011,7 +999,7 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef inst_idx,
     return true;
   }
   case llvm::Intrinsic::frameaddress: {
-    auto res_ref = this->result_ref_eager(inst_idx, 0);
+    auto res_ref = this->result_ref_eager(inst, 0);
     auto op = llvm::cast<llvm::ConstantInt>(inst->getOperand(0));
     ASM(MOVx, res_ref.cur_reg(), op->isZeroValue() ? DA_GP(29) : DA_ZR);
     this->set_value(res_ref, res_ref.cur_reg());
@@ -1020,12 +1008,12 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef inst_idx,
   case llvm::Intrinsic::trap: ASM(BRK, 1); return true;
   case llvm::Intrinsic::debugtrap: ASM(BRK, 0xf000); return true;
   case llvm::Intrinsic::aarch64_crc32cx: {
-    auto lhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
-    auto rhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    auto lhs_ref = this->val_ref(inst->getOperand(0), 0);
+    auto rhs_ref = this->val_ref(inst->getOperand(1), 0);
     ScratchReg scratch{this};
     AsmReg lhs_reg;
     auto res_ref = this->result_ref_salvage_with_original(
-        inst_idx, 0, std::move(lhs_ref), lhs_reg);
+        inst, 0, std::move(lhs_ref), lhs_reg);
     auto rhs_reg = this->val_as_reg(rhs_ref, scratch);
     ASM(CRC32CX, res_ref.cur_reg(), lhs_reg, rhs_reg);
     this->set_value(res_ref, res_ref.cur_reg());
@@ -1035,12 +1023,12 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef inst_idx,
     auto *vec_ty = llvm::cast<llvm::FixedVectorType>(inst->getType());
     unsigned nelem = vec_ty->getNumElements();
 
-    auto lhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
-    auto rhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    auto lhs_ref = this->val_ref(inst->getOperand(0), 0);
+    auto rhs_ref = this->val_ref(inst->getOperand(1), 0);
     ScratchReg scratch{this};
     AsmReg lhs_reg;
     auto res_ref = this->result_ref_salvage_with_original(
-        inst_idx, 0, std::move(lhs_ref), lhs_reg);
+        inst, 0, std::move(lhs_ref), lhs_reg);
     auto rhs_reg = this->val_as_reg(rhs_ref, scratch);
     switch (nelem) {
     case 2: ASM(UMULL_2d, res_ref.cur_reg(), lhs_reg, rhs_reg); break;
