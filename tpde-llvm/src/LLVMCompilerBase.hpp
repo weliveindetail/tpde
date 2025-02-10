@@ -212,6 +212,20 @@ struct LLVMCompilerBase : public LLVMCompiler,
   std::optional<ValuePartRef> val_ref_constant(IRValueRef val_idx,
                                                u32 part) noexcept;
 
+  ValuePartRef result_ref_lazy(const llvm::Value *v, u32 part) noexcept {
+    return Base::result_ref_lazy(v, part);
+  }
+
+  /// Specialized for llvm::Instruction to avoid type check in val_local_idx.
+  ValuePartRef result_ref_lazy(const llvm::Instruction *i, u32 part) noexcept {
+    const auto local_idx =
+        static_cast<ValLocalIdx>(this->adaptor->inst_lookup_idx(i));
+    if (this->val_assignment(local_idx) == nullptr) {
+      this->init_assignment(i, local_idx);
+    }
+    return ValuePartRef{this, local_idx, part};
+  }
+
 private:
   static typename Assembler::SymBinding
       convert_linkage(const llvm::GlobalValue *gv) noexcept {
