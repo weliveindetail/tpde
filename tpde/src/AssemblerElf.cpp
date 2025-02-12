@@ -2,6 +2,7 @@
 
 #include "tpde/AssemblerElf.hpp"
 
+#include <algorithm>
 #include <elf.h>
 
 namespace tpde {
@@ -164,15 +165,15 @@ AssemblerElfBase::SecRef
   unsigned off_r = !rodata ? elf::sec_off(".rela.data")
                    : relro ? elf::sec_off(".rela.data.rel.ro")
                            : elf::sec_off(".rela.rodata");
-  unsigned flags = SHF_ALLOC | (rodata ? 0 : SHF_WRITE);
-  (void)get_or_create_section(secref, off_r, SHT_PROGBITS, flags, 16);
+  unsigned flags = SHF_ALLOC | (rodata && !relro ? 0 : SHF_WRITE);
+  (void)get_or_create_section(secref, off_r, SHT_PROGBITS, flags, 1);
   return secref;
 }
 
 AssemblerElfBase::SecRef AssemblerElfBase::get_bss_section() noexcept {
   unsigned off = elf::sec_off(".bss");
   unsigned flags = SHF_ALLOC | SHF_WRITE;
-  (void)get_or_create_section(secref_bss, off, SHT_NOBITS, flags, 16, false);
+  (void)get_or_create_section(secref_bss, off, SHT_NOBITS, flags, 1, false);
   return secref_bss;
 }
 
@@ -250,6 +251,7 @@ void AssemblerElfBase::sym_def_predef_data(SecRef sec_ref,
                                            const u32 align,
                                            u32 *off) noexcept {
   DataSection &sec = get_section(sec_ref);
+  sec.hdr.sh_addralign = std::max(sec.hdr.sh_addralign, size_t{align});
   size_t pos = util::align_up(sec.size(), align);
   sym_def(sym_ref, sec_ref, pos, data.size());
   assert(sec.hdr.sh_type != SHT_NOBITS && "cannot add data to SHT_NOBITS");
@@ -264,6 +266,7 @@ void AssemblerElfBase::sym_def_predef_data(SecRef sec_ref,
 void AssemblerElfBase::sym_def_predef_zero(
     SecRef sec_ref, SymRef sym_ref, u32 size, u32 align, u32 *off) noexcept {
   DataSection &sec = get_section(sec_ref);
+  sec.hdr.sh_addralign = std::max(sec.hdr.sh_addralign, size_t{align});
   size_t pos = util::align_up(sec.size(), align);
   sym_def(sym_ref, sec_ref, pos, size);
   if (sec.hdr.sh_type == SHT_NOBITS) {
