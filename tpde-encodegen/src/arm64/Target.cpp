@@ -1012,14 +1012,100 @@ void EncodingTargetArm64::get_inst_candidates(
     handle_default("CMEQ16b");
   } else if (Name == "DUPv16i8lane") {
     handle_default("DUP16b");
+  } else if (Name == "ADDv8i8") {
+    handle_default("ADD8b");
+  } else if (Name == "ADDv16i8") {
+    handle_default("ADD16b");
+  } else if (Name == "ADDv4i16") {
+    handle_default("ADD4h");
+  } else if (Name == "ADDv8i16") {
+    handle_default("ADD8h");
+  } else if (Name == "ADDv2i32") {
+    handle_default("ADD2s");
+  } else if (Name == "ADDv4i32") {
+    handle_default("ADD4s");
+  } else if (Name == "ADDv2i64") {
+    handle_default("ADD2d");
+  } else if (Name == "SUBv8i8") {
+    handle_default("SUB8b");
+  } else if (Name == "SUBv16i8") {
+    handle_default("SUB16b");
+  } else if (Name == "SUBv4i16") {
+    handle_default("SUB4h");
+  } else if (Name == "SUBv8i16") {
+    handle_default("SUB8h");
+  } else if (Name == "SUBv2i32") {
+    handle_default("SUB2s");
+  } else if (Name == "SUBv4i32") {
+    handle_default("SUB4s");
+  } else if (Name == "SUBv2i64") {
+    handle_default("SUB2d");
+  } else if (Name == "SUBv8i8") {
+    handle_default("SUB8b");
+  } else if (Name == "MULv8i8") {
+    handle_default("MUL8b");
+  } else if (Name == "MULv16i8") {
+    handle_default("MUL16b");
+  } else if (Name == "MULv4i16") {
+    handle_default("MUL4h");
+  } else if (Name == "MULv8i16") {
+    handle_default("MUL8h");
+  } else if (Name == "MULv2i32") {
+    handle_default("MUL2s");
+  } else if (Name == "MULv4i32") {
+    handle_default("SUB4s");
   } else if (Name == "CNTv8i8") {
     handle_default("CNT8b");
   } else if (Name == "UADDLVv8i8v") {
     handle_default("UADDLV8b");
+  } else if (Name == "ANDv8i8") {
+    handle_default("AND8b");
+  } else if (Name == "ANDv16i8") {
+    handle_default("AND16b");
+  } else if (Name == "BICv8i8") {
+    handle_default("BIC8b");
+  } else if (Name == "BICv16i8") {
+    handle_default("BIC16b");
+  } else if (Name == "ORRv8i8") {
+    handle_default("ORR8b");
+  } else if (Name == "ORRv16i8") {
+    handle_default("ORR16b");
+  } else if (Name == "ORNv8i8") {
+    handle_default("ORN8b");
+  } else if (Name == "ORNv16i8") {
+    handle_default("ORN16b");
+  } else if (Name == "EORv8i8") {
+    handle_default("EOR8b");
+  } else if (Name == "EORv16i8") {
+    handle_default("EOR16b");
+  } else if (Name == "BSLv8i8") {
+    handle_default("BSL8b");
+  } else if (Name == "BSLv16i8") {
+    handle_default("BSL16b");
+  } else if (Name == "BITv8i8") {
+    handle_default("BIT8b");
   } else if (Name == "BITv16i8") {
     handle_default("BIT16b");
+  } else if (Name == "BIFv8i8") {
+    handle_default("BIF8b");
   } else if (Name == "BIFv16i8") {
     handle_default("BIF16b");
+  } else if (Name == "USHLv8i8") {
+    handle_default("USHL8b");
+  } else if (Name == "USHLv16i8") {
+    handle_default("USHL16b");
+  } else if (Name == "USHLv4i16") {
+    handle_default("USHL4h");
+  } else if (Name == "USHLv8i16") {
+    handle_default("USHL8h");
+  } else if (Name == "USHLv2i32") {
+    handle_default("USHL2s");
+  } else if (Name == "USHLv4i32") {
+    handle_default("USHL4s");
+  } else if (Name == "USHLv2i64") {
+    handle_default("USHL2d");
+  } else if (Name == "USHLv8i8") {
+    handle_default("USHL8b");
   } else if (Name == "FNEGv2f32") {
     handle_default("FNEG2s");
   } else if (Name == "FNEGv4f32") {
@@ -1046,6 +1132,10 @@ void EncodingTargetArm64::get_inst_candidates(
     handle_default("FMOVsw");
   } else if (Name == "FMOVXDr") {
     handle_default("FMOVdx");
+  } else if (Name == "UMOVvi64") {
+    handle_default("UMOVxd");
+  } else if (Name == "INSvi64gpr") {
+    handle_default("INSdx");
 
   } else if (Name == "CASB") {
     handle_default("CASB");

@@ -19,7 +19,7 @@ define float @atomicrmw_fsub_float_seq_cst(ptr %p, float %a) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], ecx
 ; X64-NEXT:    movd xmm1, eax
 ; X64-NEXT:    jne <L0>
-; X64-NEXT:    movdqa xmm0, xmm1
+; X64-NEXT:    movapd xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -62,7 +62,7 @@ define void @atomicrmw_fsub_float_seq_cst_nouse(ptr %p, float %a) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], ecx
 ; X64-NEXT:    movd xmm1, eax
 ; X64-NEXT:    jne <L0>
-; X64-NEXT:    movdqa xmm0, xmm1
+; X64-NEXT:    movapd xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -105,7 +105,7 @@ define double @atomicrmw_fsub_double_seq_cst(ptr %p, double %a) {
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rcx
 ; X64-NEXT:    movq xmm1, rax
 ; X64-NEXT:    jne <L0>
-; X64-NEXT:    movdqa xmm0, xmm1
+; X64-NEXT:    movapd xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -148,7 +148,7 @@ define void @atomicrmw_fsub_double_seq_cst_nouse(ptr %p, double %a) {
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rcx
 ; X64-NEXT:    movq xmm1, rax
 ; X64-NEXT:    jne <L0>
-; X64-NEXT:    movdqa xmm0, xmm1
+; X64-NEXT:    movapd xmm0, xmm1
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret

@@ -332,6 +332,53 @@ i64 TARGET_V1 sat_add_i64(i64 a, i64 b) { i64 r; return __builtin_add_overflow(a
 i64 TARGET_V1 sat_sub_i64(i64 a, i64 b) { i64 r; return __builtin_sub_overflow(a, b, &r) ? a < 0 ? INT64_MIN : INT64_MAX : r; }
 
 // --------------------------
+// vector integer arithmetic
+// --------------------------
+
+v8u8 TARGET_V1 addv8u8(v8u8 a, v8u8 b) { return (a + b); }
+v8u8 TARGET_V1 subv8u8(v8u8 a, v8u8 b) { return (a - b); }
+v8u8 TARGET_V1 mulv8u8(v8u8 a, v8u8 b) { return (a * b); }
+v8u8 TARGET_V1 andv8u8(v8u8 a, v8u8 b) { return (a & b); }
+v8u8 TARGET_V1 xorv8u8(v8u8 a, v8u8 b) { return (a ^ b); }
+v8u8 TARGET_V1 orv8u8(v8u8 a, v8u8 b) { return (a | b); }
+v4u16 TARGET_V1 addv4u16(v4u16 a, v4u16 b) { return (a + b); }
+v4u16 TARGET_V1 subv4u16(v4u16 a, v4u16 b) { return (a - b); }
+v4u16 TARGET_V1 mulv4u16(v4u16 a, v4u16 b) { return (a * b); }
+v4u16 TARGET_V1 andv4u16(v4u16 a, v4u16 b) { return (a & b); }
+v4u16 TARGET_V1 xorv4u16(v4u16 a, v4u16 b) { return (a ^ b); }
+v4u16 TARGET_V1 orv4u16(v4u16 a, v4u16 b) { return (a | b); }
+v2u32 TARGET_V1 addv2u32(v2u32 a, v2u32 b) { return (a + b); }
+v2u32 TARGET_V1 subv2u32(v2u32 a, v2u32 b) { return (a - b); }
+v2u32 TARGET_V1 mulv2u32(v2u32 a, v2u32 b) { return (a * b); }
+v2u32 TARGET_V1 andv2u32(v2u32 a, v2u32 b) { return (a & b); }
+v2u32 TARGET_V1 xorv2u32(v2u32 a, v2u32 b) { return (a ^ b); }
+v2u32 TARGET_V1 orv2u32(v2u32 a, v2u32 b) { return (a | b); }
+v16u8 TARGET_V1 addv16u8(v16u8 a, v16u8 b) { return (a + b); }
+v16u8 TARGET_V1 subv16u8(v16u8 a, v16u8 b) { return (a - b); }
+v16u8 TARGET_V1 mulv16u8(v16u8 a, v16u8 b) { return (a * b); }
+v16u8 TARGET_V1 andv16u8(v16u8 a, v16u8 b) { return (a & b); }
+v16u8 TARGET_V1 xorv16u8(v16u8 a, v16u8 b) { return (a ^ b); }
+v16u8 TARGET_V1 orv16u8(v16u8 a, v16u8 b) { return (a | b); }
+v8u16 TARGET_V1 addv8u16(v8u16 a, v8u16 b) { return (a + b); }
+v8u16 TARGET_V1 subv8u16(v8u16 a, v8u16 b) { return (a - b); }
+v8u16 TARGET_V1 mulv8u16(v8u16 a, v8u16 b) { return (a * b); }
+v8u16 TARGET_V1 andv8u16(v8u16 a, v8u16 b) { return (a & b); }
+v8u16 TARGET_V1 xorv8u16(v8u16 a, v8u16 b) { return (a ^ b); }
+v8u16 TARGET_V1 orv8u16(v8u16 a, v8u16 b) { return (a | b); }
+v4u32 TARGET_V1 addv4u32(v4u32 a, v4u32 b) { return (a + b); }
+v4u32 TARGET_V1 subv4u32(v4u32 a, v4u32 b) { return (a - b); }
+v4u32 TARGET_V1 mulv4u32(v4u32 a, v4u32 b) { return (a * b); }
+v4u32 TARGET_V1 andv4u32(v4u32 a, v4u32 b) { return (a & b); }
+v4u32 TARGET_V1 xorv4u32(v4u32 a, v4u32 b) { return (a ^ b); }
+v4u32 TARGET_V1 orv4u32(v4u32 a, v4u32 b) { return (a | b); }
+v2u64 TARGET_V1 addv2u64(v2u64 a, v2u64 b) { return (a + b); }
+v2u64 TARGET_V1 subv2u64(v2u64 a, v2u64 b) { return (a - b); }
+v2u64 TARGET_V1 mulv2u64(v2u64 a, v2u64 b) { return (a * b); }
+v2u64 TARGET_V1 andv2u64(v2u64 a, v2u64 b) { return (a & b); }
+v2u64 TARGET_V1 xorv2u64(v2u64 a, v2u64 b) { return (a ^ b); }
+v2u64 TARGET_V1 orv2u64(v2u64 a, v2u64 b) { return (a | b); }
+
+// --------------------------
 // float arithmetic
 // --------------------------
 

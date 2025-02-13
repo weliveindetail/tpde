@@ -27,10 +27,15 @@ struct EncodingTargetX64 : EncodingTarget {
 
   std::optional<std::pair<unsigned, unsigned>>
       is_move(const llvm::MachineInstr &mi) override {
-    if (!mi.isMoveReg() || mi.hasImplicitDef()) {
-      return std::nullopt;
+    if (mi.isMoveReg() && !mi.hasImplicitDef()) {
+      return std::make_pair(0, 1);
     }
-    return std::make_pair(0, 1);
+    const llvm::LLVMTargetMachine &TM = mi.getMF()->getTarget();
+    llvm::StringRef name = TM.getMCInstrInfo()->getName(mi.getOpcode());
+    if (name == "MOVDQArr" || name == "MOVAPSrr" || name == "MOVAPDrr") {
+      return std::make_pair(0, 1);
+    }
+    return std::nullopt;
   }
 
   bool reg_is_gp(const llvm::Register reg) const {

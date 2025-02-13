@@ -1518,7 +1518,163 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
   auto *inst_ty = inst->getType();
 
   if (inst_ty->isVectorTy()) {
-    return false;
+    auto *scalar_ty = inst_ty->getScalarType();
+    auto int_width = scalar_ty->getIntegerBitWidth();
+
+    using EncodeFnTy = bool (Derived::*)(
+        GenericValuePart &&, GenericValuePart &&, ScratchReg &);
+    EncodeFnTy encode_fn = nullptr;
+    switch (op) {
+    case IntBinaryOp::add:
+      switch (this->adaptor->values[inst_idx].type) {
+        using enum LLVMBasicValType;
+      case v64:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_addv8u8; break;
+        case 16: encode_fn = &Derived::encode_addv4u16; break;
+        case 32: encode_fn = &Derived::encode_addv2u32; break;
+        default: return false;
+        }
+        break;
+      case v128:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_addv16u8; break;
+        case 16: encode_fn = &Derived::encode_addv8u16; break;
+        case 32: encode_fn = &Derived::encode_addv4u32; break;
+        case 64: encode_fn = &Derived::encode_addv2u64; break;
+        default: return false;
+        }
+        break;
+      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
+      }
+      break;
+    case IntBinaryOp::sub:
+      switch (this->adaptor->values[inst_idx].type) {
+        using enum LLVMBasicValType;
+      case v64:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_subv8u8; break;
+        case 16: encode_fn = &Derived::encode_subv4u16; break;
+        case 32: encode_fn = &Derived::encode_subv2u32; break;
+        default: return false;
+        }
+        break;
+      case v128:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_subv16u8; break;
+        case 16: encode_fn = &Derived::encode_subv8u16; break;
+        case 32: encode_fn = &Derived::encode_subv4u32; break;
+        case 64: encode_fn = &Derived::encode_subv2u64; break;
+        default: return false;
+        }
+        break;
+      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
+      }
+      break;
+    case IntBinaryOp::mul:
+      switch (this->adaptor->values[inst_idx].type) {
+        using enum LLVMBasicValType;
+      case v64:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_mulv8u8; break;
+        case 16: encode_fn = &Derived::encode_mulv4u16; break;
+        case 32: encode_fn = &Derived::encode_mulv2u32; break;
+        default: return false;
+        }
+        break;
+      case v128:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_mulv16u8; break;
+        case 16: encode_fn = &Derived::encode_mulv8u16; break;
+        case 32: encode_fn = &Derived::encode_mulv4u32; break;
+        case 64: encode_fn = &Derived::encode_mulv2u64; break;
+        default: return false;
+        }
+        break;
+      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
+      }
+      break;
+    case IntBinaryOp::land:
+      switch (this->adaptor->values[inst_idx].type) {
+        using enum LLVMBasicValType;
+      case v64:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_andv8u8; break;
+        case 16: encode_fn = &Derived::encode_andv4u16; break;
+        case 32: encode_fn = &Derived::encode_andv2u32; break;
+        default: return false;
+        }
+        break;
+      case v128:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_andv16u8; break;
+        case 16: encode_fn = &Derived::encode_andv8u16; break;
+        case 32: encode_fn = &Derived::encode_andv4u32; break;
+        case 64: encode_fn = &Derived::encode_andv2u64; break;
+        default: return false;
+        }
+        break;
+      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
+      }
+      break;
+    case IntBinaryOp::lxor:
+      switch (this->adaptor->values[inst_idx].type) {
+        using enum LLVMBasicValType;
+      case v64:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_xorv8u8; break;
+        case 16: encode_fn = &Derived::encode_xorv4u16; break;
+        case 32: encode_fn = &Derived::encode_xorv2u32; break;
+        default: return false;
+        }
+        break;
+      case v128:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_xorv16u8; break;
+        case 16: encode_fn = &Derived::encode_xorv8u16; break;
+        case 32: encode_fn = &Derived::encode_xorv4u32; break;
+        case 64: encode_fn = &Derived::encode_xorv2u64; break;
+        default: return false;
+        }
+        break;
+      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
+      }
+      break;
+    case IntBinaryOp::lor:
+      switch (this->adaptor->values[inst_idx].type) {
+        using enum LLVMBasicValType;
+      case v64:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_orv8u8; break;
+        case 16: encode_fn = &Derived::encode_orv4u16; break;
+        case 32: encode_fn = &Derived::encode_orv2u32; break;
+        default: return false;
+        }
+        break;
+      case v128:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_orv16u8; break;
+        case 16: encode_fn = &Derived::encode_orv8u16; break;
+        case 32: encode_fn = &Derived::encode_orv4u32; break;
+        case 64: encode_fn = &Derived::encode_orv2u64; break;
+        default: return false;
+        }
+        break;
+      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
+      }
+      break;
+    default: return false;
+    }
+
+    auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    auto res_ref = this->result_ref_lazy(inst_idx, 0);
+    ScratchReg res{this};
+    if (!(derived()->*encode_fn)(std::move(lhs), std::move(rhs), res)) {
+      return false;
+    }
+    this->set_value(res_ref, res);
+    return true;
   }
 
   assert(inst_ty->isIntegerTy());
