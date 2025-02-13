@@ -16,6 +16,7 @@
 #include <llvm/Support/TimeProfiler.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include "tpde/AssemblerElf.hpp"
 #include "tpde/CompilerBase.hpp"
 #include "tpde/base.hpp"
 #include "tpde/util/misc.hpp"
@@ -557,7 +558,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
     // it in the data section and place an undef symbol in the symbol
     // lookup
     auto binding = convert_linkage(gv);
-    if (!gv->isDeclarationForLinker()) {
+    if (gv->isThreadLocal()) {
+      global_syms[gv] = this->assembler.sym_predef_tls(gv->getName(), binding);
+    } else if (!gv->isDeclarationForLinker()) {
       global_syms[gv] = this->assembler.sym_predef_data(gv->getName(), binding);
     } else {
       global_syms[gv] = this->assembler.sym_add_undef(gv->getName(), binding);
@@ -567,7 +570,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
   for (auto it = llvm_mod.alias_begin(); it != llvm_mod.alias_end(); ++it) {
     const llvm::GlobalAlias *ga = &*it;
     auto binding = convert_linkage(ga);
-    global_syms[ga] = this->assembler.sym_add_undef(ga->getName(), binding);
+    if (ga->isThreadLocal()) {
+      global_syms[ga] = this->assembler.sym_predef_tls(ga->getName(), binding);
+    } else {
+      global_syms[ga] = this->assembler.sym_add_undef(ga->getName(), binding);
+    }
   }
 
   if (!llvm_mod.ifunc_empty()) {
@@ -647,12 +654,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
 
     auto size = data_layout.getTypeAllocSize(init->getType());
     auto align = gv->getAlign().valueOrOne().value();
+    bool tls = gv->isThreadLocal();
     auto sym = global_sym(gv);
 
     // check if the data value is a zero aggregate and put into bss if that
     // is the case
     if (llvm::isa<llvm::ConstantAggregateZero>(init)) {
-      auto secref = this->assembler.get_bss_section();
+      auto secref = tls ? this->assembler.get_tbss_section()
+                        : this->assembler.get_bss_section();
       this->assembler.sym_def_predef_zero(secref, sym, size, align);
       continue;
     }
@@ -667,7 +676,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
 
     u32 off;
     auto read_only = gv->isConstant();
-    auto sec = this->assembler.get_data_section(read_only, !relocs.empty());
+    auto sec =
+        tls ? this->assembler.get_tdata_section()
+            : this->assembler.get_data_section(read_only, !relocs.empty());
     this->assembler.sym_def_predef_data(sec, sym, data, align, &off);
     for (auto &[inner_off, addend, target, type] : relocs) {
       if (type == RelocInfo::RELOC_ABS) {

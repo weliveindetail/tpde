@@ -241,6 +241,8 @@ protected:
   SecRef secref_relro = INVALID_SEC_REF;
   SecRef secref_data = INVALID_SEC_REF;
   SecRef secref_bss = INVALID_SEC_REF;
+  SecRef secref_tdata = INVALID_SEC_REF;
+  SecRef secref_tbss = INVALID_SEC_REF;
 
   SecRef secref_init_array = INVALID_SEC_REF;
   SecRef secref_fini_array = INVALID_SEC_REF;
@@ -320,6 +322,8 @@ private:
 public:
   SecRef get_data_section(bool rodata, bool relro = false) noexcept;
   SecRef get_bss_section() noexcept;
+  SecRef get_tdata_section() noexcept;
+  SecRef get_tbss_section() noexcept;
   SecRef get_structor_section(bool init) noexcept;
   SecRef get_eh_frame_section() const noexcept { return secref_eh_frame; }
 
@@ -347,6 +351,11 @@ public:
   [[nodiscard]] SymRef sym_predef_data(std::string_view name,
                                        SymBinding binding) noexcept {
     return sym_add(name, binding, STT_OBJECT);
+  }
+
+  [[nodiscard]] SymRef sym_predef_tls(std::string_view name,
+                                      SymBinding binding) noexcept {
+    return sym_add(name, binding, STT_TLS);
   }
 
   void sym_def_predef_data(SecRef sec,

@@ -27,10 +27,12 @@ constexpr static std::span<const char> SHSTRTAB = {
     ".strtab\0"
     ".shstrtab\0"
     ".bss\0"
+    ".tbss\0"
     ".rela.rodata\0"
     ".rela.text\0"
     ".rela.data.rel.ro\0"
     ".rela.data\0"
+    ".rela.tdata\0"
     ".rela.gcc_except_table\0"
     ".rela.init_array\0"
     ".rela.fini_array\0"};
@@ -105,6 +107,8 @@ void AssemblerElfBase::reset() noexcept {
   secref_relro = INVALID_SEC_REF;
   secref_data = INVALID_SEC_REF;
   secref_bss = INVALID_SEC_REF;
+  secref_tdata = INVALID_SEC_REF;
+  secref_tbss = INVALID_SEC_REF;
   secref_init_array = INVALID_SEC_REF;
   secref_fini_array = INVALID_SEC_REF;
   secref_eh_frame = INVALID_SEC_REF;
@@ -174,6 +178,20 @@ AssemblerElfBase::SecRef AssemblerElfBase::get_bss_section() noexcept {
   unsigned off = elf::sec_off(".bss");
   unsigned flags = SHF_ALLOC | SHF_WRITE;
   (void)get_or_create_section(secref_bss, off, SHT_NOBITS, flags, 1, false);
+  return secref_bss;
+}
+
+AssemblerElfBase::SecRef AssemblerElfBase::get_tdata_section() noexcept {
+  unsigned off_r = elf::sec_off(".rela.tdata");
+  unsigned flags = SHF_ALLOC | SHF_WRITE | SHF_TLS;
+  (void)get_or_create_section(secref_tdata, off_r, SHT_PROGBITS, flags, 1);
+  return secref_tdata;
+}
+
+AssemblerElfBase::SecRef AssemblerElfBase::get_tbss_section() noexcept {
+  unsigned off = elf::sec_off(".tbss");
+  unsigned flags = SHF_ALLOC | SHF_WRITE | SHF_TLS;
+  (void)get_or_create_section(secref_tbss, off, SHT_NOBITS, flags, 1, false);
   return secref_bss;
 }
 
