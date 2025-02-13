@@ -215,12 +215,13 @@ private:
 public:
   void define_func_idx(IRFuncRef func, const u32 idx) noexcept;
   bool hook_post_func_sym_init() noexcept;
-  bool global_init_to_data(const llvm::Value *reloc_base,
-                           tpde::util::SmallVector<u8, 64> &data,
-                           tpde::util::SmallVector<RelocInfo, 8> &relocs,
-                           const llvm::DataLayout &layout,
-                           const llvm::Constant *constant,
-                           u32 off) noexcept;
+  [[nodiscard]] bool
+      global_init_to_data(const llvm::Value *reloc_base,
+                          tpde::util::SmallVector<u8, 64> &data,
+                          tpde::util::SmallVector<RelocInfo, 8> &relocs,
+                          const llvm::DataLayout &layout,
+                          const llvm::Constant *constant,
+                          u32 off) noexcept;
 
   IRValueRef llvm_val_idx(const llvm::Value *) const noexcept;
   IRValueRef llvm_val_idx(const llvm::Instruction *) const noexcept;
@@ -748,17 +749,18 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
     auto *ty = CA->getType();
     auto c0 = llvm::ConstantInt::get(ctx, llvm::APInt(32, 0, false));
 
+    bool success = true;
     for (auto i = 0u; i < num_elements; ++i) {
       auto idx = llvm::ConstantInt::get(ctx, llvm::APInt(32, (u64)i, false));
       auto agg_off = layout.getIndexedOffsetInType(ty, {c0, idx});
-      global_init_to_data(reloc_base,
-                          data,
-                          relocs,
-                          layout,
-                          CA->getAggregateElement(i),
-                          off + agg_off);
+      success &= global_init_to_data(reloc_base,
+                                     data,
+                                     relocs,
+                                     layout,
+                                     CA->getAggregateElement(i),
+                                     off + agg_off);
     }
-    return true;
+    return success;
   }
   if (auto *GV = llvm::dyn_cast<llvm::GlobalValue>(constant); GV) {
     assert(alloc_size == 8);
