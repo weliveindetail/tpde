@@ -517,6 +517,19 @@ u32 TARGET_V1 atomic_load_u16_seqcst(u16* ptr) { return __atomic_load_n(ptr, __A
 u32 TARGET_V1 atomic_load_u32_seqcst(u32* ptr) { return __atomic_load_n(ptr, __ATOMIC_SEQ_CST); }
 u64 TARGET_V1 atomic_load_u64_seqcst(u64* ptr) { return __atomic_load_n(ptr, __ATOMIC_SEQ_CST); }
 
+void TARGET_V1 atomic_store_u8_mono(u8* ptr, u8 v) { __atomic_store_n(ptr, v, __ATOMIC_RELAXED); }
+void TARGET_V1 atomic_store_u16_mono(u16* ptr, u16 v) { __atomic_store_n(ptr, v, __ATOMIC_RELAXED); }
+void TARGET_V1 atomic_store_u32_mono(u32* ptr, u32 v) { __atomic_store_n(ptr, v, __ATOMIC_RELAXED); }
+void TARGET_V1 atomic_store_u64_mono(u64* ptr, u64 v) { __atomic_store_n(ptr, v, __ATOMIC_RELAXED); }
+void TARGET_V1 atomic_store_u8_rel(u8* ptr, u8 v) { __atomic_store_n(ptr, v, __ATOMIC_RELEASE); }
+void TARGET_V1 atomic_store_u16_rel(u16* ptr, u16 v) { __atomic_store_n(ptr, v, __ATOMIC_RELEASE); }
+void TARGET_V1 atomic_store_u32_rel(u32* ptr, u32 v) { __atomic_store_n(ptr, v, __ATOMIC_RELEASE); }
+void TARGET_V1 atomic_store_u64_rel(u64* ptr, u64 v) { __atomic_store_n(ptr, v, __ATOMIC_RELEASE); }
+void TARGET_V1 atomic_store_u8_seqcst(u8* ptr, u8 v) { __atomic_store_n(ptr, v, __ATOMIC_SEQ_CST); }
+void TARGET_V1 atomic_store_u16_seqcst(u16* ptr, u16 v) { __atomic_store_n(ptr, v, __ATOMIC_SEQ_CST); }
+void TARGET_V1 atomic_store_u32_seqcst(u32* ptr, u32 v) { __atomic_store_n(ptr, v, __ATOMIC_SEQ_CST); }
+void TARGET_V1 atomic_store_u64_seqcst(u64* ptr, u64 v) { __atomic_store_n(ptr, v, __ATOMIC_SEQ_CST); }
+
 u32 TARGET_V1 atomic_xchg_u8_seqcst(u8 *p, u8 v) { return __atomic_exchange_n(p, v, __ATOMIC_SEQ_CST); }
 u32 TARGET_V1 atomic_add_u8_seqcst(u8 *p, u8 v) { return __atomic_fetch_add(p, v, __ATOMIC_SEQ_CST); }
 u32 TARGET_V1 atomic_sub_u8_seqcst(u8 *p, u8 v) { return __atomic_fetch_sub(p, v, __ATOMIC_SEQ_CST); }

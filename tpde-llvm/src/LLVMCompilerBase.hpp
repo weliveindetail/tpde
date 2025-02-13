@@ -1297,14 +1297,64 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
     llvm::StoreInst *store, GenericValuePart &&ptr_op) noexcept {
-  if (store->isAtomic()) {
-    // TODO: atomic stores
-    return false;
-  }
-
   const auto *op_val = store->getValueOperand();
   const auto op_idx = llvm_val_idx(op_val);
   auto op_ref = this->val_ref(op_idx, 0);
+
+  if (store->isAtomic()) {
+    u32 width = 64;
+    if (op_val->getType()->isIntegerTy()) {
+      width = op_val->getType()->getIntegerBitWidth();
+      if (width != 8 && width != 16 && width != 32 && width != 64) {
+        TPDE_LOG_ERR("atomic loads not of i8/i16/i32/i64/ptr not supported");
+        return false;
+      }
+    } else if (!op_val->getType()->isPointerTy()) {
+      TPDE_LOG_ERR("atomic loads not of i8/i16/i32/i64/ptr not supported");
+      return false;
+    }
+
+    if (auto align = store->getAlign().value(); align * 8 < width) {
+      TPDE_LOG_ERR("unaligned store ({}) not implemented", align);
+      return false;
+    }
+
+    const auto order = store->getOrdering();
+    using EncodeFnTy = bool (Derived::*)(GenericValuePart &&, GenericValuePart &&);
+    EncodeFnTy encode_fn = nullptr;
+    if (order == llvm::AtomicOrdering::Monotonic) {
+      switch (width) {
+      case 8: encode_fn = &Derived::encode_atomic_store_u8_mono; break;
+      case 16: encode_fn = &Derived::encode_atomic_store_u16_mono; break;
+      case 32: encode_fn = &Derived::encode_atomic_store_u32_mono; break;
+      case 64: encode_fn = &Derived::encode_atomic_store_u64_mono; break;
+      default: TPDE_UNREACHABLE("invalid size");
+      }
+    } else if (order == llvm::AtomicOrdering::Release) {
+      switch (width) {
+      case 8: encode_fn = &Derived::encode_atomic_store_u8_rel; break;
+      case 16: encode_fn = &Derived::encode_atomic_store_u16_rel; break;
+      case 32: encode_fn = &Derived::encode_atomic_store_u32_rel; break;
+      case 64: encode_fn = &Derived::encode_atomic_store_u64_rel; break;
+      default: TPDE_UNREACHABLE("invalid size");
+      }
+    } else {
+      assert(order == llvm::AtomicOrdering::SequentiallyConsistent);
+      switch (width) {
+      case 8: encode_fn = &Derived::encode_atomic_store_u8_seqcst; break;
+      case 16: encode_fn = &Derived::encode_atomic_store_u16_seqcst; break;
+      case 32: encode_fn = &Derived::encode_atomic_store_u32_seqcst; break;
+      case 64: encode_fn = &Derived::encode_atomic_store_u64_seqcst; break;
+      default: TPDE_UNREACHABLE("invalid size");
+      }
+    }
+
+    if (!(derived()->*encode_fn)(std::move(ptr_op), std::move(op_ref))) {
+      TPDE_LOG_ERR("fooooo");
+      return false;
+    }
+    return true;
+  }
 
   switch (this->adaptor->values[op_idx].type) {
     using enum LLVMBasicValType;
@@ -1435,10 +1485,6 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     const IRValueRef, llvm::Instruction *inst) noexcept {
   auto *store = llvm::cast<llvm::StoreInst>(inst);
-  if (store->isAtomic()) {
-    // TODO: atomic stores
-    return false;
-  }
 
   auto ptr_ref = this->val_ref(llvm_val_idx(store->getPointerOperand()), 0);
   if (!ptr_ref.is_const && ptr_ref.assignment().variable_ref()) {
