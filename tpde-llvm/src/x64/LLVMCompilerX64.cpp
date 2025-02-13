@@ -233,9 +233,25 @@ void LLVMCompilerX64::load_address_of_var_reference(
         dst,
         FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(info.alloca_frame_off)));
   } else {
-    const auto sym = global_sym(
-        llvm::cast<llvm::GlobalValue>(adaptor->values[info.val].val));
+    auto *global = llvm::cast<llvm::GlobalValue>(adaptor->values[info.val].val);
+    const auto sym = global_sym(global);
     assert(sym.valid());
+    if (global->isThreadLocal()) {
+      // LLVM historically allowed TLS globals to be used as pointers and
+      // generate TLS access calls when the pointer is used. This caused
+      // problems with coroutines, leading to the addition of the intrinsic
+      // llvm.threadlocal.address in 2022; deprecation of the original behavior
+      // was considered. Clang now only generates the intrinsic, and other
+      // front-ends should do that, too.
+      //
+      // Here, generating a function call would be highly problematic. This
+      // method gets called when allocating/locking ValuePartRefs; it is quite
+      // likely that some registers are already fixed at this point. Doing a
+      // regular function call would require to spill/move all these values,
+      // adding fragile code for a somewhat-deprecated feature. Therefore, we
+      // only support access to thread-local variables through the intrinsic.
+      TPDE_FATAL("thread-local variable access without intrinsic");
+    }
     if (!info.local) {
       // mov the ptr from the GOT
       ASM(MOV64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));

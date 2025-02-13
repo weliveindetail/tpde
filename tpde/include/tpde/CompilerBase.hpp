@@ -14,6 +14,14 @@ namespace tpde {
 // TODO(ts): formulate concept for full compiler so that there is *some* check
 // whether all the required derived methods are implemented?
 
+/// Thread-local storage access mode
+enum class TLSModel {
+  GlobalDynamic,
+  LocalDynamic,
+  InitialExec,
+  LocalExec,
+};
+
 /// The base class for the compiler.
 /// It implements the main platform independent compilation logic and houses the
 /// analyzer

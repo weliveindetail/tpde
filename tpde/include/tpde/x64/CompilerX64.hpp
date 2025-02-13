@@ -434,6 +434,9 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   util::SmallVector<std::pair<IRFuncRef, typename Assembler::SymRef>, 4>
       personality_syms = {};
 
+  /// Symbol for __tls_get_addr.
+  Assembler::SymRef sym_tls_get_addr;
+
   // for now, always generate an object
   explicit CompilerX64(Adaptor *adaptor,
                        const CPU_FEATURES cpu_features = CPU_BASELINE)
@@ -562,6 +565,10 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
       std::span<std::variant<ValuePartRef, std::pair<ScratchReg, u8>>> results,
       CallingConv calling_conv,
       bool variable_args);
+
+  /// Generate code sequence to load address of sym into a register. This will
+  /// generate a function call for dynamic TLS access models.
+  ScratchReg tls_get_addr(Assembler::SymRef sym, TLSModel model) noexcept;
 
   bool has_cpu_feats(CPU_FEATURES feats) const noexcept {
     return ((cpu_feats & feats) == feats);
@@ -1369,6 +1376,7 @@ template <IRAdaptor Adaptor,
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::reset() noexcept {
   func_ret_offs.clear();
   personality_syms.clear();
+  sym_tls_get_addr = {};
   Base::reset();
 }
 
@@ -2168,6 +2176,50 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
   }
 
   calling_conv.fill_call_results(this, results);
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> typename BaseTy,
+          typename Config>
+CompilerX64<Adaptor, Derived, BaseTy, Config>::ScratchReg
+    CompilerX64<Adaptor, Derived, BaseTy, Config>::tls_get_addr(
+        Assembler::SymRef sym, TLSModel model) noexcept {
+  switch (model) {
+  default: // TODO: implement optimized access for non-gd-model
+  case TLSModel::GlobalDynamic: {
+    // Generate function call to __tls_get_addr; on x86-64, this takes a single
+    // parameter in rdi.
+    ScratchReg arg{this};
+    AsmReg arg_reg = arg.alloc_specific(AsmReg::DI);
+    spill_before_call(CallingConv::SYSV_CC, 1ull << arg_reg.id());
+
+    // Call sequence with extra prefixes for linker relaxation. Code sequence
+    // taken from "ELF Handling For Thread-Local Storage".
+    this->assembler.text_ensure_space(0x10);
+    *this->assembler.text_write_ptr++ = 0x66;
+    ASMNC(LEA64rm, arg_reg, FE_MEM(FE_IP, 0, FE_NOREG, 0));
+    this->assembler.reloc_text(
+        sym, R_X86_64_TLSGD, this->assembler.text_cur_off() - 4, -4);
+    *this->assembler.text_write_ptr++ = 0x66;
+    *this->assembler.text_write_ptr++ = 0x66;
+    *this->assembler.text_write_ptr++ = 0x48;
+    ASMNC(CALL, this->assembler.text_write_ptr);
+    if (!this->sym_tls_get_addr.valid()) [[unlikely]] {
+      this->sym_tls_get_addr = this->assembler.sym_add_undef(
+          "__tls_get_addr", Assembler::SymBinding::GLOBAL);
+    }
+    this->assembler.reloc_text(this->sym_tls_get_addr,
+                               R_X86_64_PLT32,
+                               this->assembler.text_cur_off() - 4,
+                               -4);
+    arg.reset();
+
+    ScratchReg res{this};
+    res.alloc_specific(AsmReg::AX);
+    return res;
+  }
+  }
 }
 
 } // namespace tpde::x64

@@ -103,8 +103,11 @@ define void @use() {
     store ptr @def_glob_linkonce_odr, ptr null
     store ptr @def_glob_weak_odr, ptr null
 
-    store volatile ptr @dec_glob_tls_external, ptr null
-    store volatile ptr @dec_glob_tls_extern_weak, ptr null
-    store volatile ptr @def_glob_tls_available_externally, ptr null
+    %dec_glob_tls_external = call ptr @llvm.threadlocal.address(ptr @dec_glob_tls_external)
+    store volatile ptr %dec_glob_tls_external, ptr null
+    %dec_glob_tls_extern_weak = call ptr @llvm.threadlocal.address(ptr @dec_glob_tls_extern_weak)
+    store volatile ptr %dec_glob_tls_extern_weak, ptr null
+    %def_glob_tls_available_externally = call ptr @llvm.threadlocal.address(ptr @def_glob_tls_available_externally)
+    store volatile ptr %def_glob_tls_available_externally, ptr null
     ret void
 }

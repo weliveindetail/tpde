@@ -251,9 +251,13 @@ void LLVMCompilerArm64::load_address_of_var_reference(
       ASM(ADDx_uxtw, dst, DA_GP(29), dst, 0);
     }
   } else {
-    const auto sym = global_sym(
-        llvm::cast<llvm::GlobalValue>(adaptor->values[info.val].val));
+    auto *global = llvm::cast<llvm::GlobalValue>(adaptor->values[info.val].val);
+    const auto sym = global_sym(global);
     assert(sym.valid());
+    if (global->isThreadLocal()) {
+      // See LLVMCompilerX64 for a discussion on not supporting this case.
+      TPDE_FATAL("thread-local variable access without intrinsic");
+    }
     // These pairs must be contiguous, avoid possible veneers in between.
     this->assembler.text_ensure_space(8);
     if (!info.local) {

@@ -8,6 +8,7 @@
 #include "tpde/base.hpp"
 
 #include <disarm64.h>
+#include <elf.h>
 
 // Helper macros for assembling in the compiler
 #if defined(ASM) || defined(ASME) || defined(ASMNC) || defined(ASMC)
@@ -637,6 +638,10 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
       std::span<std::variant<ValuePartRef, std::pair<ScratchReg, u8>>> results,
       CallingConv calling_conv,
       bool variable_args);
+
+  /// Generate code sequence to load address of sym into a register. This will
+  /// generate a function call for dynamic TLS access models.
+  ScratchReg tls_get_addr(Assembler::SymRef sym, TLSModel model) noexcept;
 
   bool has_cpu_feats(CPU_FEATURES feats) const noexcept {
     return ((cpu_feats & feats) == feats);
@@ -2496,6 +2501,45 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
   }
 
   calling_conv.fill_call_results(this, results);
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> typename BaseTy,
+          typename Config>
+CompilerA64<Adaptor, Derived, BaseTy, Config>::ScratchReg
+    CompilerA64<Adaptor, Derived, BaseTy, Config>::tls_get_addr(
+        Assembler::SymRef sym, TLSModel model) noexcept {
+  switch (model) {
+  default: // TODO: implement optimized access for non-gd-model
+  case TLSModel::GlobalDynamic: {
+    ScratchReg r0_scratch{this};
+    AsmReg r0 = r0_scratch.alloc_specific(AsmReg::R0);
+    ScratchReg r1_scratch{this};
+    AsmReg r1 = r1_scratch.alloc_specific(AsmReg::R1);
+    // The call only clobbers flags, x0, x1, and lr. x0 and x1 are already fixed
+    // in the scratch registers, so only make sure that lr isn't used otherwise.
+    spill_before_call(CallingConv::SYSV_CC, ~(1ull << AsmReg{AsmReg::LR}.id()));
+
+    this->assembler.text_ensure_space(0x18);
+    this->assembler.reloc_text(
+        sym, R_AARCH64_TLSDESC_ADR_PAGE21, this->assembler.text_cur_off(), 0);
+    ASMNC(ADRP, r0, 0, 0);
+    this->assembler.reloc_text(
+        sym, R_AARCH64_TLSDESC_LD64_LO12, this->assembler.text_cur_off(), 0);
+    ASMNC(LDRxu, r1, r0, 0);
+    this->assembler.reloc_text(
+        sym, R_AARCH64_TLSDESC_ADD_LO12, this->assembler.text_cur_off(), 0);
+    ASMNC(ADDxi, r0, r0, 0);
+    this->assembler.reloc_text(
+        sym, R_AARCH64_TLSDESC_CALL, this->assembler.text_cur_off(), 0);
+    ASMNC(BLR, r1);
+    ASMNC(MRS, r1, 0xde82); // TPIDR_EL0
+    // TODO: maybe return expr x0+x1.
+    ASMNC(ADDx, r0, r1, r0);
+    return r0_scratch;
+  }
+  }
 }
 
 } // namespace tpde::a64
