@@ -290,6 +290,8 @@ define double @fdiv_f64_no_salvage_reg(double %0, double %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <fdiv_f64_no_salvage_reg>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -307,3 +309,29 @@ define double @fdiv_f64_no_salvage_reg(double %0, double %1) {
     ret double %3
 }
 
+define fp128 @fdiv_f128(fp128 %a, fp128 %b) {
+; X64-LABEL: <fdiv_f128>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 __divtf3-0x4
+; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <fdiv_f128>:
+; ARM64:         sub sp, sp, #0xd0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    bl 0x4a0 <fdiv_f128+0x10>
+; ARM64-NEXT:     R_AARCH64_CALL26 __divtf3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    ret
+  %r = fdiv fp128 %a, %b
+  ret fp128 %r
+}

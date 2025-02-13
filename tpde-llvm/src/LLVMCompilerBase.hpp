@@ -156,6 +156,10 @@ struct LLVMCompilerBase : public LLVMCompiler,
     floatunditf,
     fixtfdi,
     fixunstfdi,
+    addtf3,
+    subtf3,
+    multf3,
+    divtf3,
     MAX
   };
   std::array<SymRef, static_cast<size_t>(LibFunc::MAX)> libfunc_syms;
@@ -924,6 +928,10 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
   case LibFunc::floatunditf: name = "__floatunditf"; break;
   case LibFunc::fixtfdi: name = "__fixtfdi"; break;
   case LibFunc::fixunstfdi: name = "__fixunstfdi"; break;
+  case LibFunc::addtf3: name = "__addtf3"; break;
+  case LibFunc::subtf3: name = "__subtf3"; break;
+  case LibFunc::multf3: name = "__multf3"; break;
+  case LibFunc::divtf3: name = "__divtf3"; break;
   default: TPDE_UNREACHABLE("invalid libfunc");
   }
 
@@ -1939,6 +1947,26 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
     IRValueRef inst_idx, llvm::Instruction *inst, FloatBinaryOp op) noexcept {
   auto *inst_ty = inst->getType();
   auto *scalar_ty = inst_ty->getScalarType();
+
+  if (inst_ty->isFP128Ty()) {
+    LibFunc lf;
+    switch (op) {
+    case FloatBinaryOp::add: lf = LibFunc::addtf3; break;
+    case FloatBinaryOp::sub: lf = LibFunc::subtf3; break;
+    case FloatBinaryOp::mul: lf = LibFunc::multf3; break;
+    case FloatBinaryOp::div: lf = LibFunc::divtf3; break;
+    case FloatBinaryOp::rem: return false;
+    default: TPDE_UNREACHABLE("invalid FloatBinaryOp");
+    }
+    SymRef sym = get_libfunc_sym(lf);
+    IRValueRef lhs_ref = llvm_val_idx(inst->getOperand(0));
+    IRValueRef rhs_ref = llvm_val_idx(inst->getOperand(1));
+    std::array<IRValueRef, 2> srcs{lhs_ref, rhs_ref};
+
+    ValuePartRef res_ref = this->result_ref_lazy(inst_idx, 0);
+    derived()->create_helper_call(srcs, {&res_ref, 1}, sym);
+    return true;
+  }
 
   const bool is_double = scalar_ty->isDoubleTy();
   if (!scalar_ty->isFloatTy() && !scalar_ty->isDoubleTy()) {
