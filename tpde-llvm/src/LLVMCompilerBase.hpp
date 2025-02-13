@@ -781,6 +781,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
         return true;
       }
       break;
+    case llvm::Instruction::PtrToInt:
+      if (auto *gv = llvm::dyn_cast<llvm::GlobalValue>(expr->getOperand(0))) {
+        if (expr->getType()->isIntegerTy(64)) {
+          relocs.push_back({off, 0, global_sym(gv)});
+          return true;
+        }
+      }
+      break;
     case llvm::Instruction::GetElementPtr: {
       auto *gep = llvm::cast<llvm::GEPOperator>(expr);
       auto *ptr = gep->getPointerOperand();
