@@ -152,6 +152,10 @@ struct LLVMCompilerBase : public LLVMCompiler,
     lttf2,
     letf2,
     unordtf2,
+    floatditf,
+    floatunditf,
+    fixtfdi,
+    fixunstfdi,
     MAX
   };
   std::array<SymRef, static_cast<size_t>(LibFunc::MAX)> libfunc_syms;
@@ -916,6 +920,10 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
   case LibFunc::lttf2: name = "__lttf2"; break;
   case LibFunc::letf2: name = "__letf2"; break;
   case LibFunc::unordtf2: name = "__unordtf2"; break;
+  case LibFunc::floatditf: name = "__floatditf"; break;
+  case LibFunc::floatunditf: name = "__floatunditf"; break;
+  case LibFunc::fixtfdi: name = "__fixtfdi"; break;
+  case LibFunc::fixunstfdi: name = "__fixunstfdi"; break;
   default: TPDE_UNREACHABLE("invalid libfunc");
   }
 
@@ -2096,9 +2104,23 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
     IRValueRef inst_idx, llvm::Instruction *inst, const bool sign) noexcept {
   auto *src_val = inst->getOperand(0);
   auto *src_ty = src_val->getType();
-
   const auto bit_width = inst->getType()->getIntegerBitWidth();
-  if (bit_width > 64 || !(src_ty->isFloatTy() || src_ty->isDoubleTy())) {
+
+  if (bit_width > 64) {
+    return false;
+  }
+
+  if (src_ty->isFP128Ty()) {
+    LibFunc lf = sign ? LibFunc::fixtfdi : LibFunc::fixunstfdi;
+    SymRef sym = get_libfunc_sym(lf);
+
+    IRValueRef src_ref = llvm_val_idx(src_val);
+    ValuePartRef res_ref = this->result_ref_lazy(inst_idx, 0);
+    derived()->create_helper_call({&src_ref, 1}, {&res_ref, 1}, sym);
+    return true;
+  }
+
+  if (!src_ty->isFloatTy() && !src_ty->isDoubleTy()) {
     return false;
   }
 
@@ -2148,7 +2170,26 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
   auto *dst_ty = inst->getType();
   auto bit_width = src_val->getType()->getIntegerBitWidth();
 
-  if (bit_width > 64 || !(dst_ty->isFloatTy() || dst_ty->isDoubleTy())) {
+  if (bit_width > 64) {
+    return false;
+  }
+
+  if (dst_ty->isFP128Ty()) {
+    if (bit_width != 64) {
+      // TODO: extend, but create_helper_call currently takes only an IRValueRef
+      return false;
+    }
+
+    LibFunc lf = sign ? LibFunc::floatditf : LibFunc::floatunditf;
+    SymRef sym = get_libfunc_sym(lf);
+
+    IRValueRef src_ref = llvm_val_idx(src_val);
+    ValuePartRef res_ref = this->result_ref_lazy(inst_idx, 0);
+    derived()->create_helper_call({&src_ref, 1}, {&res_ref, 1}, sym);
+    return true;
+  }
+
+  if (!dst_ty->isFloatTy() && !dst_ty->isDoubleTy()) {
     return false;
   }
 

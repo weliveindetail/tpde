@@ -374,6 +374,7 @@ define double @i64tof64(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <i64tof64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -387,4 +388,31 @@ define double @i64tof64(i64 %0) {
 entry:
   %1 = uitofp i64 %0 to double
   ret double %1
+}
+
+define fp128 @i64tof128(i64 %p) {
+; X64-LABEL: <i64tof128>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 __floatunditf-0x4
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <i64tof128>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    bl 0x570 <i64tof128+0x10>
+; ARM64-NEXT:     R_AARCH64_CALL26 __floatunditf
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+  %r = uitofp i64 %p to fp128
+  ret fp128 %r
 }

@@ -215,6 +215,7 @@ define i64 @f64tou64(double %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <f64tou64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -228,4 +229,59 @@ define i64 @f64tou64(double %0) {
 entry:
   %1 = fptoui double %0 to i64
   ret i64 %1
+}
+
+define i64 @f128toi64(fp128 %p) {
+; X64-LABEL: <f128toi64>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 __fixtfdi-0x4
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop
+;
+; ARM64-LABEL: <f128toi64>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    bl 0x3b0 <f128toi64+0x10>
+; ARM64-NEXT:     R_AARCH64_CALL26 __fixtfdi
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+  %r = fptosi fp128 %p to i64
+  ret i64 %r
+}
+
+define i64 @f128tou64(fp128 %p) {
+; X64-LABEL: <f128tou64>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 __fixunstfdi-0x4
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <f128tou64>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    bl 0x420 <f128tou64+0x10>
+; ARM64-NEXT:     R_AARCH64_CALL26 __fixunstfdi
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+  %r = fptoui fp128 %p to i64
+  ret i64 %r
 }
