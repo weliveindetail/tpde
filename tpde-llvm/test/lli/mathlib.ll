@@ -98,5 +98,12 @@ define i32 @main() {
   %exp_f64_1 = call double @llvm.exp(double 0.0)
   call void @print_f64(double %exp_f64_1)
 
+; CHECK: 2.000000
+  %rint_f32_1 = call float @llvm.rint(float 1.75)
+  call void @print_f32(float %rint_f32_1)
+; CHECK: 2.000000
+  %rint_f64_1 = call double @llvm.rint(double 1.75)
+  call void @print_f64(double %rint_f64_1)
+
   ret i32 0
 }
