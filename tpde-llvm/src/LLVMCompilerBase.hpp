@@ -1683,6 +1683,75 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
       }
       break;
+    case IntBinaryOp::shl:
+      switch (this->adaptor->values[inst_idx].type) {
+        using enum LLVMBasicValType;
+      case v64:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_shlv8u8; break;
+        case 16: encode_fn = &Derived::encode_shlv4u16; break;
+        case 32: encode_fn = &Derived::encode_shlv2u32; break;
+        default: return false;
+        }
+        break;
+      case v128:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_shlv16u8; break;
+        case 16: encode_fn = &Derived::encode_shlv8u16; break;
+        case 32: encode_fn = &Derived::encode_shlv4u32; break;
+        case 64: encode_fn = &Derived::encode_shlv2u64; break;
+        default: return false;
+        }
+        break;
+      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
+      }
+      break;
+    case IntBinaryOp::shr:
+      switch (this->adaptor->values[inst_idx].type) {
+        using enum LLVMBasicValType;
+      case v64:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_lshrv8u8; break;
+        case 16: encode_fn = &Derived::encode_lshrv4u16; break;
+        case 32: encode_fn = &Derived::encode_lshrv2u32; break;
+        default: return false;
+        }
+        break;
+      case v128:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_lshrv16u8; break;
+        case 16: encode_fn = &Derived::encode_lshrv8u16; break;
+        case 32: encode_fn = &Derived::encode_lshrv4u32; break;
+        case 64: encode_fn = &Derived::encode_lshrv2u64; break;
+        default: return false;
+        }
+        break;
+      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
+      }
+      break;
+    case IntBinaryOp::ashr:
+      switch (this->adaptor->values[inst_idx].type) {
+        using enum LLVMBasicValType;
+      case v64:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_ashrv8i8; break;
+        case 16: encode_fn = &Derived::encode_ashrv4i16; break;
+        case 32: encode_fn = &Derived::encode_ashrv2i32; break;
+        default: return false;
+        }
+        break;
+      case v128:
+        switch (int_width) {
+        case 8: encode_fn = &Derived::encode_ashrv16i8; break;
+        case 16: encode_fn = &Derived::encode_ashrv8i16; break;
+        case 32: encode_fn = &Derived::encode_ashrv4i32; break;
+        case 64: encode_fn = &Derived::encode_ashrv2i64; break;
+        default: return false;
+        }
+        break;
+      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
+      }
+      break;
     default: return false;
     }
 

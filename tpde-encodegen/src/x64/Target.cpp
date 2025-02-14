@@ -387,6 +387,13 @@ void EncodingTargetX64::get_inst_candidates(
     });
   };
 
+  const auto case_default = [&](std::string_view llvm_mnem,
+                                unsigned memop_start,
+                                std::string_view fd_mnem) {
+    if (std::string_view(Name) == llvm_mnem) {
+      handle_default(fd_mnem, memop_start);
+    }
+  };
   const auto handle_rm = [&](std::string_view llvm_mnem_r,
                              std::string_view llvm_mnem_m,
                              unsigned memop_start,
@@ -648,6 +655,8 @@ void EncodingTargetX64::get_inst_candidates(
   handle_rm("UCOMISSrr", "UCOMISSrm", 1, "SSE_UCOMISSrr", "SSE_UCOMISSrm");
   handle_rm("UCOMISDrr", "UCOMISDrm", 1, "SSE_UCOMISDrr", "SSE_UCOMISDrm");
 
+  handle_rm("CVTTPS2DQrr", "CVTTPS2DQrm", 1, "SSE_CVTTPS2DQrr", "SSE_CVTTPS2DQrm");
+
   handle_rm("PANDrr", "PANDrm", 2, "SSE_PANDrr", "SSE_PANDrm");
   handle_rm("PANDNrr", "PANDNrm", 2, "SSE_PANDNrr", "SSE_PANDNrm");
   handle_rm("PORrr", "PORrm", 2, "SSE_PORrr", "SSE_PORrm");
@@ -665,19 +674,39 @@ void EncodingTargetX64::get_inst_candidates(
   handle_rm("PMULDQrr", "PMULDQrm", 2, "SSE_PMULDQrr", "SSE_PMULDQrm");
   handle_rm("PMULUDQrr", "PMULUDQrm", 2, "SSE_PMULUDQrr", "SSE_PMULUDQrm");
 
-  handle_rmi("PSLLWrr", "PSLLWrm", "PSLLWri", 2, "SSE_PSLLWrr", "SSE_PSLLWrm", "SSE_PSLLWri");
-  handle_rmi("PSLLDrr", "PSLLDrm", "PSLLDri", 2, "SSE_PSLLDrr", "SSE_PSLLDrm", "SSE_PSLLDri");
-  handle_rmi("PSLLQrr", "PSLLQrm", "PSLLQri", 2, "SSE_PSLLQrr", "SSE_PSLLQrm", "SSE_PSLLQri");
-  handle_rmi("PSRLWrr", "PSRLWrm", "PSRLWri", 2, "SSE_PSRLWrr", "SSE_PSRLWrm", "SSE_PSRLWri");
-  handle_rmi("PSRLDrr", "PSRLDrm", "PSRLDri", 2, "SSE_PSRLDrr", "SSE_PSRLDrm", "SSE_PSRLDri");
-  handle_rmi("PSRLQrr", "PSRLQrm", "PSRLQri", 2, "SSE_PSRLQrr", "SSE_PSRLQrm", "SSE_PSRLQri");
-  handle_rmi("PSRAWrr", "PSRAWrm", "PSRAWri", 2, "SSE_PSRAWrr", "SSE_PSRAWrm", "SSE_PSRAWri");
-  handle_rmi("PSRADrr", "PSRADrm", "PSRADri", 2, "SSE_PSRADrr", "SSE_PSRADrm", "SSE_PSRADri");
-  handle_rmi("PSRAQrr", "PSRAQrm", "PSRAQri", 2, "SSE_PSRAQrr", "SSE_PSRAQrm", "SSE_PSRAQri");
+  handle_rm("PCMPEQBrr", "PCMPEQBrm", 2, "SSE_PCMPEQBrr", "SSE_PCMPEQBrm");
+  handle_rm("PCMPEQWrr", "PCMPEQWrm", 2, "SSE_PCMPEQWrr", "SSE_PCMPEQWrm");
+  handle_rm("PCMPEQDrr", "PCMPEQDrm", 2, "SSE_PCMPEQDrr", "SSE_PCMPEQDrm");
+  handle_rm("PCMPEQQrr", "PCMPEQQrm", 2, "SSE_PCMPEQQrr", "SSE_PCMPEQQrm");
+  handle_rm("PCMPGTBrr", "PCMPGTBrm", 2, "SSE_PCMPGTBrr", "SSE_PCMPGTBrm");
+  handle_rm("PCMPGTWrr", "PCMPGTWrm", 2, "SSE_PCMPGTWrr", "SSE_PCMPGTWrm");
+  handle_rm("PCMPGTDrr", "PCMPGTDrm", 2, "SSE_PCMPGTDrr", "SSE_PCMPGTDrm");
+  handle_rm("PCMPGTQrr", "PCMPGTQrm", 2, "SSE_PCMPGTQrr", "SSE_PCMPGTQrm");
+
+  handle_rm("PSLLWrr", "PSLLWrm", 2, "SSE_PSLLWrr", "SSE_PSLLWrm");
+  handle_rm("PSLLDrr", "PSLLDrm", 2, "SSE_PSLLDrr", "SSE_PSLLDrm");
+  handle_rm("PSLLQrr", "PSLLQrm", 2, "SSE_PSLLQrr", "SSE_PSLLQrm");
+  handle_rm("PSRLWrr", "PSRLWrm", 2, "SSE_PSRLWrr", "SSE_PSRLWrm");
+  handle_rm("PSRLDrr", "PSRLDrm", 2, "SSE_PSRLDrr", "SSE_PSRLDrm");
+  handle_rm("PSRLQrr", "PSRLQrm", 2, "SSE_PSRLQrr", "SSE_PSRLQrm");
+  handle_rm("PSRAWrr", "PSRAWrm", 2, "SSE_PSRAWrr", "SSE_PSRAWrm");
+  handle_rm("PSRADrr", "PSRADrm", 2, "SSE_PSRADrr", "SSE_PSRADrm");
+  handle_rm("PSRAQrr", "PSRAQrm", 2, "SSE_PSRAQrr", "SSE_PSRAQrm");
+  case_default("PSLLWri", -1, "SSE_PSLLWri");
+  case_default("PSLLDri", -1, "SSE_PSLLDri");
+  case_default("PSLLQri", -1, "SSE_PSLLQri");
+  case_default("PSRLWri", -1, "SSE_PSRLWri");
+  case_default("PSRLDri", -1, "SSE_PSRLDri");
+  case_default("PSRLQri", -1, "SSE_PSRLQri");
+  case_default("PSRAWri", -1, "SSE_PSRAWri");
+  case_default("PSRADri", -1, "SSE_PSRADri");
+  case_default("PSRAQri", -1, "SSE_PSRAQri");
 
   handle_rm("SHUFPSrri", "SHUFPSrmi", 2, "SSE_SHUFPSrri", "SSE_SHUFPSrmi");
   handle_rm("SHUFPDrri", "SHUFPDrmi", 2, "SSE_SHUFPDrri", "SSE_SHUFPDrmi");
   handle_rm("PSHUFDri", "PSHUFDmi", 1, "SSE_PSHUFDrri", "SSE_PSHUFDrmi");
+  handle_rm("PSHUFLWri", "PSHUFLWmi", 1, "SSE_PSHUFLWrri", "SSE_PSHUFLWrmi");
+  handle_rm("PSHUFHWri", "PSHUFHWmi", 1, "SSE_PSHUFHWrri", "SSE_PSHUFHWrmi");
   handle_rm("PACKUSWBrr", "PACKUSWBrm", 2, "SSE_PACKUSWBrr", "SSE_PACKUSWBrm");
   handle_rm("PACKUSDWrr", "PACKUSDWrm", 2, "SSE_PACKUSDWrr", "SSE_PACKUSDWrm");
   handle_rm("PACKSSWBrr", "PACKSSWBrm", 2, "SSE_PACKSSWBrr", "SSE_PACKSSWBrm");
