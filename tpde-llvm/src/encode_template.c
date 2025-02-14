@@ -636,6 +636,11 @@ double TARGET_V1 atomic_sub_f64_seqcst(double *p, double v) { return __atomic_fe
 double TARGET_V1 atomic_min_f64_seqcst(double *p, double v) { return __atomic_fetch_min(p, v, __ATOMIC_SEQ_CST); }
 double TARGET_V1 atomic_max_f64_seqcst(double *p, double v) { return __atomic_fetch_max(p, v, __ATOMIC_SEQ_CST); }
 
+void TARGET_V1 fence_acq(void) { __atomic_thread_fence(__ATOMIC_ACQUIRE); }
+void TARGET_V1 fence_rel(void) { __atomic_thread_fence(__ATOMIC_RELEASE); }
+void TARGET_V1 fence_acqrel(void) { __atomic_thread_fence(__ATOMIC_ACQ_REL); }
+void TARGET_V1 fence_seqcst(void) { __atomic_thread_fence(__ATOMIC_SEQ_CST); }
+
 // --------------------------
 // select
 // --------------------------

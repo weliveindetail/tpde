@@ -719,6 +719,8 @@ void EncodingTargetX64::get_inst_candidates(
   handle_rm("PUNPCKHWDrr", "PUNPCKHWDrm", 2, "SSE_PUNPCKHWDrr", "SSE_PUNPCKHWDrm");
   handle_rm("PUNPCKHDQrr", "PUNPCKHDQrm", 2, "SSE_PUNPCKHDQrr", "SSE_PUNPCKHDQrm");
   handle_rm("PUNPCKHQDQrr", "PUNPCKHQDQrm", 2, "SSE_PUNPCKHQDQrr", "SSE_PUNPCKHQDQrm");
+
+  case_default("MFENCE", -1, "MFENCE");
   // clang-format on
 
   if (Name == "LCMPXCHG64") {

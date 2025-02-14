@@ -292,6 +292,7 @@ public:
 
   bool compile_cmpxchg(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_atomicrmw(IRValueRef, llvm::Instruction *) noexcept;
+  bool compile_fence(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_phi(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_freeze(IRValueRef, llvm::Instruction *) noexcept;
   bool compile_call(IRValueRef, llvm::Instruction *) noexcept;
@@ -1081,6 +1082,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
   case llvm::Instruction::ShuffleVector: return compile_shuffle_vector(val_idx, i);
   case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(val_idx, i);
   case llvm::Instruction::AtomicRMW: return compile_atomicrmw(val_idx, i);
+  case llvm::Instruction::Fence: return compile_fence(val_idx, i);
   case llvm::Instruction::PHI: return compile_phi(val_idx, i);
   case llvm::Instruction::Freeze: return compile_freeze(val_idx, i);
   case llvm::Instruction::Unreachable: return derived()->compile_unreachable(val_idx, i);
@@ -3127,6 +3129,27 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_atomicrmw(
     return false;
   }
   this->set_value(res_ref, res);
+  return true;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fence(
+    IRValueRef, llvm::Instruction *inst) noexcept {
+  auto *fence = llvm::cast<llvm::FenceInst>(inst);
+  if (fence->getSyncScopeID() == llvm::SyncScope::SingleThread) {
+    // memory barrier only
+    return true;
+  }
+
+  switch (fence->getOrdering()) {
+    using enum llvm::AtomicOrdering;
+  case Acquire: derived()->encode_fence_acq(); break;
+  case Release: derived()->encode_fence_rel(); break;
+  case AcquireRelease: derived()->encode_fence_acqrel(); break;
+  case SequentiallyConsistent: derived()->encode_fence_seqcst(); break;
+  default: return false;
+  }
+
   return true;
 }
 

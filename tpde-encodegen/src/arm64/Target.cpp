@@ -239,6 +239,8 @@ void EncodingTargetArm64::get_inst_candidates(
     }
   };
 
+  case_default("DMB", "DMB");
+
   const auto case_mov_shift = [&](std::string_view mnem_llvm,
                                   std::string_view mnem_disarm) {
     if (std::string_view{Name} == mnem_llvm) {

@@ -245,6 +245,10 @@ bool generate_inst(std::string &buf,
   }
 
   if (inst->isPseudo()) {
+    const llvm::LLVMTargetMachine &TM = inst->getMF()->getTarget();
+    const llvm::MCInstrInfo &MCII = *TM.getMCInstrInfo();
+    llvm::StringRef Name = MCII.getName(inst->getOpcode());
+
     if (inst->isKill()) {
       assert(inst->getOperand(0).isReg() && inst->getOperand(1).isReg());
       if (state.target->reg_id_from_mc_reg(inst->getOperand(0).getReg()) !=
@@ -255,6 +259,9 @@ bool generate_inst(std::string &buf,
         return false;
       }
       state.fmt_line(buf, 4, "// KILL is a no-op");
+      return true;
+    } else if (Name == "MEMBARRIER") {
+      state.fmt_line(buf, 4, "// MEMBARRIER is a no-op");
       return true;
     } else {
       llvm::errs() << "ERROR: unhandled pseudo: " << *inst << "\n";
