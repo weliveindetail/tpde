@@ -977,8 +977,7 @@ u32 CallingConv::handle_call_args(
     if (arg.flag == CallArg::Flag::sret) {
       if (auto target_reg = sret_reg(); target_reg) {
         auto ptr_ref = compiler->val_ref(arg.value, 0);
-        ScratchReg scratch(compiler);
-        scratch.alloc_specific(
+        arg_scratchs.emplace_back(compiler).alloc_specific(
             ptr_ref.reload_into_specific(compiler, *target_reg));
         continue;
       }
