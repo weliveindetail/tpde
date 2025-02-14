@@ -2934,7 +2934,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
   }
 
   this->set_value(res_ref, orig_scratch);
-  this->set_value(res_ref, succ_scratch);
+  this->set_value(res_ref_high, succ_scratch);
 
   // clang-format off
     // TODO(ts): fusing with subsequent extractvalues + br's
