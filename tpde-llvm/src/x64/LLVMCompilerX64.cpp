@@ -961,6 +961,17 @@ bool LLVMCompilerX64::handle_intrin(IRValueRef inst_idx,
     this->set_value(res_ref, res_ref.cur_reg());
     return true;
   }
+  case llvm::Intrinsic::frameaddress: {
+    auto res_ref = this->result_ref_eager(inst_idx, 0);
+    auto op = llvm::cast<llvm::ConstantInt>(inst->getOperand(0));
+    if (op->isZeroValue()) {
+      ASM(MOV64rr, res_ref.cur_reg(), FE_BP);
+    } else {
+      ASM(XOR32rr, res_ref.cur_reg(), res_ref.cur_reg());
+    }
+    this->set_value(res_ref, res_ref.cur_reg());
+    return true;
+  }
   case llvm::Intrinsic::trap:
     ASM(UD2);
     return true;

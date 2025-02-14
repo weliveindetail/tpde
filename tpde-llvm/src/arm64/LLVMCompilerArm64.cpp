@@ -1033,6 +1033,13 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef inst_idx,
     ASM(MOV_SPx, DA_SP, val_reg);
     return true;
   }
+  case llvm::Intrinsic::frameaddress: {
+    auto res_ref = this->result_ref_eager(inst_idx, 0);
+    auto op = llvm::cast<llvm::ConstantInt>(inst->getOperand(0));
+    ASM(MOVx, res_ref.cur_reg(), op->isZeroValue() ? DA_GP(29) : DA_ZR);
+    this->set_value(res_ref, res_ref.cur_reg());
+    return true;
+  }
   case llvm::Intrinsic::trap:
     ASM(BRK, 1);
     return true;
