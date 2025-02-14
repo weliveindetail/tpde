@@ -7,7 +7,7 @@
 ; RUN: tpde-llc --target=aarch64 %s | %objdump | FileCheck %s -check-prefixes=ARM64
 
 ; COM: ptr, cmp, new_val
-define void @cmpxchg_mono_mono(ptr %0, i64 %1, i64 %2) {
+define {i64, i1} @cmpxchg_mono_mono(ptr %0, i64 %1, i64 %2) {
 ; X64-LABEL: <cmpxchg_mono_mono>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -17,11 +17,12 @@ define void @cmpxchg_mono_mono(ptr %0, i64 %1, i64 %2) {
 ; X64-NEXT:    lock
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rdx
 ; X64-NEXT:    sete cl
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x48]
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cmpxchg_mono_mono>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -32,16 +33,16 @@ define void @cmpxchg_mono_mono(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    cas x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xc8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i64 %1, i64 %2 monotonic monotonic
-  ret void
+  %r = cmpxchg ptr %0, i64 %1, i64 %2 monotonic monotonic
+  ret {i64, i1} %r
 }
 
 
-define void @cmpxchg_acq_mono(ptr %0, i64 %1, i64 %2) {
+define {i64, i1} @cmpxchg_acq_mono(ptr %0, i64 %1, i64 %2) {
 ; X64-LABEL: <cmpxchg_acq_mono>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -51,11 +52,12 @@ define void @cmpxchg_acq_mono(ptr %0, i64 %1, i64 %2) {
 ; X64-NEXT:    lock
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rdx
 ; X64-NEXT:    sete cl
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x48]
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cmpxchg_acq_mono>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -66,15 +68,15 @@ define void @cmpxchg_acq_mono(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    casa x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xc8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i64 %1, i64 %2 acquire monotonic
-  ret void
+  %r = cmpxchg ptr %0, i64 %1, i64 %2 acquire monotonic
+  ret {i64, i1} %r
 }
 
-define void @cmpxchg_acq_acq(ptr %0, i64 %1, i64 %2) {
+define {i64, i1} @cmpxchg_acq_acq(ptr %0, i64 %1, i64 %2) {
 ; X64-LABEL: <cmpxchg_acq_acq>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -84,11 +86,12 @@ define void @cmpxchg_acq_acq(ptr %0, i64 %1, i64 %2) {
 ; X64-NEXT:    lock
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rdx
 ; X64-NEXT:    sete cl
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x48]
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cmpxchg_acq_acq>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -99,16 +102,16 @@ define void @cmpxchg_acq_acq(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    casa x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xc8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i64 %1, i64 %2 acquire acquire
-  ret void
+  %r = cmpxchg ptr %0, i64 %1, i64 %2 acquire acquire
+  ret {i64, i1} %r
 }
 
 
-define void @cmpxchg_rel_mono(ptr %0, i64 %1, i64 %2) {
+define {i64, i1} @cmpxchg_rel_mono(ptr %0, i64 %1, i64 %2) {
 ; X64-LABEL: <cmpxchg_rel_mono>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -118,11 +121,12 @@ define void @cmpxchg_rel_mono(ptr %0, i64 %1, i64 %2) {
 ; X64-NEXT:    lock
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rdx
 ; X64-NEXT:    sete cl
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x48]
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cmpxchg_rel_mono>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -133,15 +137,15 @@ define void @cmpxchg_rel_mono(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    casl x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xc8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i64 %1, i64 %2 release monotonic
-  ret void
+  %r = cmpxchg ptr %0, i64 %1, i64 %2 release monotonic
+  ret {i64, i1} %r
 }
 
-define void @cmpxchg_rel_acq(ptr %0, i64 %1, i64 %2) {
+define {i64, i1} @cmpxchg_rel_acq(ptr %0, i64 %1, i64 %2) {
 ; X64-LABEL: <cmpxchg_rel_acq>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -151,11 +155,12 @@ define void @cmpxchg_rel_acq(ptr %0, i64 %1, i64 %2) {
 ; X64-NEXT:    lock
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rdx
 ; X64-NEXT:    sete cl
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x48]
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cmpxchg_rel_acq>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -166,16 +171,16 @@ define void @cmpxchg_rel_acq(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xc8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i64 %1, i64 %2 release acquire
-  ret void
+  %r = cmpxchg ptr %0, i64 %1, i64 %2 release acquire
+  ret {i64, i1} %r
 }
 
 
-define void @cmpxchg_acqrel_mono(ptr %0, i64 %1, i64 %2) {
+define {i64, i1} @cmpxchg_acqrel_mono(ptr %0, i64 %1, i64 %2) {
 ; X64-LABEL: <cmpxchg_acqrel_mono>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -185,11 +190,12 @@ define void @cmpxchg_acqrel_mono(ptr %0, i64 %1, i64 %2) {
 ; X64-NEXT:    lock
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rdx
 ; X64-NEXT:    sete cl
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x48]
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cmpxchg_acqrel_mono>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -200,15 +206,15 @@ define void @cmpxchg_acqrel_mono(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xc8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i64 %1, i64 %2 acq_rel monotonic
-  ret void
+  %r = cmpxchg ptr %0, i64 %1, i64 %2 acq_rel monotonic
+  ret {i64, i1} %r
 }
 
-define void @cmpxchg_acqrel_acq(ptr %0, i64 %1, i64 %2) {
+define {i64, i1} @cmpxchg_acqrel_acq(ptr %0, i64 %1, i64 %2) {
 ; X64-LABEL: <cmpxchg_acqrel_acq>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -218,11 +224,12 @@ define void @cmpxchg_acqrel_acq(ptr %0, i64 %1, i64 %2) {
 ; X64-NEXT:    lock
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rdx
 ; X64-NEXT:    sete cl
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x48]
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cmpxchg_acqrel_acq>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -233,16 +240,16 @@ define void @cmpxchg_acqrel_acq(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xc8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i64 %1, i64 %2 acq_rel acquire
-  ret void
+  %r = cmpxchg ptr %0, i64 %1, i64 %2 acq_rel acquire
+  ret {i64, i1} %r
 }
 
 
-define void @cmpxchg_seqcst_mono(ptr %0, i64 %1, i64 %2) {
+define {i64, i1} @cmpxchg_seqcst_mono(ptr %0, i64 %1, i64 %2) {
 ; X64-LABEL: <cmpxchg_seqcst_mono>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -252,11 +259,12 @@ define void @cmpxchg_seqcst_mono(ptr %0, i64 %1, i64 %2) {
 ; X64-NEXT:    lock
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rdx
 ; X64-NEXT:    sete cl
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x48]
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cmpxchg_seqcst_mono>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -267,15 +275,15 @@ define void @cmpxchg_seqcst_mono(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xc8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i64 %1, i64 %2 seq_cst monotonic
-  ret void
+  %r = cmpxchg ptr %0, i64 %1, i64 %2 seq_cst monotonic
+  ret {i64, i1} %r
 }
 
-define void @cmpxchg_seqcst_acq(ptr %0, i64 %1, i64 %2) {
+define {i64, i1} @cmpxchg_seqcst_acq(ptr %0, i64 %1, i64 %2) {
 ; X64-LABEL: <cmpxchg_seqcst_acq>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -285,11 +293,12 @@ define void @cmpxchg_seqcst_acq(ptr %0, i64 %1, i64 %2) {
 ; X64-NEXT:    lock
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rdx
 ; X64-NEXT:    sete cl
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x48]
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cmpxchg_seqcst_acq>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -300,15 +309,15 @@ define void @cmpxchg_seqcst_acq(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xc8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i64 %1, i64 %2 seq_cst acquire
-  ret void
+  %r = cmpxchg ptr %0, i64 %1, i64 %2 seq_cst acquire
+  ret {i64, i1} %r
 }
 
-define void @cmpxchg_seqcst_seqcst(ptr %0, i64 %1, i64 %2) {
+define {i64, i1} @cmpxchg_seqcst_seqcst(ptr %0, i64 %1, i64 %2) {
 ; X64-LABEL: <cmpxchg_seqcst_seqcst>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -318,11 +327,12 @@ define void @cmpxchg_seqcst_seqcst(ptr %0, i64 %1, i64 %2) {
 ; X64-NEXT:    lock
 ; X64-NEXT:    cmpxchg qword ptr [rdi], rdx
 ; X64-NEXT:    sete cl
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x48]
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cmpxchg_seqcst_seqcst>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -333,17 +343,17 @@ define void @cmpxchg_seqcst_seqcst(ptr %0, i64 %1, i64 %2) {
 ; ARM64-NEXT:    casal x3, x2, [x0]
 ; ARM64-NEXT:    cmp x3, x1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xc8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i64 %1, i64 %2 seq_cst seq_cst
-  ret void
+  %r = cmpxchg ptr %0, i64 %1, i64 %2 seq_cst seq_cst
+  ret {i64, i1} %r
 }
 
 
 ; COM: ptr, cmp, new_val
-define void @cmpxchg_mono_mono32(ptr %0, i32 %1, i32 %2) {
+define {i32, i1} @cmpxchg_mono_mono32(ptr %0, i32 %1, i32 %2) {
 ; X64-LABEL: <cmpxchg_mono_mono32>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -354,11 +364,12 @@ define void @cmpxchg_mono_mono32(ptr %0, i32 %1, i32 %2) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], edx
 ; X64-NEXT:    sete cl
 ; X64-NEXT:    mov eax, eax
+; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x3c]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <cmpxchg_mono_mono32>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -369,16 +380,16 @@ define void @cmpxchg_mono_mono32(ptr %0, i32 %1, i32 %2) {
 ; ARM64-NEXT:    cas w3, w2, [x0]
 ; ARM64-NEXT:    cmp w3, w1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xb4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i32 %1, i32 %2 monotonic monotonic
-  ret void
+  %r = cmpxchg ptr %0, i32 %1, i32 %2 monotonic monotonic
+  ret {i32, i1} %r
 }
 
 
-define void @cmpxchg_acq_mono32(ptr %0, i32 %1, i32 %2) {
+define {i32, i1} @cmpxchg_acq_mono32(ptr %0, i32 %1, i32 %2) {
 ; X64-LABEL: <cmpxchg_acq_mono32>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -389,11 +400,12 @@ define void @cmpxchg_acq_mono32(ptr %0, i32 %1, i32 %2) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], edx
 ; X64-NEXT:    sete cl
 ; X64-NEXT:    mov eax, eax
+; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x3c]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <cmpxchg_acq_mono32>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -404,15 +416,15 @@ define void @cmpxchg_acq_mono32(ptr %0, i32 %1, i32 %2) {
 ; ARM64-NEXT:    casa w3, w2, [x0]
 ; ARM64-NEXT:    cmp w3, w1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xb4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i32 %1, i32 %2 acquire monotonic
-  ret void
+  %r = cmpxchg ptr %0, i32 %1, i32 %2 acquire monotonic
+  ret {i32, i1} %r
 }
 
-define void @cmpxchg_acq_acq32(ptr %0, i32 %1, i32 %2) {
+define {i32, i1} @cmpxchg_acq_acq32(ptr %0, i32 %1, i32 %2) {
 ; X64-LABEL: <cmpxchg_acq_acq32>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -423,11 +435,12 @@ define void @cmpxchg_acq_acq32(ptr %0, i32 %1, i32 %2) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], edx
 ; X64-NEXT:    sete cl
 ; X64-NEXT:    mov eax, eax
+; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x3c]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <cmpxchg_acq_acq32>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -438,16 +451,16 @@ define void @cmpxchg_acq_acq32(ptr %0, i32 %1, i32 %2) {
 ; ARM64-NEXT:    casa w3, w2, [x0]
 ; ARM64-NEXT:    cmp w3, w1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xb4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i32 %1, i32 %2 acquire acquire
-  ret void
+  %r = cmpxchg ptr %0, i32 %1, i32 %2 acquire acquire
+  ret {i32, i1} %r
 }
 
 
-define void @cmpxchg_rel_mono32(ptr %0, i32 %1, i32 %2) {
+define {i32, i1} @cmpxchg_rel_mono32(ptr %0, i32 %1, i32 %2) {
 ; X64-LABEL: <cmpxchg_rel_mono32>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -458,11 +471,12 @@ define void @cmpxchg_rel_mono32(ptr %0, i32 %1, i32 %2) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], edx
 ; X64-NEXT:    sete cl
 ; X64-NEXT:    mov eax, eax
+; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x3c]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <cmpxchg_rel_mono32>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -473,15 +487,15 @@ define void @cmpxchg_rel_mono32(ptr %0, i32 %1, i32 %2) {
 ; ARM64-NEXT:    casl w3, w2, [x0]
 ; ARM64-NEXT:    cmp w3, w1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xb4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i32 %1, i32 %2 release monotonic
-  ret void
+  %r = cmpxchg ptr %0, i32 %1, i32 %2 release monotonic
+  ret {i32, i1} %r
 }
 
-define void @cmpxchg_rel_acq32(ptr %0, i32 %1, i32 %2) {
+define {i32, i1} @cmpxchg_rel_acq32(ptr %0, i32 %1, i32 %2) {
 ; X64-LABEL: <cmpxchg_rel_acq32>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -492,11 +506,12 @@ define void @cmpxchg_rel_acq32(ptr %0, i32 %1, i32 %2) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], edx
 ; X64-NEXT:    sete cl
 ; X64-NEXT:    mov eax, eax
+; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x3c]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <cmpxchg_rel_acq32>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -507,16 +522,16 @@ define void @cmpxchg_rel_acq32(ptr %0, i32 %1, i32 %2) {
 ; ARM64-NEXT:    casal w3, w2, [x0]
 ; ARM64-NEXT:    cmp w3, w1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xb4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i32 %1, i32 %2 release acquire
-  ret void
+  %r = cmpxchg ptr %0, i32 %1, i32 %2 release acquire
+  ret {i32, i1} %r
 }
 
 
-define void @cmpxchg_acqrel_mono32(ptr %0, i32 %1, i32 %2) {
+define {i32, i1} @cmpxchg_acqrel_mono32(ptr %0, i32 %1, i32 %2) {
 ; X64-LABEL: <cmpxchg_acqrel_mono32>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -527,11 +542,12 @@ define void @cmpxchg_acqrel_mono32(ptr %0, i32 %1, i32 %2) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], edx
 ; X64-NEXT:    sete cl
 ; X64-NEXT:    mov eax, eax
+; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x3c]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <cmpxchg_acqrel_mono32>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -542,15 +558,15 @@ define void @cmpxchg_acqrel_mono32(ptr %0, i32 %1, i32 %2) {
 ; ARM64-NEXT:    casal w3, w2, [x0]
 ; ARM64-NEXT:    cmp w3, w1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xb4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i32 %1, i32 %2 acq_rel monotonic
-  ret void
+  %r = cmpxchg ptr %0, i32 %1, i32 %2 acq_rel monotonic
+  ret {i32, i1} %r
 }
 
-define void @cmpxchg_acqrel_acq32(ptr %0, i32 %1, i32 %2) {
+define {i32, i1} @cmpxchg_acqrel_acq32(ptr %0, i32 %1, i32 %2) {
 ; X64-LABEL: <cmpxchg_acqrel_acq32>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -561,11 +577,12 @@ define void @cmpxchg_acqrel_acq32(ptr %0, i32 %1, i32 %2) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], edx
 ; X64-NEXT:    sete cl
 ; X64-NEXT:    mov eax, eax
+; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x3c]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <cmpxchg_acqrel_acq32>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -576,16 +593,16 @@ define void @cmpxchg_acqrel_acq32(ptr %0, i32 %1, i32 %2) {
 ; ARM64-NEXT:    casal w3, w2, [x0]
 ; ARM64-NEXT:    cmp w3, w1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xb4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i32 %1, i32 %2 acq_rel acquire
-  ret void
+  %r = cmpxchg ptr %0, i32 %1, i32 %2 acq_rel acquire
+  ret {i32, i1} %r
 }
 
 
-define void @cmpxchg_seqcst_mono32(ptr %0, i32 %1, i32 %2) {
+define {i32, i1} @cmpxchg_seqcst_mono32(ptr %0, i32 %1, i32 %2) {
 ; X64-LABEL: <cmpxchg_seqcst_mono32>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -596,11 +613,12 @@ define void @cmpxchg_seqcst_mono32(ptr %0, i32 %1, i32 %2) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], edx
 ; X64-NEXT:    sete cl
 ; X64-NEXT:    mov eax, eax
+; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x3c]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <cmpxchg_seqcst_mono32>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -611,15 +629,15 @@ define void @cmpxchg_seqcst_mono32(ptr %0, i32 %1, i32 %2) {
 ; ARM64-NEXT:    casal w3, w2, [x0]
 ; ARM64-NEXT:    cmp w3, w1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xb4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i32 %1, i32 %2 seq_cst monotonic
-  ret void
+  %r = cmpxchg ptr %0, i32 %1, i32 %2 seq_cst monotonic
+  ret {i32, i1} %r
 }
 
-define void @cmpxchg_seqcst_acq32(ptr %0, i32 %1, i32 %2) {
+define {i32, i1} @cmpxchg_seqcst_acq32(ptr %0, i32 %1, i32 %2) {
 ; X64-LABEL: <cmpxchg_seqcst_acq32>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -630,11 +648,12 @@ define void @cmpxchg_seqcst_acq32(ptr %0, i32 %1, i32 %2) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], edx
 ; X64-NEXT:    sete cl
 ; X64-NEXT:    mov eax, eax
+; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x3c]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <cmpxchg_seqcst_acq32>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -645,15 +664,15 @@ define void @cmpxchg_seqcst_acq32(ptr %0, i32 %1, i32 %2) {
 ; ARM64-NEXT:    casal w3, w2, [x0]
 ; ARM64-NEXT:    cmp w3, w1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xb4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i32 %1, i32 %2 seq_cst acquire
-  ret void
+  %r = cmpxchg ptr %0, i32 %1, i32 %2 seq_cst acquire
+  ret {i32, i1} %r
 }
 
-define void @cmpxchg_seqcst_seqcst32(ptr %0, i32 %1, i32 %2) {
+define {i32, i1} @cmpxchg_seqcst_seqcst32(ptr %0, i32 %1, i32 %2) {
 ; X64-LABEL: <cmpxchg_seqcst_seqcst32>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -664,6 +683,8 @@ define void @cmpxchg_seqcst_seqcst32(ptr %0, i32 %1, i32 %2) {
 ; X64-NEXT:    cmpxchg dword ptr [rdi], edx
 ; X64-NEXT:    sete cl
 ; X64-NEXT:    mov eax, eax
+; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x3c]
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -677,10 +698,10 @@ define void @cmpxchg_seqcst_seqcst32(ptr %0, i32 %1, i32 %2) {
 ; ARM64-NEXT:    casal w3, w2, [x0]
 ; ARM64-NEXT:    cmp w3, w1
 ; ARM64-NEXT:    cset w0, eq
+; ARM64-NEXT:    ldrb w1, [x29, #0xb4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = cmpxchg ptr %0, i32 %1, i32 %2 seq_cst seq_cst
-  ret void
+  %r = cmpxchg ptr %0, i32 %1, i32 %2 seq_cst seq_cst
+  ret {i32, i1} %r
 }
