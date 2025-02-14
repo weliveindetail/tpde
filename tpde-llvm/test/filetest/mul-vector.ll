@@ -182,7 +182,7 @@ define <4 x i32> @mul_v4i32(<4 x i32> %a, <4 x i32> %b) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sub v1.4s, v1.4s, v0.4s
+; ARM64-NEXT:    mul v1.4s, v1.4s, v0.4s
 ; ARM64-NEXT:    mov v0.16b, v1.16b
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0

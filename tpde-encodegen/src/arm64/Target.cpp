@@ -14,6 +14,7 @@
 #include <llvm/CodeGen/MachineRegisterInfo.h>
 #include <llvm/CodeGen/TargetRegisterInfo.h>
 #include <llvm/MC/MCInstrInfo.h>
+#include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetMachine.h>
 
 
@@ -209,11 +210,12 @@ void EncodingTargetArm64::get_inst_candidates(
   };
   const auto handle_noimm = [&](std::string_view mnem,
                                 std::string extra_ops = "") {
+    std::string mnem_cpy{mnem};
     candidates.emplace_back(
-        [mnem, extra_ops](llvm::raw_ostream &os,
-                          const llvm::MachineInstr &mi,
-                          std::span<const std::string> ops) {
-          os << "    ASMD(" << mnem;
+        [mnem_cpy, extra_ops](llvm::raw_ostream &os,
+                              const llvm::MachineInstr &mi,
+                              std::span<const std::string> ops) {
+          os << "    ASMD(" << mnem_cpy;
           unsigned reg_idx = 0;
           for (unsigned i = 0, n = mi.getNumExplicitOperands(); i != n; i++) {
             const auto &op = mi.getOperand(i);
@@ -229,9 +231,434 @@ void EncodingTargetArm64::get_inst_candidates(
           os << extra_ops << ");\n";
         });
   };
+
+  const auto case_default = [&](std::string_view mnem_llvm,
+                                std::string_view mnem_disarm) {
+    if (std::string_view{Name} == mnem_llvm) {
+      handle_default(mnem_disarm);
+    }
+  };
+
+  const auto case_mov_shift = [&](std::string_view mnem_llvm,
+                                  std::string_view mnem_disarm) {
+    if (std::string_view{Name} == mnem_llvm) {
+      unsigned imm = mi.getOperand(1).getImm();
+      unsigned shift = mi.getOperand(2).getImm();
+      handle_noimm(mnem_disarm, std::format(", {:#x}, {}", imm, shift / 16));
+    }
+  };
+  case_mov_shift("MOVZWi", "MOVZw_shift");
+  case_mov_shift("MOVZXi", "MOVZx_shift");
+  case_mov_shift("MOVKWi", "MOVKw_shift");
+  case_mov_shift("MOVKXi", "MOVKx_shift");
+  case_mov_shift("MOVNWi", "MOVNw_shift");
+  case_mov_shift("MOVNXi", "MOVNx_shift");
+
+  const auto case_mem_unsigned = [&](std::string_view mnem_llvm,
+                                     std::string_view mnem,
+                                     std::string_view mnemu,
+                                     unsigned shift) {
+    if (std::string_view{Name} == mnem_llvm) {
+      handle_mem_imm(mnem, mnemu, shift);
+      // TODO: If offset is zero, handle expr with base+index
+      handle_default(mnem);
+    }
+  };
+  case_mem_unsigned("LDRBBui", "LDRBu", "LDURB", 0);
+  case_mem_unsigned("LDRSBWui", "LDRSBwu", "LDURSBw", 0);
+  case_mem_unsigned("LDRHHui", "LDRHu", "LDURH", 1);
+  case_mem_unsigned("LDRSHWui", "LDRSHwu", "LDURSHw", 0);
+  case_mem_unsigned("LDRWui", "LDRwu", "LDURw", 2);
+  case_mem_unsigned("LDRXui", "LDRxu", "LDURx", 3);
+  case_mem_unsigned("PRFMui", "PRFMu", "PRFUMu", 3);
+  case_mem_unsigned("LDRBui", "LDRbu", "LDURb", 0);
+  case_mem_unsigned("LDRHui", "LDRhu", "LDURh", 1);
+  case_mem_unsigned("LDRSui", "LDRsu", "LDURs", 2);
+  case_mem_unsigned("LDRDui", "LDRdu", "LDURd", 3);
+  case_mem_unsigned("LDRQui", "LDRqu", "LDURq", 4);
+  case_mem_unsigned("STRBBui", "STRBu", "STURB", 0);
+  case_mem_unsigned("STRHHui", "STRHu", "STURH", 1);
+  case_mem_unsigned("STRWui", "STRwu", "STURw", 2);
+  case_mem_unsigned("STRXui", "STRxu", "STURx", 3);
+  case_mem_unsigned("STRBui", "STRbu", "STURB", 0);
+  case_mem_unsigned("STRHui", "STRhu", "STURh", 1);
+  case_mem_unsigned("STRSui", "STRsu", "STURs", 2);
+  case_mem_unsigned("STRDui", "STRdu", "STURd", 3);
+  case_mem_unsigned("STRQui", "STRqu", "STURq", 4);
+  if (Name == "LDRSWroW") {
+    unsigned sign = mi.getOperand(3).getImm();
+    unsigned shift = mi.getOperand(4).getImm();
+    std::array<std::string_view, 2> mnems{"LDRSWxr_uxtw", "LDRSWxr_sxtw"};
+    handle_noimm(mnems[sign], std::format(", {}", shift));
+  }
+  if (Name == "LDRSWroX") {
+    unsigned sign = mi.getOperand(3).getImm();
+    unsigned shift = mi.getOperand(4).getImm();
+    std::array<std::string_view, 2> mnems{"LDRSWxr_lsl", "LDRSWxr_sxtx"};
+    handle_noimm(mnems[sign], std::format(", {}", shift));
+  }
+  case_default("LDPWi", "LDPw");    // TODO: expr with base+off, merge offsets
+  case_default("LDPXi", "LDPx");    // TODO: expr with base+off, merge offsets
+  case_default("STPWi", "STPw");    // TODO: expr with base+off, merge offsets
+  case_default("STPXi", "STPx");    // TODO: expr with base+off, merge offsets
+  case_default("STLRB", "STLRB");   // TODO: expr with base+off, merge offsets
+  case_default("UBFMWri", "UBFMw"); // TODO: fold zero-extend with load
+  case_default("UBFMXri", "UBFMx"); // TODO: fold zero-extend with load
+  case_default("SBFMWri", "SBFMw"); // TODO: fold sign-extend with load
+  case_default("SBFMXri", "SBFMx"); // TODO: fold sign-extend with load
+  case_default("BFMWri", "BFMw");
+  case_default("BFMXri", "BFMx");
+
+  const auto case_shift_var = [&](std::string_view mnem_llvm,
+                                  std::string_view mnem_disarm,
+                                  std::string_view mnem_disarm_imm,
+                                  unsigned size) {
+    if (std::string_view{Name} == mnem_llvm) {
+      handle_shift_imm(mnem_disarm_imm, size);
+      handle_default(mnem_disarm);
+    }
+  };
+  case_shift_var("LSLVWr", "LSLVw", "LSLwi", 32);
+  case_shift_var("LSLVXr", "LSLVx", "LSLxi", 64);
+  case_shift_var("LSRVWr", "LSRVw", "LSRwi", 32);
+  case_shift_var("LSRVXr", "LSRVx", "LSRxi", 64);
+  case_shift_var("ASRVWr", "ASRVw", "ASRwi", 32);
+  case_shift_var("ASRVXr", "ASRVx", "ASRxi", 64);
+  case_shift_var("RORVWr", "RORVw", "RORwi", 32);
+  case_shift_var("RORVXr", "RORVx", "RORxi", 64);
+
+  const auto case_arith_imm = [&](std::string_view mnem_llvm,
+                                  std::string_view mnem_disarm,
+                                  unsigned size) {
+    if (std::string_view{Name} == mnem_llvm) {
+      unsigned imm = mi.getOperand(2).getImm();
+      unsigned shift = mi.getOperand(3).getImm();
+      handle_noimm(mnem_disarm,
+                   std::format(", {}", imm << (shift & (size - 1))));
+    }
+  };
+  case_arith_imm("ADDWri", "ADDwi", 32);
+  case_arith_imm("ADDXri", "ADDxi", 64);
+  case_arith_imm("ADDSWri", "ADDSwi", 32);
+  case_arith_imm("ADDSXri", "ADDSxi", 64);
+  case_arith_imm("SUBWri", "SUBwi", 32);
+  case_arith_imm("SUBXri", "SUBxi", 64);
+  case_arith_imm("SUBSWri", "SUBSwi", 32);
+  case_arith_imm("SUBSXri", "SUBSxi", 64);
+
+  const auto case_arith_shift = [&](std::string_view mnem_llvm,
+                                    std::string_view mnem_disarm_base,
+                                    std::string_view mnem_disarm_imm) {
+    if (std::string_view{Name} == mnem_llvm) {
+      // TODO: Handle expr with only a shifted index if imm==0
+      static const std::array<std::string_view, 4> suffixes{
+          "_lsl", "_lsr", "_asr"};
+      unsigned imm = mi.getOperand(3).getImm();
+      if (imm == 0) { // TODO: apply shift to immediate?
+        handle_arith_imm(mnem_disarm_imm);
+      }
+      std::string mnem;
+      llvm::raw_string_ostream(mnem) << mnem_disarm_base << suffixes[imm >> 6];
+      // For 32-bit, the correct mask would be 0x1f, but it's always zero.
+      handle_noimm(mnem, std::format(", {}", imm & 0x3f));
+    }
+  };
+  case_arith_shift("ADDWrs", "ADDw", "ADDwi");
+  case_arith_shift("ADDXrs", "ADDx", "ADDxi");
+  case_arith_shift("ADDSWrs", "ADDSw", "ADDSwi");
+  case_arith_shift("ADDSXrs", "ADDSx", "ADDSxi");
+  case_arith_shift("SUBWrs", "SUBw", "SUBwi");
+  case_arith_shift("SUBXrs", "SUBx", "SUBxi");
+  case_arith_shift("SUBSWrs", "SUBSw", "SUBSwi");
+  case_arith_shift("SUBSXrs", "SUBSx", "SUBSxi");
+
+  const auto case_arith_ext = [&](std::string_view mnem_llvm,
+                                  std::string_view mnem_disarm_base) {
+    if (std::string_view{Name} == mnem_llvm) {
+      // TODO: Handle arithmetic immediates
+      // TODO: Handle expr with only a shifted index if imm==0
+      static const std::array<std::string_view, 8> suffixes{"_uxtb",
+                                                            "_uxth",
+                                                            "_uxtw",
+                                                            "_uxtx",
+                                                            "_sxtb",
+                                                            "_sxth",
+                                                            "_sxtw",
+                                                            "_sxtx"};
+      unsigned imm = mi.getOperand(3).getImm();
+      std::string mnem;
+      llvm::raw_string_ostream(mnem) << mnem_disarm_base << suffixes[imm >> 3];
+      handle_noimm(mnem, std::format(", {}", imm & 7));
+    }
+  };
+  case_arith_ext("ADDWrx", "ADDw");
+  case_arith_ext("ADDXrx", "ADDx");
+  case_arith_ext("ADDSWrx", "ADDSw");
+  case_arith_ext("ADDSXrx", "ADDSx");
+  case_arith_ext("SUBWrx", "SUBw");
+  case_arith_ext("SUBXrx", "SUBx");
+  case_arith_ext("SUBSWrx", "SUBSw");
+  case_arith_ext("SUBSXrx", "SUBSx");
+
+  case_default("ADCWr", "ADCw");
+  case_default("ADCXr", "ADCx");
+  case_default("ADCSWr", "ADCSw");
+  case_default("ADCSXr", "ADCSx");
+  case_default("SBCWr", "SBCw");
+  case_default("SBCXr", "SBCx");
+  case_default("SBCSWr", "SBCSw");
+  case_default("SBCSXr", "SBCSx");
+  case_default("MADDWrrr", "MADDw");
+  case_default("MADDXrrr", "MADDx");
+  case_default("MSUBWrrr", "MSUBw");
+  case_default("MSUBXrrr", "MSUBx");
+  case_default("UMADDLrrr", "UMADDL");
+  case_default("UMSUBLrrr", "UMSUBL");
+  case_default("SMADDLrrr", "SMADDL");
+  case_default("SMSUBLrrr", "SMSUBL");
+  case_default("UMULHrr", "UMULH");
+  case_default("SMULHrr", "SMULH");
+  case_default("UDIVWr", "UDIVw");
+  case_default("UDIVXr", "UDIVx");
+  case_default("SDIVWr", "SDIVw");
+  case_default("SDIVXr", "SDIVx");
+  case_default("CSELWr", "CSELw");
+  case_default("CSELXr", "CSELx");
+  case_default("CSINCWr", "CSINCw");
+  case_default("CSINCXr", "CSINCx");
+  case_default("CSINVWr", "CSINVw");
+  case_default("CSINVXr", "CSINVx");
+  case_default("CSNEGWr", "CSNEGw");
+  case_default("CSNEGXr", "CSNEGx");
+  const auto case_logical_imm = [&](std::string_view mnem_llvm,
+                                    std::string_view mnem_disarm) {
+    if (std::string_view{Name} == mnem_llvm) {
+      uint64_t imm = imm_logical(0, mi.getOperand(2).getImm());
+      handle_noimm(mnem_disarm, std::format(", {:#x}", imm));
+    }
+  };
+  case_logical_imm("ANDWri", "ANDwi");
+  case_logical_imm("ANDXri", "ANDxi");
+  case_logical_imm("ORRWri", "ORRwi");
+  case_logical_imm("ORRXri", "ORRxi");
+  case_logical_imm("EORWri", "EORwi");
+  case_logical_imm("EORXri", "EORxi");
+  case_logical_imm("ANDSWri", "ANDSwi");
+  case_logical_imm("ANDSXri", "ANDSxi");
+
+  case_default("RBITWr", "RBITw");
+  case_default("RBITXr", "RBITx");
+  case_default("REVWr", "REV32w");
+  case_default("REVXr", "REV64x");
+  case_default("CLZWr", "CLZw");
+  case_default("CLZXr", "CLZx");
+  case_default("CLSWr", "CLSw");
+  case_default("CLSXr", "CLSx");
+
+  const auto case_logical_shift = [&](std::string_view mnem_llvm,
+                                      std::string_view mnem_disarm_base,
+                                      std::string_view mnem_disarm_imm,
+                                      bool invert) {
+    if (std::string_view{Name} == mnem_llvm) {
+      // TODO: Handle expr with only a shifted index if imm==0
+      static const std::array<std::string_view, 4> suffixes{
+          "_lsl", "_lsr", "_asr", "_ror"};
+      unsigned imm = mi.getOperand(3).getImm();
+      if (imm == 0) { // TODO: apply shift to immediate?
+        handle_logical_imm(mnem_disarm_imm, invert);
+      }
+      std::string mnem;
+      llvm::raw_string_ostream(mnem) << mnem_disarm_base << suffixes[imm >> 6];
+      // For 32-bit, the correct mask would be 0x1f, but it's always zero.
+      handle_noimm(mnem, std::format(", {}", imm & 0x3f));
+    }
+  };
+  case_logical_shift("ANDWrs", "ANDw", "ANDwi", false);
+  case_logical_shift("ANDXrs", "ANDx", "ANDxi", false);
+  case_logical_shift("ORRWrs", "ORRw", "ORRwi", false);
+  case_logical_shift("ORRXrs", "ORRx", "ORRxi", false);
+  case_logical_shift("EORWrs", "EORw", "EORwi", false);
+  case_logical_shift("EORXrs", "EORx", "EORxi", false);
+  case_logical_shift("ANDSWrs", "ANDSw", "ANDSwi", false);
+  case_logical_shift("ANDSXrs", "ANDSx", "ANDSxi", false);
+  case_logical_shift("BICWrs", "BICw", "ANDwi", true);
+  case_logical_shift("BICXrs", "BICx", "ANDxi", true);
+  case_logical_shift("ORNWrs", "ORNw", "ORRwi", true);
+  case_logical_shift("ORNXrs", "ORNx", "ORRxi", true);
+  case_logical_shift("EONWrs", "EONw", "EORwi", true);
+  case_logical_shift("EONXrs", "EONx", "EORxi", true);
+  case_logical_shift("BICSWrs", "BICSw", "ANDSwi", true);
+  case_logical_shift("BICSXrs", "BICSx", "ANDSxi", true);
+
+  case_default("CCMPWr", "CCMPw");
+  case_default("CCMPXr", "CCMPx");
+  case_default("CCMPWi", "CCMPwi");
+  case_default("CCMPXi", "CCMPxi");
+
+  case_default("FCSELSrrr", "FCSELs");
+  case_default("FCSELDrrr", "FCSELd");
+  case_default("FCMPSrr", "FCMP_s");
+  case_default("FCMPDrr", "FCMP_d");
+  case_default("FADDSrr", "FADDs");
+  case_default("FADDDrr", "FADDd");
+  case_default("FSUBSrr", "FSUBs");
+  case_default("FSUBDrr", "FSUBd");
+  case_default("FMULSrr", "FMULs");
+  case_default("FMULDrr", "FMULd");
+  case_default("FDIVSrr", "FDIVs");
+  case_default("FDIVDrr", "FDIVd");
+  case_default("FMINSrr", "FMINs");
+  case_default("FMINDrr", "FMINd");
+  case_default("FMAXSrr", "FMAXs");
+  case_default("FMAXDrr", "FMAXd");
+  case_default("FMINNMSrr", "FMINNMs");
+  case_default("FMINNMDrr", "FMINNMd");
+  case_default("FMAXNMSrr", "FMAXNMs");
+  case_default("FMAXNMDrr", "FMAXNMd");
+  case_default("FMOVSr", "FMOVs");
+  case_default("FMOVDr", "FMOVd");
+  case_default("FABSSr", "FABSs");
+  case_default("FABSDr", "FABSd");
+  case_default("FNEGSr", "FNEGs");
+  case_default("FNEGDr", "FNEGd");
+  case_default("FSQRTSr", "FSQRTs");
+  case_default("FSQRTDr", "FSQRTd");
+  case_default("FMADDSrrr", "FMADDs");
+  case_default("FMADDDrrr", "FMADDd");
+  case_default("FMSUBSrrr", "FMSUBs");
+  case_default("FMSUBDrrr", "FMSUBd");
+  case_default("FNMADDSrrr", "FNMADDs");
+  case_default("FNMADDDrrr", "FNMADDd");
+  case_default("FNMSUBSrrr", "FNMSUBs");
+  case_default("FNMSUBDrrr", "FNMSUBd");
+
+  case_default("FCVTSDr", "FCVTsd");
+  case_default("FCVTDSr", "FCVTds");
+  case_default("FCVTZSUWSr", "FCVTZSws"); // TODO: correct?
+  case_default("FCVTZUUWSr", "FCVTZUws"); // TODO: correct?
+  case_default("FCVTZSUWDr", "FCVTZSwd"); // TODO: correct?
+  case_default("FCVTZUUWDr", "FCVTZUwd"); // TODO: correct?
+  case_default("FCVTZSUXSr", "FCVTZSxs"); // TODO: correct?
+  case_default("FCVTZUUXSr", "FCVTZUxs"); // TODO: correct?
+  case_default("FCVTZSUXDr", "FCVTZSxd"); // TODO: correct?
+  case_default("FCVTZUUXDr", "FCVTZUxd"); // TODO: correct?
+  case_default("SCVTFUWSri", "SCVTFsw");  // TODO: correct?
+  case_default("UCVTFUWSri", "UCVTFsw");  // TODO: correct?
+  case_default("SCVTFUWDri", "SCVTFdw");  // TODO: correct?
+  case_default("UCVTFUWDri", "UCVTFdw");  // TODO: correct?
+  case_default("SCVTFUXSri", "SCVTFsx");  // TODO: correct?
+  case_default("UCVTFUXSri", "UCVTFsx");  // TODO: correct?
+  case_default("SCVTFUXDri", "SCVTFdx");  // TODO: correct?
+  case_default("UCVTFUXDri", "UCVTFdx");  // TODO: correct?
+
+  case_default("FADDv2f32", "FADD2s");
+  case_default("FADDv4f32", "FADD4s");
+  case_default("FADDv2f64", "FADD2d");
+  case_default("FSUBv2f32", "FSUB2s");
+  case_default("FSUBv4f32", "FSUB4s");
+  case_default("FSUBv2f64", "FSUB2d");
+  case_default("FMULv2f32", "FMUL2s");
+  case_default("FMULv4f32", "FMUL4s");
+  case_default("FMULv2f64", "FMUL2d");
+  case_default("FDIVv2f32", "FDIV2s");
+  case_default("FDIVv4f32", "FDIV4s");
+  case_default("FDIVv2f64", "FDIV2d");
+  case_default("CMEQv16i8", "CMEQ16b");
+  case_default("DUPv16i8lane", "DUP16b");
+  case_default("ADDv8i8", "ADD8b");
+  case_default("ADDv16i8", "ADD16b");
+  case_default("ADDv4i16", "ADD4h");
+  case_default("ADDv8i16", "ADD8h");
+  case_default("ADDv2i32", "ADD2s");
+  case_default("ADDv4i32", "ADD4s");
+  case_default("ADDv2i64", "ADD2d");
+  case_default("SUBv8i8", "SUB8b");
+  case_default("SUBv16i8", "SUB16b");
+  case_default("SUBv4i16", "SUB4h");
+  case_default("SUBv8i16", "SUB8h");
+  case_default("SUBv2i32", "SUB2s");
+  case_default("SUBv4i32", "SUB4s");
+  case_default("SUBv2i64", "SUB2d");
+  case_default("MULv8i8", "MUL8b");
+  case_default("MULv16i8", "MUL16b");
+  case_default("MULv4i16", "MUL4h");
+  case_default("MULv8i16", "MUL8h");
+  case_default("MULv2i32", "MUL2s");
+  case_default("MULv4i32", "MUL4s");
+  case_default("CNTv8i8", "CNT8b");
+  case_default("UADDLVv8i8v", "UADDLV8b");
+  case_default("ANDv8i8", "AND8b");
+  case_default("ANDv16i8", "AND16b");
+  case_default("BICv8i8", "BIC8b");
+  case_default("BICv16i8", "BIC16b");
+  case_default("ORRv8i8", "ORR8b");
+  case_default("ORRv16i8", "ORR16b");
+  case_default("ORNv8i8", "ORN8b");
+  case_default("ORNv16i8", "ORN16b");
+  case_default("EORv8i8", "EOR8b");
+  case_default("EORv16i8", "EOR16b");
+  case_default("BSLv8i8", "BSL8b");
+  case_default("BSLv16i8", "BSL16b");
+  case_default("BITv8i8", "BIT8b");
+  case_default("BITv16i8", "BIT16b");
+  case_default("BIFv8i8", "BIF8b");
+  case_default("BIFv16i8", "BIF16b");
+  case_default("USHLv8i8", "USHL8b");
+  case_default("USHLv16i8", "USHL16b");
+  case_default("USHLv4i16", "USHL4h");
+  case_default("USHLv8i16", "USHL8h");
+  case_default("USHLv2i32", "USHL2s");
+  case_default("USHLv4i32", "USHL4s");
+  case_default("USHLv2i64", "USHL2d");
+  case_default("USHLv8i8", "USHL8b");
+  case_default("FNEGv2f32", "FNEG2s");
+  case_default("FNEGv4f32", "FNEG4s");
+  case_default("FNEGv2f64", "FNEG2d");
+  if (Name == "MOVIv2d_ns") {
+    uint64_t imm = 0;
+    unsigned op = mi.getOperand(1).getImm();
+    for (int i = 0; i < 8; i++) {
+      imm |= op & (1 << i) ? 0xff << 8 * i : 0;
+    }
+    handle_noimm("MOVI2d", std::format(", {:#x}", imm));
+  }
+  if (Name == "MVNIv4i32") {
+    uint32_t byte = mi.getOperand(1).getImm();
+    uint64_t imm = ~(byte << mi.getOperand(2).getImm());
+    handle_noimm("MOVI2d", std::format(", {:#x}", imm | imm << 32));
+  }
+
+  case_default("FMOVSWr", "FMOVws");
+  case_default("FMOVDXr", "FMOVxd");
+  case_default("FMOVWSr", "FMOVsw");
+  case_default("FMOVXDr", "FMOVdx");
+  case_default("UMOVvi64", "UMOVxd");
+  case_default("INSvi64gpr", "INSdx");
+
+  case_default("CASB", "CASB");
+  case_default("CASH", "CASH");
+  case_default("CASW", "CASw");
+  case_default("CASX", "CASx");
+  case_default("CASAB", "CASAB");
+  case_default("CASAH", "CASAH");
+  case_default("CASAW", "CASAw");
+  case_default("CASAX", "CASAx");
+  case_default("CASLB", "CASLB");
+  case_default("CASLH", "CASLH");
+  case_default("CASLW", "CASLw");
+  case_default("CASLX", "CASLx");
+  case_default("CASALB", "CASALB");
+  case_default("CASALH", "CASALH");
+  case_default("CASALW", "CASALw");
+  case_default("CASALX", "CASALx");
+
   // atomic memory operations (LDADD) have their source and dest operands
   // swapped
-  const auto handle_atomic_mem_op = [&](std::string_view mnem) {
+  const auto case_atomic_mem_op = [&](std::string_view mnem_llvm,
+                                      std::string_view mnem) {
+    if (std::string_view{Name} != mnem_llvm) {
+      return;
+    }
     candidates.emplace_back([mnem](llvm::raw_ostream &os,
                                    const llvm::MachineInstr &mi,
                                    std::span<const std::string> ops) {
@@ -242,1242 +669,163 @@ void EncodingTargetArm64::get_inst_candidates(
       os << ");\n";
     });
   };
+  case_atomic_mem_op("SWPB", "SWPB");
+  case_atomic_mem_op("SWPH", "SWPH");
+  case_atomic_mem_op("SWPW", "SWPw");
+  case_atomic_mem_op("SWPX", "SWPx");
+  case_atomic_mem_op("SWPAB", "SWPAB");
+  case_atomic_mem_op("SWPAH", "SWPAH");
+  case_atomic_mem_op("SWPAW", "SWPAw");
+  case_atomic_mem_op("SWPAX", "SWPAx");
+  case_atomic_mem_op("SWPLB", "SWPLB");
+  case_atomic_mem_op("SWPLH", "SWPLH");
+  case_atomic_mem_op("SWPLW", "SWPLw");
+  case_atomic_mem_op("SWPLX", "SWPLx");
+  case_atomic_mem_op("SWPALB", "SWPALB");
+  case_atomic_mem_op("SWPALH", "SWPALH");
+  case_atomic_mem_op("SWPALW", "SWPALw");
+  case_atomic_mem_op("SWPALX", "SWPALx");
 
-  if (Name == "MOVZWi") {
-    unsigned imm = mi.getOperand(1).getImm();
-    unsigned shift = mi.getOperand(2).getImm();
-    handle_noimm("MOVZw_shift", std::format(", {:#x}, {}", imm, shift / 16));
-  } else if (Name == "MOVZXi") {
-    unsigned imm = mi.getOperand(1).getImm();
-    unsigned shift = mi.getOperand(2).getImm();
-    handle_noimm("MOVZx_shift", std::format(", {:#x}, {}", imm, shift / 16));
-  } else if (Name == "MOVKWi") {
-    unsigned imm = mi.getOperand(1).getImm();
-    unsigned shift = mi.getOperand(2).getImm();
-    handle_noimm("MOVKw_shift", std::format(", {:#x}, {}", imm, shift / 16));
-  } else if (Name == "MOVKXi") {
-    unsigned imm = mi.getOperand(1).getImm();
-    unsigned shift = mi.getOperand(2).getImm();
-    handle_noimm("MOVKx_shift", std::format(", {:#x}, {}", imm, shift / 16));
-  } else if (Name == "MOVNWi") {
-    unsigned imm = mi.getOperand(1).getImm();
-    unsigned shift = mi.getOperand(2).getImm();
-    handle_noimm("MOVNw_shift", std::format(", {:#x}, {}", imm, shift / 16));
-  } else if (Name == "MOVNXi") {
-    unsigned imm = mi.getOperand(1).getImm();
-    unsigned shift = mi.getOperand(2).getImm();
-    handle_noimm("MOVNx_shift", std::format(", {:#x}, {}", imm, shift / 16));
-  } else if (Name == "LDRBBui") {
-    handle_mem_imm("LDRBu", "LDURB", 0);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("LDRBu");
-  } else if (Name == "LDRHHui") {
-    handle_mem_imm("LDRHu", "LDURH", 1);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("LDRHu");
-  } else if (Name == "LDRWui") {
-    handle_mem_imm("LDRwu", "LDURw", 2);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("LDRwu");
-  } else if (Name == "LDRXui") {
-    handle_mem_imm("LDRxu", "LDURx", 3);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("LDRxu");
-  } else if (Name == "PRFMui") {
-    handle_mem_imm("PRFMu", "PRFUMu", 3);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("PRFMu");
-  } else if (Name == "LDRBui") {
-    handle_mem_imm("LDRbu", "LDURb", 0);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("LDRbu");
-  } else if (Name == "LDRHui") {
-    handle_mem_imm("LDRhu", "LDURh", 1);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("LDRhu");
-  } else if (Name == "LDRSui") {
-    handle_mem_imm("LDRsu", "LDURs", 2);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("LDRsu");
-  } else if (Name == "LDRDui") {
-    handle_mem_imm("LDRdu", "LDURd", 3);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("LDRdu");
-  } else if (Name == "LDRQui") {
-    handle_mem_imm("LDRqu", "LDURq", 4);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("LDRqu");
-  } else if (Name == "STRBBui") {
-    handle_mem_imm("STRBu", "STURB", 0);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("STRBu");
-  } else if (Name == "STRHHui") {
-    handle_mem_imm("STRHu", "STURH", 1);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("STRHu");
-  } else if (Name == "STRWui") {
-    handle_mem_imm("STRwu", "STURw", 2);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("STRwu");
-  } else if (Name == "STRXui") {
-    handle_mem_imm("STRxu", "STURx", 3);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("STRxu");
-  } else if (Name == "STRBui") {
-    handle_mem_imm("STRbu", "STURB", 0);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("STRbu");
-  } else if (Name == "STRHui") {
-    handle_mem_imm("STRhu", "STURh", 1);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("STRhu");
-  } else if (Name == "STRSui") {
-    handle_mem_imm("STRsu", "STURs", 2);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("STRsu");
-  } else if (Name == "STRDui") {
-    handle_mem_imm("STRdu", "STURd", 3);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("STRdu");
-  } else if (Name == "STRQui") {
-    handle_mem_imm("STRqu", "STURq", 4);
-    // TODO: If offset is zero, handle expr with base+index
-    handle_default("STRqu");
-  } else if (Name == "LDPWi") {
-    // TODO: Handle expr with base+off, merge offsets
-    handle_default("LDPw");
-  } else if (Name == "LDRSWroW") {
-    unsigned sign = mi.getOperand(3).getImm();
-    unsigned shift = mi.getOperand(4).getImm();
-    std::array<std::string_view, 2> mnems{"LDRSWxr_uxtw", "LDRSWxr_sxtw"};
-    handle_noimm(mnems[sign], std::format(", {}", shift));
-  } else if (Name == "LDRSWroX") {
-    unsigned sign = mi.getOperand(3).getImm();
-    unsigned shift = mi.getOperand(4).getImm();
-    std::array<std::string_view, 2> mnems{"LDRSWxr_lsl", "LDRSWxr_sxtx"};
-    handle_noimm(mnems[sign], std::format(", {}", shift));
-  } else if (Name == "LDPXi") {
-    // TODO: Handle expr with base+off, merge offsets
-    handle_default("LDPx");
-  } else if (Name == "STPWi") {
-    // TODO: Handle expr with base+off, merge offsets
-    handle_default("STPw");
-  } else if (Name == "STPXi") {
-    // TODO: Handle expr with base+off, merge offsets
-    handle_default("STPx");
-  } else if (Name == "STLRB") {
-    // TODO: Handle expr with base+off, merge offsets
-    handle_default("STLRB");
-  } else if (Name == "LDRSBWui") {
-    handle_mem_imm("LDRSBwu", "LDURSBw", 0);
-    // TODO: Handle expr with base+off, merge offsets
-    handle_default("LDRSBwu");
-  } else if (Name == "LDRSHWui") {
-    handle_mem_imm("LDRSHwu", "LDURSHw", 1);
-    // TODO: Handle expr with base+off, merge offsets
-    handle_default("LDRSHwu");
-  } else if (Name == "UBFMWri") {
-    // TODO: fold zero-extend with load
-    handle_default("UBFMw");
-  } else if (Name == "UBFMXri") {
-    // TODO: fold zero-extend with load
-    handle_default("UBFMx");
-  } else if (Name == "SBFMWri") {
-    // TODO: fold sign-extend with load
-    handle_default("SBFMw");
-  } else if (Name == "SBFMXri") {
-    // TODO: fold sign-extend with load
-    handle_default("SBFMx");
-  } else if (Name == "BFMWri") {
-    handle_default("BFMw");
-  } else if (Name == "BFMXri") {
-    handle_default("BFMx");
-  } else if (Name == "LSLVWr") {
-    handle_shift_imm("LSLwi", 32);
-    handle_default("LSLVw");
-  } else if (Name == "LSLVXr") {
-    handle_shift_imm("LSLxi", 64);
-    handle_default("LSLVx");
-  } else if (Name == "LSRVWr") {
-    handle_shift_imm("LSRwi", 32);
-    handle_default("LSRVw");
-  } else if (Name == "LSRVXr") {
-    handle_shift_imm("LSRxi", 64);
-    handle_default("LSRVx");
-  } else if (Name == "ASRVWr") {
-    handle_shift_imm("ASRwi", 32);
-    handle_default("ASRVw");
-  } else if (Name == "ASRVXr") {
-    handle_shift_imm("ASRxi", 64);
-    handle_default("ASRVx");
-  } else if (Name == "RORVWr") {
-    handle_shift_imm("RORwi", 32);
-    handle_default("RORVw");
-  } else if (Name == "RORVXr") {
-    handle_shift_imm("RORxi", 64);
-    handle_default("RORVx");
-  } else if (Name == "ADDWri") {
-    unsigned imm = mi.getOperand(2).getImm();
-    unsigned shift = mi.getOperand(3).getImm();
-    handle_noimm("ADDwi", std::format(", {}", imm << (shift & 0x1f)));
-  } else if (Name == "ADDXri") {
-    unsigned imm = mi.getOperand(2).getImm();
-    unsigned shift = mi.getOperand(3).getImm();
-    handle_noimm("ADDxi", std::format(", {}", imm << (shift & 0x3f)));
-  } else if (Name == "ADDSWri") {
-    unsigned imm = mi.getOperand(2).getImm();
-    unsigned shift = mi.getOperand(3).getImm();
-    handle_noimm("ADDSwi", std::format(", {}", imm << (shift & 0x1f)));
-  } else if (Name == "ADDSXri") {
-    unsigned imm = mi.getOperand(2).getImm();
-    unsigned shift = mi.getOperand(3).getImm();
-    handle_noimm("ADDSxi", std::format(", {}", imm << (shift & 0x3f)));
-  } else if (Name == "SUBWri") {
-    unsigned imm = mi.getOperand(2).getImm();
-    unsigned shift = mi.getOperand(3).getImm();
-    handle_noimm("SUBwi", std::format(", {}", imm << (shift & 0x1f)));
-  } else if (Name == "SUBXri") {
-    unsigned imm = mi.getOperand(2).getImm();
-    unsigned shift = mi.getOperand(3).getImm();
-    handle_noimm("SUBxi", std::format(", {}", imm << (shift & 0x3f)));
-  } else if (Name == "SUBSWri") {
-    unsigned imm = mi.getOperand(2).getImm();
-    unsigned shift = mi.getOperand(3).getImm();
-    handle_noimm("SUBSwi", std::format(", {}", imm << (shift & 0x1f)));
-  } else if (Name == "SUBSXri") {
-    unsigned imm = mi.getOperand(2).getImm();
-    unsigned shift = mi.getOperand(3).getImm();
-    handle_noimm("SUBSxi", std::format(", {}", imm << (shift & 0x3f)));
-  } else if (Name == "ADDWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{"ADDw_lsl", "ADDw_lsr", "ADDw_asr"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_arith_imm("ADDwi");
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "ADDXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{"ADDx_lsl", "ADDx_lsr", "ADDx_asr"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_arith_imm("ADDxi");
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
-  } else if (Name == "ADDSWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "ADDSw_lsl", "ADDSw_lsr", "ADDSw_asr"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_arith_imm("ADDSwi");
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "ADDSXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "ADDSx_lsl", "ADDSx_lsr", "ADDSx_asr"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_arith_imm("ADDSxi");
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
-  } else if (Name == "SUBWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{"SUBw_lsl", "SUBw_lsr", "SUBw_asr"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_arith_imm("SUBwi");
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "SUBXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{"SUBx_lsl", "SUBx_lsr", "SUBx_asr"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_arith_imm("SUBxi");
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
-  } else if (Name == "SUBSWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "SUBSw_lsl", "SUBSw_lsr", "SUBSw_asr"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_arith_imm("SUBSwi");
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "SUBSXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "SUBSx_lsl", "SUBSx_lsr", "SUBSx_asr"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_arith_imm("SUBSxi");
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
-  } else if (Name == "ADDWrx") {
-    // TODO: Handle arithmetic immediates
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 8> mnems{"ADDw_uxtb",
-                                          "ADDw_uxth",
-                                          "ADDw_uxtw",
-                                          "ADDw_uxtx",
-                                          "ADDw_sxtb",
-                                          "ADDw_sxth",
-                                          "ADDw_sxtw",
-                                          "ADDw_sxtx"};
-    unsigned imm = mi.getOperand(3).getImm();
-    handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
-  } else if (Name == "ADDXrx") {
-    // TODO: Handle arithmetic immediates
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 8> mnems{"ADDx_uxtb",
-                                          "ADDx_uxth",
-                                          "ADDx_uxtw",
-                                          "ADDx_uxtx",
-                                          "ADDx_sxtb",
-                                          "ADDx_sxth",
-                                          "ADDx_sxtw",
-                                          "ADDx_sxtx"};
-    unsigned imm = mi.getOperand(3).getImm();
-    handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
-  } else if (Name == "ADDSWrx") {
-    // TODO: Handle arithmetic immediates
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 8> mnems{"ADDSw_uxtb",
-                                          "ADDSw_uxth",
-                                          "ADDSw_uxtw",
-                                          "ADDSw_uxtx",
-                                          "ADDSw_sxtb",
-                                          "ADDSw_sxth",
-                                          "ADDSw_sxtw",
-                                          "ADDSw_sxtx"};
-    unsigned imm = mi.getOperand(3).getImm();
-    handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
-  } else if (Name == "ADDSXrx") {
-    // TODO: Handle arithmetic immediates
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 8> mnems{"ADDSx_uxtb",
-                                          "ADDSx_uxth",
-                                          "ADDSx_uxtw",
-                                          "ADDSx_uxtx",
-                                          "ADDSx_sxtb",
-                                          "ADDSx_sxth",
-                                          "ADDSx_sxtw",
-                                          "ADDSx_sxtx"};
-    unsigned imm = mi.getOperand(3).getImm();
-    handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
-  } else if (Name == "SUBWrx") {
-    // TODO: Handle arithmetic immediates
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 8> mnems{"SUBw_uxtb",
-                                          "SUBw_uxth",
-                                          "SUBw_uxtw",
-                                          "SUBw_uxtx",
-                                          "SUBw_sxtb",
-                                          "SUBw_sxth",
-                                          "SUBw_sxtw",
-                                          "SUBw_sxtx"};
-    unsigned imm = mi.getOperand(3).getImm();
-    handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
-  } else if (Name == "SUBXrx") {
-    // TODO: Handle arithmetic immediates
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 8> mnems{"SUBx_uxtb",
-                                          "SUBx_uxth",
-                                          "SUBx_uxtw",
-                                          "SUBx_uxtx",
-                                          "SUBx_sxtb",
-                                          "SUBx_sxth",
-                                          "SUBx_sxtw",
-                                          "SUBx_sxtx"};
-    unsigned imm = mi.getOperand(3).getImm();
-    handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
-  } else if (Name == "SUBSWrx") {
-    // TODO: Handle arithmetic immediates
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 8> mnems{"SUBSw_uxtb",
-                                          "SUBSw_uxth",
-                                          "SUBSw_uxtw",
-                                          "SUBSw_uxtx",
-                                          "SUBSw_sxtb",
-                                          "SUBSw_sxth",
-                                          "SUBSw_sxtw",
-                                          "SUBSw_sxtx"};
-    unsigned imm = mi.getOperand(3).getImm();
-    handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
-  } else if (Name == "SUBSXrx") {
-    // TODO: Handle arithmetic immediates
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 8> mnems{"SUBSx_uxtb",
-                                          "SUBSx_uxth",
-                                          "SUBSx_uxtw",
-                                          "SUBSx_uxtx",
-                                          "SUBSx_sxtb",
-                                          "SUBSx_sxth",
-                                          "SUBSx_sxtw",
-                                          "SUBSx_sxtx"};
-    unsigned imm = mi.getOperand(3).getImm();
-    handle_noimm(mnems[imm >> 3], std::format(", {}", imm & 0x7));
-  } else if (Name == "ADCWr") {
-    handle_default("ADCw");
-  } else if (Name == "ADCXr") {
-    handle_default("ADCx");
-  } else if (Name == "ADCSWr") {
-    handle_default("ADCSw");
-  } else if (Name == "ADCSXr") {
-    handle_default("ADCSx");
-  } else if (Name == "SBCWr") {
-    handle_default("SBCw");
-  } else if (Name == "SBCXr") {
-    handle_default("SBCx");
-  } else if (Name == "SBCSWr") {
-    handle_default("SBCSw");
-  } else if (Name == "SBCSXr") {
-    handle_default("SBCSx");
-  } else if (Name == "MADDWrrr") {
-    handle_default("MADDw");
-  } else if (Name == "MADDXrrr") {
-    handle_default("MADDx");
-  } else if (Name == "MSUBWrrr") {
-    handle_default("MSUBw");
-  } else if (Name == "MSUBXrrr") {
-    handle_default("MSUBx");
-  } else if (Name == "UMADDLrrr") {
-    handle_default("UMADDL");
-  } else if (Name == "UMSUBLrrr") {
-    handle_default("UMSUBL");
-  } else if (Name == "SMADDLrrr") {
-    handle_default("SMADDL");
-  } else if (Name == "SMSUBLrrr") {
-    handle_default("SMSUBL");
-  } else if (Name == "UMULHrr") {
-    handle_default("UMULH");
-  } else if (Name == "SMULHrr") {
-    handle_default("SMULH");
-  } else if (Name == "UDIVWr") {
-    handle_default("UDIVw");
-  } else if (Name == "UDIVXr") {
-    handle_default("UDIVx");
-  } else if (Name == "SDIVWr") {
-    handle_default("SDIVw");
-  } else if (Name == "SDIVXr") {
-    handle_default("SDIVx");
-  } else if (Name == "CSELWr") {
-    handle_default("CSELw");
-  } else if (Name == "CSELXr") {
-    handle_default("CSELx");
-  } else if (Name == "CSINCWr") {
-    handle_default("CSINCw");
-  } else if (Name == "CSINCXr") {
-    handle_default("CSINCx");
-  } else if (Name == "CSINVWr") {
-    handle_default("CSINVw");
-  } else if (Name == "CSINVXr") {
-    handle_default("CSINVx");
-  } else if (Name == "CSNEGWr") {
-    handle_default("CSNEGw");
-  } else if (Name == "CSNEGXr") {
-    handle_default("CSNEGx");
-  } else if (Name == "ANDWri") {
-    uint64_t imm = imm_logical(0, mi.getOperand(2).getImm());
-    handle_noimm("ANDwi", std::format(", {:#x}", imm));
-  } else if (Name == "ANDXri") {
-    uint64_t imm = imm_logical(1, mi.getOperand(2).getImm());
-    handle_noimm("ANDxi", std::format(", {:#x}", imm));
-  } else if (Name == "ORRWri") {
-    uint64_t imm = imm_logical(0, mi.getOperand(2).getImm());
-    handle_noimm("ORRwi", std::format(", {:#x}", imm));
-  } else if (Name == "ORRXri") {
-    uint64_t imm = imm_logical(1, mi.getOperand(2).getImm());
-    handle_noimm("ORRxi", std::format(", {:#x}", imm));
-  } else if (Name == "EORWri") {
-    uint64_t imm = imm_logical(0, mi.getOperand(2).getImm());
-    handle_noimm("EORwi", std::format(", {:#x}", imm));
-  } else if (Name == "EORXri") {
-    uint64_t imm = imm_logical(1, mi.getOperand(2).getImm());
-    handle_noimm("EORxi", std::format(", {:#x}", imm));
-  } else if (Name == "ANDSWri") {
-    uint64_t imm = imm_logical(0, mi.getOperand(2).getImm());
-    handle_noimm("ANDSwi", std::format(", {:#x}", imm));
-  } else if (Name == "ANDSXri") {
-    uint64_t imm = imm_logical(1, mi.getOperand(2).getImm());
-    handle_noimm("ANDSxi", std::format(", {:#x}", imm));
-  } else if (Name == "RBITWr") {
-    handle_default("RBITw");
-  } else if (Name == "RBITXr") {
-    handle_default("RBITx");
-  } else if (Name == "REVWr") {
-    handle_default("REV32w");
-  } else if (Name == "REVXr") {
-    handle_default("REV64x");
-  } else if (Name == "CLZWr") {
-    handle_default("CLZw");
-  } else if (Name == "CLZXr") {
-    handle_default("CLZx");
-  } else if (Name == "CLSWr") {
-    handle_default("CLSw");
-  } else if (Name == "CLSXr") {
-    handle_default("CLSx");
-  } else if (Name == "ANDWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "ANDw_lsl", "ANDw_lsr", "ANDw_asr", "ANDw_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ANDwi", false);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "ANDXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "ANDx_lsl", "ANDx_lsr", "ANDx_asr", "ANDx_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ANDxi", false);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
-  } else if (Name == "ORRWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "ORRw_lsl", "ORRw_lsr", "ORRw_asr", "ORRw_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ORRwi", false);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "ORRXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "ORRx_lsl", "ORRx_lsr", "ORRx_asr", "ORRx_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ORRxi", false);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
-  } else if (Name == "EORWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "EORw_lsl", "EORw_lsr", "EORw_asr", "EORw_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("EORwi", false);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "EORXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "EORx_lsl", "EORx_lsr", "EORx_asr", "EORx_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("EORxi", false);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
-  } else if (Name == "ANDSWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "ANDSw_lsl", "ANDSw_lsr", "ANDSw_asr", "ANDSw_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ANDSwi", false);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "ANDSXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "ANDSx_lsl", "ANDSx_lsr", "ANDSx_asr", "ANDSx_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ANDSxi", false);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
-  } else if (Name == "BICWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "BICw_lsl", "BICw_lsr", "BICw_asr", "BICw_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ANDwi", true);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "BICXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "BICx_lsl", "BICx_lsr", "BICx_asr", "BICx_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ANDxi", true);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
-  } else if (Name == "ORNWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "ORNw_lsl", "ORNw_lsr", "ORNw_asr", "ORNw_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ORRwi", true);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "ORNXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "ORNx_lsl", "ORNx_lsr", "ORNx_asr", "ORNx_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ORRxi", true);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
-  } else if (Name == "EONWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "EONw_lsl", "EONw_lsr", "EONw_asr", "EONw_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("EORwi", true);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "EONXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "EONx_lsl", "EONx_lsr", "EONx_asr", "EONx_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("EORxi", true);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
-  } else if (Name == "BICSWrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "BICSw_lsl", "BICSw_lsr", "BICSw_asr", "BICSw_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ANDSwi", true);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x1f));
-  } else if (Name == "BICSXrs") {
-    // TODO: Handle expr with only a shifted index if imm==0
-    std::array<std::string_view, 4> mnems{
-        "BICSx_lsl", "BICSx_lsr", "BICSx_asr", "BICSx_ror"};
-    unsigned imm = mi.getOperand(3).getImm();
-    if (imm == 0) { // TODO: apply shift to immediate?
-      handle_logical_imm("ANDSxi", true);
-    }
-    handle_noimm(mnems[imm >> 6], std::format(", {}", imm & 0x3f));
+  // Good that Arm no describes their architecture as "RISC".
+  case_atomic_mem_op("LDADDB", "LDADDB");
+  case_atomic_mem_op("LDADDH", "LDADDH");
+  case_atomic_mem_op("LDADDW", "LDADDw");
+  case_atomic_mem_op("LDADDX", "LDADDx");
+  case_atomic_mem_op("LDADDAB", "LDADDAB");
+  case_atomic_mem_op("LDADDAH", "LDADDAH");
+  case_atomic_mem_op("LDADDAW", "LDADDAw");
+  case_atomic_mem_op("LDADDAX", "LDADDAx");
+  case_atomic_mem_op("LDADDLB", "LDADDLB");
+  case_atomic_mem_op("LDADDLH", "LDADDLH");
+  case_atomic_mem_op("LDADDLW", "LDADDLw");
+  case_atomic_mem_op("LDADDLX", "LDADDLx");
+  case_atomic_mem_op("LDADDALB", "LDADDALB");
+  case_atomic_mem_op("LDADDALH", "LDADDALH");
+  case_atomic_mem_op("LDADDALW", "LDADDALw");
+  case_atomic_mem_op("LDADDALX", "LDADDALx");
+  case_atomic_mem_op("LDCLRB", "LDCLRB");
+  case_atomic_mem_op("LDCLRH", "LDCLRH");
+  case_atomic_mem_op("LDCLRW", "LDCLRw");
+  case_atomic_mem_op("LDCLRX", "LDCLRx");
+  case_atomic_mem_op("LDCLRAB", "LDCLRAB");
+  case_atomic_mem_op("LDCLRAH", "LDCLRAH");
+  case_atomic_mem_op("LDCLRAW", "LDCLRAw");
+  case_atomic_mem_op("LDCLRAX", "LDCLRAx");
+  case_atomic_mem_op("LDCLRLB", "LDCLRLB");
+  case_atomic_mem_op("LDCLRLH", "LDCLRLH");
+  case_atomic_mem_op("LDCLRLW", "LDCLRLw");
+  case_atomic_mem_op("LDCLRLX", "LDCLRLx");
+  case_atomic_mem_op("LDCLRALB", "LDCLRALB");
+  case_atomic_mem_op("LDCLRALH", "LDCLRALH");
+  case_atomic_mem_op("LDCLRALW", "LDCLRALw");
+  case_atomic_mem_op("LDCLRALX", "LDCLRALx");
+  case_atomic_mem_op("LDEORB", "LDEORB");
+  case_atomic_mem_op("LDEORH", "LDEORH");
+  case_atomic_mem_op("LDEORW", "LDEORw");
+  case_atomic_mem_op("LDEORX", "LDEORx");
+  case_atomic_mem_op("LDEORAB", "LDEORAB");
+  case_atomic_mem_op("LDEORAH", "LDEORAH");
+  case_atomic_mem_op("LDEORAW", "LDEORAw");
+  case_atomic_mem_op("LDEORAX", "LDEORAx");
+  case_atomic_mem_op("LDEORLB", "LDEORLB");
+  case_atomic_mem_op("LDEORLH", "LDEORLH");
+  case_atomic_mem_op("LDEORLW", "LDEORLw");
+  case_atomic_mem_op("LDEORLX", "LDEORLx");
+  case_atomic_mem_op("LDEORALB", "LDEORALB");
+  case_atomic_mem_op("LDEORALH", "LDEORALH");
+  case_atomic_mem_op("LDEORALW", "LDEORALw");
+  case_atomic_mem_op("LDEORALX", "LDEORALx");
+  case_atomic_mem_op("LDSETB", "LDSETB");
+  case_atomic_mem_op("LDSETH", "LDSETH");
+  case_atomic_mem_op("LDSETW", "LDSETw");
+  case_atomic_mem_op("LDSETX", "LDSETx");
+  case_atomic_mem_op("LDSETAB", "LDSETAB");
+  case_atomic_mem_op("LDSETAH", "LDSETAH");
+  case_atomic_mem_op("LDSETAW", "LDSETAw");
+  case_atomic_mem_op("LDSETAX", "LDSETAx");
+  case_atomic_mem_op("LDSETLB", "LDSETLB");
+  case_atomic_mem_op("LDSETLH", "LDSETLH");
+  case_atomic_mem_op("LDSETLW", "LDSETLw");
+  case_atomic_mem_op("LDSETLX", "LDSETLx");
+  case_atomic_mem_op("LDSETALB", "LDSETALB");
+  case_atomic_mem_op("LDSETALH", "LDSETALH");
+  case_atomic_mem_op("LDSETALW", "LDSETALw");
+  case_atomic_mem_op("LDSETALX", "LDSETALx");
+  case_atomic_mem_op("LDSMAXB", "LDSMAXB");
+  case_atomic_mem_op("LDSMAXH", "LDSMAXH");
+  case_atomic_mem_op("LDSMAXW", "LDSMAXw");
+  case_atomic_mem_op("LDSMAXX", "LDSMAXx");
+  case_atomic_mem_op("LDSMAXAB", "LDSMAXAB");
+  case_atomic_mem_op("LDSMAXAH", "LDSMAXAH");
+  case_atomic_mem_op("LDSMAXAW", "LDSMAXAw");
+  case_atomic_mem_op("LDSMAXAX", "LDSMAXAx");
+  case_atomic_mem_op("LDSMAXLB", "LDSMAXLB");
+  case_atomic_mem_op("LDSMAXLH", "LDSMAXLH");
+  case_atomic_mem_op("LDSMAXLW", "LDSMAXLw");
+  case_atomic_mem_op("LDSMAXLX", "LDSMAXLx");
+  case_atomic_mem_op("LDSMAXALB", "LDSMAXALB");
+  case_atomic_mem_op("LDSMAXALH", "LDSMAXALH");
+  case_atomic_mem_op("LDSMAXALW", "LDSMAXALw");
+  case_atomic_mem_op("LDSMAXALX", "LDSMAXALx");
+  case_atomic_mem_op("LDSMINB", "LDSMINB");
+  case_atomic_mem_op("LDSMINH", "LDSMINH");
+  case_atomic_mem_op("LDSMINW", "LDSMINw");
+  case_atomic_mem_op("LDSMINX", "LDSMINx");
+  case_atomic_mem_op("LDSMINAB", "LDSMINAB");
+  case_atomic_mem_op("LDSMINAH", "LDSMINAH");
+  case_atomic_mem_op("LDSMINAW", "LDSMINAw");
+  case_atomic_mem_op("LDSMINAX", "LDSMINAx");
+  case_atomic_mem_op("LDSMINLB", "LDSMINLB");
+  case_atomic_mem_op("LDSMINLH", "LDSMINLH");
+  case_atomic_mem_op("LDSMINLW", "LDSMINLw");
+  case_atomic_mem_op("LDSMINLX", "LDSMINLx");
+  case_atomic_mem_op("LDSMINALB", "LDSMINALB");
+  case_atomic_mem_op("LDSMINALH", "LDSMINALH");
+  case_atomic_mem_op("LDSMINALW", "LDSMINALw");
+  case_atomic_mem_op("LDSMINALX", "LDSMINALx");
+  case_atomic_mem_op("LDUMAXB", "LDUMAXB");
+  case_atomic_mem_op("LDUMAXH", "LDUMAXH");
+  case_atomic_mem_op("LDUMAXW", "LDUMAXw");
+  case_atomic_mem_op("LDUMAXX", "LDUMAXx");
+  case_atomic_mem_op("LDUMAXAB", "LDUMAXAB");
+  case_atomic_mem_op("LDUMAXAH", "LDUMAXAH");
+  case_atomic_mem_op("LDUMAXAW", "LDUMAXAw");
+  case_atomic_mem_op("LDUMAXAX", "LDUMAXAx");
+  case_atomic_mem_op("LDUMAXLB", "LDUMAXLB");
+  case_atomic_mem_op("LDUMAXLH", "LDUMAXLH");
+  case_atomic_mem_op("LDUMAXLW", "LDUMAXLw");
+  case_atomic_mem_op("LDUMAXLX", "LDUMAXLx");
+  case_atomic_mem_op("LDUMAXALB", "LDUMAXALB");
+  case_atomic_mem_op("LDUMAXALH", "LDUMAXALH");
+  case_atomic_mem_op("LDUMAXALW", "LDUMAXALw");
+  case_atomic_mem_op("LDUMAXALX", "LDUMAXALx");
+  case_atomic_mem_op("LDUMINB", "LDUMINB");
+  case_atomic_mem_op("LDUMINH", "LDUMINH");
+  case_atomic_mem_op("LDUMINW", "LDUMINw");
+  case_atomic_mem_op("LDUMINX", "LDUMINx");
+  case_atomic_mem_op("LDUMINAB", "LDUMINAB");
+  case_atomic_mem_op("LDUMINAH", "LDUMINAH");
+  case_atomic_mem_op("LDUMINAW", "LDUMINAw");
+  case_atomic_mem_op("LDUMINAX", "LDUMINAx");
+  case_atomic_mem_op("LDUMINLB", "LDUMINLB");
+  case_atomic_mem_op("LDUMINLH", "LDUMINLH");
+  case_atomic_mem_op("LDUMINLW", "LDUMINLw");
+  case_atomic_mem_op("LDUMINLX", "LDUMINLx");
+  case_atomic_mem_op("LDUMINALB", "LDUMINALB");
+  case_atomic_mem_op("LDUMINALH", "LDUMINALH");
+  case_atomic_mem_op("LDUMINALW", "LDUMINALw");
+  case_atomic_mem_op("LDUMINALX", "LDUMINALx");
 
-  } else if (Name == "CCMPWr") {
-    handle_default("CCMPw");
-  } else if (Name == "CCMPXr") {
-    handle_default("CCMPx");
-  } else if (Name == "CCMPWi") {
-    handle_default("CCMPwi");
-  } else if (Name == "CCMPXi") {
-    handle_default("CCMPxi");
+  case_default("LDARB", "LDARB");
+  case_default("LDARH", "LDARH");
+  case_default("LDARW", "LDARw");
+  case_default("LDARX", "LDARx");
+  case_default("LADRB", "STLRB");
+  case_default("STLRH", "STLRH");
+  case_default("STLRW", "STLRw");
+  case_default("STLRX", "STLRx");
 
-  } else if (Name == "FCSELSrrr") {
-    handle_default("FCSELs");
-  } else if (Name == "FCSELDrrr") {
-    handle_default("FCSELd");
-  } else if (Name == "FCMPSrr") {
-    handle_default("FCMP_s");
-  } else if (Name == "FCMPDrr") {
-    handle_default("FCMP_d");
-  } else if (Name == "FADDSrr") {
-    handle_default("FADDs");
-  } else if (Name == "FADDDrr") {
-    handle_default("FADDd");
-  } else if (Name == "FSUBSrr") {
-    handle_default("FSUBs");
-  } else if (Name == "FSUBDrr") {
-    handle_default("FSUBd");
-  } else if (Name == "FMULSrr") {
-    handle_default("FMULs");
-  } else if (Name == "FMULDrr") {
-    handle_default("FMULd");
-  } else if (Name == "FDIVSrr") {
-    handle_default("FDIVs");
-  } else if (Name == "FDIVDrr") {
-    handle_default("FDIVd");
-  } else if (Name == "FMINSrr") {
-    handle_default("FMINs");
-  } else if (Name == "FMINDrr") {
-    handle_default("FMINd");
-  } else if (Name == "FMAXSrr") {
-    handle_default("FMAXs");
-  } else if (Name == "FMAXDrr") {
-    handle_default("FMAXd");
-  } else if (Name == "FMINNMSrr") {
-    handle_default("FMINNMs");
-  } else if (Name == "FMINNMDrr") {
-    handle_default("FMINNMd");
-  } else if (Name == "FMAXNMSrr") {
-    handle_default("FMAXNMs");
-  } else if (Name == "FMAXNMDrr") {
-    handle_default("FMAXNMd");
-  } else if (Name == "FMOVSr") {
-    handle_default("FMOVs");
-  } else if (Name == "FMOVDr") {
-    handle_default("FMOVd");
-  } else if (Name == "FABSSr") {
-    handle_default("FABSs");
-  } else if (Name == "FABSDr") {
-    handle_default("FABSd");
-  } else if (Name == "FNEGSr") {
-    handle_default("FNEGs");
-  } else if (Name == "FNEGDr") {
-    handle_default("FNEGd");
-  } else if (Name == "FSQRTSr") {
-    handle_default("FSQRTs");
-  } else if (Name == "FSQRTDr") {
-    handle_default("FSQRTd");
-  } else if (Name == "FMADDSrrr") {
-    handle_default("FMADDs");
-  } else if (Name == "FMADDDrrr") {
-    handle_default("FMADDd");
-  } else if (Name == "FMSUBSrrr") {
-    handle_default("FMSUBs");
-  } else if (Name == "FMSUBDrrr") {
-    handle_default("FMSUBd");
-  } else if (Name == "FNMADDSrrr") {
-    handle_default("FNMADDs");
-  } else if (Name == "FNMADDDrrr") {
-    handle_default("FNMADDd");
-  } else if (Name == "FNMSUBSrrr") {
-    handle_default("FNMSUBs");
-  } else if (Name == "FNMSUBDrrr") {
-    handle_default("FNMSUBd");
-
-  } else if (Name == "FCVTSDr") {
-    handle_default("FCVTsd");
-  } else if (Name == "FCVTDSr") {
-    handle_default("FCVTds");
-  } else if (Name == "FCVTZSUWSr") {
-    handle_default("FCVTZSws"); // TODO: correct?
-  } else if (Name == "FCVTZUUWSr") {
-    handle_default("FCVTZUws"); // TODO: correct?
-  } else if (Name == "FCVTZSUWDr") {
-    handle_default("FCVTZSwd"); // TODO: correct?
-  } else if (Name == "FCVTZUUWDr") {
-    handle_default("FCVTZUwd"); // TODO: correct?
-  } else if (Name == "FCVTZSUXSr") {
-    handle_default("FCVTZSxs"); // TODO: correct?
-  } else if (Name == "FCVTZUUXSr") {
-    handle_default("FCVTZUxs"); // TODO: correct?
-  } else if (Name == "FCVTZSUXDr") {
-    handle_default("FCVTZSxd"); // TODO: correct?
-  } else if (Name == "FCVTZUUXDr") {
-    handle_default("FCVTZUxd"); // TODO: correct?
-  } else if (Name == "SCVTFUWSri") {
-    handle_default("SCVTFsw"); // TODO: correct?
-  } else if (Name == "UCVTFUWSri") {
-    handle_default("UCVTFsw"); // TODO: correct?
-  } else if (Name == "SCVTFUWDri") {
-    handle_default("SCVTFdw"); // TODO: correct?
-  } else if (Name == "UCVTFUWDri") {
-    handle_default("UCVTFdw"); // TODO: correct?
-  } else if (Name == "SCVTFUXSri") {
-    handle_default("SCVTFsx"); // TODO: correct?
-  } else if (Name == "UCVTFUXSri") {
-    handle_default("UCVTFsx"); // TODO: correct?
-  } else if (Name == "SCVTFUXDri") {
-    handle_default("SCVTFdx"); // TODO: correct?
-  } else if (Name == "UCVTFUXDri") {
-    handle_default("UCVTFdx"); // TODO: correct?
-
-  } else if (Name == "FADDv2f32") {
-    handle_default("FADD2s");
-  } else if (Name == "FADDv4f32") {
-    handle_default("FADD4s");
-  } else if (Name == "FADDv2f64") {
-    handle_default("FADD2d");
-  } else if (Name == "FSUBv2f32") {
-    handle_default("FSUB2s");
-  } else if (Name == "FSUBv4f32") {
-    handle_default("FSUB4s");
-  } else if (Name == "FSUBv2f64") {
-    handle_default("FSUB2d");
-  } else if (Name == "FMULv2f32") {
-    handle_default("FMUL2s");
-  } else if (Name == "FMULv4f32") {
-    handle_default("FMUL4s");
-  } else if (Name == "FMULv2f64") {
-    handle_default("FMUL2d");
-  } else if (Name == "FDIVv2f32") {
-    handle_default("FDIV2s");
-  } else if (Name == "FDIVv4f32") {
-    handle_default("FDIV4s");
-  } else if (Name == "FDIVv2f64") {
-    handle_default("FDIV2d");
-  } else if (Name == "CMEQv16i8") {
-    handle_default("CMEQ16b");
-  } else if (Name == "DUPv16i8lane") {
-    handle_default("DUP16b");
-  } else if (Name == "ADDv8i8") {
-    handle_default("ADD8b");
-  } else if (Name == "ADDv16i8") {
-    handle_default("ADD16b");
-  } else if (Name == "ADDv4i16") {
-    handle_default("ADD4h");
-  } else if (Name == "ADDv8i16") {
-    handle_default("ADD8h");
-  } else if (Name == "ADDv2i32") {
-    handle_default("ADD2s");
-  } else if (Name == "ADDv4i32") {
-    handle_default("ADD4s");
-  } else if (Name == "ADDv2i64") {
-    handle_default("ADD2d");
-  } else if (Name == "SUBv8i8") {
-    handle_default("SUB8b");
-  } else if (Name == "SUBv16i8") {
-    handle_default("SUB16b");
-  } else if (Name == "SUBv4i16") {
-    handle_default("SUB4h");
-  } else if (Name == "SUBv8i16") {
-    handle_default("SUB8h");
-  } else if (Name == "SUBv2i32") {
-    handle_default("SUB2s");
-  } else if (Name == "SUBv4i32") {
-    handle_default("SUB4s");
-  } else if (Name == "SUBv2i64") {
-    handle_default("SUB2d");
-  } else if (Name == "SUBv8i8") {
-    handle_default("SUB8b");
-  } else if (Name == "MULv8i8") {
-    handle_default("MUL8b");
-  } else if (Name == "MULv16i8") {
-    handle_default("MUL16b");
-  } else if (Name == "MULv4i16") {
-    handle_default("MUL4h");
-  } else if (Name == "MULv8i16") {
-    handle_default("MUL8h");
-  } else if (Name == "MULv2i32") {
-    handle_default("MUL2s");
-  } else if (Name == "MULv4i32") {
-    handle_default("SUB4s");
-  } else if (Name == "CNTv8i8") {
-    handle_default("CNT8b");
-  } else if (Name == "UADDLVv8i8v") {
-    handle_default("UADDLV8b");
-  } else if (Name == "ANDv8i8") {
-    handle_default("AND8b");
-  } else if (Name == "ANDv16i8") {
-    handle_default("AND16b");
-  } else if (Name == "BICv8i8") {
-    handle_default("BIC8b");
-  } else if (Name == "BICv16i8") {
-    handle_default("BIC16b");
-  } else if (Name == "ORRv8i8") {
-    handle_default("ORR8b");
-  } else if (Name == "ORRv16i8") {
-    handle_default("ORR16b");
-  } else if (Name == "ORNv8i8") {
-    handle_default("ORN8b");
-  } else if (Name == "ORNv16i8") {
-    handle_default("ORN16b");
-  } else if (Name == "EORv8i8") {
-    handle_default("EOR8b");
-  } else if (Name == "EORv16i8") {
-    handle_default("EOR16b");
-  } else if (Name == "BSLv8i8") {
-    handle_default("BSL8b");
-  } else if (Name == "BSLv16i8") {
-    handle_default("BSL16b");
-  } else if (Name == "BITv8i8") {
-    handle_default("BIT8b");
-  } else if (Name == "BITv16i8") {
-    handle_default("BIT16b");
-  } else if (Name == "BIFv8i8") {
-    handle_default("BIF8b");
-  } else if (Name == "BIFv16i8") {
-    handle_default("BIF16b");
-  } else if (Name == "USHLv8i8") {
-    handle_default("USHL8b");
-  } else if (Name == "USHLv16i8") {
-    handle_default("USHL16b");
-  } else if (Name == "USHLv4i16") {
-    handle_default("USHL4h");
-  } else if (Name == "USHLv8i16") {
-    handle_default("USHL8h");
-  } else if (Name == "USHLv2i32") {
-    handle_default("USHL2s");
-  } else if (Name == "USHLv4i32") {
-    handle_default("USHL4s");
-  } else if (Name == "USHLv2i64") {
-    handle_default("USHL2d");
-  } else if (Name == "USHLv8i8") {
-    handle_default("USHL8b");
-  } else if (Name == "FNEGv2f32") {
-    handle_default("FNEG2s");
-  } else if (Name == "FNEGv4f32") {
-    handle_default("FNEG4s");
-  } else if (Name == "FNEGv2f64") {
-    handle_default("FNEG2d");
-  } else if (Name == "MOVIv2d_ns") {
-    uint64_t imm = 0;
-    unsigned op = mi.getOperand(1).getImm();
-    for (int i = 0; i < 8; i++) {
-      imm |= op & (1 << i) ? 0xff << 8 * i : 0;
-    }
-    handle_noimm("MOVI2d", std::format(", {:#x}", imm));
-  } else if (Name == "MVNIv4i32") {
-    uint32_t byte = mi.getOperand(1).getImm();
-    uint64_t imm = ~(byte << mi.getOperand(2).getImm());
-    handle_noimm("MOVI2d", std::format(", {:#x}", imm | imm << 32));
-
-  } else if (Name == "FMOVSWr") {
-    handle_default("FMOVws");
-  } else if (Name == "FMOVDXr") {
-    handle_default("FMOVxd");
-  } else if (Name == "FMOVWSr") {
-    handle_default("FMOVsw");
-  } else if (Name == "FMOVXDr") {
-    handle_default("FMOVdx");
-  } else if (Name == "UMOVvi64") {
-    handle_default("UMOVxd");
-  } else if (Name == "INSvi64gpr") {
-    handle_default("INSdx");
-
-  } else if (Name == "CASB") {
-    handle_default("CASB");
-  } else if (Name == "CASH") {
-    handle_default("CASH");
-  } else if (Name == "CASW") {
-    handle_default("CASw");
-  } else if (Name == "CASX") {
-    handle_default("CASx");
-  } else if (Name == "CASAB") {
-    handle_default("CASAB");
-  } else if (Name == "CASAH") {
-    handle_default("CASAH");
-  } else if (Name == "CASAW") {
-    handle_default("CASAw");
-  } else if (Name == "CASAX") {
-    handle_default("CASAx");
-  } else if (Name == "CASLB") {
-    handle_default("CASLB");
-  } else if (Name == "CASLH") {
-    handle_default("CASLH");
-  } else if (Name == "CASLW") {
-    handle_default("CASLw");
-  } else if (Name == "CASLX") {
-    handle_default("CASLx");
-  } else if (Name == "CASALB") {
-    handle_default("CASALB");
-  } else if (Name == "CASALH") {
-    handle_default("CASALH");
-  } else if (Name == "CASALW") {
-    handle_default("CASALw");
-  } else if (Name == "CASALX") {
-    handle_default("CASALx");
-  } else if (Name == "SWPB") {
-    handle_atomic_mem_op("SWPB");
-  } else if (Name == "SWPH") {
-    handle_atomic_mem_op("SWPH");
-  } else if (Name == "SWPW") {
-    handle_atomic_mem_op("SWPw");
-  } else if (Name == "SWPX") {
-    handle_atomic_mem_op("SWPx");
-  } else if (Name == "SWPAB") {
-    handle_atomic_mem_op("SWPAB");
-  } else if (Name == "SWPAH") {
-    handle_atomic_mem_op("SWPAH");
-  } else if (Name == "SWPAW") {
-    handle_atomic_mem_op("SWPAw");
-  } else if (Name == "SWPAX") {
-    handle_atomic_mem_op("SWPAx");
-  } else if (Name == "SWPLB") {
-    handle_atomic_mem_op("SWPLB");
-  } else if (Name == "SWPLH") {
-    handle_atomic_mem_op("SWPLH");
-  } else if (Name == "SWPLW") {
-    handle_atomic_mem_op("SWPLw");
-  } else if (Name == "SWPLX") {
-    handle_atomic_mem_op("SWPLx");
-  } else if (Name == "SWPALB") {
-    handle_atomic_mem_op("SWPALB");
-  } else if (Name == "SWPALH") {
-    handle_atomic_mem_op("SWPALH");
-  } else if (Name == "SWPALW") {
-    handle_atomic_mem_op("SWPALw");
-  } else if (Name == "SWPALX") {
-    handle_atomic_mem_op("SWPALx");
-
-    // Good that Arm no describes their architecture as "RISC".
-  } else if (Name == "LDADDB") {
-    handle_atomic_mem_op("LDADDB");
-  } else if (Name == "LDADDH") {
-    handle_atomic_mem_op("LDADDH");
-  } else if (Name == "LDADDW") {
-    handle_atomic_mem_op("LDADDw");
-  } else if (Name == "LDADDX") {
-    handle_atomic_mem_op("LDADDx");
-  } else if (Name == "LDADDAB") {
-    handle_atomic_mem_op("LDADDAB");
-  } else if (Name == "LDADDAH") {
-    handle_atomic_mem_op("LDADDAH");
-  } else if (Name == "LDADDAW") {
-    handle_atomic_mem_op("LDADDAw");
-  } else if (Name == "LDADDAX") {
-    handle_atomic_mem_op("LDADDAx");
-  } else if (Name == "LDADDLB") {
-    handle_atomic_mem_op("LDADDLB");
-  } else if (Name == "LDADDLH") {
-    handle_atomic_mem_op("LDADDLH");
-  } else if (Name == "LDADDLW") {
-    handle_atomic_mem_op("LDADDLw");
-  } else if (Name == "LDADDLX") {
-    handle_atomic_mem_op("LDADDLx");
-  } else if (Name == "LDADDALB") {
-    handle_atomic_mem_op("LDADDALB");
-  } else if (Name == "LDADDALH") {
-    handle_atomic_mem_op("LDADDALH");
-  } else if (Name == "LDADDALW") {
-    handle_atomic_mem_op("LDADDALw");
-  } else if (Name == "LDADDALX") {
-    handle_atomic_mem_op("LDADDALx");
-  } else if (Name == "LDCLRB") {
-    handle_atomic_mem_op("LDCLRB");
-  } else if (Name == "LDCLRH") {
-    handle_atomic_mem_op("LDCLRH");
-  } else if (Name == "LDCLRW") {
-    handle_atomic_mem_op("LDCLRw");
-  } else if (Name == "LDCLRX") {
-    handle_atomic_mem_op("LDCLRx");
-  } else if (Name == "LDCLRAB") {
-    handle_atomic_mem_op("LDCLRAB");
-  } else if (Name == "LDCLRAH") {
-    handle_atomic_mem_op("LDCLRAH");
-  } else if (Name == "LDCLRAW") {
-    handle_atomic_mem_op("LDCLRAw");
-  } else if (Name == "LDCLRAX") {
-    handle_atomic_mem_op("LDCLRAx");
-  } else if (Name == "LDCLRLB") {
-    handle_atomic_mem_op("LDCLRLB");
-  } else if (Name == "LDCLRLH") {
-    handle_atomic_mem_op("LDCLRLH");
-  } else if (Name == "LDCLRLW") {
-    handle_atomic_mem_op("LDCLRLw");
-  } else if (Name == "LDCLRLX") {
-    handle_atomic_mem_op("LDCLRLx");
-  } else if (Name == "LDCLRALB") {
-    handle_atomic_mem_op("LDCLRALB");
-  } else if (Name == "LDCLRALH") {
-    handle_atomic_mem_op("LDCLRALH");
-  } else if (Name == "LDCLRALW") {
-    handle_atomic_mem_op("LDCLRALw");
-  } else if (Name == "LDCLRALX") {
-    handle_atomic_mem_op("LDCLRALx");
-  } else if (Name == "LDEORB") {
-    handle_atomic_mem_op("LDEORB");
-  } else if (Name == "LDEORH") {
-    handle_atomic_mem_op("LDEORH");
-  } else if (Name == "LDEORW") {
-    handle_atomic_mem_op("LDEORw");
-  } else if (Name == "LDEORX") {
-    handle_atomic_mem_op("LDEORx");
-  } else if (Name == "LDEORAB") {
-    handle_atomic_mem_op("LDEORAB");
-  } else if (Name == "LDEORAH") {
-    handle_atomic_mem_op("LDEORAH");
-  } else if (Name == "LDEORAW") {
-    handle_atomic_mem_op("LDEORAw");
-  } else if (Name == "LDEORAX") {
-    handle_atomic_mem_op("LDEORAx");
-  } else if (Name == "LDEORLB") {
-    handle_atomic_mem_op("LDEORLB");
-  } else if (Name == "LDEORLH") {
-    handle_atomic_mem_op("LDEORLH");
-  } else if (Name == "LDEORLW") {
-    handle_atomic_mem_op("LDEORLw");
-  } else if (Name == "LDEORLX") {
-    handle_atomic_mem_op("LDEORLx");
-  } else if (Name == "LDEORALB") {
-    handle_atomic_mem_op("LDEORALB");
-  } else if (Name == "LDEORALH") {
-    handle_atomic_mem_op("LDEORALH");
-  } else if (Name == "LDEORALW") {
-    handle_atomic_mem_op("LDEORALw");
-  } else if (Name == "LDEORALX") {
-    handle_atomic_mem_op("LDEORALx");
-  } else if (Name == "LDSETB") {
-    handle_atomic_mem_op("LDSETB");
-  } else if (Name == "LDSETH") {
-    handle_atomic_mem_op("LDSETH");
-  } else if (Name == "LDSETW") {
-    handle_atomic_mem_op("LDSETw");
-  } else if (Name == "LDSETX") {
-    handle_atomic_mem_op("LDSETx");
-  } else if (Name == "LDSETAB") {
-    handle_atomic_mem_op("LDSETAB");
-  } else if (Name == "LDSETAH") {
-    handle_atomic_mem_op("LDSETAH");
-  } else if (Name == "LDSETAW") {
-    handle_atomic_mem_op("LDSETAw");
-  } else if (Name == "LDSETAX") {
-    handle_atomic_mem_op("LDSETAx");
-  } else if (Name == "LDSETLB") {
-    handle_atomic_mem_op("LDSETLB");
-  } else if (Name == "LDSETLH") {
-    handle_atomic_mem_op("LDSETLH");
-  } else if (Name == "LDSETLW") {
-    handle_atomic_mem_op("LDSETLw");
-  } else if (Name == "LDSETLX") {
-    handle_atomic_mem_op("LDSETLx");
-  } else if (Name == "LDSETALB") {
-    handle_atomic_mem_op("LDSETALB");
-  } else if (Name == "LDSETALH") {
-    handle_atomic_mem_op("LDSETALH");
-  } else if (Name == "LDSETALW") {
-    handle_atomic_mem_op("LDSETALw");
-  } else if (Name == "LDSETALX") {
-    handle_atomic_mem_op("LDSETALx");
-  } else if (Name == "LDSMAXB") {
-    handle_atomic_mem_op("LDSMAXB");
-  } else if (Name == "LDSMAXH") {
-    handle_atomic_mem_op("LDSMAXH");
-  } else if (Name == "LDSMAXW") {
-    handle_atomic_mem_op("LDSMAXw");
-  } else if (Name == "LDSMAXX") {
-    handle_atomic_mem_op("LDSMAXx");
-  } else if (Name == "LDSMAXAB") {
-    handle_atomic_mem_op("LDSMAXAB");
-  } else if (Name == "LDSMAXAH") {
-    handle_atomic_mem_op("LDSMAXAH");
-  } else if (Name == "LDSMAXAW") {
-    handle_atomic_mem_op("LDSMAXAw");
-  } else if (Name == "LDSMAXAX") {
-    handle_atomic_mem_op("LDSMAXAx");
-  } else if (Name == "LDSMAXLB") {
-    handle_atomic_mem_op("LDSMAXLB");
-  } else if (Name == "LDSMAXLH") {
-    handle_atomic_mem_op("LDSMAXLH");
-  } else if (Name == "LDSMAXLW") {
-    handle_atomic_mem_op("LDSMAXLw");
-  } else if (Name == "LDSMAXLX") {
-    handle_atomic_mem_op("LDSMAXLx");
-  } else if (Name == "LDSMAXALB") {
-    handle_atomic_mem_op("LDSMAXALB");
-  } else if (Name == "LDSMAXALH") {
-    handle_atomic_mem_op("LDSMAXALH");
-  } else if (Name == "LDSMAXALW") {
-    handle_atomic_mem_op("LDSMAXALw");
-  } else if (Name == "LDSMAXALX") {
-    handle_atomic_mem_op("LDSMAXALx");
-  } else if (Name == "LDSMINB") {
-    handle_atomic_mem_op("LDSMINB");
-  } else if (Name == "LDSMINH") {
-    handle_atomic_mem_op("LDSMINH");
-  } else if (Name == "LDSMINW") {
-    handle_atomic_mem_op("LDSMINw");
-  } else if (Name == "LDSMINX") {
-    handle_atomic_mem_op("LDSMINx");
-  } else if (Name == "LDSMINAB") {
-    handle_atomic_mem_op("LDSMINAB");
-  } else if (Name == "LDSMINAH") {
-    handle_atomic_mem_op("LDSMINAH");
-  } else if (Name == "LDSMINAW") {
-    handle_atomic_mem_op("LDSMINAw");
-  } else if (Name == "LDSMINAX") {
-    handle_atomic_mem_op("LDSMINAx");
-  } else if (Name == "LDSMINLB") {
-    handle_atomic_mem_op("LDSMINLB");
-  } else if (Name == "LDSMINLH") {
-    handle_atomic_mem_op("LDSMINLH");
-  } else if (Name == "LDSMINLW") {
-    handle_atomic_mem_op("LDSMINLw");
-  } else if (Name == "LDSMINLX") {
-    handle_atomic_mem_op("LDSMINLx");
-  } else if (Name == "LDSMINALB") {
-    handle_atomic_mem_op("LDSMINALB");
-  } else if (Name == "LDSMINALH") {
-    handle_atomic_mem_op("LDSMINALH");
-  } else if (Name == "LDSMINALW") {
-    handle_atomic_mem_op("LDSMINALw");
-  } else if (Name == "LDSMINALX") {
-    handle_atomic_mem_op("LDSMINALx");
-  } else if (Name == "LDUMAXB") {
-    handle_atomic_mem_op("LDUMAXB");
-  } else if (Name == "LDUMAXH") {
-    handle_atomic_mem_op("LDUMAXH");
-  } else if (Name == "LDUMAXW") {
-    handle_atomic_mem_op("LDUMAXw");
-  } else if (Name == "LDUMAXX") {
-    handle_atomic_mem_op("LDUMAXx");
-  } else if (Name == "LDUMAXAB") {
-    handle_atomic_mem_op("LDUMAXAB");
-  } else if (Name == "LDUMAXAH") {
-    handle_atomic_mem_op("LDUMAXAH");
-  } else if (Name == "LDUMAXAW") {
-    handle_atomic_mem_op("LDUMAXAw");
-  } else if (Name == "LDUMAXAX") {
-    handle_atomic_mem_op("LDUMAXAx");
-  } else if (Name == "LDUMAXLB") {
-    handle_atomic_mem_op("LDUMAXLB");
-  } else if (Name == "LDUMAXLH") {
-    handle_atomic_mem_op("LDUMAXLH");
-  } else if (Name == "LDUMAXLW") {
-    handle_atomic_mem_op("LDUMAXLw");
-  } else if (Name == "LDUMAXLX") {
-    handle_atomic_mem_op("LDUMAXLx");
-  } else if (Name == "LDUMAXALB") {
-    handle_atomic_mem_op("LDUMAXALB");
-  } else if (Name == "LDUMAXALH") {
-    handle_atomic_mem_op("LDUMAXALH");
-  } else if (Name == "LDUMAXALW") {
-    handle_atomic_mem_op("LDUMAXALw");
-  } else if (Name == "LDUMAXALX") {
-    handle_atomic_mem_op("LDUMAXALx");
-  } else if (Name == "LDUMINB") {
-    handle_atomic_mem_op("LDUMINB");
-  } else if (Name == "LDUMINH") {
-    handle_atomic_mem_op("LDUMINH");
-  } else if (Name == "LDUMINW") {
-    handle_atomic_mem_op("LDUMINw");
-  } else if (Name == "LDUMINX") {
-    handle_atomic_mem_op("LDUMINx");
-  } else if (Name == "LDUMINAB") {
-    handle_atomic_mem_op("LDUMINAB");
-  } else if (Name == "LDUMINAH") {
-    handle_atomic_mem_op("LDUMINAH");
-  } else if (Name == "LDUMINAW") {
-    handle_atomic_mem_op("LDUMINAw");
-  } else if (Name == "LDUMINAX") {
-    handle_atomic_mem_op("LDUMINAx");
-  } else if (Name == "LDUMINLB") {
-    handle_atomic_mem_op("LDUMINLB");
-  } else if (Name == "LDUMINLH") {
-    handle_atomic_mem_op("LDUMINLH");
-  } else if (Name == "LDUMINLW") {
-    handle_atomic_mem_op("LDUMINLw");
-  } else if (Name == "LDUMINLX") {
-    handle_atomic_mem_op("LDUMINLx");
-  } else if (Name == "LDUMINALB") {
-    handle_atomic_mem_op("LDUMINALB");
-  } else if (Name == "LDUMINALH") {
-    handle_atomic_mem_op("LDUMINALH");
-  } else if (Name == "LDUMINALW") {
-    handle_atomic_mem_op("LDUMINALw");
-  } else if (Name == "LDUMINALX") {
-    handle_atomic_mem_op("LDUMINALx");
-
-  } else if (Name == "LDARB") {
-    handle_default("LDARB");
-  } else if (Name == "LDARH") {
-    handle_default("LDARH");
-  } else if (Name == "LDARW") {
-    handle_default("LDARw");
-  } else if (Name == "LDARX") {
-    handle_default("LDARx");
-  } else if (Name == "LADRB") {
-    handle_default("STLRB");
-  } else if (Name == "STLRH") {
-    handle_default("STLRH");
-  } else if (Name == "STLRW") {
-    handle_default("STLRw");
-  } else if (Name == "STLRX") {
-    handle_default("STLRx");
-
-  } else {
+  if (candidates.empty()) {
     llvm::errs() << "ERROR: unhandled instruction " << Name << "\n";
     assert(false);
     exit(1);
