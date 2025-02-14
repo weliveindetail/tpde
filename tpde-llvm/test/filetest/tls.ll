@@ -145,6 +145,8 @@ define void @store3(i32, i32, i32 %v) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <store3>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -167,5 +169,70 @@ define void @store3(i32, i32, i32 %v) {
 ; ARM64-NEXT:    ret
   %p = call ptr @llvm.threadlocal.address(ptr @t1)
   store i32 %v, ptr %p
+  ret void
+}
+
+declare void @call_target(ptr, ptr, ptr)
+define void @legacy_use() {
+; X64-LABEL: <legacy_use>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    lea rdi, <legacy_use+0x15>
+; X64-NEXT:     R_X86_64_TLSGD t1-0x4
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 __tls_get_addr-0x4
+; X64-NEXT:    mov qword ptr [rbp - 0x30], rax
+; X64-NEXT:    lea rdi, <legacy_use+0x29>
+; X64-NEXT:     R_X86_64_TLSGD t1-0x4
+; X64-NEXT:    call <L1>
+; X64-NEXT:     R_X86_64_PLT32 __tls_get_addr-0x4
+; X64-NEXT:    mov edi, 0x0
+; X64-NEXT:    mov rsi, rax
+; X64-NEXT:    mov rdx, qword ptr [rbp - 0x30]
+; X64-NEXT:  <L2>:
+; X64-NEXT:    call <L2>
+; X64-NEXT:     R_X86_64_PLT32 call_target-0x4
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <legacy_use>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    adrp x0, 0x0 <.text>
+; ARM64-NEXT:     R_AARCH64_TLSDESC_ADR_PAGE21 t1
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:     R_AARCH64_TLSDESC_LD64_LO12 t1
+; ARM64-NEXT:    add x0, x0, #0x0
+; ARM64-NEXT:     R_AARCH64_TLSDESC_ADD_LO12 t1
+; ARM64-NEXT:    blr x1
+; ARM64-NEXT:     R_AARCH64_TLSDESC_CALL t1
+; ARM64-NEXT:    mrs x1, TPIDR_EL0
+; ARM64-NEXT:    add x0, x1, x0
+; ARM64-NEXT:    str x0, [x29, #0xa0]
+; ARM64-NEXT:    adrp x0, 0x0 <.text>
+; ARM64-NEXT:     R_AARCH64_TLSDESC_ADR_PAGE21 t1
+; ARM64-NEXT:    ldr x1, [x0]
+; ARM64-NEXT:     R_AARCH64_TLSDESC_LD64_LO12 t1
+; ARM64-NEXT:    add x0, x0, #0x0
+; ARM64-NEXT:     R_AARCH64_TLSDESC_ADD_LO12 t1
+; ARM64-NEXT:    blr x1
+; ARM64-NEXT:     R_AARCH64_TLSDESC_CALL t1
+; ARM64-NEXT:    mrs x1, TPIDR_EL0
+; ARM64-NEXT:    add x0, x1, x0
+; ARM64-NEXT:    str x0, [x29, #0xa8]
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    ldr x1, [x29, #0xa8]
+; ARM64-NEXT:    ldr x2, [x29, #0xa0]
+; ARM64-NEXT:    bl 0x284 <legacy_use+0x54>
+; ARM64-NEXT:     R_AARCH64_CALL26 call_target
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+  call void @call_target(ptr null, ptr @t1, ptr @t1)
   ret void
 }

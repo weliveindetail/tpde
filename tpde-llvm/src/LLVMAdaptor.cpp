@@ -4,11 +4,14 @@
 
 #include <format>
 
+#include <llvm/ADT/STLExtras.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Casting.h>
@@ -353,6 +356,29 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
                                .argument = false,
                                .skip_liveness = true,
                                .complex_part_tys_idx = complex_part_idx});
+
+      if (gv->isThreadLocal()) [[unlikely]] {
+        // Rewrite all accesses to thread-local variables to go through the
+        // intrinsic llvm.threadlocal.address; other accesses are unsupported.
+        for (llvm::Use &use : llvm::make_early_inc_range(gv->uses())) {
+          auto *intrin = llvm::dyn_cast<llvm::IntrinsicInst>(use.getUser());
+          if (intrin && intrin->getIntrinsicID() == llvm::Intrinsic::threadlocal_address) {
+            continue;
+          }
+
+          auto *instr = llvm::dyn_cast<llvm::Instruction>(use.getUser());
+          if (!instr) [[unlikely]] {
+            std::string user;
+            llvm::raw_string_ostream(user) << *use.getUser();
+            TPDE_LOG_ERR("thread-local global with unsupported use: {}", user);
+            func_unsupported = true;
+            break;
+          }
+
+          llvm::IRBuilder<> irb(instr);
+          use.set(irb.CreateThreadLocalAddress(gv));
+        }
+      }
     };
     for (llvm::Function &fn : mod->functions()) {
       add_global(&fn);

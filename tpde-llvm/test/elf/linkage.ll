@@ -77,8 +77,6 @@ define weak_odr void @def_fn_weak_odr() { ret void }
 @def_glob_tls_linkonce_odr = linkonce_odr thread_local global i32 100, align 4
 @def_glob_tls_weak_odr = weak_odr thread_local global i32 100, align 4
 
-@foo = global ptr @def_glob_tls_weak
-
 ; Ensure that all symbols end up in the symbol table.
 define void @use() {
     store ptr @dec_fn_external, ptr null
