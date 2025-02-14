@@ -574,8 +574,10 @@ typedef struct CmpXchgRes { u64 orig; bool success; } CmpXchgRes;
       return (CmpXchgRes){cmp, res}; \
   }
 
-CMPXCHG(u64)
+CMPXCHG(u8)
+CMPXCHG(u16)
 CMPXCHG(u32)
+CMPXCHG(u64)
 
 #undef CMPXCHG
 
