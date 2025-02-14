@@ -1051,6 +1051,26 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef inst_idx,
     this->set_value(res_ref, res_ref.cur_reg());
     return true;
   }
+  case llvm::Intrinsic::aarch64_neon_umull: {
+    auto *vec_ty = llvm::cast<llvm::FixedVectorType>(inst->getType());
+    unsigned nelem = vec_ty->getNumElements();
+
+    auto lhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
+    auto rhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    ScratchReg scratch{this};
+    AsmReg lhs_reg;
+    auto res_ref = this->result_ref_salvage_with_original(
+        inst_idx, 0, std::move(lhs_ref), lhs_reg);
+    auto rhs_reg = this->val_as_reg(rhs_ref, scratch);
+    switch (nelem) {
+    case 2: ASM(UMULL_2d, res_ref.cur_reg(), lhs_reg, rhs_reg); break;
+    case 4: ASM(UMULL_4s, res_ref.cur_reg(), lhs_reg, rhs_reg); break;
+    case 8: ASM(UMULL_8h, res_ref.cur_reg(), lhs_reg, rhs_reg); break;
+    default: TPDE_UNREACHABLE("invalid intrinsic type");
+    }
+    this->set_value(res_ref, res_ref.cur_reg());
+    return true;
+  }
   default: return false;
   }
 }
