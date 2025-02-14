@@ -2877,49 +2877,27 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
                                        ScratchReg &);
   static const auto fns = []() constexpr {
     using enum llvm::AtomicOrdering;
-    std::array<EncodeFnTy[size_t(LAST) + 1][size_t(LAST) + 1], 4> res;
-    // clang-format off
-    res[0][size_t(Monotonic)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u8_monotonic_monotonic;
-    res[1][size_t(Monotonic)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u16_monotonic_monotonic;
-    res[2][size_t(Monotonic)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u32_monotonic_monotonic;
-    res[3][size_t(Monotonic)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u64_monotonic_monotonic;
-    res[0][size_t(Acquire)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u8_acquire_monotonic;
-    res[1][size_t(Acquire)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u16_acquire_monotonic;
-    res[2][size_t(Acquire)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u32_acquire_monotonic;
-    res[3][size_t(Acquire)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u64_acquire_monotonic;
-    res[0][size_t(Acquire)][size_t(Acquire)] = &Derived::encode_cmpxchg_u8_acquire_acquire;
-    res[1][size_t(Acquire)][size_t(Acquire)] = &Derived::encode_cmpxchg_u16_acquire_acquire;
-    res[2][size_t(Acquire)][size_t(Acquire)] = &Derived::encode_cmpxchg_u32_acquire_acquire;
-    res[3][size_t(Acquire)][size_t(Acquire)] = &Derived::encode_cmpxchg_u64_acquire_acquire;
-    res[0][size_t(Release)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u8_release_monotonic;
-    res[1][size_t(Release)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u16_release_monotonic;
-    res[2][size_t(Release)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u32_release_monotonic;
-    res[3][size_t(Release)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u64_release_monotonic;
-    res[0][size_t(Release)][size_t(Acquire)] = &Derived::encode_cmpxchg_u8_release_acquire;
-    res[1][size_t(Release)][size_t(Acquire)] = &Derived::encode_cmpxchg_u16_release_acquire;
-    res[2][size_t(Release)][size_t(Acquire)] = &Derived::encode_cmpxchg_u32_release_acquire;
-    res[3][size_t(Release)][size_t(Acquire)] = &Derived::encode_cmpxchg_u64_release_acquire;
-    res[0][size_t(AcquireRelease)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u8_acqrel_monotonic;
-    res[1][size_t(AcquireRelease)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u16_acqrel_monotonic;
-    res[2][size_t(AcquireRelease)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u32_acqrel_monotonic;
-    res[3][size_t(AcquireRelease)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u64_acqrel_monotonic;
-    res[0][size_t(AcquireRelease)][size_t(Acquire)] = &Derived::encode_cmpxchg_u8_acqrel_acquire;
-    res[1][size_t(AcquireRelease)][size_t(Acquire)] = &Derived::encode_cmpxchg_u16_acqrel_acquire;
-    res[2][size_t(AcquireRelease)][size_t(Acquire)] = &Derived::encode_cmpxchg_u32_acqrel_acquire;
-    res[3][size_t(AcquireRelease)][size_t(Acquire)] = &Derived::encode_cmpxchg_u64_acqrel_acquire;
-    res[0][size_t(SequentiallyConsistent)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u8_seqcst_monotonic;
-    res[1][size_t(SequentiallyConsistent)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u16_seqcst_monotonic;
-    res[2][size_t(SequentiallyConsistent)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u32_seqcst_monotonic;
-    res[3][size_t(SequentiallyConsistent)][size_t(Monotonic)] = &Derived::encode_cmpxchg_u64_seqcst_monotonic;
-    res[0][size_t(SequentiallyConsistent)][size_t(Acquire)] = &Derived::encode_cmpxchg_u8_seqcst_acquire;
-    res[1][size_t(SequentiallyConsistent)][size_t(Acquire)] = &Derived::encode_cmpxchg_u16_seqcst_acquire;
-    res[2][size_t(SequentiallyConsistent)][size_t(Acquire)] = &Derived::encode_cmpxchg_u32_seqcst_acquire;
-    res[3][size_t(SequentiallyConsistent)][size_t(Acquire)] = &Derived::encode_cmpxchg_u64_seqcst_acquire;
-    res[0][size_t(SequentiallyConsistent)][size_t(SequentiallyConsistent)] = &Derived::encode_cmpxchg_u8_seqcst_seqcst;
-    res[1][size_t(SequentiallyConsistent)][size_t(SequentiallyConsistent)] = &Derived::encode_cmpxchg_u16_seqcst_seqcst;
-    res[2][size_t(SequentiallyConsistent)][size_t(SequentiallyConsistent)] = &Derived::encode_cmpxchg_u32_seqcst_seqcst;
-    res[3][size_t(SequentiallyConsistent)][size_t(SequentiallyConsistent)] = &Derived::encode_cmpxchg_u64_seqcst_seqcst;
-    // clang-format on
+    std::array<EncodeFnTy[size_t(LAST) + 1], 4> res;
+    res[0][u32(Monotonic)] = &Derived::encode_cmpxchg_u8_monotonic;
+    res[1][u32(Monotonic)] = &Derived::encode_cmpxchg_u16_monotonic;
+    res[2][u32(Monotonic)] = &Derived::encode_cmpxchg_u32_monotonic;
+    res[3][u32(Monotonic)] = &Derived::encode_cmpxchg_u64_monotonic;
+    res[0][u32(Acquire)] = &Derived::encode_cmpxchg_u8_acquire;
+    res[1][u32(Acquire)] = &Derived::encode_cmpxchg_u16_acquire;
+    res[2][u32(Acquire)] = &Derived::encode_cmpxchg_u32_acquire;
+    res[3][u32(Acquire)] = &Derived::encode_cmpxchg_u64_acquire;
+    res[0][u32(Release)] = &Derived::encode_cmpxchg_u8_release;
+    res[1][u32(Release)] = &Derived::encode_cmpxchg_u16_release;
+    res[2][u32(Release)] = &Derived::encode_cmpxchg_u32_release;
+    res[3][u32(Release)] = &Derived::encode_cmpxchg_u64_release;
+    res[0][u32(AcquireRelease)] = &Derived::encode_cmpxchg_u8_acqrel;
+    res[1][u32(AcquireRelease)] = &Derived::encode_cmpxchg_u16_acqrel;
+    res[2][u32(AcquireRelease)] = &Derived::encode_cmpxchg_u32_acqrel;
+    res[3][u32(AcquireRelease)] = &Derived::encode_cmpxchg_u64_acqrel;
+    res[0][u32(SequentiallyConsistent)] = &Derived::encode_cmpxchg_u8_seqcst;
+    res[1][u32(SequentiallyConsistent)] = &Derived::encode_cmpxchg_u16_seqcst;
+    res[2][u32(SequentiallyConsistent)] = &Derived::encode_cmpxchg_u32_seqcst;
+    res[3][u32(SequentiallyConsistent)] = &Derived::encode_cmpxchg_u64_seqcst;
     return res;
   }();
 
@@ -2937,14 +2915,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
   ScratchReg orig_scratch{derived()};
   ScratchReg succ_scratch{derived()};
 
-  llvm::AtomicOrdering succ_order = cmpxchg->getSuccessOrdering();
-  llvm::AtomicOrdering fail_order = cmpxchg->getFailureOrdering();
-  EncodeFnTy encode_fn = fns[width_idx][size_t(succ_order)][size_t(fail_order)];
-  if (!encode_fn || !(derived()->*encode_fn)(std::move(ptr_ref),
-                                             std::move(cmp_ref),
-                                             std::move(new_ref),
-                                             orig_scratch,
-                                             succ_scratch)) {
+  llvm::AtomicOrdering order = cmpxchg->getMergedOrdering();
+  EncodeFnTy encode_fn = fns[width_idx][size_t(order)];
+  assert(encode_fn && "invalid cmpxchg ordering");
+  if (!(derived()->*encode_fn)(std::move(ptr_ref),
+                               std::move(cmp_ref),
+                               std::move(new_ref),
+                               orig_scratch,
+                               succ_scratch)) {
     return false;
   }
 
