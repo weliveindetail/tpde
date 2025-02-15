@@ -67,7 +67,8 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
 
   // zero-terminate eh_frame
   // TODO(ts): this should probably go somewhere else
-  if (auto &eh_frame = assembler.get_section(assembler.secref_eh_frame); !eh_frame.data.empty()) {
+  if (auto &eh_frame = assembler.get_section(assembler.secref_eh_frame);
+      !eh_frame.data.empty()) {
     eh_frame.data.resize(eh_frame.data.size() + 4);
   }
 

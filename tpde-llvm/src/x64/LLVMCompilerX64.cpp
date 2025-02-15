@@ -983,12 +983,8 @@ bool LLVMCompilerX64::handle_intrin(IRValueRef inst_idx,
     this->set_value(res_ref, res_ref.cur_reg());
     return true;
   }
-  case llvm::Intrinsic::trap:
-    ASM(UD2);
-    return true;
-  case llvm::Intrinsic::debugtrap:
-    ASM(INT3);
-    return true;
+  case llvm::Intrinsic::trap: ASM(UD2); return true;
+  case llvm::Intrinsic::debugtrap: ASM(INT3); return true;
   default: return false;
   }
 }

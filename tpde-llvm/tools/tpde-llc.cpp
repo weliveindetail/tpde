@@ -49,11 +49,11 @@ int main(int argc, char *argv[]) {
       "-");
 
   args::ImplicitValueFlag<std::string> time_trace(
-    parser,
-    "time_trace",
-    "Enable time tracing and write output to specified file",
-    {"time-trace"},
-    args::Options::None);
+      parser,
+      "time_trace",
+      "Enable time tracing and write output to specified file",
+      {"time-trace"},
+      args::Options::None);
 
   args::Positional<std::string> ir_path(
       parser, "ir_path", "Path to the input IR file", "-");
@@ -155,7 +155,8 @@ int main(int argc, char *argv[]) {
   }
 
   if (time_trace) {
-    if (auto err = llvm::timeTraceProfilerWrite(time_trace.Get(), obj_out_path.Get())) {
+    if (auto err = llvm::timeTraceProfilerWrite(time_trace.Get(),
+                                                obj_out_path.Get())) {
       llvm::handleAllErrors(std::move(err), [&](const llvm::StringError &serr) {
         llvm::errs() << serr.getMessage() << "\n";
       });

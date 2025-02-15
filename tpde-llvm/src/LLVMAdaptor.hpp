@@ -188,9 +188,7 @@ struct LLVMAdaptor {
   [[nodiscard]] auto funcs() const noexcept {
     return *mod | std::views::filter([](llvm::Function &fn) {
       return !fn.isIntrinsic();
-    }) | std::views::transform([](llvm::Function &fn) {
-      return &fn;
-    });
+    }) | std::views::transform([](llvm::Function &fn) { return &fn; });
   }
 
   [[nodiscard]] auto funcs_to_compile() const noexcept { return funcs(); }

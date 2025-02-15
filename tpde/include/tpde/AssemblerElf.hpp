@@ -200,7 +200,9 @@ struct AssemblerElfBase {
     DataSection(unsigned type, unsigned flags, unsigned name_off)
         : hdr{.sh_name = name_off, .sh_type = type, .sh_flags = flags} {}
 
-    size_t size() const { return (hdr.sh_type == SHT_NOBITS) ? hdr.sh_size : data.size(); }
+    size_t size() const {
+      return (hdr.sh_type == SHT_NOBITS) ? hdr.sh_size : data.size();
+    }
   };
 
 private:

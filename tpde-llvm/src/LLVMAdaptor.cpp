@@ -8,10 +8,10 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/GlobalValue.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Casting.h>
@@ -362,7 +362,8 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
         // intrinsic llvm.threadlocal.address; other accesses are unsupported.
         for (llvm::Use &use : llvm::make_early_inc_range(gv->uses())) {
           auto *intrin = llvm::dyn_cast<llvm::IntrinsicInst>(use.getUser());
-          if (intrin && intrin->getIntrinsicID() == llvm::Intrinsic::threadlocal_address) {
+          if (intrin && intrin->getIntrinsicID() ==
+                            llvm::Intrinsic::threadlocal_address) {
             continue;
           }
 

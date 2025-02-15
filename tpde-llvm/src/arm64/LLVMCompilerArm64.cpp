@@ -1051,12 +1051,8 @@ bool LLVMCompilerArm64::handle_intrin(IRValueRef inst_idx,
     this->set_value(res_ref, res_ref.cur_reg());
     return true;
   }
-  case llvm::Intrinsic::trap:
-    ASM(BRK, 1);
-    return true;
-  case llvm::Intrinsic::debugtrap:
-    ASM(BRK, 0xf000);
-    return true;
+  case llvm::Intrinsic::trap: ASM(BRK, 1); return true;
+  case llvm::Intrinsic::debugtrap: ASM(BRK, 0xf000); return true;
   case llvm::Intrinsic::aarch64_crc32cx: {
     auto lhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
     auto rhs_ref = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);

@@ -1365,7 +1365,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
     }
 
     const auto order = store->getOrdering();
-    using EncodeFnTy = bool (Derived::*)(GenericValuePart &&, GenericValuePart &&);
+    using EncodeFnTy =
+        bool (Derived::*)(GenericValuePart &&, GenericValuePart &&);
     EncodeFnTy encode_fn = nullptr;
     if (order == llvm::AtomicOrdering::Monotonic) {
       switch (width) {
