@@ -8,6 +8,7 @@
 #include <ostream>
 
 #include "IRAdaptor.hpp"
+#include "tpde/base.hpp"
 #include "util/SmallBitSet.hpp"
 #include "util/SmallVector.hpp"
 
@@ -548,6 +549,16 @@ void Analyzer<Adaptor>::build_rpo_block_order(
     for (auto i = 0u; i < out.size(); ++i) {
       adaptor->block_set_info(out[i], i);
     }
+
+#ifndef NDEBUG
+    // In debug builds, reset block index of unreachable blocks.
+    for (IRBlockRef cur = adaptor->cur_entry_block(); cur != INVALID_BLOCK_REF;
+         cur = adaptor->block_sibling(cur)) {
+      if (adaptor->block_info2(cur) == 0) {
+        adaptor->block_set_info(cur, 0xFFFF'FFFF);
+      }
+    }
+#endif
   }
 
 #ifdef TPDE_LOGGING
@@ -940,6 +951,11 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
         for (u32 i = 0; i < slot_count; ++i) {
           const IRBlockRef incoming_block = phi_ref.incoming_block_for_slot(i);
           const IRValueRef incoming_value = phi_ref.incoming_val_for_slot(i);
+          if (adaptor->block_info2(incoming_block) == 0) {
+            TPDE_LOG_TRACE("ignoring phi input from unreachable pred ({})",
+                           adaptor->block_fmt_ref(incoming_block));
+            continue;
+          }
           const auto incoming_block_idx = adaptor->block_info(incoming_block);
           TPDE_LOG_TRACE("got value {} from block {} ('{})",
                          adaptor->val_local_idx(incoming_value),

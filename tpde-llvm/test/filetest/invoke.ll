@@ -131,15 +131,14 @@ define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    call <L0>
 ; X64-NEXT:     R_X86_64_PLT32 foo-0x4
-; X64-NEXT:    mov qword ptr [rbp - 0x58], rax
+; X64-NEXT:    mov r12, rax
 ; X64-NEXT:    jmp <L1>
 ; X64-NEXT:    mov ecx, 0x0
 ; X64-NEXT:    mov qword ptr [rbp - 0x40], rcx
 ; X64-NEXT:    jmp <L2>
 ; X64-NEXT:  <L1>:
 ; X64-NEXT:    mov dword ptr [rbp - 0x2c], ebx
-; X64-NEXT:    mov rax, qword ptr [rbp - 0x58]
-; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
+; X64-NEXT:    mov qword ptr [rbp - 0x38], r12
 ; X64-NEXT:    jmp <L3>
 ; X64-NEXT:  <L2>:
 ; X64-NEXT:    mov edi, 0x0
@@ -148,11 +147,10 @@ define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
 ; X64-NEXT:    call <L4>
 ; X64-NEXT:     R_X86_64_PLT32 _Unwind_Resume-0x4
 ; X64-NEXT:    ud2
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <invoke_landingpad_phi>:
-; ARM64:         sub sp, sp, #0xf0
+; ARM64:         sub sp, sp, #0xe0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    stp x19, x20, [x29, #0x10]
@@ -189,18 +187,17 @@ define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    mov w1, #0x0 // =0
 ; ARM64-NEXT:    bl 0x14c <invoke_landingpad_phi+0x8c>
 ; ARM64-NEXT:     R_AARCH64_CALL26 foo
-; ARM64-NEXT:    str x0, [x29, #0xc8]
+; ARM64-NEXT:    mov x20, x0
 ; ARM64-NEXT:    b 0x164 <invoke_landingpad_phi+0xa4>
 ; ARM64-NEXT:    mov w2, #0x0 // =0
 ; ARM64-NEXT:    str x2, [x29, #0xb0]
-; ARM64-NEXT:    b 0x174 <invoke_landingpad_phi+0xb4>
+; ARM64-NEXT:    b 0x170 <invoke_landingpad_phi+0xb0>
 ; ARM64-NEXT:    str w19, [x29, #0xa0]
-; ARM64-NEXT:    ldr x0, [x29, #0xc8]
-; ARM64-NEXT:    str x0, [x29, #0xa8]
+; ARM64-NEXT:    str x20, [x29, #0xa8]
 ; ARM64-NEXT:    b 0xf0 <invoke_landingpad_phi+0x30>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    mov w1, #0x0 // =0
-; ARM64-NEXT:    bl 0x17c <invoke_landingpad_phi+0xbc>
+; ARM64-NEXT:    bl 0x178 <invoke_landingpad_phi+0xb8>
 ; ARM64-NEXT:     R_AARCH64_CALL26 _Unwind_Resume
 ; ARM64-NEXT:    udf #0x1
   br label %1
@@ -269,9 +266,9 @@ define i32 @invoke_catch_symbol() personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov w0, #0x0 // =0
-; ARM64-NEXT:    bl 0x1c4 <invoke_catch_symbol+0x14>
+; ARM64-NEXT:    bl 0x1b4 <invoke_catch_symbol+0x14>
 ; ARM64-NEXT:     R_AARCH64_CALL26 _Znwm
-; ARM64-NEXT:    b 0x1cc <invoke_catch_symbol+0x1c>
+; ARM64-NEXT:    b 0x1bc <invoke_catch_symbol+0x1c>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    mov sp, x29
 ; ARM64-NEXT:    ldp x29, x30, [sp]
