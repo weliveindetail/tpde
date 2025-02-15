@@ -668,11 +668,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
     auto size = data_layout.getTypeAllocSize(init->getType());
     auto align = gv->getAlign().valueOrOne().value();
     bool tls = gv->isThreadLocal();
+    auto read_only = gv->isConstant();
     auto sym = global_sym(gv);
 
     // check if the data value is a zero aggregate and put into bss if that
     // is the case
-    if (llvm::isa<llvm::ConstantAggregateZero>(init)) {
+    if (!read_only && init->isNullValue()) {
       auto secref = tls ? this->assembler.get_tbss_section()
                         : this->assembler.get_bss_section();
       this->assembler.sym_def_predef_zero(secref, sym, size, align);
@@ -688,7 +689,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
     }
 
     u32 off;
-    auto read_only = gv->isConstant();
     auto sec =
         tls ? this->assembler.get_tdata_section()
             : this->assembler.get_data_section(read_only, !relocs.empty());

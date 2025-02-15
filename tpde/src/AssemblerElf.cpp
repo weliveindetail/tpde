@@ -192,7 +192,7 @@ AssemblerElfBase::SecRef AssemblerElfBase::get_tbss_section() noexcept {
   unsigned off = elf::sec_off(".tbss");
   unsigned flags = SHF_ALLOC | SHF_WRITE | SHF_TLS;
   (void)get_or_create_section(secref_tbss, off, SHT_NOBITS, flags, 1, false);
-  return secref_bss;
+  return secref_tbss;
 }
 
 AssemblerElfBase::SecRef
