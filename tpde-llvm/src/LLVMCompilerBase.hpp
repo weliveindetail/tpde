@@ -114,6 +114,10 @@ struct LLVMCompilerBase : public LLVMCompiler,
   tpde::util::SmallVector<std::pair<IRValueRef, SymRef>, 16> type_info_syms;
 
   enum class LibFunc {
+    divti3,
+    udivti3,
+    modti3,
+    umodti3,
     fmod,
     fmodf,
     floorf,
@@ -891,6 +895,10 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
 
   std::string_view name = "???";
   switch (func) {
+  case LibFunc::divti3: name = "__divti3"; break;
+  case LibFunc::udivti3: name = "__udivti3"; break;
+  case LibFunc::modti3: name = "__modti3"; break;
+  case LibFunc::umodti3: name = "__umodti3"; break;
   case LibFunc::fmod: name = "fmod"; break;
   case LibFunc::fmodf: name = "fmodf"; break;
   case LibFunc::floorf: name = "floorf"; break;
@@ -1777,15 +1785,39 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
   const auto int_width = inst_ty->getIntegerBitWidth();
   if (int_width == 128) {
-    auto lhs = this->val_ref(llvm_val_idx(inst->getOperand(0)), 0);
-    auto rhs = this->val_ref(llvm_val_idx(inst->getOperand(1)), 0);
+    IRValueRef lhs_op = llvm_val_idx(inst->getOperand(0));
+    IRValueRef rhs_op = llvm_val_idx(inst->getOperand(1));
+
+    auto res_low = this->result_ref_lazy(inst_idx, 0);
+    res_low.inc_ref_count();
+    auto res_high = this->result_ref_lazy(inst_idx, 1);
+
+    if (op == IntBinaryOp::udiv || op == IntBinaryOp::sdiv ||
+        op == IntBinaryOp::urem || op == IntBinaryOp::srem) {
+      LibFunc lf;
+      switch (op) {
+      case IntBinaryOp::udiv: lf = LibFunc::udivti3; break;
+      case IntBinaryOp::sdiv: lf = LibFunc::divti3; break;
+      case IntBinaryOp::urem: lf = LibFunc::umodti3; break;
+      case IntBinaryOp::srem: lf = LibFunc::modti3; break;
+      default: TPDE_UNREACHABLE("invalid div/rem operation");
+      }
+
+      std::array<IRValueRef, 2> args{lhs_op, rhs_op};
+      std::array<ValuePartRef, 2> res{std::move(res_low), std::move(res_high)};
+      derived()->create_helper_call(args, res, get_libfunc_sym(lf));
+      return true;
+    }
+
+    auto lhs = this->val_ref(lhs_op, 0);
+    auto rhs = this->val_ref(rhs_op, 0);
 
     // TODO(ts): better salvaging
     lhs.inc_ref_count();
     rhs.inc_ref_count();
 
-    auto lhs_high = this->val_ref(llvm_val_idx(inst->getOperand(0)), 1);
-    auto rhs_high = this->val_ref(llvm_val_idx(inst->getOperand(1)), 1);
+    auto lhs_high = this->val_ref(lhs_op, 1);
+    auto rhs_high = this->val_ref(rhs_op, 1);
 
     if ((op == IntBinaryOp::add || op == IntBinaryOp::mul ||
          op == IntBinaryOp::land || op == IntBinaryOp::lor ||
@@ -1797,10 +1829,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       std::swap(lhs, rhs);
       std::swap(lhs_high, rhs_high);
     }
-
-    auto res_low = this->result_ref_lazy(inst_idx, 0);
-    res_low.inc_ref_count();
-    auto res_high = this->result_ref_lazy(inst_idx, 1);
 
     ScratchReg scratch_low{derived()}, scratch_high{derived()};
 
@@ -1831,16 +1859,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
              &Derived::encode_lxori128,
              }
     };
-
-    if (op == IntBinaryOp::udiv || op == IntBinaryOp::sdiv ||
-        op == IntBinaryOp::urem || op == IntBinaryOp::srem) {
-      // TODO(ts): the autoencoder can currently not generate calls to
-      // globals which LLVM generates for 128 bit division so we need to
-      // fix that or do the calls ourselves (which is probably easier rn)
-      llvm::errs() << "Division/Remainder for 128bit integers currently "
-                      "unimplemented\n";
-      return false;
-    }
 
     switch (op) {
     case IntBinaryOp::shl:

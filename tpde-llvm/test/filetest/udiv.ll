@@ -759,6 +759,7 @@ define void @udiv_i64_no_salvage(i64 %0, i64 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <udiv_i64_no_salvage>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -774,4 +775,80 @@ entry:
   %2 = udiv i64 %0, %1
   %3 = udiv i64 %0, %2
   ret void
+}
+
+define i128 @udiv_i128(i128 %0, i128 %1) {
+; X64-LABEL: <udiv_i128>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 __udivti3-0x4
+; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+; X64-NEXT:    nop
+;
+; ARM64-LABEL: <udiv_i128>:
+; ARM64:         sub sp, sp, #0xd0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    bl 0xad0 <udiv_i128+0x10>
+; ARM64-NEXT:     R_AARCH64_CALL26 __udivti3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    ret
+  %r = udiv i128 %0, %1
+  ret i128 %r
+}
+
+define i128 @udiv_i128_twice(i128 %0, i128 %1) {
+; X64-LABEL: <udiv_i128_twice>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    mov qword ptr [rbp - 0x40], rdi
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rsi
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 __udivti3-0x4
+; X64-NEXT:    mov rdi, qword ptr [rbp - 0x40]
+; X64-NEXT:    mov rsi, qword ptr [rbp - 0x38]
+; X64-NEXT:    mov qword ptr [rbp - 0x58], rdx
+; X64-NEXT:    mov rdx, rax
+; X64-NEXT:    mov rcx, qword ptr [rbp - 0x58]
+; X64-NEXT:  <L1>:
+; X64-NEXT:    call <L1>
+; X64-NEXT:     R_X86_64_PLT32 __udivti3-0x4
+; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <udiv_i128_twice>:
+; ARM64:         sub sp, sp, #0xd0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    str x0, [x29, #0xa0]
+; ARM64-NEXT:    str x1, [x29, #0xa8]
+; ARM64-NEXT:    bl 0xb48 <udiv_i128_twice+0x18>
+; ARM64-NEXT:     R_AARCH64_CALL26 __udivti3
+; ARM64-NEXT:    str x0, [x29, #0xc0]
+; ARM64-NEXT:    ldr x0, [x29, #0xa0]
+; ARM64-NEXT:    str x1, [x29, #0xc8]
+; ARM64-NEXT:    ldr x1, [x29, #0xa8]
+; ARM64-NEXT:    ldr x2, [x29, #0xc0]
+; ARM64-NEXT:    ldr x3, [x29, #0xc8]
+; ARM64-NEXT:    bl 0xb64 <udiv_i128_twice+0x34>
+; ARM64-NEXT:     R_AARCH64_CALL26 __udivti3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    ret
+  %t = udiv i128 %0, %1
+  %r = udiv i128 %0, %t
+  ret i128 %r
 }
