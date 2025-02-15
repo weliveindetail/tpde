@@ -155,8 +155,10 @@ struct LLVMCompilerBase : public LLVMCompiler,
     lttf2,
     letf2,
     unordtf2,
+    floatsitf,
     floatditf,
     floatunditf,
+    floatunsitf,
     fixtfdi,
     fixunstfdi,
     addtf3,
@@ -930,7 +932,9 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
   case LibFunc::lttf2: name = "__lttf2"; break;
   case LibFunc::letf2: name = "__letf2"; break;
   case LibFunc::unordtf2: name = "__unordtf2"; break;
+  case LibFunc::floatsitf: name = "__floatsitf"; break;
   case LibFunc::floatditf: name = "__floatditf"; break;
+  case LibFunc::floatunsitf: name = "__floatunsitf"; break;
   case LibFunc::floatunditf: name = "__floatunditf"; break;
   case LibFunc::fixtfdi: name = "__fixtfdi"; break;
   case LibFunc::fixunstfdi: name = "__fixunstfdi"; break;
@@ -2279,12 +2283,16 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
   }
 
   if (dst_ty->isFP128Ty()) {
-    if (bit_width != 64) {
+    LibFunc lf;
+    if (bit_width == 32) {
+      lf = sign ? LibFunc::floatsitf : LibFunc::floatunsitf;
+    } else if (bit_width == 64) {
+      lf = sign ? LibFunc::floatditf : LibFunc::floatunditf;
+    } else {
       // TODO: extend, but create_helper_call currently takes only an IRValueRef
       return false;
     }
 
-    LibFunc lf = sign ? LibFunc::floatditf : LibFunc::floatunditf;
     SymRef sym = get_libfunc_sym(lf);
 
     IRValueRef src_ref = llvm_val_idx(src_val);
