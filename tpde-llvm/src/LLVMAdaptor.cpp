@@ -380,14 +380,16 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
         }
       }
     };
-    for (llvm::Function &fn : mod->functions()) {
-      add_global(&fn);
-    }
     for (llvm::GlobalVariable &gv : mod->globals()) {
       add_global(&gv);
     }
     for (llvm::GlobalAlias &ga : mod->aliases()) {
       add_global(&ga);
+    }
+    // Do functions last, handling of global variables/aliases might introduce
+    // another intrinsic declaration for llvm.threadlocal.address.
+    for (llvm::Function &fn : mod->functions()) {
+      add_global(&fn);
     }
     global_idx_end = values.size();
     global_complex_part_types_end_idx = complex_part_types.size();
