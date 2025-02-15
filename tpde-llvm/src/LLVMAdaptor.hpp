@@ -186,31 +186,11 @@ struct LLVMAdaptor {
   }
 
   [[nodiscard]] auto funcs() const noexcept {
-    struct FuncIter {
-      struct Iter {
-        llvm::Module::iterator it;
-
-        Iter &operator++() {
-          ++it;
-          return *this;
-        }
-
-        bool operator!=(const Iter &rhs) const noexcept { return it != rhs.it; }
-
-        llvm::Function *operator*() const { return &*it; }
-      };
-
-      Iter first, last;
-
-      explicit FuncIter(llvm::Module *mod)
-          : first(mod->begin()), last(mod->end()) {}
-
-      [[nodiscard]] Iter begin() const noexcept { return first; }
-
-      [[nodiscard]] Iter end() const noexcept { return last; }
-    };
-
-    return FuncIter{mod};
+    return *mod | std::views::filter([](llvm::Function &fn) {
+      return !fn.isIntrinsic();
+    }) | std::views::transform([](llvm::Function &fn) {
+      return &fn;
+    });
   }
 
   [[nodiscard]] auto funcs_to_compile() const noexcept { return funcs(); }
