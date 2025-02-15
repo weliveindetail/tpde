@@ -6,3 +6,5 @@ build*
 .vscode
 .idea
 tmp/
+.cache
+.DS_Store
