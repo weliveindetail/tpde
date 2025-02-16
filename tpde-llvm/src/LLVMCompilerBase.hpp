@@ -851,7 +851,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
           }
         }
       }
-      break;
+    case llvm::Instruction::BitCast: {
+      if (expr->getType()->isPointerTy()) {
+        auto *op = expr->getOperand(0);
+        if (llvm::isa<llvm::GlobalValue>(op)) {
+          auto ptr_sym = global_sym(llvm::cast<llvm::GlobalValue>(op));
+          // emit absolute relocation
+          relocs.push_back({off, 0, ptr_sym, RelocInfo::RELOC_ABS});
+          return true;
+        }
+      }
+    } break;
     default: break;
     }
   }
