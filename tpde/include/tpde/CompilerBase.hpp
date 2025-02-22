@@ -1605,6 +1605,11 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
       auto phi_val = nodes[cur_idx].val;
       IRValueRef incoming_val =
           adaptor->val_as_phi(phi_val).incoming_val_for_block(cur_ref);
+      if (incoming_val == phi_val) {
+        // no need to do anything
+        continue;
+      }
+
       if (incoming_val == cur_tmp_val) {
         move_from_tmp_phi(phi_val);
 
