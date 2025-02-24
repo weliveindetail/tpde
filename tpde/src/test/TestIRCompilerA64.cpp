@@ -90,8 +90,6 @@ bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
   const TestIR::Value &value =
       this->analyzer.adaptor->ir->values[static_cast<u32>(val_idx)];
   if (value.type == TestIR::Value::Type::phi) {
-    // ref-count
-    this->val_ref(val_idx, 0);
     return true;
   }
 

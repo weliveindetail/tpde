@@ -306,7 +306,6 @@ public:
   bool compile_cmpxchg(const llvm::AtomicCmpXchgInst *) noexcept;
   bool compile_atomicrmw(const llvm::AtomicRMWInst *) noexcept;
   bool compile_fence(const llvm::FenceInst *) noexcept;
-  bool compile_phi(const llvm::PHINode *) noexcept;
   bool compile_freeze(const llvm::FreezeInst *) noexcept;
   bool compile_call(const llvm::CallBase *) noexcept;
   bool compile_select(const llvm::SelectInst *) noexcept;
@@ -1084,7 +1083,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
   case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(llvm::cast<llvm::AtomicCmpXchgInst>(i));
   case llvm::Instruction::AtomicRMW: return compile_atomicrmw(llvm::cast<llvm::AtomicRMWInst>(i));
   case llvm::Instruction::Fence: return compile_fence(llvm::cast<llvm::FenceInst>(i));
-  case llvm::Instruction::PHI: return compile_phi(llvm::cast<llvm::PHINode>(i));
+  case llvm::Instruction::PHI: return true;
   case llvm::Instruction::Freeze: return compile_freeze(llvm::cast<llvm::FreezeInst>(i));
   case llvm::Instruction::Unreachable: return derived()->compile_unreachable(llvm::cast<llvm::UnreachableInst>(i));
   case llvm::Instruction::Alloca: return derived()->compile_alloca(llvm::cast<llvm::AllocaInst>(i));
@@ -3152,14 +3151,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fence(
   default: return false;
   }
 
-  return true;
-}
-
-template <typename Adaptor, typename Derived, typename Config>
-bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_phi(
-    const llvm::PHINode *phi) noexcept {
-  // need to just ref-count the value
-  this->val_ref(phi, 0);
   return true;
 }
 

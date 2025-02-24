@@ -8,8 +8,8 @@
 ; CHECK-NEXT: 0: 2 refs, 0->0 (entry->entry), lf: false
 ; CHECK-NEXT: 1: 2 refs, 0->0 (entry->entry), lf: false
 ; CHECK-NEXT: 2: 0 refs, 0->0 (entry->entry), lf: false
-; CHECK-NEXT: 3: 5 refs, 0->2 (entry->ret), lf: false
-; CHECK-NEXT: 4: 5 refs, 0->1 (entry->loop), lf: true
+; CHECK-NEXT: 3: 4 refs, 0->2 (entry->ret), lf: false
+; CHECK-NEXT: 4: 4 refs, 0->1 (entry->loop), lf: true
 ; CHECK-NEXT: 5: 2 refs, 1->1 (loop->loop), lf: false
 ; CHECK-NEXT: 6: 2 refs, 1->1 (loop->loop), lf: false
 ; CHECK-NEXT: 7: 2 refs, 1->1 (loop->loop), lf: false
@@ -124,7 +124,7 @@ false_block:
 ; CHECK: Liveness for loop
 ; CHECK-NEXT:   0: 2 refs, 0->0 (entry->entry), lf: false
 ; CHECK-NEXT:   1: 0 refs, 0->0 (entry->entry), lf: false
-; CHECK-NEXT:   2: 4 refs, 0->1 (entry->loop), lf: true
+; CHECK-NEXT:   2: 3 refs, 0->1 (entry->loop), lf: true
 ; CHECK-NEXT:   3: 2 refs, 1->1 (loop->loop), lf: false
 ; CHECK-NEXT:   4: 0 refs, 0->0 (entry->entry), lf: false
 ; CHECK-NEXT:   5: 0 refs, 0->0 (entry->entry), lf: false

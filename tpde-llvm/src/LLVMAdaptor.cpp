@@ -317,14 +317,9 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     }
 
     const auto block_idx = blocks.size();
-    if (!blocks.empty()) {
-      blocks.back().aux.sibling = block_idx;
-    }
 
-    blocks.push_back(BlockInfo{
-        .block = &block,
-        .aux = BlockAux{.sibling = INVALID_BLOCK_REF, .phi_end = phi_end}
-    });
+    blocks.push_back(
+        BlockInfo{.block = &block, .aux = BlockAux{.phi_end = phi_end}});
 
 #ifndef NDEBUG
     block_lookup[&block] = block_idx;

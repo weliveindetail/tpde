@@ -81,7 +81,6 @@ struct TestIR {
     std::string name;
     u32 succ_begin_idx = 0, succ_end_idx = 0;
     u32 inst_begin_idx = 0, inst_end_idx = 0;
-    bool has_sibling = false;
     u32 block_info = 0, block_info2 = 0;
   };
 
@@ -203,13 +202,10 @@ struct TestIRAdaptor {
     return static_cast<IRBlockRef>(func.block_begin_idx);
   }
 
-  [[nodiscard]] IRBlockRef
-      block_sibling(const IRBlockRef block) const noexcept {
-    if (ir->blocks[static_cast<u32>(block)].has_sibling) {
-      return static_cast<IRBlockRef>(static_cast<u32>(block) + 1);
-    } else {
-      return INVALID_BLOCK_REF;
-    }
+  [[nodiscard]] auto cur_blocks() const noexcept {
+    const auto &func = ir->functions[cur_func];
+    return std::views::iota(func.block_begin_idx, func.block_end_idx) |
+           std::views::transform([](u32 val) { return IRBlockRef(val); });
   }
 
   [[nodiscard]] auto block_succs(const IRBlockRef block) const noexcept {

@@ -95,9 +95,8 @@ define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
 ; X64-NEXT:    push rbx
 ; X64-NEXT:    push r12
 ; X64-NEXT:    push r13
-; X64-NEXT:    push r14
-; X64-NEXT:    nop
-; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    sub rsp, 0x58
 ; X64-NEXT:    mov eax, 0x0
 ; X64-NEXT:    mov dword ptr [rbp - 0x2c], eax
 ; X64-NEXT:    mov eax, 0x0
@@ -116,7 +115,7 @@ define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
 ; X64-NEXT:    cmove eax, ecx
 ; X64-NEXT:    mov r13d, eax
 ; X64-NEXT:    mov eax, 0x0
-; X64-NEXT:    mov r14, rax
+; X64-NEXT:    mov qword ptr [rbp - 0x50], rax
 ; X64-NEXT:    mov ebx, ebx
 ; X64-NEXT:    mov r12, qword ptr [r12]
 ; X64-NEXT:    mov eax, 0x0
@@ -152,7 +151,7 @@ define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    stp x19, x20, [x29, #0x10]
-; ARM64-NEXT:    stp x21, x22, [x29, #0x20]
+; ARM64-NEXT:    str x21, [x29, #0x20]
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    nop
@@ -173,7 +172,7 @@ define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    csel w0, w0, w1, eq
 ; ARM64-NEXT:    mov w21, w0
 ; ARM64-NEXT:    mov w0, #0x0 // =0
-; ARM64-NEXT:    mov x22, x0
+; ARM64-NEXT:    str x0, [x29, #0xc0]
 ; ARM64-NEXT:    ubfx x19, x19, #0, #32
 ; ARM64-NEXT:    ldr x20, [x20]
 ; ARM64-NEXT:    mov w0, #0x0 // =0

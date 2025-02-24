@@ -124,7 +124,6 @@ struct LLVMAdaptor {
   struct BlockAux {
     u32 aux1;
     u32 aux2;
-    u32 sibling;
     llvm::BasicBlock::iterator phi_end;
   };
 
@@ -234,6 +233,10 @@ struct LLVMAdaptor {
 
   [[nodiscard]] static IRBlockRef cur_entry_block() noexcept { return 0; }
 
+  auto cur_blocks() const noexcept {
+    return std::views::iota(size_t{0}, blocks.size());
+  }
+
   [[nodiscard]] IRBlockRef
       block_lookup_idx(const llvm::BasicBlock *block) const noexcept {
     auto idx = block_embedded_idx(block);
@@ -242,11 +245,6 @@ struct LLVMAdaptor {
     assert(it != block_lookup.end() && it->second == idx);
 #endif
     return idx;
-  }
-
-  [[nodiscard]] IRBlockRef
-      block_sibling(const IRBlockRef block) const noexcept {
-    return blocks[block].aux.sibling;
   }
 
   [[nodiscard]] auto block_succs(const IRBlockRef block) const noexcept {

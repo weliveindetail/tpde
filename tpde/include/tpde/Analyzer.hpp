@@ -158,8 +158,7 @@ template <IRAdaptor Adaptor>
 void Analyzer<Adaptor>::print_rpo(std::ostream &os) const {
   // build_rpo_block_order clobbers block data, so save and restore.
   util::SmallVector<std::tuple<IRBlockRef, u32, u32>, SMALL_BLOCK_NUM> data;
-  for (IRBlockRef cur = adaptor->cur_entry_block(); cur != INVALID_BLOCK_REF;
-       cur = adaptor->block_sibling(cur)) {
+  for (IRBlockRef cur : adaptor->cur_blocks()) {
     data.emplace_back(cur, adaptor->block_info(cur), adaptor->block_info2(cur));
   }
 
@@ -425,8 +424,7 @@ void Analyzer<Adaptor>::build_rpo_block_order(
   {
     // Initialize the block info
     u32 idx = 0;
-    for (IRBlockRef cur = adaptor->cur_entry_block(); cur != INVALID_BLOCK_REF;
-         cur = adaptor->block_sibling(cur)) {
+    for (IRBlockRef cur : adaptor->cur_blocks()) {
       adaptor->block_set_info(cur, idx);
       adaptor->block_set_info2(cur, 0);
       ++idx;
@@ -552,8 +550,7 @@ void Analyzer<Adaptor>::build_rpo_block_order(
 
 #ifndef NDEBUG
     // In debug builds, reset block index of unreachable blocks.
-    for (IRBlockRef cur = adaptor->cur_entry_block(); cur != INVALID_BLOCK_REF;
-         cur = adaptor->block_sibling(cur)) {
+    for (IRBlockRef cur : adaptor->cur_blocks()) {
       if (adaptor->block_info2(cur) == 0) {
         adaptor->block_set_info(cur, 0xFFFF'FFFF);
       }
@@ -963,9 +960,6 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
           // mark the PHI-value as used in the incoming block
           visit(value, incoming_block_idx);
         }
-
-        // mark the PHI-value as used in the current block
-        visit(value, block_idx);
       } else {
         if (adaptor->val_produces_result(value)) {
           // mark the value as used in the current block

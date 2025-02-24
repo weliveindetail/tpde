@@ -365,7 +365,6 @@ private:
     blocks[name] = ir.blocks.size();
     ir.blocks.push_back(TestIR::Block{.name = std::string(name)});
     ir.blocks.back().inst_begin_idx = ir.values.size();
-    ir.blocks.back().has_sibling = true;
     do {
       if (!parse_inst()) {
         return false;
@@ -450,7 +449,6 @@ private:
         return false;
       }
     }
-    ir.blocks.back().has_sibling = false;
     ir.functions.back().block_end_idx = ir.blocks.size();
 
     for (auto &r : block_resolves) {
