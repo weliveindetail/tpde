@@ -299,14 +299,6 @@ concept IRAdaptor = requires(T a) {
   /// Is the value fused? If so, it will not be compiled
   { a.val_fused(ARG(typename T::IRValueRef)) } -> std::convertible_to<bool>;
 
-  /// Is the specified value an argument of the current function
-  { a.val_is_arg(ARG(typename T::IRValueRef)) } -> std::convertible_to<bool>;
-
-  /// Is the specified value a PHI?
-  // TODO(ts): drop this and try to exclusively access PHIs through the
-  // IRRange provided by the block?
-  { a.val_is_phi(ARG(typename T::IRValueRef)) } -> std::convertible_to<bool>;
-
   /// Provides the PHIRef for a PHI
   {
     a.val_as_phi(ARG(typename T::IRValueRef))

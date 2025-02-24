@@ -335,14 +335,6 @@ struct LLVMAdaptor {
     return !inst->getType()->isVoidTy();
   }
 
-  [[nodiscard]] bool val_is_arg(const IRValueRef value) const noexcept {
-    return llvm::isa<llvm::Argument>(value);
-  }
-
-  [[nodiscard]] bool val_is_phi(const IRValueRef value) const noexcept {
-    return llvm::isa<llvm::PHINode>(value);
-  }
-
   [[nodiscard]] auto val_as_phi(const IRValueRef value) const noexcept {
     struct PHIRef {
       const llvm::PHINode *phi;

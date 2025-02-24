@@ -3895,7 +3895,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
 
     uint32_t num_phi_reads = 0;
     for (auto i : this->adaptor->block_phis(normal_block_ref)) {
-      assert(this->adaptor->val_is_phi(i));
       auto phi = this->adaptor->val_as_phi(i);
 
       auto incoming_val = phi.incoming_val_for_block(cur_block);

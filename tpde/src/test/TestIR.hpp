@@ -278,14 +278,6 @@ struct TestIRAdaptor {
 
   static bool val_fused(IRValueRef) noexcept { return false; }
 
-  [[nodiscard]] bool val_is_arg(IRValueRef value) const noexcept {
-    return ir->values[static_cast<u32>(value)].type == TestIR::Value::Type::arg;
-  }
-
-  [[nodiscard]] bool val_is_phi(IRValueRef value) const noexcept {
-    return ir->values[static_cast<u32>(value)].type == TestIR::Value::Type::phi;
-  }
-
   [[nodiscard]] auto val_as_phi(IRValueRef value) const noexcept {
     struct PHIRef {
       const u32 *op_begin, *block_begin;
