@@ -42,7 +42,6 @@ define i32 @bswapi32(i32 %x) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <bswapi32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -69,8 +68,6 @@ define i48 @bswapi48(i48 %x) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <bswapi48>:
 ; ARM64:         sub sp, sp, #0xb0

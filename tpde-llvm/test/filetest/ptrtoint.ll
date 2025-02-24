@@ -17,7 +17,6 @@ define i64 @ptrtoint_i64(ptr %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ptrtoint_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -69,7 +68,6 @@ define i32 @ptrtoint_i32(ptr %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ptrtoint_i32>:
 ; ARM64:         sub sp, sp, #0xb0

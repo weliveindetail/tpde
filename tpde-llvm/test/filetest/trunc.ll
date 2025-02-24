@@ -17,7 +17,6 @@ define i1 @trunc_i64_i1(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <trunc_i64_i1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -42,7 +41,6 @@ define i8 @trunc_i64_i8(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <trunc_i64_i8>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -67,7 +65,6 @@ define i16 @trunc_i64_i16(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <trunc_i64_i16>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -92,7 +89,6 @@ define i32 @trunc_i64_i32(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <trunc_i64_i32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -117,7 +113,6 @@ define i37 @trunc_i64_i37(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <trunc_i64_i37>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -142,7 +137,6 @@ define i64 @trunc_i128_i64(i128 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <trunc_i128_i64>:
 ; ARM64:         sub sp, sp, #0xc0

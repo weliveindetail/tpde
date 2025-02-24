@@ -16,7 +16,6 @@ define i32 @load_i32_gep1(ptr %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <load_i32_gep1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -43,7 +42,6 @@ define i32 @load_i32_gep2(ptr %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <load_i32_gep2>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -70,7 +68,6 @@ define i32 @load_i32_gep3(ptr %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <load_i32_gep3>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -175,7 +172,6 @@ define void @store_i32_gep1(i32 %v, ptr %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <store_i32_gep1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -201,7 +197,6 @@ define void @store_i32_gep2(i32 %v, ptr %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <store_i32_gep2>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -228,7 +223,6 @@ define void @store_i32_gep3(i32 %v, ptr %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <store_i32_gep3>:
 ; ARM64:         sub sp, sp, #0xb0

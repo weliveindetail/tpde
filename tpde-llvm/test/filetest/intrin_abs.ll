@@ -26,8 +26,6 @@ define i8 @absi8(i8 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <absi8>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -58,8 +56,6 @@ define i16 @absi16(i16 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <absi16>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -91,7 +87,6 @@ define i17 @absi17(i17 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <absi17>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -121,8 +116,6 @@ define i32 @absi32(i32 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <absi32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -153,7 +146,6 @@ define i37 @absi37(i37 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <absi37>:
 ; ARM64:         sub sp, sp, #0xb0

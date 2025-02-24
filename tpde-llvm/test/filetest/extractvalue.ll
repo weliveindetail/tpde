@@ -52,8 +52,6 @@ define i32 @extract_i8_i32_1(ptr %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_i8_i32_1>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -87,7 +85,6 @@ define i8 @extract_i8_i32_0_no_salvage(ptr %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <extract_i8_i32_0_no_salvage>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -125,7 +122,6 @@ define i32 @extract_i8_i32_1_no_salvage(ptr %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <extract_i8_i32_1_no_salvage>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -190,8 +186,6 @@ define i32 @extract_ptr_i32_1(ptr %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_ptr_i32_1>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -225,7 +219,6 @@ define ptr @extract_ptr_i32_0_no_salvage(ptr %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <extract_ptr_i32_0_no_salvage>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -263,7 +256,6 @@ define i32 @extract_ptr_i32_1_no_salvage(ptr %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_ptr_i32_1_no_salvage>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -298,8 +290,6 @@ define float @extract_f32_ptr_0(ptr %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_f32_ptr_0>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -328,8 +318,6 @@ define ptr @extract_f32_ptr_1(ptr %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_f32_ptr_1>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -363,8 +351,6 @@ define float @extract_f32_ptr_0_no_salvage(ptr %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_f32_ptr_0_no_salvage>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -438,7 +424,6 @@ define i128 @extract_i128_i1_0(ptr %0) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_i128_i1_0>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -472,7 +457,6 @@ define i1 @extract_i128_i1_1(ptr %0) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_i128_i1_1>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -513,7 +497,6 @@ define i128 @extract_i128_i1_0_no_salvage(ptr %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <extract_i128_i1_0_no_salvage>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -559,8 +542,6 @@ define i1 @extract_i128_i1_1_no_salvage(ptr %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <extract_i128_i1_1_no_salvage>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -622,7 +603,6 @@ define i64 @params({i8, {i8, i8}, i8} %s, i64, [2 x i64] %a, [2 x i64] %b) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <params>:
 ; ARM64:         sub sp, sp, #0x120
@@ -696,7 +676,6 @@ define void @extract_nested_1(ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_nested_1>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -733,7 +712,6 @@ define void @extract_nested_2(ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_nested_2>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -770,7 +748,6 @@ define void @extract_nested_3(ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_nested_3>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -807,7 +784,6 @@ define void @extract_nested_4(ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <extract_nested_4>:
 ; ARM64:         sub sp, sp, #0xd0

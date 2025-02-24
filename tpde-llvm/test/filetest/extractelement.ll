@@ -15,8 +15,6 @@ define i8 @ext_v16i8_0(<16 x i8> %v) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ext_v16i8_0>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -42,8 +40,6 @@ define i8 @ext_v16i8_11(<16 x i8> %v) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ext_v16i8_11>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -70,7 +66,6 @@ define i8 @ext_v16i8_dyn(<16 x i8> %v, i32 %i) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ext_v16i8_dyn>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -100,8 +95,6 @@ define i32 @ext_v4i32_0(<4 x i32> %v) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ext_v4i32_0>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -127,8 +120,6 @@ define i32 @ext_v4i32_3(<4 x i32> %v) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ext_v4i32_3>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -155,7 +146,6 @@ define i32 @ext_v4i32_dyn(<4 x i32> %v, i32 %i) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ext_v4i32_dyn>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -186,7 +176,6 @@ define double @ext_v2f64_0(<2 x double> %v) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ext_v2f64_0>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -214,7 +203,6 @@ define double @ext_v2f64_1(<2 x double> %v) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ext_v2f64_1>:
 ; ARM64:         sub sp, sp, #0xc0

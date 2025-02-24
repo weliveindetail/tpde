@@ -16,7 +16,6 @@ define i32 @bitcast_f32_to_i32(float %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <bitcast_f32_to_i32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -42,7 +41,6 @@ define float @bitcast_i32_to_f32(i32 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <bitcast_i32_to_f32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -69,7 +67,6 @@ define i64 @bitcast_f64_to_i64(double %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <bitcast_f64_to_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -95,7 +92,6 @@ define double @bitcast_i64_to_f64(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <bitcast_i64_to_f64>:
 ; ARM64:         sub sp, sp, #0xb0

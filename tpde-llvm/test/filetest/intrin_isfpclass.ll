@@ -23,8 +23,6 @@ define i1 @is_ninf_float(float %p) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <is_ninf_float>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -60,8 +58,6 @@ define i1 @is_ninf_double(double %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <is_ninf_double>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -96,7 +92,6 @@ define i1 @is_nzero_float(float %p) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <is_nzero_float>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -131,7 +126,6 @@ define i1 @is_nzero_double(double %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <is_nzero_double>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -166,7 +160,6 @@ define i1 @is_pzero_float(float %p) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <is_pzero_float>:
 ; ARM64:         sub sp, sp, #0xb0

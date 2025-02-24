@@ -16,7 +16,6 @@ define <4 x i32> @retv4i32_zero() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <retv4i32_zero>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -40,7 +39,6 @@ define <4 x i32> @retv4i32_poison() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <retv4i32_poison>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -64,7 +62,6 @@ define <4 x i32> @retv4i32_allones() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <retv4i32_allones>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -89,8 +86,6 @@ define <4 x i32> @retv4i32_values() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <retv4i32_values>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -117,7 +112,6 @@ define <4 x i32> @retv4i32_multiplepoison() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <retv4i32_multiplepoison>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -142,8 +136,6 @@ define <4 x i32> @retv4i32_mixedpoison() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <retv4i32_mixedpoison>:
 ; ARM64:         sub sp, sp, #0xa0

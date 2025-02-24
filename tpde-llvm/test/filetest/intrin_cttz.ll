@@ -22,8 +22,6 @@ define void @cttz_i8(i8 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cttz_i8>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -51,7 +49,6 @@ define void @cttz_i8_zero_poison(i8 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cttz_i8_zero_poison>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -79,8 +76,6 @@ define void @cttz_i16(i16 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cttz_i16>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -108,7 +103,6 @@ define void @cttz_i16_zero_poison(i16 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cttz_i16_zero_poison>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -141,7 +135,6 @@ define void @cttz_i32(i32 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <cttz_i32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -168,7 +161,6 @@ define void @cttz_i32_zero_poison(i32 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <cttz_i32_zero_poison>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -201,8 +193,6 @@ define void @cttz_i64(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <cttz_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -229,7 +219,6 @@ define void @cttz_i64_zero_poison(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <cttz_i64_zero_poison>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -270,8 +259,6 @@ define void @cttz_i32_no_salvage(i32 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <cttz_i32_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -315,7 +302,6 @@ define void @cttz_i64_no_salvage(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <cttz_i64_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0

@@ -20,8 +20,6 @@ define float @fmuladdf32(float %0, float %1, float %2) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fmuladdf32>:
 ; ARM64:         sub sp, sp, #0xb0

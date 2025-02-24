@@ -17,7 +17,6 @@ define i8 @icmp_fuse_zext8(i32, i32) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_fuse_zext8>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -47,7 +46,6 @@ define i32 @icmp_fuse_zext32(i32, i32) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_fuse_zext32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -77,7 +75,6 @@ define i64 @icmp_fuse_zexti64(i32, i32) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_fuse_zexti64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -111,7 +108,6 @@ define i128 @icmp_fuse_zexti128(i32, i32) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_fuse_zexti128>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -144,7 +140,6 @@ define i8 @icmp_fuse_sext8(i32, i32) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_fuse_sext8>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -175,7 +170,6 @@ define i32 @icmp_fuse_sext32(i32, i32) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_fuse_sext32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -206,7 +200,6 @@ define i37 @icmp_fuse_sext37(i32, i32) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_fuse_sext37>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -237,7 +230,6 @@ define i64 @icmp_fuse_sexti64(i32, i32) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <icmp_fuse_sexti64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -273,7 +265,6 @@ define i128 @icmp_fuse_sexti128(i32, i32) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <icmp_fuse_sexti128>:
 ; ARM64:         sub sp, sp, #0xc0

@@ -18,8 +18,6 @@ define void @store_glob(ptr %ptr) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <store_glob>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -50,8 +48,6 @@ define void @store_glob_ptrtoint(ptr %ptr) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <store_glob_ptrtoint>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -83,8 +79,6 @@ define void @store_glob_ptrtoint_trunc_add(ptr %ptr) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <store_glob_ptrtoint_trunc_add>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -115,7 +109,6 @@ define void @store_struct1(ptr %ptr) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <store_struct1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -146,7 +139,6 @@ define void @store_struct2(ptr %ptr) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <store_struct2>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -183,8 +175,6 @@ define void @store_struct3(ptr %ptr) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <store_struct3>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -220,7 +210,6 @@ define void @store_array1(ptr %ptr) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <store_array1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -253,7 +242,6 @@ define void @store_array2(ptr %ptr) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <store_array2>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -302,7 +290,6 @@ define void @phi_glob(ptr %ptr) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <phi_glob>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -366,7 +353,6 @@ define void @phi_ptrtoint(ptr %ptr) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <phi_ptrtoint>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -500,7 +486,6 @@ define void @phi_struct1(ptr %ptr) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <phi_struct1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -570,8 +555,6 @@ define void @phi_struct2(ptr %ptr) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <phi_struct2>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -741,8 +724,6 @@ define i32 @phi_gep_before_icmp(i32 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <phi_gep_before_icmp>:
 ; ARM64:         sub sp, sp, #0xc0

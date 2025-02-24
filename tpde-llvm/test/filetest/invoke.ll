@@ -44,7 +44,6 @@ define i32 @invoke_manyargs() personality ptr @__gxx_personality_v0 {
 ; X64-NEXT:    call <L1>
 ; X64-NEXT:     R_X86_64_PLT32 _Unwind_Resume-0x4
 ; X64-NEXT:    ud2
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <invoke_manyargs>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -147,7 +146,6 @@ define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
 ; X64-NEXT:    call <L4>
 ; X64-NEXT:     R_X86_64_PLT32 _Unwind_Resume-0x4
 ; X64-NEXT:    ud2
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <invoke_landingpad_phi>:
 ; ARM64:         sub sp, sp, #0xe0

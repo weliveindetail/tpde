@@ -21,7 +21,6 @@ define i32 @phi_cycle() {
 ; X64-NEXT:    mov ebx, r12d
 ; X64-NEXT:    mov r12d, eax
 ; X64-NEXT:    jmp <L0>
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <phi_cycle>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -59,7 +58,6 @@ define i32 @phi_unicycle() {
 ; X64-NEXT:    mov ebx, ebx
 ; X64-NEXT:    mov r12d, r12d
 ; X64-NEXT:    jmp <L0>
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <phi_unicycle>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -106,8 +104,6 @@ define ptr @phi_twocycles() {
 ; X64-NEXT:    mov r13d, r14d
 ; X64-NEXT:    mov r14d, eax
 ; X64-NEXT:    jmp <L0>
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <phi_twocycles>:
 ; ARM64:         sub sp, sp, #0xb0

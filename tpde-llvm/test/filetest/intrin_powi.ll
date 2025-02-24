@@ -22,8 +22,6 @@ define float @powif32(float %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <powif32>:
 ; ARM64:         sub sp, sp, #0xb0

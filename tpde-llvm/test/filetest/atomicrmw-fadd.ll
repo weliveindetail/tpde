@@ -23,7 +23,6 @@ define float @atomicrmw_fadd_float_seq_cst(ptr %p, float %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <atomicrmw_fadd_float_seq_cst>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -66,7 +65,6 @@ define void @atomicrmw_fadd_float_seq_cst_nouse(ptr %p, float %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <atomicrmw_fadd_float_seq_cst_nouse>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -109,7 +107,6 @@ define double @atomicrmw_fadd_double_seq_cst(ptr %p, double %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <atomicrmw_fadd_double_seq_cst>:
 ; ARM64:         sub sp, sp, #0xc0

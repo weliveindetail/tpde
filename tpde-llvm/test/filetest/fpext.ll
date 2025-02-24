@@ -16,7 +16,6 @@ define double @fpext_f32tof64(float %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <fpext_f32tof64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -44,7 +43,6 @@ define fp128 @fpext_f32tof128(float %in) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <fpext_f32tof128>:
 ; ARM64:         sub sp, sp, #0xc0

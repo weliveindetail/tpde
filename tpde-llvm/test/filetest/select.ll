@@ -18,8 +18,6 @@ define i32 @select_i32_reg(i1 %0, i32 %1, i32 %2) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <select_i32_reg>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -49,8 +47,6 @@ define i64 @select_i64_reg(i1 %0, i64 %1, i64 %2) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <select_i64_reg>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -81,8 +77,6 @@ define ptr @select_ptr_reg(i1 %0, ptr %1, ptr %2) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <select_ptr_reg>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -113,7 +107,6 @@ define i128 @select_i128_reg(i1 %0, i128 %1, i128 %2) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <select_i128_reg>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -146,7 +139,6 @@ define float @select_f32_reg(i1 %0, float %1, float %2) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <select_f32_reg>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -178,7 +170,6 @@ define double @select_f64_reg(i1 %0, double %1, double %2) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <select_f64_reg>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -212,7 +203,6 @@ define %struct.i8_i64 @select_i8_i64_0(i1 %0, %struct.i8_i64 %1, %struct.i8_i64 
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <select_i8_i64_0>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -245,7 +235,6 @@ define %struct.i8_i64 @select_i8_i64_1(i1 %0, %struct.i8_i64 %1, %struct.i8_i64 
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <select_i8_i64_1>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -277,7 +266,6 @@ define [2 x i64] @select_a2i64(i1 %0, [2 x i64] %1, [2 x i64] %2) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <select_a2i64>:
 ; ARM64:         sub sp, sp, #0xe0

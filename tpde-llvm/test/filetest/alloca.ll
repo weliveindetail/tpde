@@ -17,7 +17,6 @@ define ptr @alloca_empty() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <alloca_empty>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -74,7 +73,6 @@ define ptr @dynalloca_empty_array(i64 %0) {
 ; X64-NEXT:    mov rsp, rbp
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <dynalloca_empty_array>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -105,7 +103,6 @@ define void @dyn_alloca_const() {
 ; X64-NEXT:    mov rsp, rbp
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <dyn_alloca_const>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -139,8 +136,6 @@ define void @dyn_alloca_const_align_32() {
 ; X64-NEXT:    mov rsp, rbp
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <dyn_alloca_const_align_32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -175,7 +170,6 @@ define void @dyn_alloca_const_align_32_ptr() {
 ; X64-NEXT:    mov rsp, rbp
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <dyn_alloca_const_align_32_ptr>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -214,7 +208,6 @@ define void @dyn_alloca_dyn_i8_cnt_i64(i64 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_i8_cnt_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -252,7 +245,6 @@ define void @dyn_alloca_dyn_i8_cnt_i32(i32 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_i8_cnt_i32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -292,7 +284,6 @@ define void @dyn_alloca_dyn_i32_cnt_i64(i64 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_i32_cnt_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -331,7 +322,6 @@ define void @dyn_alloca_dyn_i32_cnt_i32(i32 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_i32_cnt_i32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -373,7 +363,6 @@ define void @dyn_alloca_dyn_si3_cnt_i64(i64 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_si3_cnt_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -414,7 +403,6 @@ define void @dyn_alloca_dyn_si3_cnt_i32(i32 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_si3_cnt_i32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -457,7 +445,6 @@ define void @dyn_alloca_dyn_si3_cnt_i16(i16 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_si3_cnt_i16>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -501,7 +488,6 @@ define i64 @dyn_alloca_dyn_i8_cnt_i64_no_salvage(i64 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_i8_cnt_i64_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -544,7 +530,6 @@ define i32 @dyn_alloca_dyn_i32_cnt_i32_no_salvage(i32 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_i32_cnt_i32_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -587,8 +572,6 @@ define i64 @dyn_alloca_dyn_si3_cnt_i64_no_salvage(i64 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_si3_cnt_i64_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -633,7 +616,6 @@ define i32 @dyn_alloca_dyn_si3_cnt_i32_no_salvage(i32 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_si3_cnt_i32_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -678,7 +660,6 @@ define i16 @dyn_alloca_dyn_si3_cnt_i16_no_salvage(i16 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <dyn_alloca_dyn_si3_cnt_i16_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -717,7 +698,6 @@ define ptr @alloca_align_4k() {
 ; X64-NEXT:    mov rsp, rbp
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <alloca_align_4k>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -748,7 +728,6 @@ define ptr @dynalloca_align_4k() {
 ; X64-NEXT:    mov rsp, rbp
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <dynalloca_align_4k>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -952,7 +931,6 @@ define void @f2(ptr %0, ptr %1, ptr %2, ptr %3, ptr %4, ptr %5, ptr %6, ptr %7, 
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <f2>:
 ; ARM64:         sub sp, sp, #0xa, lsl #12 // =0xa000

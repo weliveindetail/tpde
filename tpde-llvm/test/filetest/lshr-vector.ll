@@ -43,8 +43,6 @@ define <8 x i8> @lshr_v8i8(<8 x i8> %a, <8 x i8> %b) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <lshr_v8i8>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -101,8 +99,6 @@ define <8 x i8> @lshr_v8i8_3(<8 x i8> %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <lshr_v8i8_3>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -158,8 +154,6 @@ define <16 x i8> @lshr_v16i8(<16 x i8> %a, <16 x i8> %b) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <lshr_v16i8>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -216,7 +210,6 @@ define <16 x i8> @lshr_v16i8_3(<16 x i8> %a) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <lshr_v16i8_3>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -273,7 +266,6 @@ define <4 x i16> @lshr_v4i16(<4 x i16> %a, <4 x i16> %b) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <lshr_v4i16>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -331,7 +323,6 @@ define <4 x i16> @lshr_v4i16_3(<4 x i16> %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <lshr_v4i16_3>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -388,7 +379,6 @@ define <8 x i16> @lshr_v8i16(<8 x i16> %a, <8 x i16> %b) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <lshr_v8i16>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -446,8 +436,6 @@ define <8 x i16> @lshr_v8i16_3(<8 x i16> %a) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <lshr_v8i16_3>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -480,7 +468,6 @@ define <2 x i32> @lshr_v2i32(<2 x i32> %a, <2 x i32> %b) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <lshr_v2i32>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -514,7 +501,6 @@ define <2 x i32> @lshr_v2i32_3(<2 x i32> %a) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <lshr_v2i32_3>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -556,7 +542,6 @@ define <4 x i32> @lshr_v4i32(<4 x i32> %a, <4 x i32> %b) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <lshr_v4i32>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -599,8 +584,6 @@ define <4 x i32> @lshr_v4i32_3(<4 x i32> %a) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <lshr_v4i32_3>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -631,7 +614,6 @@ define <2 x i64> @lshr_v2i64(<2 x i64> %a, <2 x i64> %b) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <lshr_v2i64>:
 ; ARM64:         sub sp, sp, #0xd0

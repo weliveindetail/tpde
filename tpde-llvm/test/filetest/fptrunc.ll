@@ -16,7 +16,6 @@ define float @fptrunc_f64tof32(double %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <fptrunc_f64tof32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -44,7 +43,6 @@ define float @fptrunc_f128tof32(fp128 %in) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <fptrunc_f128tof32>:
 ; ARM64:         sub sp, sp, #0xc0

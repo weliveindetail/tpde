@@ -18,8 +18,6 @@ define float @i8tof32(i8 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <i8tof32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -48,8 +46,6 @@ define float @i16tof32(i16 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <i16tof32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -78,7 +74,6 @@ define float @i21tof32(i21 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <i21tof32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -106,8 +101,6 @@ define float @i32tof32(i32 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <i32tof32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -146,7 +139,6 @@ define float @i37tof32(i37 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <i37tof32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -184,8 +176,6 @@ define float @i64tof32(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <i64tof32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -214,8 +204,6 @@ define double @i8tof64(i8 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <i8tof64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -244,8 +232,6 @@ define double @i16tof64(i16 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <i16tof64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -274,7 +260,6 @@ define double @i21tof64(i21 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <i21tof64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -302,8 +287,6 @@ define double @i32tof64(i32 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <i32tof64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -339,7 +322,6 @@ define double @i37tof64(i37 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <i37tof64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -374,7 +356,6 @@ define double @i64tof64(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <i64tof64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -402,7 +383,6 @@ define fp128 @i32tof128(i32 %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <i32tof128>:
 ; ARM64:         sub sp, sp, #0xc0

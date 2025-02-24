@@ -16,7 +16,6 @@ define i8 @freeze_i8(i8 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <freeze_i8>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -42,7 +41,6 @@ define i8 @freeze_i8_no_salvage(i8 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <freeze_i8_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -70,7 +68,6 @@ define i64 @freeze_i64(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <freeze_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -122,7 +119,6 @@ define float @freeze_float(float %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <freeze_float>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -147,7 +143,6 @@ define float @freeze_float_no_salvage(float %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <freeze_float_no_salvage>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -182,7 +177,6 @@ define void @freeze_i128_i1(ptr %0) {
 ; X64-NEXT:    add rsp, 0x70
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <freeze_i128_i1>:
 ; ARM64:         sub sp, sp, #0xf0

@@ -42,8 +42,6 @@ define i128 @umul_i128_0(i128 %0, i128 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 entry:
   %2 = call {i128, i1} @llvm.umul.with.overflow.i128(i128 %0, i128 %1)
   %3 = extractvalue {i128, i1} %2, 0
@@ -84,8 +82,6 @@ define i1 @umul_i128_1(i128 %0, i128 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 entry:
   %2 = call {i128, i1} @llvm.umul.with.overflow.i128(i128 %0, i128 %1)
   %3 = extractvalue {i128, i1} %2, 1
@@ -163,7 +159,6 @@ define i128 @smul_i128_0(i128 %0, i128 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 entry:
   %2 = call {i128, i1} @llvm.smul.with.overflow.i128(i128 %0, i128 %1)
   %3 = extractvalue {i128, i1} %2, 0

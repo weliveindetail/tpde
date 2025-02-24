@@ -21,8 +21,6 @@ define i8 @ssub_sat_i8(i8, i8) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ssub_sat_i8>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -60,7 +58,6 @@ define i16 @ssub_sat_i16(i16, i16) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ssub_sat_i16>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -98,7 +95,6 @@ define i32 @ssub_sat_i32(i32, i32) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ssub_sat_i32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -134,7 +130,6 @@ define i64 @ssub_sat_i64(i64, i64) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ssub_sat_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -167,7 +162,6 @@ define i8 @usub_sat_i8(i8, i8) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <usub_sat_i8>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -197,8 +191,6 @@ define i16 @usub_sat_i16(i16, i16) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <usub_sat_i16>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -228,8 +220,6 @@ define i32 @usub_sat_i32(i32, i32) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <usub_sat_i32>:
 ; ARM64:         sub sp, sp, #0xb0

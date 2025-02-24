@@ -27,8 +27,6 @@ define i32 @load_basic_int() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <load_basic_int>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -64,7 +62,6 @@ define i32 @load_basic_int_twice() {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <load_basic_int_twice>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -101,7 +98,6 @@ define ptr @load_func_ptr() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <load_func_ptr>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -134,8 +130,6 @@ define void @store_global_ptr(ptr %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <store_global_ptr>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -166,8 +160,6 @@ define ptr @get_global() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <get_global>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -196,8 +188,6 @@ define ptr @get_func1() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <get_func1>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -226,8 +216,6 @@ define ptr @get_func2() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <get_func2>:
 ; ARM64:         sub sp, sp, #0xa0
@@ -258,7 +246,6 @@ define {ptr, ptr} @get_struct1() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <get_struct1>:
 ; ARM64:         sub sp, sp, #0xa0

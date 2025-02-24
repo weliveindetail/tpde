@@ -16,7 +16,6 @@ define <16 x i8> @ins_v16i8_0(<16 x i8> %v, i8 %e) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ins_v16i8_0>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -43,7 +42,6 @@ define <16 x i8> @ins_v16i8_11(<16 x i8> %v, i8 %e) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ins_v16i8_11>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -71,7 +69,6 @@ define <16 x i8> @ins_v16i8_dyn(<16 x i8> %v, i8 %e, i32 %i) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ins_v16i8_dyn>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -102,7 +99,6 @@ define <4 x i32> @ins_v4i32_0(<4 x i32> %v, i32 %e) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ins_v4i32_0>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -129,7 +125,6 @@ define <4 x i32> @ins_v4i32_3(<4 x i32> %v, i32 %e) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ins_v4i32_3>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -166,8 +161,6 @@ define <4 x i32> @ins_v4i32_chain(i32 %a, i32 %b, i32 %c, i32 %d) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ins_v4i32_chain>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -204,7 +197,6 @@ define <4 x i32> @ins_v4i32_dyn(<4 x i32> %v, i32 %e, i32 %i) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ins_v4i32_dyn>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -235,7 +227,6 @@ define <2 x double> @ins_v2f64_0(<2 x double> %v, double %e) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ins_v2f64_0>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -262,7 +253,6 @@ define <2 x double> @ins_v2f64_1(<2 x double> %v, double %e) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ins_v2f64_1>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -290,7 +280,6 @@ define <2 x double> @ins_v2f64_dyn(<2 x double> %v, double %e, i32 %i) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <ins_v2f64_dyn>:
 ; ARM64:         sub sp, sp, #0xd0

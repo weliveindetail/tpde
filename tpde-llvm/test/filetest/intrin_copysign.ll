@@ -18,7 +18,6 @@ define float @copysignf32(float %0, float %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <copysignf32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -48,7 +47,6 @@ define double @copysignf64(double %0, double %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <copysignf64>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -81,8 +79,6 @@ define float @copysignf32_noreuse(float %0, float %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <copysignf32_noreuse>:
 ; ARM64:         sub sp, sp, #0xb0

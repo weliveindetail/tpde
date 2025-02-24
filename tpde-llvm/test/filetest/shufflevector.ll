@@ -24,8 +24,6 @@ define <4 x i32> @shufflevector_v4i32_v4i32_identity1(<4 x i32> %a) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <shufflevector_v4i32_v4i32_identity1>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -69,8 +67,6 @@ define <4 x i32> @shufflevector_v4i32_v4i32_mix(<4 x i32> %a, <4 x i32> %b) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <shufflevector_v4i32_v4i32_mix>:
 ; ARM64:         sub sp, sp, #0xd0

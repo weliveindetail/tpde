@@ -16,7 +16,6 @@ define void @xor_i8_3(i8 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i8_3>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -42,7 +41,6 @@ define void @xor_i8_9(i8 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i8_9>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -69,7 +67,6 @@ define void @xor_i8_i8(i8 %0, i8 %1) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i8_i8>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -146,7 +143,6 @@ define void @xor_i16_i16(i16 %0, i16 %1) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i16_i16>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -224,7 +220,6 @@ define void @xor_i32_i32(i32 %0, i32 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i32_i32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -250,8 +245,6 @@ define void @xor_i64_fffffffffff1ffff(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <xor_i64_fffffffffff1ffff>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -277,8 +270,6 @@ define void @xor_i64_fffffffffff2ffff(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <xor_i64_fffffffffff2ffff>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -305,7 +296,6 @@ define void @xor_i64_i64(i64 %0, i64 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i64_i64>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -331,7 +321,6 @@ define void @xor_i37_3(i37 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <xor_i37_3>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -357,7 +346,6 @@ define void @xor_i37_i37(i37 %0, i37 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i37_i37>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -385,8 +373,6 @@ define void @xor_i128_3(i128 %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <xor_i128_3>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -416,8 +402,6 @@ define void @xor_i128_30000000000000003(i128 %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <xor_i128_30000000000000003>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -446,8 +430,6 @@ define void @xor_i128_90000000000000003(i128 %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <xor_i128_90000000000000003>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -477,8 +459,6 @@ define void @xor_i128_90000000000000009(i128 %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <xor_i128_90000000000000009>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -509,8 +489,6 @@ define void @xor_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i128_i128>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -539,8 +517,6 @@ define void @xor_i64_no_salvage_imm(i64 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i64_no_salvage_imm>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -570,8 +546,6 @@ define void @xor_i64_no_salvage_reg(i64 %0, i64 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i64_no_salvage_reg>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -601,8 +575,6 @@ define void @xor_i37_no_salvage_imm(i37 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i37_no_salvage_imm>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -632,8 +604,6 @@ define void @xor_i37_no_salvage_reg(i37 %0, i37 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <xor_i37_no_salvage_reg>:
 ; ARM64:         sub sp, sp, #0xc0

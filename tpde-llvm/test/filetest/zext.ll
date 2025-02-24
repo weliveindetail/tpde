@@ -95,8 +95,6 @@ define i37 @zext_i8_to_i37(i8 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <zext_i8_to_i37>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -123,8 +121,6 @@ define i64 @zext_i8_to_i64(i8 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <zext_i8_to_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -154,7 +150,6 @@ define i128 @zext_i8_to_i128(i8 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <zext_i8_to_i128>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -183,7 +178,6 @@ define i21 @zext_i16_to_i21(i16 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <zext_i16_to_i21>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -210,7 +204,6 @@ define i32 @zext_i16_to_i32(i16 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <zext_i16_to_i32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -292,7 +285,6 @@ define i128 @zext_i16_to_i128(i16 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <zext_i16_to_i128>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -321,8 +313,6 @@ define i32 @zext_i21_to_i32(i21 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <zext_i21_to_i32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -349,8 +339,6 @@ define i37 @zext_i21_to_i37(i21 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <zext_i21_to_i37>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -377,8 +365,6 @@ define i64 @zext_i21_to_i64(i21 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <zext_i21_to_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -436,7 +422,6 @@ define i37 @zext_i32_to_i37(i32 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <zext_i32_to_i37>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -463,7 +448,6 @@ define i64 @zext_i32_to_i64(i32 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <zext_i32_to_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -493,7 +477,6 @@ define i128 @zext_i32_to_i128(i32 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <zext_i32_to_i128>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -523,7 +506,6 @@ define i64 @zext_i37_to_i64(i37 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <zext_i37_to_i64>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -554,7 +536,6 @@ define i128 @zext_i37_to_i128(i37 %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <zext_i37_to_i128>:
 ; ARM64:         sub sp, sp, #0xc0

@@ -14,7 +14,6 @@ define ptr @f0() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <f0>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -39,7 +38,6 @@ define ptr @f1() {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <f1>:
 ; ARM64:         sub sp, sp, #0xb0

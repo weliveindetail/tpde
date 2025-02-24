@@ -16,7 +16,6 @@ define <2 x float> @fmul_v2f32_1(<2 x float> %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <fmul_v2f32_1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -43,7 +42,6 @@ define <2 x float> @fmul_v2f32_f32(<2 x float> %0, <2 x float> %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <fmul_v2f32_f32>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -70,8 +68,6 @@ define <4 x float> @fmul_v4f32_1(<4 x float> %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <fmul_v4f32_1>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -100,7 +96,6 @@ define <4 x float> @fmul_v4f32_f32(<4 x float> %0, <4 x float> %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <fmul_v4f32_f32>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -127,8 +122,6 @@ define <2 x double> @fmul_v2f64_1(<2 x double> %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <fmul_v2f64_1>:
 ; ARM64:         sub sp, sp, #0xc0

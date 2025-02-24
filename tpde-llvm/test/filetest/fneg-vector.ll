@@ -15,8 +15,6 @@ define <2 x float> @fnegv2f32(<2 x float> %0) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fnegv2f32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -42,8 +40,6 @@ define <4 x float> @fnegv4f32(<4 x float> %0) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fnegv4f32>:
 ; ARM64:         sub sp, sp, #0xc0

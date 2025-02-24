@@ -16,8 +16,6 @@ define i8 @load_atomic_i8_monotonic(ptr %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <load_atomic_i8_monotonic>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -44,8 +42,6 @@ define i16 @load_atomic_i16_monotonic(ptr %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <load_atomic_i16_monotonic>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -71,7 +67,6 @@ define i32 @load_atomic_i32_monotonic(ptr %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <load_atomic_i32_monotonic>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -124,8 +119,6 @@ define i8 @load_atomic_i8_acquire(ptr %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <load_atomic_i8_acquire>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -152,8 +145,6 @@ define i16 @load_atomic_i16_acquire(ptr %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <load_atomic_i16_acquire>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -179,7 +170,6 @@ define i32 @load_atomic_i32_acquire(ptr %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <load_atomic_i32_acquire>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -232,8 +222,6 @@ define i8 @load_atomic_i8_seq_cst(ptr %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <load_atomic_i8_seq_cst>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -260,8 +248,6 @@ define i16 @load_atomic_i16_seq_cst(ptr %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <load_atomic_i16_seq_cst>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -287,7 +273,6 @@ define i32 @load_atomic_i32_seq_cst(ptr %p) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <load_atomic_i32_seq_cst>:
 ; ARM64:         sub sp, sp, #0xb0

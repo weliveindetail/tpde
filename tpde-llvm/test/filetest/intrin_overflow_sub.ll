@@ -31,8 +31,6 @@ define i8 @usub_i8_0(i8 %0, i8 %1) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <usub_i8_0>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -66,8 +64,6 @@ define i1 @usub_i8_1(i8 %0, i8 %1) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <usub_i8_1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -102,8 +98,6 @@ define i16 @usub_i16_0(i16 %0, i16 %1) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <usub_i16_0>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -137,8 +131,6 @@ define i1 @usub_i16_1(i16 %0, i16 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <usub_i16_1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -173,8 +165,6 @@ define i32 @usub_i32_0(i32 %0, i32 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <usub_i32_0>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -204,8 +194,6 @@ define i1 @usub_i32_1(i32 %0, i32 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <usub_i32_1>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -237,8 +225,6 @@ define i64 @usub_i64_0(i64 %0, i64 %1) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <usub_i64_0>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -268,8 +254,6 @@ define i1 @usub_i64_1(i64 %0, i64 %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <usub_i64_1>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -303,7 +287,6 @@ define i128 @usub_i128_0(i128 %0, i128 %1) {
 ; X64-NEXT:    add rsp, 0x70
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <usub_i128_0>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -339,7 +322,6 @@ define i1 @usub_i128_1(i128 %0, i128 %1) {
 ; X64-NEXT:    add rsp, 0x80
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <usub_i128_1>:
 ; ARM64:         sub sp, sp, #0xf0
@@ -374,8 +356,6 @@ define i8 @ssub_i8_0(i8 %0, i8 %1) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ssub_i8_0>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -409,8 +389,6 @@ define i1 @ssub_i8_1(i8 %0, i8 %1) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ssub_i8_1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -445,8 +423,6 @@ define i16 @ssub_i16_0(i16 %0, i16 %1) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ssub_i16_0>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -480,8 +456,6 @@ define i1 @ssub_i16_1(i16 %0, i16 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ssub_i16_1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -516,8 +490,6 @@ define i32 @ssub_i32_0(i32 %0, i32 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ssub_i32_0>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -547,8 +519,6 @@ define i1 @ssub_i32_1(i32 %0, i32 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ssub_i32_1>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -580,8 +550,6 @@ define i64 @ssub_i64_0(i64 %0, i64 %1) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <ssub_i64_0>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -611,8 +579,6 @@ define i1 @ssub_i64_1(i64 %0, i64 %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ssub_i64_1>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -646,7 +612,6 @@ define i128 @ssub_i128_0(i128 %0, i128 %1) {
 ; X64-NEXT:    add rsp, 0x70
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ssub_i128_0>:
 ; ARM64:         sub sp, sp, #0xe0

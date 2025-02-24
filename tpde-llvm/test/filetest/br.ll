@@ -19,8 +19,6 @@ define i64 @br_simple1(i64 %0) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <br_simple1>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -63,8 +61,6 @@ define i64 @condbr0(i64 %0, i1 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <condbr0>:
 ; ARM64:         sub sp, sp, #0xc0

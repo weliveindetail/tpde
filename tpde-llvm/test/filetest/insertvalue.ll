@@ -24,8 +24,6 @@ define void @insert_i8_i32_0(ptr %0, i8 %1) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <insert_i8_i32_0>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -59,8 +57,6 @@ define void @insert_i8_i32_1(ptr %0, i32 %1) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <insert_i8_i32_1>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -97,7 +93,6 @@ define void @insert_i8_i32_0_nosalvage(ptr %0, i8 %1) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <insert_i8_i32_0_nosalvage>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -138,7 +133,6 @@ define void @insert_i8_i32_1_nosalvage(ptr %0, i32 %1) {
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <insert_i8_i32_1_nosalvage>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -177,8 +171,6 @@ define void @insert_ptr_i32_0(ptr %0, ptr %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <insert_ptr_i32_0>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -212,8 +204,6 @@ define void @insert_ptr_i32_1(ptr %0, i32 %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <insert_ptr_i32_1>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -250,7 +240,6 @@ define void @insert_ptr_i32_0_nosalvage(ptr %0, ptr %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <insert_ptr_i32_0_nosalvage>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -287,8 +276,6 @@ define void @insert_ptr_i32_poison(ptr %0, ptr %1, i32 %2) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <insert_ptr_i32_poison>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -322,7 +309,6 @@ define ptr @insert_ptr_i32_poison_nosalvage(ptr %0, ptr %1, i32 %2) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <insert_ptr_i32_poison_nosalvage>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -358,7 +344,6 @@ define i32 @insert_ptr_i32_poison_nosalvage1(ptr %0, ptr %1, i32 %2) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <insert_ptr_i32_poison_nosalvage1>:
 ; ARM64:         sub sp, sp, #0xe0
@@ -396,7 +381,6 @@ define void @insert_ptr_i32_1_nosalvage(ptr %0, i32 %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <insert_ptr_i32_1_nosalvage>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -435,7 +419,6 @@ define void @insert_f32_ptr_0(ptr %0, float %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <insert_f32_ptr_0>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -469,7 +452,6 @@ define void @insert_f32_ptr_1(ptr %0, ptr %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <insert_f32_ptr_1>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -506,8 +488,6 @@ define void @insert_f32_ptr_0_nosalvage(ptr %0, float %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <insert_f32_ptr_0_nosalvage>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -548,8 +528,6 @@ define void @insert_f32_ptr_1_nosalvage(ptr %0, ptr %1) {
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <insert_f32_ptr_1_nosalvage>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -629,8 +607,6 @@ define void @insert_i128_i1_1(ptr %0, i1 %1) {
 ; X64-NEXT:    add rsp, 0x80
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <insert_i128_i1_1>:
 ; ARM64:         sub sp, sp, #0xf0
@@ -674,7 +650,6 @@ define void @insert_i128_i1_0_nosalvage(ptr %0, i128 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <insert_i128_i1_0_nosalvage>:
 ; ARM64:         sub sp, sp, #0x100
@@ -724,8 +699,6 @@ define void @insert_i128_i1_1_nosalvage(ptr %0, i1 %1) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <insert_i128_i1_1_nosalvage>:
 ; ARM64:         sub sp, sp, #0xf0
@@ -773,8 +746,6 @@ define void @insert_nested_1(ptr %p, i32 %v) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <insert_nested_1>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -817,8 +788,6 @@ define void @insert_nested_2(ptr %p, i32 %v) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <insert_nested_2>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -861,8 +830,6 @@ define void @insert_nested_3(ptr %p, i32 %v) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <insert_nested_3>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -905,8 +872,6 @@ define void @insert_nested_4(ptr %p, i32 %v) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <insert_nested_4>:
 ; ARM64:         sub sp, sp, #0xd0
@@ -955,7 +920,6 @@ define void @insert_nested_5(ptr %p, {i32, i32} %v) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <insert_nested_5>:
 ; ARM64:         sub sp, sp, #0xf0

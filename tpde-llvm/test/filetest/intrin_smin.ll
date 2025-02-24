@@ -20,7 +20,6 @@ define i17 @smini17(i17 %0, i17 %1) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <smini17>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -50,8 +49,6 @@ define i32 @smini32(i32 %0, i32 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <smini32>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -83,8 +80,6 @@ define i37 @smini37(i37 %0, i37 %1) {
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <smini37>:
 ; ARM64:         sub sp, sp, #0xb0

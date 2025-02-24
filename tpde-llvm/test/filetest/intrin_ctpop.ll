@@ -72,7 +72,6 @@ define i16 @ctpop_i16(i16 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <ctpop_i16>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -116,8 +115,6 @@ define i23 @ctpop_i23(i23 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <ctpop_i23>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -160,7 +157,6 @@ define i32 @ctpop_i32(i32 %0) {
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <ctpop_i32>:
 ; ARM64:         sub sp, sp, #0xb0

@@ -27,7 +27,6 @@ define void @fcmp_false_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_false_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -150,7 +149,6 @@ define void @fcmp_ogt_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ogt_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -212,7 +210,6 @@ define void @fcmp_oge_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_oge_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -274,7 +271,6 @@ define void @fcmp_olt_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_olt_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -336,7 +332,6 @@ define void @fcmp_ole_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ole_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -398,7 +393,6 @@ define void @fcmp_one_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_one_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -461,7 +455,6 @@ define void @fcmp_ord_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ord_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -523,7 +516,6 @@ define void @fcmp_ueq_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ueq_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -586,7 +578,6 @@ define void @fcmp_ugt_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ugt_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -648,7 +639,6 @@ define void @fcmp_uge_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_uge_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -710,7 +700,6 @@ define void @fcmp_ult_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ult_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -772,7 +761,6 @@ define void @fcmp_ule_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ule_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -896,7 +884,6 @@ define void @fcmp_uno_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_uno_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -957,7 +944,6 @@ define void @fcmp_true_f32_br(float, float, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_true_f32_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1018,7 +1004,6 @@ define void @fcmp_false_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <fcmp_false_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1080,8 +1065,6 @@ define void @fcmp_oeq_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <fcmp_oeq_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1138,7 +1121,6 @@ define void @fcmp_ogt_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ogt_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1195,7 +1177,6 @@ define void @fcmp_oge_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_oge_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1252,7 +1233,6 @@ define void @fcmp_olt_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_olt_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1309,7 +1289,6 @@ define void @fcmp_ole_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ole_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1366,7 +1345,6 @@ define void @fcmp_one_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_one_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1424,7 +1402,6 @@ define void @fcmp_ord_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ord_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1481,7 +1458,6 @@ define void @fcmp_ueq_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ueq_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1539,7 +1515,6 @@ define void @fcmp_ugt_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ugt_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1596,7 +1571,6 @@ define void @fcmp_uge_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_uge_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1653,7 +1627,6 @@ define void @fcmp_ult_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ult_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1710,7 +1683,6 @@ define void @fcmp_ule_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_ule_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1768,8 +1740,6 @@ define void @fcmp_une_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <fcmp_une_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
@@ -1826,7 +1796,6 @@ define void @fcmp_uno_f64_br(double, double, ptr %p) {
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
-; X64-NEXT:    nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <fcmp_uno_f64_br>:
 ; ARM64:         sub sp, sp, #0xc0
