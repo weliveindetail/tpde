@@ -80,7 +80,7 @@ struct TestIR {
   struct Block {
     std::string name;
     u32 succ_begin_idx = 0, succ_end_idx = 0;
-    u32 inst_begin_idx = 0, inst_end_idx = 0;
+    u32 inst_begin_idx = 0, phi_end_idx = 0, inst_end_idx = 0;
     u32 block_info = 0, block_info2 = 0;
   };
 
@@ -216,18 +216,15 @@ struct TestIRAdaptor {
            std::views::transform([](u32 val) { return IRBlockRef(val); });
   }
 
-  [[nodiscard]] auto block_values(const IRBlockRef block) const noexcept {
+  [[nodiscard]] auto block_insts(const IRBlockRef block) const noexcept {
     const auto &info = ir->blocks[static_cast<u32>(block)];
-    return std::views::iota(info.inst_begin_idx, info.inst_end_idx) |
+    return std::views::iota(info.phi_end_idx, info.inst_end_idx) |
            std::views::transform([](u32 val) { return IRValueRef(val); });
   }
 
   [[nodiscard]] auto block_phis(const IRBlockRef block) const noexcept {
     const auto &info = ir->blocks[static_cast<u32>(block)];
-    return std::views::iota(info.inst_begin_idx, info.inst_end_idx) |
-           std::views::take_while([ir = ir](u32 val) {
-             return ir->values[val].type == TestIR::Value::Type::phi;
-           }) |
+    return std::views::iota(info.inst_begin_idx, info.phi_end_idx) |
            std::views::transform([](u32 val) { return IRValueRef(val); });
   }
 

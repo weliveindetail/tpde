@@ -1083,7 +1083,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
   case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(llvm::cast<llvm::AtomicCmpXchgInst>(i));
   case llvm::Instruction::AtomicRMW: return compile_atomicrmw(llvm::cast<llvm::AtomicRMWInst>(i));
   case llvm::Instruction::Fence: return compile_fence(llvm::cast<llvm::FenceInst>(i));
-  case llvm::Instruction::PHI: return true;
+  case llvm::Instruction::PHI: TPDE_UNREACHABLE("PHI nodes shouldn't be compiled");
   case llvm::Instruction::Freeze: return compile_freeze(llvm::cast<llvm::FreezeInst>(i));
   case llvm::Instruction::Unreachable: return derived()->compile_unreachable(llvm::cast<llvm::UnreachableInst>(i));
   case llvm::Instruction::Alloca: return derived()->compile_alloca(llvm::cast<llvm::AllocaInst>(i));

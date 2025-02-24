@@ -932,8 +932,29 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
                    adaptor->block_fmt_ref(block_layout[block_idx]));
     const auto block_loop_idx = block_loop_map[block_idx];
 
+    for (const IRValueRef phi : adaptor->block_phis(block_layout[block_idx])) {
+      TPDE_LOG_TRACE("Analyzing phi {}", adaptor->value_fmt_ref(phi));
+      const auto phi_ref = adaptor->val_as_phi(phi);
+      const u32 slot_count = phi_ref.incoming_count();
+      for (u32 i = 0; i < slot_count; ++i) {
+        const IRBlockRef incoming_block = phi_ref.incoming_block_for_slot(i);
+        const IRValueRef incoming_value = phi_ref.incoming_val_for_slot(i);
+        if (adaptor->block_info2(incoming_block) == 0) {
+          TPDE_LOG_TRACE("ignoring phi input from unreachable pred ({})",
+                         adaptor->block_fmt_ref(incoming_block));
+          continue;
+        }
+        const auto incoming_block_idx = adaptor->block_info(incoming_block);
+
+        // mark the incoming value as used in the incoming block
+        visit(incoming_value, incoming_block_idx);
+        // mark the PHI-value as used in the incoming block
+        visit(phi, incoming_block_idx);
+      }
+    }
+
     for (const IRValueRef value :
-         adaptor->block_values(block_layout[block_idx])) {
+         adaptor->block_insts(block_layout[block_idx])) {
       TPDE_LOG_TRACE("Analyzing value {}", adaptor->val_local_idx(value));
 
       if (adaptor->val_ignore_in_liveness_analysis(value)) {
@@ -941,42 +962,21 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
         continue;
       }
 
-      if (adaptor->val_is_phi(value)) {
-        TPDE_LOG_TRACE("value is phi");
-        const auto phi_ref = adaptor->val_as_phi(value);
-        const u32 slot_count = phi_ref.incoming_count();
-        for (u32 i = 0; i < slot_count; ++i) {
-          const IRBlockRef incoming_block = phi_ref.incoming_block_for_slot(i);
-          const IRValueRef incoming_value = phi_ref.incoming_val_for_slot(i);
-          if (adaptor->block_info2(incoming_block) == 0) {
-            TPDE_LOG_TRACE("ignoring phi input from unreachable pred ({})",
-                           adaptor->block_fmt_ref(incoming_block));
-            continue;
-          }
-          const auto incoming_block_idx = adaptor->block_info(incoming_block);
-
-          // mark the incoming value as used in the incoming block
-          visit(incoming_value, incoming_block_idx);
-          // mark the PHI-value as used in the incoming block
-          visit(value, incoming_block_idx);
-        }
+      if (adaptor->val_produces_result(value)) {
+        // mark the value as used in the current block
+        visit(value, block_idx);
+        ++loops[block_loop_idx].definitions;
       } else {
-        if (adaptor->val_produces_result(value)) {
-          // mark the value as used in the current block
-          visit(value, block_idx);
-          ++loops[block_loop_idx].definitions;
-        } else {
 #ifdef TPDE_ASSERTS
-          // make sure no other value then uses the value
-          auto &liveness = liveness_maybe(value);
-          liveness.ref_count = ~0u;
+        // make sure no other value then uses the value
+        auto &liveness = liveness_maybe(value);
+        liveness.ref_count = ~0u;
 #endif
-        }
+      }
 
-        // visit the operands
-        for (const IRValueRef operand : adaptor->val_operands(value)) {
-          visit(operand, block_idx);
-        }
+      // visit the operands
+      for (const IRValueRef operand : adaptor->val_operands(value)) {
+        visit(operand, block_idx);
       }
     }
   }

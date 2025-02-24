@@ -165,7 +165,7 @@ struct CompilerBase {
 #pragma endregion
 
   struct InstRange {
-    using Range = decltype(std::declval<Adaptor>().block_values(
+    using Range = decltype(std::declval<Adaptor>().block_insts(
         std::declval<IRBlockRef>()));
     using Iter = decltype(std::declval<Range>().begin());
     using EndIter = decltype(std::declval<Range>().end());
@@ -1783,7 +1783,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
       static_cast<typename Analyzer<Adaptor>::BlockIndex>(block_idx);
 
   assembler.label_place(block_labels[block_idx]);
-  auto &&val_range = adaptor->block_values(block);
+  auto &&val_range = adaptor->block_insts(block);
   auto end = val_range.end();
   for (auto it = val_range.begin(); it != end; ++it) {
     const IRValueRef value = *it;

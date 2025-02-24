@@ -263,8 +263,9 @@ struct LLVMAdaptor {
                       block_succ_indices.data() + end};
   }
 
-  [[nodiscard]] auto block_values(const IRBlockRef block) const noexcept {
-    return *blocks[block].block |
+  [[nodiscard]] auto block_insts(const IRBlockRef block) const noexcept {
+    const auto &aux = blocks[block].aux;
+    return std::ranges::subrange(aux.phi_end, blocks[block].block->end()) |
            std::views::transform(
                [](llvm::Instruction &instr) { return &instr; });
   }

@@ -365,9 +365,17 @@ private:
     blocks[name] = ir.blocks.size();
     ir.blocks.push_back(TestIR::Block{.name = std::string(name)});
     ir.blocks.back().inst_begin_idx = ir.values.size();
+    ir.blocks.back().phi_end_idx = ir.values.size();
     do {
       if (!parse_inst()) {
         return false;
+      }
+      if (ir.values.back().type == TestIR::Value::Type::phi) {
+        if (ir.blocks.back().phi_end_idx != ir.values.size() - 1) {
+          TPDE_LOG_ERR("phis must be at beginning of block");
+          return false;
+        }
+        ir.blocks.back().phi_end_idx = ir.values.size();
       }
     } while (ir.values.back().type != TestIR::Value::Type::terminator);
     ir.blocks.back().inst_end_idx = ir.values.size();

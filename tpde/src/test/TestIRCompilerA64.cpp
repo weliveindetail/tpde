@@ -89,9 +89,8 @@ struct TestIRCompilerA64 : a64::CompilerA64<TestIRAdaptor, TestIRCompilerA64> {
 bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
   const TestIR::Value &value =
       this->analyzer.adaptor->ir->values[static_cast<u32>(val_idx)];
-  if (value.type == TestIR::Value::Type::phi) {
-    return true;
-  }
+  assert(value.type == TestIR::Value::Type::normal ||
+         value.type == TestIR::Value::Type::terminator);
 
   switch (value.op) {
     using enum TestIR::Value::Op;

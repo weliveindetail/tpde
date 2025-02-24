@@ -233,9 +233,9 @@ concept IRAdaptor = requires(T a) {
     a.block_succs(ARG(typename T::IRBlockRef))
   } -> IRRange<typename T::IRBlockRef>;
 
-  /// Provides an iterator over the values in a block
+  /// Provides an iterator over the (non-PHI) instructions in a block
   {
-    a.block_values(ARG(typename T::IRBlockRef))
+    a.block_insts(ARG(typename T::IRBlockRef))
   } -> IRRange<typename T::IRValueRef>;
 
   /// Provides an iterator over the PHIs in a block
