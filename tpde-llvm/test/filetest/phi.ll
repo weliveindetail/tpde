@@ -106,6 +106,8 @@ define ptr @phi_twocycles() {
 ; X64-NEXT:    mov r13d, r14d
 ; X64-NEXT:    mov r14d, eax
 ; X64-NEXT:    jmp <L0>
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    nop
 ;
 ; ARM64-LABEL: <phi_twocycles>:
 ; ARM64:         sub sp, sp, #0xb0
@@ -141,3 +143,51 @@ define ptr @phi_twocycles() {
   br label %1
 }
 
+define ptr @phi_cycles_selfref() {
+; X64-LABEL: <phi_cycles_selfref>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    push r12
+; X64-NEXT:    push r13
+; X64-NEXT:    nop dword ptr [rax]
+; X64-NEXT:    sub rsp, 0x28
+; X64-NEXT:    mov eax, 0x1
+; X64-NEXT:    mov ebx, eax
+; X64-NEXT:    mov eax, 0x2
+; X64-NEXT:    mov r12d, eax
+; X64-NEXT:    mov eax, 0x3
+; X64-NEXT:    mov r13d, eax
+; X64-NEXT:  <L0>:
+; X64-NEXT:    mov eax, ebx
+; X64-NEXT:    mov ebx, r12d
+; X64-NEXT:    mov r12d, eax
+; X64-NEXT:    jmp <L0>
+;
+; ARM64-LABEL: <phi_cycles_selfref>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    stp x19, x20, [sp, #0x10]
+; ARM64-NEXT:    str x21, [sp, #0x20]
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov x0, #0x1 // =1
+; ARM64-NEXT:    mov w19, w0
+; ARM64-NEXT:    mov x0, #0x2 // =2
+; ARM64-NEXT:    mov w20, w0
+; ARM64-NEXT:    mov x0, #0x3 // =3
+; ARM64-NEXT:    mov w21, w0
+; ARM64-NEXT:    mov w0, w19
+; ARM64-NEXT:    mov w19, w20
+; ARM64-NEXT:    mov w20, w0
+; ARM64-NEXT:    b 0x158 <phi_cycles_selfref+0x38>
+  br label %1
+
+1:                                                ; preds = %1, %0
+  %2 = phi i32 [ 1, %0 ], [ %3, %1 ]
+  %3 = phi i32 [ 2, %0 ], [ %2, %1 ]
+  %4 = phi i32 [ 3, %0 ], [ %4, %1 ]
+  br label %1
+}
