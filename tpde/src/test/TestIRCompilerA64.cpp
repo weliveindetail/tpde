@@ -76,26 +76,26 @@ struct TestIRCompilerA64 : a64::CompilerA64<TestIRAdaptor, TestIRCompilerA64> {
     (void)idx;
   }
 
-  [[nodiscard]] bool compile_inst(IRValueRef, InstRange) noexcept;
+  [[nodiscard]] bool compile_inst(IRInstRef, InstRange) noexcept;
 
   TestIR *ir() noexcept { return this->adaptor->ir; }
 
   const TestIR *ir() const noexcept { return this->adaptor->ir; }
 
-  bool compile_add(IRValueRef) noexcept;
-  bool compile_sub(IRValueRef) noexcept;
+  bool compile_add(IRInstRef) noexcept;
+  bool compile_sub(IRInstRef) noexcept;
 };
 
-bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
+bool TestIRCompilerA64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
   const TestIR::Value &value =
-      this->analyzer.adaptor->ir->values[static_cast<u32>(val_idx)];
+      this->analyzer.adaptor->ir->values[static_cast<u32>(inst_idx)];
   assert(value.type == TestIR::Value::Type::normal ||
          value.type == TestIR::Value::Type::terminator);
 
   switch (value.op) {
     using enum TestIR::Value::Op;
-  case add: return compile_add(val_idx);
-  case sub: return compile_sub(val_idx);
+  case add: return compile_add(inst_idx);
+  case sub: return compile_sub(inst_idx);
   case ret: {
     if (value.op_count == 1) {
       const auto op = static_cast<IRValueRef>(
@@ -192,7 +192,7 @@ bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
         value.op_count};
 
     std::variant<ValuePartRef, std::pair<ScratchReg, u8>> res =
-        this->result_ref_lazy(val_idx, 0);
+        this->result_ref_lazy(static_cast<IRValueRef>(inst_idx), 0);
 
     util::SmallVector<CallArg, 8> arguments{};
     for (auto op : operands) {
@@ -212,8 +212,8 @@ bool TestIRCompilerA64::compile_inst(IRValueRef val_idx, InstRange) noexcept {
   return false;
 }
 
-bool TestIRCompilerA64::compile_add(IRValueRef val_idx) noexcept {
-  const TestIR::Value &value = ir()->values[static_cast<u32>(val_idx)];
+bool TestIRCompilerA64::compile_add(IRInstRef inst_idx) noexcept {
+  const TestIR::Value &value = ir()->values[static_cast<u32>(inst_idx)];
 
   const auto lhs_idx =
       static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx]);
@@ -225,7 +225,7 @@ bool TestIRCompilerA64::compile_add(IRValueRef val_idx) noexcept {
 
   AsmReg lhs_orig{};
   ValuePartRef result = Base::result_ref_salvage_with_original(
-      val_idx, 0, std::move(lhs), lhs_orig);
+      static_cast<IRValueRef>(inst_idx), 0, std::move(lhs), lhs_orig);
   auto res_reg = result.cur_reg();
 
   ScratchReg scratch{this};
@@ -237,8 +237,8 @@ bool TestIRCompilerA64::compile_add(IRValueRef val_idx) noexcept {
   return true;
 }
 
-bool TestIRCompilerA64::compile_sub(IRValueRef val_idx) noexcept {
-  const TestIR::Value &value = ir()->values[static_cast<u32>(val_idx)];
+bool TestIRCompilerA64::compile_sub(IRInstRef inst_idx) noexcept {
+  const TestIR::Value &value = ir()->values[static_cast<u32>(inst_idx)];
 
   const auto lhs_idx =
       static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx]);
@@ -250,7 +250,7 @@ bool TestIRCompilerA64::compile_sub(IRValueRef val_idx) noexcept {
 
   AsmReg lhs_orig{};
   ValuePartRef result = Base::result_ref_salvage_with_original(
-      val_idx, 0, std::move(lhs), lhs_orig);
+      static_cast<IRValueRef>(inst_idx), 0, std::move(lhs), lhs_orig);
   auto res_reg = result.cur_reg();
 
   ScratchReg scratch{this};

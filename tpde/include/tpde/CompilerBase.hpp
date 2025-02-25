@@ -31,6 +31,7 @@ template <IRAdaptor Adaptor,
 struct CompilerBase {
   // some forwards for the IR type defs
   using IRValueRef = typename Adaptor::IRValueRef;
+  using IRInstRef = typename Adaptor::IRInstRef;
   using IRBlockRef = typename Adaptor::IRBlockRef;
   using IRFuncRef = typename Adaptor::IRFuncRef;
 
@@ -1786,17 +1787,17 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
   auto &&val_range = adaptor->block_insts(block);
   auto end = val_range.end();
   for (auto it = val_range.begin(); it != end; ++it) {
-    const IRValueRef value = *it;
-    if (this->adaptor->val_fused(value)) {
+    const IRInstRef inst = *it;
+    if (this->adaptor->inst_fused(inst)) {
       continue;
     }
 
     auto it_cpy = it;
     ++it_cpy;
-    if (!derived()->compile_inst(value, InstRange{.from = it_cpy, .to = end}))
+    if (!derived()->compile_inst(inst, InstRange{.from = it_cpy, .to = end}))
         [[unlikely]] {
       TPDE_LOG_ERR("Failed to compile instruction {}",
-                   this->adaptor->value_fmt_ref(value));
+                   this->adaptor->inst_fmt_ref(inst));
       return false;
     }
   }

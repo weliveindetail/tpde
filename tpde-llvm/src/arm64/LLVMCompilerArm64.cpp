@@ -719,7 +719,7 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
         auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
         auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
         generate_conditional_branch(cbz, true_block, false_block);
-        this->adaptor->val_set_fused(*remaining.from, true);
+        this->adaptor->inst_set_fused(*remaining.from, true);
         return true;
       }
 
@@ -758,7 +758,7 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
     auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
     auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
     generate_conditional_branch(jump, true_block, false_block);
-    this->adaptor->val_set_fused(*remaining.from, true);
+    this->adaptor->inst_set_fused(*remaining.from, true);
   } else if (fuse_ext) {
     auto res_ref = result_ref_lazy(*remaining.from, 0);
     if (llvm::isa<llvm::ZExtInst>(fuse_ext)) {
@@ -767,7 +767,7 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
       generate_raw_mask(jump, res_scratch.alloc_gp());
     }
     set_value(res_ref, res_scratch);
-    this->adaptor->val_set_fused(*remaining.from, true);
+    this->adaptor->inst_set_fused(*remaining.from, true);
   } else {
     auto res_ref = result_ref_lazy(cmp, 0);
     generate_raw_set(jump, res_scratch.alloc_gp());

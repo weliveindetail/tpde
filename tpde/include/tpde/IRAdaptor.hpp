@@ -92,6 +92,9 @@ concept IRAdaptor = requires(T a) {
   typename T::IRValueRef;
   requires sizeof(typename T::IRValueRef) <= 8;
 
+  /// A reference to an IR instruction.
+  typename T::IRInstRef;
+
   /// A reference to a block in your IR. Should not be greater than 8 bytes
   typename T::IRBlockRef;
   requires sizeof(typename T::IRBlockRef) <= 8;
@@ -236,7 +239,7 @@ concept IRAdaptor = requires(T a) {
   /// Provides an iterator over the (non-PHI) instructions in a block
   {
     a.block_insts(ARG(typename T::IRBlockRef))
-  } -> IRRange<typename T::IRValueRef>;
+  } -> IRRange<typename T::IRInstRef>;
 
   /// Provides an iterator over the PHIs in a block
   {
@@ -278,26 +281,12 @@ concept IRAdaptor = requires(T a) {
   // TODO(ts): add separate function to get local idx which is only used in
   // the analyzer if the adaptor wants to lazily assign indices?
 
-  /// Provides an iterator over the operands of a value
-  {
-    a.val_operands(ARG(typename T::IRValueRef))
-  } -> IRRange<typename T::IRValueRef>;
-
   /// Should a value be ignored in the liveness analysis?
   /// This is recommended for values classified as variable references
   /// such as globals or allocas
   {
     a.val_ignore_in_liveness_analysis(ARG(typename T::IRValueRef))
   } -> std::convertible_to<bool>;
-
-  /// Does the value produce a definition? For example, stores do not produce
-  /// a result
-  {
-    a.val_produces_result(ARG(typename T::IRValueRef))
-  } -> std::convertible_to<bool>;
-
-  /// Is the value fused? If so, it will not be compiled
-  { a.val_fused(ARG(typename T::IRValueRef)) } -> std::convertible_to<bool>;
 
   /// Provides the PHIRef for a PHI
   {
@@ -317,6 +306,25 @@ concept IRAdaptor = requires(T a) {
   /// If logging is enabled, we want to be able to print values and want to
   /// give the adaptor the opportunity to dictate how that is done
   { a.value_fmt_ref(ARG(typename T::IRValueRef)) } -> CanBeFormatted;
+
+  // Instruction information
+
+  /// Provides an iterator over the operands of an instruction.
+  {
+    a.inst_operands(ARG(typename T::IRInstRef))
+  } -> IRRange<typename T::IRValueRef>;
+
+  /// Result values of an instruction.
+  {
+    a.inst_results(ARG(typename T::IRInstRef))
+  } -> IRRange<typename T::IRValueRef>;
+
+  /// Whether to skip the instruction during compilation.
+  { a.inst_fused(ARG(typename T::IRInstRef)) } -> std::convertible_to<bool>;
+
+  /// If logging is enabled, we want to be able to print values and want to
+  /// give the adaptor the opportunity to dictate how that is done
+  { a.inst_fmt_ref(ARG(typename T::IRInstRef)) } -> CanBeFormatted;
 
 
   // compilation lifecycle

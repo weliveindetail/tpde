@@ -266,7 +266,7 @@ public:
 
   bool compile(llvm::Module &mod) noexcept;
 
-  bool compile_inst(IRValueRef, InstRange) noexcept;
+  bool compile_inst(const llvm::Instruction *, InstRange) noexcept;
 
   bool compile_ret(const llvm::ReturnInst *) noexcept;
   bool compile_load_generic(const llvm::LoadInst *,
@@ -975,7 +975,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
     variable_refs[cur_idx].val = v;
     variable_refs[cur_idx].alloca = true;
     // static allocas don't need to be compiled later
-    this->adaptor->val_set_fused(v, true);
+    this->adaptor->inst_set_fused(v, true);
 
     auto size = this->adaptor->val_alloca_size(v);
     auto align = this->adaptor->val_alloca_align(v);
@@ -1034,11 +1034,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
-    IRValueRef value, InstRange remaining) noexcept {
-  TPDE_LOG_TRACE("Compiling inst {}", this->adaptor->value_fmt_ref(value));
+    const llvm::Instruction *i, InstRange remaining) noexcept {
+  TPDE_LOG_TRACE("Compiling inst {}", this->adaptor->inst_fmt_ref(i));
 
   // TODO: const-correctness
-  const llvm::Instruction *i = llvm::cast<llvm::Instruction>(value);
   switch (i->getOpcode()) {
     // clang-format off
   case llvm::Instruction::Ret: return compile_ret(llvm::cast<llvm::ReturnInst>(i));
@@ -3449,7 +3448,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
                          next_gep->idx_end());
     }
 
-    this->adaptor->val_set_fused(next_val, true);
+    this->adaptor->inst_set_fused(next_val, true);
     final = next_val; // we set the result for nextInst
     gep = next_gep;
     ++remaining.from;
@@ -3461,12 +3460,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     auto *next_val = *remaining.from;
     if (auto *store = llvm::dyn_cast<llvm::StoreInst>(next_val);
         store && store->getPointerOperand() == gep) {
-      this->adaptor->val_set_fused(next_val, true);
+      this->adaptor->inst_set_fused(next_val, true);
       return compile_store_generic(store, std::move(addr));
     }
     if (auto *load = llvm::dyn_cast<llvm::LoadInst>(next_val);
         load && load->getPointerOperand() == gep) {
-      this->adaptor->val_set_fused(next_val, true);
+      this->adaptor->inst_set_fused(next_val, true);
       return compile_load_generic(load, std::move(addr));
     }
   }

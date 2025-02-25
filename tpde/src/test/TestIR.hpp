@@ -111,6 +111,8 @@ struct TestIRAdaptor {
 
   enum class IRValueRef : u32 {
   };
+  enum class IRInstRef : u32 {
+  };
   enum class IRBlockRef : u32 {
   };
   enum class IRFuncRef : u32 {
@@ -219,7 +221,7 @@ struct TestIRAdaptor {
   [[nodiscard]] auto block_insts(const IRBlockRef block) const noexcept {
     const auto &info = ir->blocks[static_cast<u32>(block)];
     return std::views::iota(info.phi_end_idx, info.inst_end_idx) |
-           std::views::transform([](u32 val) { return IRValueRef(val); });
+           std::views::transform([](u32 val) { return IRInstRef(val); });
   }
 
   [[nodiscard]] auto block_phis(const IRBlockRef block) const noexcept {
@@ -253,13 +255,17 @@ struct TestIRAdaptor {
     return ir->values[static_cast<u32>(val)].name;
   }
 
+  [[nodiscard]] std::string_view inst_fmt_ref(IRInstRef inst) const noexcept {
+    return ir->values[static_cast<u32>(inst)].name;
+  }
+
   [[nodiscard]] u32 val_local_idx(IRValueRef val) {
     assert(static_cast<u32>(val) >= ir->functions[cur_func].arg_begin_idx);
     return static_cast<u32>(val) - ir->functions[cur_func].arg_begin_idx;
   }
 
-  [[nodiscard]] auto val_operands(IRValueRef val) {
-    const auto &info = ir->values[static_cast<u32>(val)];
+  [[nodiscard]] auto inst_operands(IRInstRef inst) {
+    const auto &info = ir->values[static_cast<u32>(inst)];
     const auto *data = ir->value_operands.data();
     return std::ranges::subrange(data + info.op_begin_idx,
                                  data + info.op_begin_idx + info.op_count) |
@@ -271,12 +277,13 @@ struct TestIRAdaptor {
     return ir->values[static_cast<u32>(value)].op == TestIR::Value::Op::alloca;
   }
 
-  [[nodiscard]] bool val_produces_result(IRValueRef value) const noexcept {
-    const auto &info = ir->values[static_cast<u32>(value)];
-    return TestIR::Value::OP_INFOS[static_cast<u32>(info.op)].is_def;
+  [[nodiscard]] auto inst_results(IRInstRef inst) const noexcept {
+    const auto &info = ir->values[static_cast<u32>(inst)];
+    bool is_def = TestIR::Value::OP_INFOS[static_cast<u32>(info.op)].is_def;
+    return std::views::single(IRValueRef(inst)) | std::views::drop(!is_def);
   }
 
-  static bool val_fused(IRValueRef) noexcept { return false; }
+  static bool inst_fused(IRInstRef) noexcept { return false; }
 
   [[nodiscard]] auto val_as_phi(IRValueRef value) const noexcept {
     struct PHIRef {

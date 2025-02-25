@@ -104,6 +104,7 @@ static_assert(sizeof(LLVMComplexPart) == 4);
 
 struct LLVMAdaptor {
   using IRValueRef = const llvm::Value *;
+  using IRInstRef = const llvm::Instruction *;
   using IRBlockRef = u32;
   using IRFuncRef = llvm::Function *;
 
@@ -304,7 +305,14 @@ struct LLVMAdaptor {
   [[nodiscard]] std::string
       value_fmt_ref(const IRValueRef value) const noexcept {
     std::string buf;
-    llvm::raw_string_ostream(buf) << *value;
+    llvm::raw_string_ostream os(buf);
+    value->printAsOperand(os, /*PrintType=*/true, mod);
+    return buf;
+  }
+
+  [[nodiscard]] std::string inst_fmt_ref(const IRInstRef inst) const noexcept {
+    std::string buf;
+    llvm::raw_string_ostream(buf) << *inst;
     return buf;
   }
 
@@ -313,26 +321,20 @@ struct LLVMAdaptor {
     return val_lookup_idx(value);
   }
 
-  [[nodiscard]] auto val_operands(const IRValueRef value) const noexcept {
-    auto *inst = llvm::cast<llvm::Instruction>(value);
+  [[nodiscard]] auto inst_operands(const IRInstRef inst) const noexcept {
     return inst->operands() | std::views::transform([](const llvm::Use &use) {
              return use.get();
            });
   }
 
-  [[nodiscard]] bool
-      val_ignore_in_liveness_analysis(const IRValueRef value) const noexcept {
-    return !llvm::isa<llvm::Instruction, llvm::Argument>(value);
+  [[nodiscard]] auto inst_results(const IRInstRef inst) const noexcept {
+    bool is_void = inst->getType()->isVoidTy();
+    return std::views::single(inst) | std::views::drop(is_void ? 1 : 0);
   }
 
   [[nodiscard]] bool
-      val_produces_result(const IRValueRef value) const noexcept {
-    const auto *inst = llvm::dyn_cast<llvm::Instruction>(value);
-    if (!inst) {
-      return true;
-    }
-
-    return !inst->getType()->isVoidTy();
+      val_ignore_in_liveness_analysis(const IRValueRef value) const noexcept {
+    return !llvm::isa<llvm::Instruction, llvm::Argument>(value);
   }
 
   [[nodiscard]] auto val_as_phi(const IRValueRef value) const noexcept {
@@ -483,12 +485,12 @@ public:
     return val_parts(idx).count();
   }
 
-  [[nodiscard]] bool val_fused(const IRValueRef value) const noexcept {
-    return val_info(llvm::cast<llvm::Instruction>(value)).fused;
+  [[nodiscard]] bool inst_fused(const IRInstRef inst) const noexcept {
+    return val_info(inst).fused;
   }
 
-  void val_set_fused(const IRValueRef value, const bool fused) noexcept {
-    values[inst_lookup_idx(llvm::cast<llvm::Instruction>(value))].fused = fused;
+  void inst_set_fused(const IRInstRef value, const bool fused) noexcept {
+    values[inst_lookup_idx(value)].fused = fused;
   }
 
   [[nodiscard]] u32 val_lookup_idx(const llvm::Value *val) const noexcept {

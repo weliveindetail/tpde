@@ -70,13 +70,13 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
     (void)idx;
   }
 
-  [[nodiscard]] bool compile_inst(IRValueRef, InstRange) noexcept;
+  [[nodiscard]] bool compile_inst(IRInstRef, InstRange) noexcept;
 
   TestIR *ir() noexcept { return this->adaptor->ir; }
 
   const TestIR *ir() const noexcept { return this->adaptor->ir; }
 
-  bool compile_add(IRValueRef) noexcept;
-  bool compile_sub(IRValueRef) noexcept;
+  bool compile_add(IRInstRef) noexcept;
+  bool compile_sub(IRInstRef) noexcept;
 };
 } // namespace tpde::test

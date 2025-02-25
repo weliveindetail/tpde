@@ -18,6 +18,7 @@ template <IRAdaptor Adaptor>
 struct Analyzer {
   // some forwards for the IR type defs
   using IRValueRef = typename Adaptor::IRValueRef;
+  using IRInstRef = typename Adaptor::IRInstRef;
   using IRBlockRef = typename Adaptor::IRBlockRef;
   using IRFuncRef = typename Adaptor::IRFuncRef;
 
@@ -953,29 +954,15 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
       }
     }
 
-    for (const IRValueRef value :
-         adaptor->block_insts(block_layout[block_idx])) {
-      TPDE_LOG_TRACE("Analyzing value {}", adaptor->val_local_idx(value));
-
-      if (adaptor->val_ignore_in_liveness_analysis(value)) {
-        TPDE_LOG_TRACE("value is ignored in liveness analysis");
-        continue;
-      }
-
-      if (adaptor->val_produces_result(value)) {
+    for (const IRInstRef inst : adaptor->block_insts(block_layout[block_idx])) {
+      TPDE_LOG_TRACE("Analyzing instruction {}", adaptor->inst_fmt_ref(inst));
+      for (const IRValueRef res : adaptor->inst_results(inst)) {
         // mark the value as used in the current block
-        visit(value, block_idx);
+        visit(res, block_idx);
         ++loops[block_loop_idx].definitions;
-      } else {
-#ifdef TPDE_ASSERTS
-        // make sure no other value then uses the value
-        auto &liveness = liveness_maybe(value);
-        liveness.ref_count = ~0u;
-#endif
       }
 
-      // visit the operands
-      for (const IRValueRef operand : adaptor->val_operands(value)) {
+      for (const IRValueRef operand : adaptor->inst_operands(inst)) {
         visit(operand, block_idx);
       }
     }
