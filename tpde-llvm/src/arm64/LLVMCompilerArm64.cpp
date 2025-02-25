@@ -37,22 +37,6 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                                      LLVMCompilerBase,
                                      CompilerConfig>;
 
-  struct EncodeImm : GenericValuePart::Immediate {
-    explicit EncodeImm(const u32 value)
-        : Immediate{.const_u64 = value, .bank = 0, .size = 4} {}
-
-    explicit EncodeImm(const u64 value)
-        : Immediate{.const_u64 = value, .bank = 0, .size = 8} {}
-
-    explicit EncodeImm(const float value)
-        : Immediate{
-              .const_u64 = std::bit_cast<u32>(value), .bank = 1, .size = 4} {}
-
-    explicit EncodeImm(const double value)
-        : Immediate{
-              .const_u64 = std::bit_cast<u64>(value), .bank = 1, .size = 8} {}
-  };
-
   std::unique_ptr<LLVMAdaptor> adaptor;
 
   static constexpr std::array<AsmReg, 2> LANDING_PAD_RES_REGS = {AsmReg::R0,
@@ -698,7 +682,7 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
     AsmReg lhs_reg = gval_as_reg_reuse(lhs_op, res_scratch);
 
     if (rhs_op.is_imm()) {
-      u64 imm = rhs_op.imm().const_u64;
+      u64 imm = rhs_op.imm64();
       if (imm == 0 && fuse_br && (jump == Jump::Jeq || jump == Jump::Jne)) {
         // Generate CBZ/CBNZ if possible. However, lhs_reg might be the register
         // corresponding to a PHI node, which gets modified before the branch.

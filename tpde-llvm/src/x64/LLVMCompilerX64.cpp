@@ -37,22 +37,6 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                                      LLVMCompilerBase,
                                      CompilerConfig>;
 
-  struct EncodeImm : GenericValuePart::Immediate {
-    explicit EncodeImm(const u32 value)
-        : Immediate{.const_u64 = value, .bank = 0, .size = 4} {}
-
-    explicit EncodeImm(const u64 value)
-        : Immediate{.const_u64 = value, .bank = 0, .size = 8} {}
-
-    explicit EncodeImm(const float value)
-        : Immediate{
-              .const_u64 = std::bit_cast<u32>(value), .bank = 1, .size = 4} {}
-
-    explicit EncodeImm(const double value)
-        : Immediate{
-              .const_u64 = std::bit_cast<u64>(value), .bank = 1, .size = 8} {}
-  };
-
   std::unique_ptr<LLVMAdaptor> adaptor;
 
   static constexpr std::array<AsmReg, 2> LANDING_PAD_RES_REGS = {AsmReg::AX,
@@ -653,6 +637,7 @@ bool LLVMCompilerX64::compile_icmp(const llvm::ICmpInst *cmp,
 
     GenericValuePart lhs_op = std::move(lhs);
     GenericValuePart rhs_op = std::move(rhs);
+    u64 rhs_imm;
 
     if (int_width != 32 && int_width != 64) {
       unsigned ext_bits = tpde::util::align_up(int_width, 32);
@@ -660,7 +645,8 @@ bool LLVMCompilerX64::compile_icmp(const llvm::ICmpInst *cmp,
       if (!rhs_op.is_imm()) {
         rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
       } else if (is_signed) {
-        rhs_op = EncodeImm{u64(tpde::util::sext(rhs_op.imm64(), int_width))};
+        rhs_imm = tpde::util::sext(rhs_op.imm64(), int_width);
+        rhs_op = ValuePartRef{&rhs_imm, 8, 0};
       }
     }
 
@@ -769,7 +755,7 @@ void LLVMCompilerX64::switch_emit_cmp(ScratchReg &scratch,
       ASM(CMP64ri, cmp_reg, case_value);
     } else {
       const auto tmp = scratch.alloc_gp();
-      auto const_ref = ValuePartRef{case_value, 0, 8};
+      auto const_ref = ValuePartRef{&case_value, 8, 0};
       materialize_constant(const_ref, tmp);
       ASM(CMP64rr, cmp_reg, tmp);
     }
@@ -810,7 +796,7 @@ bool LLVMCompilerX64::switch_emit_jump_table(Label default_label,
     } else {
       ScratchReg tmp_scratch{this};
       const auto tmp = tmp_scratch.alloc_gp();
-      auto const_ref = ValuePartRef{low_bound, 0, 8};
+      auto const_ref = ValuePartRef{&low_bound, 8, 0};
       materialize_constant(const_ref, tmp);
       ASM(SUB64rr, cmp_reg, tmp);
     }

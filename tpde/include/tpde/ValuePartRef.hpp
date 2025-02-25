@@ -12,14 +12,7 @@ namespace tpde {
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   struct ConstantData {
-    // TODO(ts): limit this to a maximum of 64 bits of inline constant data
-    // and otherwise use a constant array in the compiler and just store an
-    // index here?
-    union {
-      u64 const_u64;
-      std::array<u8, 64> const_data;
-    };
-
+    const u64 *data;
     u32 bank;
     u32 size;
   };
@@ -39,10 +32,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
 
   bool is_const;
 
-  ValuePartRef() noexcept
-        : state{
-            ConstantData{.const_u64 = 0, .bank = 0, .size = 0}
-    }, is_const(true) {}
+  ValuePartRef() noexcept : state{ConstantData{}}, is_const(true) {}
 
   ValuePartRef(CompilerBase *compiler, ValLocalIdx local_idx, u32 part) noexcept
         : state {
@@ -57,18 +47,8 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     assert(assignment().variable_ref() || state.v.assignment->references_left);
   }
 
-  ValuePartRef(u64 const_u64, u32 bank, u32 size) noexcept : state { .c = ConstantData { .const_u64 = const_u64, .bank = bank, .size = size } }, is_const(true) {
-    assert(size <= state.c.const_data.size());
+  ValuePartRef(const u64 *data, u32 size, u32 bank) noexcept : state { .c = ConstantData { .data = data, .bank = bank, .size = size } }, is_const(true) {
     assert(bank < Config::NUM_BANKS);
-    if (size > 8) {
-      std::memset(state.c.const_data.data() + 8, 0, size - 8);
-    }
-  }
-
-  ValuePartRef(std::span<const u8> data, u32 bank) noexcept : state { .c = ConstantData { .const_data{}, .bank = bank, .size = static_cast<u32>(data.size()) } }, is_const(true) {
-    assert(data.size() <= state.c.const_data.size());
-    assert(bank < Config::NUM_BANKS);
-    std::memcpy(state.c.const_data.data(), data.data(), data.size());
   }
 
   explicit ValuePartRef(const ValuePartRef &) = delete;
@@ -79,7 +59,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     other.is_const = true;
     other.state.c.bank = 0;
 #ifdef TPDE_ASSERTS
-    other.state.c.const_data = {};
+    other.state.c.data = nullptr;
 #endif
   }
 
@@ -97,7 +77,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     other.is_const = true;
     other.state.c.bank = 0;
 #ifdef TPDE_ASSERTS
-    other.state.c.const_data = {};
+    other.state.c.data = nullptr;
 #endif
     return *this;
   }
@@ -532,13 +512,13 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
   if (state.v.assignment->references_left == 0) {
     assert(assignment().variable_ref());
     is_const = true;
-    state.c = ConstantData{.const_u64 = 0, .bank = 0, .size = 0};
+    state.c = ConstantData{};
     return;
   }
 
   if (--state.v.assignment->references_left != 0) {
     is_const = true;
-    state.c = ConstantData{.const_u64 = 0, .bank = 0, .size = 0};
+    state.c = ConstantData{};
     return;
   }
 
@@ -558,7 +538,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
   }
 
   is_const = true;
-  state.c = ConstantData{.const_u64 = 0, .bank = 0, .size = 0};
+  state.c = ConstantData{};
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -573,6 +553,6 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
   }
 
   is_const = true;
-  state.c = ConstantData{.const_u64 = 0, .bank = 0, .size = 0};
+  state.c = ConstantData{};
 }
 } // namespace tpde

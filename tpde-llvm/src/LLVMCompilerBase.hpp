@@ -20,6 +20,8 @@
 #include "tpde/AssemblerElf.hpp"
 #include "tpde/CompilerBase.hpp"
 #include "tpde/base.hpp"
+#include "tpde/util/BumpAllocator.hpp"
+#include "tpde/util/SmallVector.hpp"
 #include "tpde/util/misc.hpp"
 
 #include "JITMapper.hpp"
@@ -108,6 +110,8 @@ struct LLVMCompilerBase : public LLVMCompiler,
     umul,
     smul
   };
+
+  tpde::util::BumpAllocator<> const_allocator;
 
   llvm::DenseMap<const llvm::GlobalValue *, SymRef> global_syms;
 
@@ -259,6 +263,8 @@ public:
   void setup_var_ref_assignments() noexcept;
 
   bool compile_func(IRFuncRef func, u32 idx) noexcept {
+    // Reuse/release memory for stored constants from previous function
+    const_allocator.reset();
     // We might encounter types that are unsupported during compilation, which
     // cause the flag in the adaptor to be set. In such cases, return false.
     return Base::compile_func(func, idx) && !this->adaptor->func_unsupported;
@@ -459,7 +465,9 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
       llvm::isa<llvm::ConstantAggregateZero>(const_val)) {
     u32 size = this->adaptor->basic_ty_part_size(ty);
     u32 bank = this->adaptor->basic_ty_part_bank(ty);
-    return ValuePartRef(0, bank, size);
+    static const std::array<u64, 8> zero{};
+    assert(size <= zero.size() * sizeof(u64));
+    return ValuePartRef(zero.data(), size, bank);
   }
 
   if (auto *cdv = llvm::dyn_cast<llvm::ConstantDataVector>(const_val)) {
@@ -468,9 +476,9 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     }
     assert(part == 0 && "multi-part vector constants not implemented");
     llvm::StringRef data = cdv->getRawDataValues();
-    std::span<const u8> span{reinterpret_cast<const u8 *>(data.data()),
-                             data.size()};
-    return ValuePartRef(span, Config::FP_BANK);
+    // TODO: this cast is actually invalid.
+    const u64 *data_ptr = reinterpret_cast<const u64 *>(data.data());
+    return ValuePartRef(data_ptr, data.size(), Config::FP_BANK);
   }
 
   if (llvm::isa<llvm::ConstantVector>(const_val)) {
@@ -480,52 +488,36 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
 
   if (const auto *const_int = llvm::dyn_cast<llvm::ConstantInt>(const_val);
       const_int != nullptr) {
+    const u64 *data = const_int->getValue().getRawData();
     switch (ty) {
       using enum LLVMBasicValType;
     case i1:
-    case i8:
-      return ValuePartRef(
-          static_cast<u8>(const_int->getZExtValue()), Config::GP_BANK, 1);
-    case i16:
-      return ValuePartRef(
-          static_cast<u16>(const_int->getZExtValue()), Config::GP_BANK, 2);
-    case i32:
-      return ValuePartRef(
-          static_cast<u32>(const_int->getZExtValue()), Config::GP_BANK, 4);
+    case i8: return ValuePartRef(data, 1, Config::GP_BANK);
+    case i16: return ValuePartRef(data, 2, Config::GP_BANK);
+    case i32: return ValuePartRef(data, 4, Config::GP_BANK);
     case i64:
-    case ptr:
-      return ValuePartRef(const_int->getZExtValue(), Config::GP_BANK, 8);
-    case i128:
-      return ValuePartRef(
-          const_int->getValue().extractBitsAsZExtValue(64, 64 * sub_part),
-          Config::GP_BANK,
-          8);
+    case ptr: return ValuePartRef(data, 8, Config::GP_BANK);
+    case i128: return ValuePartRef(data + sub_part, 8, Config::GP_BANK);
     default: TPDE_FATAL("illegal integer constant");
     }
   }
 
   if (const auto *const_fp = llvm::dyn_cast<llvm::ConstantFP>(const_val);
       const_fp != nullptr) {
+    // APFloat has no bitwise storage of the floating-point number and
+    // bitcastToAPInt constructs a new APInt, so we need to copy the value.
+    llvm::APInt int_val = const_fp->getValue().bitcastToAPInt();
+    u64 *data = new (const_allocator) u64[int_val.getNumWords()];
+    std::memcpy(
+        data, int_val.getRawData(), int_val.getNumWords() * sizeof(u64));
     switch (ty) {
       using enum LLVMBasicValType;
     case f32:
-    case v32:
-      return ValuePartRef(
-          static_cast<u32>(
-              const_fp->getValue().bitcastToAPInt().getZExtValue()),
-          Config::FP_BANK,
-          4);
+    case v32: return ValuePartRef(data, 4, Config::FP_BANK);
     case f64:
-    case v64:
-      return ValuePartRef(const_fp->getValue().bitcastToAPInt().getZExtValue(),
-                          Config::FP_BANK,
-                          8);
-    case v128: {
-      llvm::APInt data = const_fp->getValue().bitcastToAPInt();
-      auto raw_data = reinterpret_cast<const u8 *>(data.getRawData());
-      auto num_bytes = sizeof(uint64_t) * data.getNumWords();
-      return ValuePartRef({raw_data, num_bytes}, Config::FP_BANK);
-    }
+    case v64: return ValuePartRef(data, 8, Config::FP_BANK);
+    case v128:
+      return ValuePartRef(data, 16, Config::FP_BANK);
       // TODO(ts): support the rest
     default: TPDE_FATAL("illegal fp constant");
     }
@@ -1534,8 +1526,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     const llvm::BinaryOperator *inst, const IntBinaryOp op) noexcept {
-  using EncodeImm = typename Derived::EncodeImm;
-
   auto *inst_ty = inst->getType();
 
   if (inst_ty->isVectorTy()) {
@@ -1771,6 +1761,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
   assert(inst_ty->isIntegerTy());
 
   const auto int_width = inst_ty->getIntegerBitWidth();
+  // Storage for encode immediates
+  u64 imm1, imm2;
   if (int_width == 128) {
     llvm::Value *lhs_op = inst->getOperand(0);
     llvm::Value *rhs_op = inst->getOperand(1);
@@ -1852,50 +1844,56 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     case IntBinaryOp::ashr:
       rhs_high.reset();
       if (rhs.is_const) {
-        u32 amt = rhs.state.c.const_u64 & 0b111'1111;
-        u32 iamt = 64 - amt;
-        if (amt < 64) {
+        imm1 = rhs.state.c.data[0] & 0b111'1111; // amt
+        if (imm1 < 64) {
+          imm2 = (64 - imm1) & 0b11'1111; // iamt
           if (op == IntBinaryOp::shl) {
-            derived()->encode_shli128_lt64(std::move(lhs),
-                                           std::move(lhs_high),
-                                           EncodeImm{amt & 0x3f},
-                                           EncodeImm{iamt & 0x3f},
-                                           scratch_low,
-                                           scratch_high);
+            derived()->encode_shli128_lt64(
+                std::move(lhs),
+                std::move(lhs_high),
+                ValuePartRef(&imm1, 1, Config::GP_BANK),
+                ValuePartRef(&imm2, 1, Config::GP_BANK),
+                scratch_low,
+                scratch_high);
           } else if (op == IntBinaryOp::shr) {
-            derived()->encode_shri128_lt64(std::move(lhs),
-                                           std::move(lhs_high),
-                                           EncodeImm{amt & 0x3f},
-                                           EncodeImm{iamt & 0x3f},
-                                           scratch_low,
-                                           scratch_high);
+            derived()->encode_shri128_lt64(
+                std::move(lhs),
+                std::move(lhs_high),
+                ValuePartRef(&imm1, 1, Config::GP_BANK),
+                ValuePartRef(&imm2, 1, Config::GP_BANK),
+                scratch_low,
+                scratch_high);
           } else {
             assert(op == IntBinaryOp::ashr);
-            derived()->encode_ashri128_lt64(std::move(lhs),
-                                            std::move(lhs_high),
-                                            EncodeImm{amt & 0x3f},
-                                            EncodeImm{iamt & 0x3f},
-                                            scratch_low,
-                                            scratch_high);
+            derived()->encode_ashri128_lt64(
+                std::move(lhs),
+                std::move(lhs_high),
+                ValuePartRef(&imm1, 1, Config::GP_BANK),
+                ValuePartRef(&imm2, 1, Config::GP_BANK),
+                scratch_low,
+                scratch_high);
           }
         } else {
-          amt -= 64;
+          imm1 -= 64;
           if (op == IntBinaryOp::shl) {
-            derived()->encode_shli128_ge64(std::move(lhs),
-                                           EncodeImm{amt & 0x3f},
-                                           scratch_low,
-                                           scratch_high);
+            derived()->encode_shli128_ge64(
+                std::move(lhs),
+                ValuePartRef(&imm1, 1, Config::GP_BANK),
+                scratch_low,
+                scratch_high);
           } else if (op == IntBinaryOp::shr) {
-            derived()->encode_shri128_ge64(std::move(lhs_high),
-                                           EncodeImm{amt & 0x3f},
-                                           scratch_low,
-                                           scratch_high);
+            derived()->encode_shri128_ge64(
+                std::move(lhs_high),
+                ValuePartRef(&imm1, 1, Config::GP_BANK),
+                scratch_low,
+                scratch_high);
           } else {
             assert(op == IntBinaryOp::ashr);
-            derived()->encode_ashri128_ge64(std::move(lhs_high),
-                                            EncodeImm{amt & 0x3f},
-                                            scratch_low,
-                                            scratch_high);
+            derived()->encode_ashri128_ge64(
+                std::move(lhs_high),
+                ValuePartRef(&imm1, 1, Config::GP_BANK),
+                scratch_low,
+                scratch_high);
           }
         }
         break;
@@ -1974,6 +1972,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
   // TODO(ts): optimize div/rem by constant to a shift?
   const auto lhs_const = lhs.is_const;
   const auto rhs_const = rhs.is_const;
+  u64 lhs_imm;
+  u64 rhs_imm;
   GenericValuePart lhs_op = std::move(lhs);
   GenericValuePart rhs_op = std::move(rhs);
 
@@ -2001,7 +2001,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         lhs_op =
             derived()->ext_int(std::move(lhs_op), sext, int_width, ext_width);
       } else if (sext) {
-        lhs_op = EncodeImm{u64(tpde::util::sext(lhs_op.imm64(), int_width))};
+        lhs_imm = tpde::util::sext(lhs_op.imm64(), int_width);
+        lhs_op = ValuePartRef(&lhs_imm, 8, Config::GP_BANK);
       }
     }
     if (ext_rhs) {
@@ -2009,7 +2010,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         rhs_op =
             derived()->ext_int(std::move(rhs_op), sext, int_width, ext_width);
       } else if (sext) {
-        rhs_op = EncodeImm{u64(tpde::util::sext(rhs_op.imm64(), int_width))};
+        rhs_imm = tpde::util::sext(rhs_op.imm64(), int_width);
+        rhs_op = ValuePartRef(&rhs_imm, 8, Config::GP_BANK);
       }
     }
   }
@@ -2414,9 +2416,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
     if (sign) {
       derived()->encode_fill_with_sign64(res_scratch.cur_reg, scratch_high);
     } else {
-      std::array<u8, 64> data{};
+      u64 zero = 0;
       derived()->materialize_constant(
-          data, Config::GP_BANK, 8, scratch_high.alloc_gp());
+          &zero, Config::GP_BANK, 8, scratch_high.alloc_gp());
     }
 
     this->set_value(res_ref_high, scratch_high);
@@ -2679,8 +2681,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_element(
   ScratchReg idx_scratch{this};
   GenericValuePart addr = derived()->val_spill_slot(vec_ref);
   auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
+  u64 mask = nelem - 1;
   derived()->encode_landi64(this->val_ref(index, 0),
-                            typename Derived::EncodeImm{u64{nelem - 1}},
+                            ValuePartRef{&mask, 8, Config::GP_BANK},
                             idx_scratch);
   assert(expr.scale == 0);
   expr.scale = this->adaptor->basic_ty_part_size(bvt);
@@ -2758,8 +2761,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
   ScratchReg idx_scratch{this};
   GenericValuePart addr = derived()->val_spill_slot(result);
   auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
+  u64 mask = nelem - 1;
   derived()->encode_landi64(this->val_ref(index, 0),
-                            typename Derived::EncodeImm{u64{nelem - 1}},
+                            ValuePartRef{&mask, 8, Config::GP_BANK},
                             idx_scratch);
   assert(expr.scale == 0);
   expr.scale = val.part_size();
@@ -2838,7 +2842,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
       }
       auto bank = this->adaptor->basic_ty_part_bank(bvt);
       auto size = this->adaptor->basic_ty_part_size(bvt);
-      ValuePartRef const_ref{const_elem, bank, size};
+      ValuePartRef const_ref{&const_elem, size, bank};
       derived()->materialize_constant(const_ref, tmp);
     } else {
       derived()->extract_element(src, mask[i] & (nelem - 1), bvt, tmp);
@@ -3493,8 +3497,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
 
   if (pred == llvm::CmpInst::FCMP_FALSE || pred == llvm::CmpInst::FCMP_TRUE) {
     auto res_ref = this->result_ref_eager(cmp, 0);
-    auto const_ref = ValuePartRef{
-        (pred == llvm::CmpInst::FCMP_FALSE ? 0u : 1u), Config::GP_BANK, 1};
+    u64 val = pred == llvm::CmpInst::FCMP_FALSE ? 0u : 1u;
+    auto const_ref = ValuePartRef{&val, 1, Config::GP_BANK};
     derived()->materialize_constant(const_ref, res_ref.cur_reg());
     this->set_value(res_ref, res_ref.cur_reg());
     return true;
@@ -3643,8 +3647,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
     const llvm::SwitchInst *switch_inst) noexcept {
-  using EncodeImm = typename Derived::EncodeImm;
-
   ScratchReg scratch{this};
   AsmReg cmp_reg;
   bool width_is_32 = false;
@@ -3665,8 +3667,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       } else if (width == 16) {
         derived()->encode_zext_16_to_32(std::move(arg_ref), scratch);
       } else {
-        u32 mask = (1ull << width) - 1;
-        derived()->encode_landi32(std::move(arg_ref), EncodeImm{mask}, scratch);
+        u64 mask = (1ull << width) - 1;
+        derived()->encode_landi32(std::move(arg_ref),
+                                  ValuePartRef{&mask, 4, Config::GP_BANK},
+                                  scratch);
       }
       cmp_reg = scratch.cur_reg;
     } else if (width == 32) {
@@ -3683,7 +3687,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       }
     } else if (width < 64) {
       u64 mask = (1ull << width) - 1;
-      derived()->encode_landi64(std::move(arg_ref), EncodeImm{mask}, scratch);
+      derived()->encode_landi64(
+          std::move(arg_ref), ValuePartRef{&mask, 8, Config::GP_BANK}, scratch);
       cmp_reg = scratch.cur_reg;
     } else {
       cmp_reg = this->val_as_reg(arg_ref, scratch);
@@ -4632,12 +4637,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     GenericValuePart op = this->val_ref(val, 0);
     if (width % 32) {
-      using EncodeImm = typename Derived::EncodeImm;
+      u64 amt = (width < 32 ? 32 : 64) - width;
+      ValuePartRef amt_val{&amt, 8, Config::GP_BANK};
       ScratchReg shifted{this};
       if (width < 32) {
-        derived()->encode_shli32(std::move(op), EncodeImm{32 - width}, shifted);
+        derived()->encode_shli32(std::move(op), std::move(amt_val), shifted);
       } else {
-        derived()->encode_shli64(std::move(op), EncodeImm{64 - width}, shifted);
+        derived()->encode_shli64(std::move(op), std::move(amt_val), shifted);
       }
       op = std::move(shifted);
     }
@@ -4690,10 +4696,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     // not the most efficient but it's OK
     const auto type_info_sym = lookup_type_info_sym(type);
-    const auto idx = this->assembler.except_type_idx_for_sym(type_info_sym);
+    const u64 idx = this->assembler.except_type_idx_for_sym(type_info_sym);
 
     auto res_ref = this->result_ref_eager(inst, 0);
-    auto const_ref = ValuePartRef{idx, Config::GP_BANK, 4};
+    auto const_ref = ValuePartRef{&idx, 4, Config::GP_BANK};
     derived()->materialize_constant(const_ref, res_ref.cur_reg());
     this->set_value(res_ref, res_ref.cur_reg());
     return true;
@@ -4706,7 +4712,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     // ref-count the argument
     this->val_ref(inst->getOperand(0), 0);
     auto res_ref = this->result_ref_eager(inst, 0);
-    auto const_ref = ValuePartRef{0, Config::GP_BANK, 4};
+    u64 zero = 0;
+    auto const_ref = ValuePartRef{&zero, 4, Config::GP_BANK};
     derived()->materialize_constant(const_ref, res_ref.cur_reg());
     this->set_value(res_ref, res_ref.cur_reg());
     return true;
@@ -4720,8 +4727,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
     const llvm::IntrinsicInst *inst) noexcept {
-  using EncodeImm = typename Derived::EncodeImm;
-
   auto *op = inst->getOperand(0);
   auto *op_ty = op->getType();
 
@@ -4755,15 +4760,18 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
   auto res_ref = this->result_ref_lazy(inst, 0);
   auto op_ref = this->val_ref(op, 0);
 
+  u64 zero = 0;
+  auto zero_ref = ValuePartRef{&zero, 4, Config::GP_BANK};
+
   // handle common case
 #define TEST(cond, name)                                                       \
   if (test == cond) {                                                          \
     if (is_double) {                                                           \
       derived()->encode_is_fpclass_##name##_double(                            \
-          EncodeImm{0u}, std::move(op_ref), res_scratch);                      \
+          zero_ref, std::move(op_ref), res_scratch);                           \
     } else {                                                                   \
       derived()->encode_is_fpclass_##name##_float(                             \
-          EncodeImm{0u}, std::move(op_ref), res_scratch);                      \
+          zero_ref, std::move(op_ref), res_scratch);                           \
     }                                                                          \
     this->set_value(res_ref, res_scratch);                                     \
     return true;                                                               \
@@ -4776,8 +4784,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
 
   // we OR' together the results from each test so initialize the result with
   // zero
-  auto const_ref = ValuePartRef{0, Config::GP_BANK, 4};
-  derived()->materialize_constant(const_ref, res_scratch.alloc_gp());
+  derived()->materialize_constant(zero_ref, res_scratch.alloc_gp());
 
 #define TEST(cond, name)                                                       \
   if (test & cond) {                                                           \

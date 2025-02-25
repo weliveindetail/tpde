@@ -1031,8 +1031,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
           std::get_if<typename GenericValuePart::Immediate>(&gv.state)) {
     ScratchReg dst{derived()};
     const auto dst_reg = dst.alloc(imm->bank);
-    derived()->materialize_constant(
-        imm->const_bytes, imm->bank, imm->size, dst_reg);
+    derived()->materialize_constant(imm->data, imm->bank, imm->size, dst_reg);
     gv.state = std::move(dst);
     return dst_reg;
   }

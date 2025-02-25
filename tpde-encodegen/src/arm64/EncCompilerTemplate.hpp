@@ -61,23 +61,23 @@ struct EncodeCompiler {
 
     std::optional<u64> encodeable_as_shiftimm(GenericValuePart &gv, unsigned size) const noexcept {
         if (gv.is_imm() && gv.imm().size <= 8) {
-            return gv.imm().const_u64 & (size - 1);
+            return gv.imm64() & (size - 1);
         }
         return std::nullopt;
     }
     std::optional<u64> encodeable_as_immarith(GenericValuePart &gv) const noexcept {
         if (gv.is_imm() && gv.imm().size <= 8) {
-            u64 val = gv.imm().const_u64;
+            u64 val = gv.imm64();
             val     = static_cast<i64>(val) < 0 ? -val : val;
             if ((val & 0xfff) == val || (val & 0xff'f000) == val) {
-                return gv.imm().const_u64;
+                return gv.imm64();
             }
         }
         return std::nullopt;
     }
     std::optional<u64> encodeable_as_immlogical(GenericValuePart &gv, bool inv) const noexcept {
         if (gv.is_imm()) {
-            u64 imm = gv.imm().const_u64 ^ (inv ? ~u64{0} : 0);
+            u64 imm = gv.imm64() ^ (inv ? ~u64{0} : 0);
             if (gv.imm().size == 8 && de64_ANDxi(DA_GP(0), DA_GP(0), imm))
                 return imm;
             if (gv.imm().size <= 4 && de64_ANDwi(DA_GP(0), DA_GP(0), imm))

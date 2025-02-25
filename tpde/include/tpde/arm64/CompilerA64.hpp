@@ -518,7 +518,7 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
 
   void materialize_constant(ValuePartRef &val_ref, AsmReg dst) noexcept;
   void materialize_constant(ValuePartRef &val_ref, ScratchReg &dst) noexcept;
-  void materialize_constant(const std::array<u8, 64> &data,
+  void materialize_constant(const u64 *data,
                             u32 bank,
                             u32 size,
                             AsmReg dst) noexcept;
@@ -1823,7 +1823,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     ValuePartRef &val_ref, const AsmReg dst) noexcept {
   assert(val_ref.is_const);
   const auto &data = val_ref.state.c;
-  materialize_constant(data.const_data, data.bank, data.size, dst);
+  materialize_constant(data.data, data.bank, data.size, dst);
 }
 
 template <IRAdaptor Adaptor,
@@ -1841,11 +1841,8 @@ template <IRAdaptor Adaptor,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
-    const std::array<u8, 64> &data,
-    const u32 bank,
-    const u32 size,
-    AsmReg dst) noexcept {
-  const auto const_u64 = *reinterpret_cast<const u64 *>(data.data());
+    const u64 *data, const u32 bank, const u32 size, AsmReg dst) noexcept {
+  const auto const_u64 = data[0];
   if (bank == 0) {
     assert(size <= 8);
     if (const_u64 == 0) {
@@ -1900,7 +1897,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
   // TODO(ts): have some facility to use a constant pool
   if (size == 16) {
     // TODO(ae): safe access...
-    const auto high_u64 = reinterpret_cast<const u64 *>(data.data())[1];
+    const auto high_u64 = data[1];
     if (const_u64 == high_u64 && ASMIF(MOVI2d, dst, const_u64)) {
       return;
     }
@@ -1912,8 +1909,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     const auto tmp = scratch.alloc_gp();
 
     auto rodata = this->assembler.get_data_section(true, false);
+    std::span<const u8> raw_data{reinterpret_cast<const u8 *>(data), size};
     auto sym = this->assembler.sym_def_data(
-        rodata, "", {data.data(), size}, 16, Assembler::SymBinding::LOCAL);
+        rodata, "", raw_data, 16, Assembler::SymBinding::LOCAL);
     this->assembler.text_ensure_space(8); // ensure contiguous instructions
     this->assembler.reloc_text(
         sym, R_AARCH64_ADR_PREL_PG_HI21, this->assembler.text_cur_off(), 0);
@@ -1935,7 +1933,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     u64 const_u64, u32 bank, u32 size, AsmReg dst) noexcept {
   // probably not the most efficient but I'm hoping the compiler can optimize
   // this
-  auto const_ref = ValuePartRef{const_u64, bank, size};
+  auto const_ref = ValuePartRef{&const_u64, size, bank};
   materialize_constant(const_ref, dst);
 }
 

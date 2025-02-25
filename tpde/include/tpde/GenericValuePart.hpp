@@ -51,11 +51,7 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
   };
 
   struct Immediate {
-    union {
-      u64 const_u64;
-      std::array<u8, 64> const_bytes;
-    };
-
+    const u64 *data;
     u32 bank, size;
   };
 
@@ -108,7 +104,7 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
   // no salvaging
   GenericValuePart(ValuePartRef &ref) noexcept {
     if (ref.is_const) {
-      state = Immediate{.const_bytes = ref.state.c.const_data,
+      state = Immediate{.data = ref.state.c.data,
                         .bank = ref.state.c.bank,
                         .size = ref.state.c.size};
       return;
@@ -121,7 +117,7 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
   // salvaging
   GenericValuePart(ValuePartRef &&ref) noexcept {
     if (ref.is_const) {
-      state = Immediate{.const_bytes = ref.state.c.const_data,
+      state = Immediate{.data = ref.state.c.data,
                         .bank = ref.state.c.bank,
                         .size = ref.state.c.size};
       return;
@@ -154,7 +150,7 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
 
   [[nodiscard]] u64 imm64() const noexcept {
     assert(is_imm() && imm().size <= 8);
-    return imm().const_u64;
+    return imm().data[0];
   }
 
   [[nodiscard]] ValuePartRef &val_ref() noexcept {
