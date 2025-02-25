@@ -973,9 +973,11 @@ void CompilerBase<Adaptor, Derived, Config>::salvage_reg_for_values(
   assert(to.has_assignment());
   assert(from.has_assignment());
 
-  const auto from_reg = from.cur_reg();
   auto ap_from = from.assignment();
   auto ap_to = to.assignment();
+  assert(ap_from.register_valid());
+  // Don't use cur_reg, which requires the register to be fixed/locked.
+  AsmReg from_reg{ap_from.full_reg_id()};
 
   if (ap_from.fixed_assignment()) {
     --assignments.cur_fixed_assignment_count[ap_from.bank()];

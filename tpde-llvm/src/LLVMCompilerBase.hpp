@@ -3575,6 +3575,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
 
     ValuePartRef res_ref2 = this->val_ref(cmp, 0);
     res_ref2.inc_ref_count();
+    res_ref2.alloc_reg(true);
     auto dst_reg = res_ref2.cur_reg();
     // Stupid hack to do the actual comparison.
     // TODO: do a proper comparison here.

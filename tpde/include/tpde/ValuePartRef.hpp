@@ -112,6 +112,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   /// used to quickly access it
   AsmReg cur_reg() noexcept {
     assert(assignment().register_valid());
+    assert(assignment().fixed_assignment() || state.v.locked);
     return AsmReg{assignment().full_reg_id()};
   }
 
