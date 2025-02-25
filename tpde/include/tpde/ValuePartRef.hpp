@@ -88,20 +88,42 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   }
 
   /// Increment the reference count artificially
-  void inc_ref_count() noexcept;
+  void inc_ref_count() noexcept {
+    if (!is_const) {
+      ++state.v.assignment->references_left;
+    }
+  }
 
   /// Decrement the reference count artificially
-  void dec_ref_count() noexcept;
+  void dec_ref_count() noexcept {
+    if (!is_const) {
+      assert(state.v.assignment->references_left > 0);
+      --state.v.assignment->references_left;
+    }
+  }
 
   /// Spill the value part to the stack frame
-  void spill() noexcept;
+  void spill() noexcept {
+    if (auto ap = assignment(); ap.register_valid()) {
+      ap.spill_if_needed(state.v.compiler);
+    }
+  }
 
   /// If it is known that the value part has a register, this function can be
   /// used to quickly access it
-  AsmReg cur_reg() noexcept;
+  AsmReg cur_reg() noexcept {
+    assert(assignment().register_valid());
+    return AsmReg{assignment().full_reg_id()};
+  }
 
   /// Is the value part currently in the specified register?
-  bool is_in_reg(AsmReg) const noexcept;
+  bool is_in_reg(AsmReg reg) const noexcept {
+    if (is_const) {
+      return false;
+    }
+    auto ap = assignment();
+    return ap.register_valid() && AsmReg{ap.full_reg_id()} == reg;
+  }
 
   /// Allocate a register for the value part, reload from the stack if this is
   /// desired, and lock the value into the register.
@@ -167,64 +189,6 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
 
   void reset_without_refcount() noexcept;
 };
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
-    inc_ref_count() noexcept {
-  if (is_const) {
-    return;
-  }
-
-  ++state.v.assignment->references_left;
-}
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
-    dec_ref_count() noexcept {
-  if (is_const) {
-    return;
-  }
-
-  assert(state.v.assignment->references_left > 0);
-  --state.v.assignment->references_left;
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::spill() noexcept {
-  assert(!is_const);
-
-  auto ap = assignment();
-  if (!ap.register_valid()) {
-    return;
-  }
-
-  ap.spill_if_needed(state.v.compiler);
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::ValuePartRef::cur_reg() noexcept {
-  assert(!is_const);
-
-  auto ap = assignment();
-  assert(ap.register_valid());
-
-  return AsmReg{ap.full_reg_id()};
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::is_in_reg(
-    const AsmReg reg) const noexcept {
-  if (is_const) {
-    return false;
-  }
-
-  auto ap = assignment();
-  if (!ap.register_valid()) {
-    return false;
-  }
-
-  return AsmReg{ap.full_reg_id()} == reg;
-}
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
