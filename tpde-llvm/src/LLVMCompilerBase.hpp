@@ -1303,7 +1303,7 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     const llvm::LoadInst *load) noexcept {
   auto ptr_ref = this->val_ref(load->getPointerOperand(), 0);
-  if (!ptr_ref.is_const && ptr_ref.assignment().variable_ref()) {
+  if (ptr_ref.has_assignment() && ptr_ref.assignment().variable_ref()) {
     const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
     if (this->variable_refs[ref_idx].alloca) {
       GenericValuePart addr = derived()->create_addr_for_alloca(ref_idx);
@@ -1512,7 +1512,7 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     const llvm::StoreInst *store) noexcept {
   auto ptr_ref = this->val_ref(store->getPointerOperand(), 0);
-  if (!ptr_ref.is_const && ptr_ref.assignment().variable_ref()) {
+  if (ptr_ref.has_assignment() && ptr_ref.assignment().variable_ref()) {
     const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
     if (this->variable_refs[ref_idx].alloca) {
       GenericValuePart addr = derived()->create_addr_for_alloca(ref_idx);
@@ -1800,8 +1800,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     if ((op == IntBinaryOp::add || op == IntBinaryOp::mul ||
          op == IntBinaryOp::land || op == IntBinaryOp::lor ||
          op == IntBinaryOp::lxor) &&
-        lhs.is_const && lhs_high.is_const && !rhs.is_const &&
-        !rhs_high.is_const) {
+        lhs.is_const() && lhs_high.is_const() && !rhs.is_const() &&
+        !rhs_high.is_const()) {
       // TODO(ts): this is a hack since the encoder can currently not do
       // commutable operations so we reorder immediates manually here
       std::swap(lhs, rhs);
@@ -1843,7 +1843,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     case IntBinaryOp::shr:
     case IntBinaryOp::ashr:
       rhs_high.reset();
-      if (rhs.is_const) {
+      if (rhs.is_const()) {
         imm1 = rhs.state.c.data[0] & 0b111'1111; // amt
         if (imm1 < 64) {
           imm2 = (64 - imm1) & 0b11'1111; // iamt
@@ -1963,15 +1963,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
   if ((op == IntBinaryOp::add || op == IntBinaryOp::mul ||
        op == IntBinaryOp::land || op == IntBinaryOp::lor ||
        op == IntBinaryOp::lxor) &&
-      lhs.is_const && !rhs.is_const) {
+      lhs.is_const() && !rhs.is_const()) {
     // TODO(ts): this is a hack since the encoder can currently not do
     // commutable operations so we reorder immediates manually here
     std::swap(lhs, rhs);
   }
 
   // TODO(ts): optimize div/rem by constant to a shift?
-  const auto lhs_const = lhs.is_const;
-  const auto rhs_const = rhs.is_const;
+  const auto lhs_const = lhs.is_const();
+  const auto rhs_const = rhs.is_const();
   u64 lhs_imm;
   u64 rhs_imm;
   GenericValuePart lhs_op = std::move(lhs);
@@ -3336,7 +3336,7 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
         ScratchReg scratch{this};
         AsmReg src_reg = this->val_as_reg(ref, scratch);
         AsmReg dst_reg;
-        if (ref.is_const) {
+        if (ref.is_const()) {
           dst_reg = src_reg;
         } else if (ref.can_salvage()) {
           dst_reg = scratch.alloc_specific(ref.salvage());
@@ -3680,7 +3680,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       // table
       if (arg_ref.can_salvage()) {
         scratch.alloc_specific(arg_ref.salvage());
-      } else if (!arg_ref.is_const) {
+      } else if (arg_ref.has_assignment()) {
         arg_ref.unlock();
         arg_ref.reload_into_specific_fixed(this, scratch.alloc_gp());
         cmp_reg = scratch.cur_reg;
@@ -3696,7 +3696,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       // table
       if (arg_ref.can_salvage()) {
         scratch.alloc_specific(arg_ref.salvage());
-      } else if (!arg_ref.is_const) {
+      } else if (arg_ref.has_assignment()) {
         arg_ref.unlock();
         arg_ref.reload_into_specific_fixed(this, scratch.alloc_gp());
         cmp_reg = scratch.cur_reg;

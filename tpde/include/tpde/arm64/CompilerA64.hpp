@@ -930,7 +930,7 @@ u32 CallingConv::handle_call_args(
     if (arg.flag == CallArg::Flag::byval) {
       ScratchReg scratch1(compiler), scratch2(compiler);
       auto ptr_ref = compiler->val_ref(arg.value, 0);
-      assert(!ptr_ref.is_const);
+      assert(ptr_ref.has_assignment());
       ScratchReg ptr_scratch{compiler};
       AsmReg ptr_reg = compiler->val_as_reg(ptr_ref, ptr_scratch);
 
@@ -1108,7 +1108,7 @@ void CallingConv::fill_call_results(
   for (auto &res : results) {
     if (std::holds_alternative<ValuePartRef>(res)) {
       auto &ref = std::get<ValuePartRef>(res);
-      assert(!ref.is_const);
+      assert(ref.has_assignment());
       if (ref.bank() == 0) {
         assert(gp_reg_count < gp_regs.size());
         compiler->set_value(ref, gp_regs[gp_reg_count++]);
@@ -1821,7 +1821,7 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     ValuePartRef &val_ref, const AsmReg dst) noexcept {
-  assert(val_ref.is_const);
+  assert(!val_ref.has_assignment());
   const auto &data = val_ref.state.c;
   materialize_constant(data.data, data.bank, data.size, dst);
 }
@@ -1832,7 +1832,7 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     ValuePartRef &val_ref, ScratchReg &dst) noexcept {
-  assert(val_ref.is_const);
+  assert(!val_ref.has_assignment());
   materialize_constant(val_ref, dst.alloc(val_ref.state.c.bank));
 }
 
@@ -2473,7 +2473,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
     assert(std::holds_alternative<ValuePartRef>(target));
     auto &ref = std::get<ValuePartRef>(target);
     AsmReg reg;
-    if (ref.is_const) {
+    if (!ref.has_assignment()) {
       assert(((1ull << AsmReg::R9) & (calling_conv.callee_saved_mask() |
                                       calling_conv.arg_regs_mask())) == 0);
       this->register_file.clobbered |= (1ull << AsmReg::R9);

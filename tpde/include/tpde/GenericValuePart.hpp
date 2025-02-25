@@ -103,7 +103,7 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
 
   // no salvaging
   GenericValuePart(ValuePartRef &ref) noexcept {
-    if (ref.is_const) {
+    if (!ref.has_assignment()) {
       state = Immediate{.data = ref.state.c.data,
                         .bank = ref.state.c.bank,
                         .size = ref.state.c.size};
@@ -116,7 +116,7 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
 
   // salvaging
   GenericValuePart(ValuePartRef &&ref) noexcept {
-    if (ref.is_const) {
+    if (!ref.has_assignment()) {
       state = Immediate{.data = ref.state.c.data,
                         .bank = ref.state.c.bank,
                         .size = ref.state.c.size};

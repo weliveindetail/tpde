@@ -168,7 +168,7 @@ std::optional<FeMem> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
         return std::nullopt;
     }
 
-    if (ptr->is_const) {
+    if (!ptr->has_assignment()) {
         return std::nullopt;
     }
 
@@ -312,7 +312,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
 
         if (std::holds_alternative<ValuePartRef>(op)) {
             auto &op_ref = std::get<ValuePartRef>(op);
-            if (!op_ref.is_const) {
+            if (op_ref.has_assignment()) {
                 assert(!op_ref.state.v.locked);
                 const auto ap = op_ref.assignment();
                 if (ap.register_valid()) {
@@ -324,7 +324,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
 
         if (std::holds_alternative<ValuePartRef *>(op)) {
             auto &op_ref = *std::get<ValuePartRef *>(op);
-            if (!op_ref.is_const) {
+            if (op_ref.has_assignment()) {
                 assert(!op_ref.state.v.locked);
                 const auto ap = op_ref.assignment();
                 if (ap.register_valid()) {

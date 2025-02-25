@@ -12,17 +12,19 @@ namespace tpde {
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   struct ConstantData {
+    bool has_assignment = false;
     const u64 *data;
     u32 bank;
     u32 size;
   };
 
   struct ValueData {
+    bool has_assignment = true;
+    bool locked;
     CompilerBase::ValLocalIdx local_idx;
     u32 part;
     ValueAssignment *assignment;
     CompilerBase *compiler;
-    bool locked;
   };
 
   union {
@@ -30,37 +32,32 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     ValueData v;
   } state;
 
-  bool is_const;
-
-  ValuePartRef() noexcept : state{ConstantData{}}, is_const(true) {}
+  ValuePartRef() noexcept : state{ConstantData{}} {}
 
   ValuePartRef(CompilerBase *compiler, ValLocalIdx local_idx, u32 part) noexcept
-        : state {
-        .v = ValueData {
-            .local_idx = local_idx,
-            .part = part,
-            .assignment = compiler->val_assignment(local_idx),
-            .compiler = compiler,
-            .locked = false
-        }
-    }, is_const(false) {
+      : state{
+            .v = ValueData{
+                           .locked = false,
+                           .local_idx = local_idx,
+                           .part = part,
+                           .assignment = compiler->val_assignment(local_idx),
+                           .compiler = compiler,
+                           }
+  } {
     assert(assignment().variable_ref() || state.v.assignment->references_left);
   }
 
-  ValuePartRef(const u64 *data, u32 size, u32 bank) noexcept : state { .c = ConstantData { .data = data, .bank = bank, .size = size } }, is_const(true) {
+  ValuePartRef(const u64 *data, u32 size, u32 bank) noexcept
+      : state{
+            .c = ConstantData{.data = data, .bank = bank, .size = size}
+  } {
     assert(bank < Config::NUM_BANKS);
   }
 
   explicit ValuePartRef(const ValuePartRef &) = delete;
 
-  ValuePartRef(ValuePartRef &&other) noexcept {
-    this->state = other.state;
-    this->is_const = other.is_const;
-    other.is_const = true;
-    other.state.c.bank = 0;
-#ifdef TPDE_ASSERTS
-    other.state.c.data = nullptr;
-#endif
+  ValuePartRef(ValuePartRef &&other) noexcept : state{other.state} {
+    other.state.c = ConstantData{};
   }
 
   ~ValuePartRef() noexcept { reset(); }
@@ -73,30 +70,29 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     }
     reset();
     this->state = other.state;
-    this->is_const = other.is_const;
-    other.is_const = true;
-    other.state.c.bank = 0;
-#ifdef TPDE_ASSERTS
-    other.state.c.data = nullptr;
-#endif
+    other.state.c = ConstantData{};
     return *this;
   }
 
+  bool has_assignment() const noexcept { return state.v.has_assignment; }
+
+  bool is_const() const noexcept { return !state.c.has_assignment; }
+
   [[nodiscard]] AssignmentPartRef assignment() const noexcept {
-    assert(!is_const);
+    assert(has_assignment());
     return AssignmentPartRef{state.v.assignment, state.v.part};
   }
 
   /// Increment the reference count artificially
   void inc_ref_count() noexcept {
-    if (!is_const) {
+    if (has_assignment()) {
       ++state.v.assignment->references_left;
     }
   }
 
   /// Decrement the reference count artificially
   void dec_ref_count() noexcept {
-    if (!is_const) {
+    if (has_assignment()) {
       assert(state.v.assignment->references_left > 0);
       --state.v.assignment->references_left;
     }
@@ -118,7 +114,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
 
   /// Is the value part currently in the specified register?
   bool is_in_reg(AsmReg reg) const noexcept {
-    if (is_const) {
+    if (is_const()) {
       return false;
     }
     auto ap = assignment();
@@ -162,26 +158,26 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   AsmReg salvage() noexcept;
 
   ValLocalIdx local_idx() const noexcept {
-    assert(!is_const);
+    assert(has_assignment());
     return state.v.local_idx;
   }
 
   u32 part() const noexcept {
-    assert(!is_const);
+    assert(has_assignment());
     return state.v.part;
   }
 
   u32 ref_count() const noexcept {
-    assert(!is_const);
+    assert(has_assignment());
     return state.v.assignment->references_left;
   }
 
   u32 bank() const noexcept {
-    return is_const ? state.c.bank : assignment().bank();
+    return !has_assignment() ? state.c.bank : assignment().bank();
   }
 
   u32 part_size() const noexcept {
-    return is_const ? state.c.size : assignment().part_size();
+    return !has_assignment() ? state.c.size : assignment().part_size();
   }
 
   /// Reset the reference to the value part
@@ -194,7 +190,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::alloc_reg(
         const bool reload) noexcept {
-  assert(!is_const);
+  assert(has_assignment());
 
   auto pa = assignment();
   if (pa.fixed_assignment()) {
@@ -252,7 +248,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::move_into_specific(
         const AsmReg reg) noexcept {
-  assert(!is_const);
+  assert(has_assignment());
 
   auto ap = assignment();
   assert(!ap.fixed_assignment());
@@ -299,7 +295,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reload_into_specific(
         CompilerBase *compiler, const AsmReg reg) noexcept {
-  if (is_const) {
+  if (is_const()) {
     // TODO(ts): store a compiler* in the constant data?
     // make sure the register is free
     ScratchReg tmp{compiler};
@@ -357,7 +353,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
         reload_into_specific_fixed(CompilerBase *compiler,
                                    AsmReg reg) noexcept {
-  if (is_const) {
+  if (is_const()) {
     // TODO(ts): store a compiler* in the constant data?
     compiler->derived()->materialize_constant(*this, reg);
     return reg;
@@ -422,7 +418,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::unlock() noexcept {
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::can_salvage(
     const u32 ref_adjust) const noexcept {
-  if (is_const) {
+  if (!has_assignment()) {
     return false;
   }
 
@@ -465,7 +461,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
-  if (is_const) {
+  if (!has_assignment()) {
     return;
   }
 
@@ -475,13 +471,11 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
 
   if (state.v.assignment->references_left == 0) {
     assert(assignment().variable_ref());
-    is_const = true;
     state.c = ConstantData{};
     return;
   }
 
   if (--state.v.assignment->references_left != 0) {
-    is_const = true;
     state.c = ConstantData{};
     return;
   }
@@ -501,14 +495,13 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
     state.v.compiler->free_assignment(state.v.local_idx);
   }
 
-  is_const = true;
   state.c = ConstantData{};
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
     reset_without_refcount() noexcept {
-  if (is_const) {
+  if (!has_assignment()) {
     return;
   }
 
@@ -516,7 +509,6 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
     unlock();
   }
 
-  is_const = true;
   state.c = ConstantData{};
 }
 } // namespace tpde

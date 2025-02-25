@@ -183,7 +183,7 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
       reg = call_conv.ret_regs_vec()[xmm_reg_idx++];
     }
 
-    if (val_ref.is_const) {
+    if (val_ref.is_const()) {
       this->materialize_constant(val_ref, reg);
       if (i == cnt - 1 && sext_width) {
         ext_int(reg, reg, /*sign=*/true, sext_width, ext_width);
@@ -630,7 +630,7 @@ bool LLVMCompilerX64::compile_icmp(const llvm::ICmpInst *cmp,
     lhs.reset();
     rhs.reset();
   } else {
-    if (lhs.is_const && !rhs.is_const) {
+    if (lhs.is_const() && !rhs.is_const()) {
       std::swap(lhs, rhs);
       jump = swap_jump(jump);
     }

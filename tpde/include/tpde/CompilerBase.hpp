@@ -751,7 +751,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::val_as_reg(
         ValuePartRef &val_ref, ScratchReg &scratch) noexcept {
-  if (val_ref.is_const) {
+  if (val_ref.is_const()) {
     derived()->materialize_constant(val_ref, scratch);
     assert(scratch.cur_reg.valid());
     return scratch.cur_reg;
@@ -764,7 +764,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::val_as_specific_reg(
         ValuePartRef &val_ref, AsmReg reg) noexcept {
-  if (val_ref.is_const) {
+  if (val_ref.is_const()) {
     derived()->materialize_constant(val_ref, reg);
     return reg;
   }
@@ -823,7 +823,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
   (void)ap_res;
   assert(ap_res.bank() == arg.bank());
 
-  if (arg.is_const) {
+  if (arg.is_const()) {
     const auto reg = res_ref.alloc_reg(false);
     derived()->materialize_constant(arg, reg);
   } else {
@@ -858,7 +858,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
   auto ap_res = res_ref.assignment();
   assert(ap_res.bank() == arg.bank());
 
-  if (arg.is_const) {
+  if (arg.is_const()) {
     lhs_reg = res_ref.alloc_reg(false);
     derived()->materialize_constant(arg, lhs_reg);
   } else {
@@ -970,8 +970,8 @@ void CompilerBase<Adaptor, Derived, Config>::set_value(
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::salvage_reg_for_values(
     ValuePartRef &to, ValuePartRef &from) noexcept {
-  assert(!to.is_const);
-  assert(!from.is_const);
+  assert(to.has_assignment());
+  assert(from.has_assignment());
 
   const auto from_reg = from.cur_reg();
   auto ap_from = from.assignment();
@@ -1134,10 +1134,10 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
       const IRValueRef inc_val = phi_ref.incoming_val_for_block(cur_block_ref);
       // TODO: we should query all parts here
       auto ref = derived()->val_ref(inc_val, 0);
-      if (ref.is_const) {
+      if (!ref.has_assignment()) {
         continue;
       }
-      auto *assignment = ref.state.v.assignment;
+      auto *assignment = ref.assignment().assignment;
       ref.reset_without_refcount();
       u32 part_count = derived()->val_parts(inc_val).count();
       for (u32 i = 0; i < part_count; ++i) {
@@ -1385,7 +1385,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
       auto val_ref = derived()->val_ref(incoming_val, i);
 
       AsmReg reg{};
-      if (val_ref.is_const) {
+      if (val_ref.is_const()) {
         derived()->materialize_constant(
             val_ref, scratch.alloc_from_bank(val_ref.bank()));
         reg = scratch.cur_reg;
