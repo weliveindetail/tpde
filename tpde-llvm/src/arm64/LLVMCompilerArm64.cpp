@@ -370,11 +370,10 @@ bool LLVMCompilerArm64::compile_alloca(
 
   // refcount
   auto size_ref = this->val_ref(alloca->getArraySize(), 0);
-  ValuePartRef res_ref;
 
   auto &layout = adaptor->mod->getDataLayout();
   if (auto opt = alloca->getAllocationSize(layout); opt) {
-    res_ref = this->result_ref_eager(alloca, 0);
+    ValuePartRef res_ref = this->result_ref_eager(alloca, 0);
 
     const auto size = *opt;
     assert(!size.isScalable());
@@ -407,7 +406,8 @@ bool LLVMCompilerArm64::compile_alloca(
 
   const auto elem_size = layout.getTypeAllocSize(alloca->getAllocatedType());
   ScratchReg scratch{this};
-  res_ref = this->result_ref_must_salvage(alloca, 0, std::move(size_ref));
+  ValuePartRef res_ref =
+      this->result_ref_must_salvage(alloca, 0, std::move(size_ref));
   const auto res_reg = res_ref.cur_reg();
 
   if (elem_size == 0) {

@@ -467,7 +467,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     u32 bank = this->adaptor->basic_ty_part_bank(ty);
     static const std::array<u64, 8> zero{};
     assert(size <= zero.size() * sizeof(u64));
-    return ValuePartRef(zero.data(), size, bank);
+    return ValuePartRef(this, zero.data(), size, bank);
   }
 
   if (auto *cdv = llvm::dyn_cast<llvm::ConstantDataVector>(const_val)) {
@@ -478,7 +478,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     llvm::StringRef data = cdv->getRawDataValues();
     // TODO: this cast is actually invalid.
     const u64 *data_ptr = reinterpret_cast<const u64 *>(data.data());
-    return ValuePartRef(data_ptr, data.size(), Config::FP_BANK);
+    return ValuePartRef(this, data_ptr, data.size(), Config::FP_BANK);
   }
 
   if (llvm::isa<llvm::ConstantVector>(const_val)) {
@@ -492,12 +492,12 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     switch (ty) {
       using enum LLVMBasicValType;
     case i1:
-    case i8: return ValuePartRef(data, 1, Config::GP_BANK);
-    case i16: return ValuePartRef(data, 2, Config::GP_BANK);
-    case i32: return ValuePartRef(data, 4, Config::GP_BANK);
+    case i8: return ValuePartRef(this, data, 1, Config::GP_BANK);
+    case i16: return ValuePartRef(this, data, 2, Config::GP_BANK);
+    case i32: return ValuePartRef(this, data, 4, Config::GP_BANK);
     case i64:
-    case ptr: return ValuePartRef(data, 8, Config::GP_BANK);
-    case i128: return ValuePartRef(data + sub_part, 8, Config::GP_BANK);
+    case ptr: return ValuePartRef(this, data, 8, Config::GP_BANK);
+    case i128: return ValuePartRef(this, data + sub_part, 8, Config::GP_BANK);
     default: TPDE_FATAL("illegal integer constant");
     }
   }
@@ -513,11 +513,11 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     switch (ty) {
       using enum LLVMBasicValType;
     case f32:
-    case v32: return ValuePartRef(data, 4, Config::FP_BANK);
+    case v32: return ValuePartRef(this, data, 4, Config::FP_BANK);
     case f64:
-    case v64: return ValuePartRef(data, 8, Config::FP_BANK);
+    case v64: return ValuePartRef(this, data, 8, Config::FP_BANK);
     case v128:
-      return ValuePartRef(data, 16, Config::FP_BANK);
+      return ValuePartRef(this, data, 16, Config::FP_BANK);
       // TODO(ts): support the rest
     default: TPDE_FATAL("illegal fp constant");
     }
@@ -1851,16 +1851,16 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
             derived()->encode_shli128_lt64(
                 std::move(lhs),
                 std::move(lhs_high),
-                ValuePartRef(&imm1, 1, Config::GP_BANK),
-                ValuePartRef(&imm2, 1, Config::GP_BANK),
+                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, &imm2, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           } else if (op == IntBinaryOp::shr) {
             derived()->encode_shri128_lt64(
                 std::move(lhs),
                 std::move(lhs_high),
-                ValuePartRef(&imm1, 1, Config::GP_BANK),
-                ValuePartRef(&imm2, 1, Config::GP_BANK),
+                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, &imm2, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           } else {
@@ -1868,8 +1868,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
             derived()->encode_ashri128_lt64(
                 std::move(lhs),
                 std::move(lhs_high),
-                ValuePartRef(&imm1, 1, Config::GP_BANK),
-                ValuePartRef(&imm2, 1, Config::GP_BANK),
+                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, &imm2, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           }
@@ -1878,20 +1878,20 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
           if (op == IntBinaryOp::shl) {
             derived()->encode_shli128_ge64(
                 std::move(lhs),
-                ValuePartRef(&imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           } else if (op == IntBinaryOp::shr) {
             derived()->encode_shri128_ge64(
                 std::move(lhs_high),
-                ValuePartRef(&imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           } else {
             assert(op == IntBinaryOp::ashr);
             derived()->encode_ashri128_ge64(
                 std::move(lhs_high),
-                ValuePartRef(&imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           }
@@ -2002,7 +2002,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
             derived()->ext_int(std::move(lhs_op), sext, int_width, ext_width);
       } else if (sext) {
         lhs_imm = tpde::util::sext(lhs_op.imm64(), int_width);
-        lhs_op = ValuePartRef(&lhs_imm, 8, Config::GP_BANK);
+        lhs_op = ValuePartRef(this, &lhs_imm, 8, Config::GP_BANK);
       }
     }
     if (ext_rhs) {
@@ -2011,7 +2011,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
             derived()->ext_int(std::move(rhs_op), sext, int_width, ext_width);
       } else if (sext) {
         rhs_imm = tpde::util::sext(rhs_op.imm64(), int_width);
-        rhs_op = ValuePartRef(&rhs_imm, 8, Config::GP_BANK);
+        rhs_op = ValuePartRef(this, &rhs_imm, 8, Config::GP_BANK);
       }
     }
   }
@@ -2492,7 +2492,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
 
   ScratchReg orig_scratch{derived()};
   AsmReg orig;
-  ValuePartRef res_ref;
+  ValuePartRef res_ref{this};
   if (src_parts.reg_bank(0) == dst_parts.reg_bank(0)) {
     res_ref = this->result_ref_salvage_with_original(
         inst, 0, std::move(src_ref), orig);
@@ -2553,7 +2553,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_value(
       this->adaptor->complex_part_for_index(insert, insert->getIndices());
 
   for (unsigned i = 0; i < part_count; i++) {
-    ValuePartRef val_ref;
+    ValuePartRef val_ref{this};
     bool inc_ref_count;
     if (i >= first_part && i <= last_part) {
       val_ref = this->val_ref(ins, i - first_part);
@@ -2683,7 +2683,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_element(
   auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
   u64 mask = nelem - 1;
   derived()->encode_landi64(this->val_ref(index, 0),
-                            ValuePartRef{&mask, 8, Config::GP_BANK},
+                            ValuePartRef{this, &mask, 8, Config::GP_BANK},
                             idx_scratch);
   assert(expr.scale == 0);
   expr.scale = this->adaptor->basic_ty_part_size(bvt);
@@ -2763,7 +2763,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
   auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
   u64 mask = nelem - 1;
   derived()->encode_landi64(this->val_ref(index, 0),
-                            ValuePartRef{&mask, 8, Config::GP_BANK},
+                            ValuePartRef{this, &mask, 8, Config::GP_BANK},
                             idx_scratch);
   assert(expr.scale == 0);
   expr.scale = val.part_size();
@@ -2842,7 +2842,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
       }
       auto bank = this->adaptor->basic_ty_part_bank(bvt);
       auto size = this->adaptor->basic_ty_part_size(bvt);
-      ValuePartRef const_ref{&const_elem, size, bank};
+      ValuePartRef const_ref{this, &const_elem, size, bank};
       derived()->materialize_constant(const_ref, tmp);
     } else {
       derived()->extract_element(src, mask[i] & (nelem - 1), bvt, tmp);
@@ -3366,12 +3366,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     const llvm::GetElementPtrInst *gep, InstRange remaining) noexcept {
   auto ptr = gep->getPointerOperand();
 
-  auto resolved = ResolvedGEP{};
-  resolved.base = this->val_ref(ptr, 0);
-  resolved.index = ScratchReg{derived()};
-  resolved.scale = 0;
-  resolved.displacement = 0;
-  resolved.idx_size_bits = 0;
+  auto resolved = ResolvedGEP{
+      .base = this->val_ref(ptr, 0),
+      .index = ScratchReg{derived()},
+      .scale = 0,
+      .idx_size_bits = 0,
+      .displacement = 0,
+  };
 
   auto &data_layout = this->adaptor->mod->getDataLayout();
 
@@ -3498,7 +3499,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
   if (pred == llvm::CmpInst::FCMP_FALSE || pred == llvm::CmpInst::FCMP_TRUE) {
     auto res_ref = this->result_ref_eager(cmp, 0);
     u64 val = pred == llvm::CmpInst::FCMP_FALSE ? 0u : 1u;
-    auto const_ref = ValuePartRef{&val, 1, Config::GP_BANK};
+    auto const_ref = ValuePartRef{this, &val, 1, Config::GP_BANK};
     derived()->materialize_constant(const_ref, res_ref.cur_reg());
     this->set_value(res_ref, res_ref.cur_reg());
     return true;
@@ -3669,7 +3670,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       } else {
         u64 mask = (1ull << width) - 1;
         derived()->encode_landi32(std::move(arg_ref),
-                                  ValuePartRef{&mask, 4, Config::GP_BANK},
+                                  ValuePartRef{this, &mask, 4, Config::GP_BANK},
                                   scratch);
       }
       cmp_reg = scratch.cur_reg;
@@ -3687,8 +3688,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       }
     } else if (width < 64) {
       u64 mask = (1ull << width) - 1;
-      derived()->encode_landi64(
-          std::move(arg_ref), ValuePartRef{&mask, 8, Config::GP_BANK}, scratch);
+      derived()->encode_landi64(std::move(arg_ref),
+                                ValuePartRef{this, &mask, 8, Config::GP_BANK},
+                                scratch);
       cmp_reg = scratch.cur_reg;
     } else {
       cmp_reg = this->val_as_reg(arg_ref, scratch);
@@ -4638,7 +4640,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     GenericValuePart op = this->val_ref(val, 0);
     if (width % 32) {
       u64 amt = (width < 32 ? 32 : 64) - width;
-      ValuePartRef amt_val{&amt, 8, Config::GP_BANK};
+      ValuePartRef amt_val{this, &amt, 8, Config::GP_BANK};
       ScratchReg shifted{this};
       if (width < 32) {
         derived()->encode_shli32(std::move(op), std::move(amt_val), shifted);
@@ -4699,7 +4701,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     const u64 idx = this->assembler.except_type_idx_for_sym(type_info_sym);
 
     auto res_ref = this->result_ref_eager(inst, 0);
-    auto const_ref = ValuePartRef{&idx, 4, Config::GP_BANK};
+    auto const_ref = ValuePartRef{this, &idx, 4, Config::GP_BANK};
     derived()->materialize_constant(const_ref, res_ref.cur_reg());
     this->set_value(res_ref, res_ref.cur_reg());
     return true;
@@ -4713,7 +4715,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     this->val_ref(inst->getOperand(0), 0);
     auto res_ref = this->result_ref_eager(inst, 0);
     u64 zero = 0;
-    auto const_ref = ValuePartRef{&zero, 4, Config::GP_BANK};
+    auto const_ref = ValuePartRef{this, &zero, 4, Config::GP_BANK};
     derived()->materialize_constant(const_ref, res_ref.cur_reg());
     this->set_value(res_ref, res_ref.cur_reg());
     return true;
@@ -4761,7 +4763,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
   auto op_ref = this->val_ref(op, 0);
 
   u64 zero = 0;
-  auto zero_ref = ValuePartRef{&zero, 4, Config::GP_BANK};
+  auto zero_ref = ValuePartRef{this, &zero, 4, Config::GP_BANK};
 
   // handle common case
 #define TEST(cond, name)                                                       \

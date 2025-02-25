@@ -342,12 +342,10 @@ bool LLVMCompilerX64::compile_alloca(const llvm::AllocaInst *alloca) noexcept {
 
   // refcount
   auto size_ref = this->val_ref(alloca->getArraySize(), 0);
-  ValuePartRef res_ref;
+  ValuePartRef res_ref = this->result_ref_lazy(alloca, 0);
 
   auto &layout = adaptor->mod->getDataLayout();
   if (auto opt = alloca->getAllocationSize(layout); opt) {
-    res_ref = this->result_ref_eager(alloca, 0);
-
     const auto size = *opt;
     assert(!size.isScalable());
     auto size_val = size.getFixedValue();
@@ -356,9 +354,13 @@ bool LLVMCompilerX64::compile_alloca(const llvm::AllocaInst *alloca) noexcept {
       assert(size < 0x8000'0000);
       ASM(SUB64ri, FE_SP, size_val);
     }
+
+    res_ref.alloc_reg(false);
   } else {
     const auto elem_size = layout.getTypeAllocSize(alloca->getAllocatedType());
     ScratchReg scratch{this};
+    // TODO: find better solution for this
+    res_ref.reset_without_refcount();
     res_ref = this->result_ref_must_salvage(alloca, 0, std::move(size_ref));
     const auto res_reg = res_ref.cur_reg();
 
@@ -646,7 +648,7 @@ bool LLVMCompilerX64::compile_icmp(const llvm::ICmpInst *cmp,
         rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
       } else if (is_signed) {
         rhs_imm = tpde::util::sext(rhs_op.imm64(), int_width);
-        rhs_op = ValuePartRef{&rhs_imm, 8, 0};
+        rhs_op = ValuePartRef{this, &rhs_imm, 8, 0};
       }
     }
 
@@ -755,7 +757,7 @@ void LLVMCompilerX64::switch_emit_cmp(ScratchReg &scratch,
       ASM(CMP64ri, cmp_reg, case_value);
     } else {
       const auto tmp = scratch.alloc_gp();
-      auto const_ref = ValuePartRef{&case_value, 8, 0};
+      auto const_ref = ValuePartRef{this, &case_value, 8, 0};
       materialize_constant(const_ref, tmp);
       ASM(CMP64rr, cmp_reg, tmp);
     }
@@ -796,7 +798,7 @@ bool LLVMCompilerX64::switch_emit_jump_table(Label default_label,
     } else {
       ScratchReg tmp_scratch{this};
       const auto tmp = tmp_scratch.alloc_gp();
-      auto const_ref = ValuePartRef{&low_bound, 8, 0};
+      auto const_ref = ValuePartRef{this, &low_bound, 8, 0};
       materialize_constant(const_ref, tmp);
       ASM(SUB64rr, cmp_reg, tmp);
     }

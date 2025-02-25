@@ -24,7 +24,6 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     CompilerBase::ValLocalIdx local_idx;
     u32 part;
     ValueAssignment *assignment;
-    CompilerBase *compiler;
   };
 
   union {
@@ -32,7 +31,10 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     ValueData v;
   } state;
 
-  ValuePartRef() noexcept : state{ConstantData{}} {}
+  CompilerBase *compiler;
+
+  ValuePartRef(CompilerBase *compiler) noexcept
+      : state{ConstantData{}}, compiler(compiler) {}
 
   ValuePartRef(CompilerBase *compiler, ValLocalIdx local_idx, u32 part) noexcept
       : state{
@@ -41,22 +43,22 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
                            .local_idx = local_idx,
                            .part = part,
                            .assignment = compiler->val_assignment(local_idx),
-                           .compiler = compiler,
                            }
-  } {
+  }, compiler(compiler) {
     assert(assignment().variable_ref() || state.v.assignment->references_left);
   }
 
-  ValuePartRef(const u64 *data, u32 size, u32 bank) noexcept
+  ValuePartRef(CompilerBase *compiler, const u64 *data, u32 size, u32 bank) noexcept
       : state{
             .c = ConstantData{.data = data, .bank = bank, .size = size}
-  } {
+  }, compiler(compiler) {
     assert(bank < Config::NUM_BANKS);
   }
 
   explicit ValuePartRef(const ValuePartRef &) = delete;
 
-  ValuePartRef(ValuePartRef &&other) noexcept : state{other.state} {
+  ValuePartRef(ValuePartRef &&other) noexcept
+      : state{other.state}, compiler(other.compiler) {
     other.state.c = ConstantData{};
   }
 
@@ -69,6 +71,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
       return *this;
     }
     reset();
+    assert(compiler == other.compiler);
     this->state = other.state;
     other.state.c = ConstantData{};
     return *this;
@@ -101,7 +104,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   /// Spill the value part to the stack frame
   void spill() noexcept {
     if (auto ap = assignment(); ap.register_valid()) {
-      ap.spill_if_needed(state.v.compiler);
+      ap.spill_if_needed(compiler);
     }
   }
 
@@ -203,7 +206,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     return AsmReg{pa.full_reg_id()};
   }
 
-  auto &reg_file = state.v.compiler->register_file;
+  auto &reg_file = compiler->register_file;
   auto reg = reg_file.find_first_free_excluding(pa.bank(), 0);
   // TODO(ts): need to grab this from the registerfile since the reg type
   // could be different
@@ -215,9 +218,9 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     }
 
     AssignmentPartRef part{
-        state.v.compiler->val_assignment(reg_file.reg_local_idx(reg)),
+        compiler->val_assignment(reg_file.reg_local_idx(reg)),
         reg_file.reg_part(reg)};
-    part.spill_if_needed(state.v.compiler);
+    part.spill_if_needed(compiler);
     part.set_register_valid(false);
     reg_file.unmark_used(reg);
   }
@@ -234,10 +237,9 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
   if (reload) {
     if (ap.variable_ref()) {
-      state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
+      compiler->derived()->load_address_of_var_reference(reg, ap);
     } else {
-      state.v.compiler->derived()->load_from_stack(
-          reg, ap.frame_off(), ap.part_size());
+      compiler->derived()->load_from_stack(reg, ap.frame_off(), ap.part_size());
     }
   }
 
@@ -252,7 +254,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
   auto ap = assignment();
   assert(!ap.fixed_assignment());
-  auto &reg_file = state.v.compiler->register_file;
+  auto &reg_file = compiler->register_file;
   if (ap.register_valid()) {
     if (ap.full_reg_id() == reg.id()) {
       return reg;
@@ -262,25 +264,23 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   if (reg_file.is_used(reg)) {
     assert(!reg_file.is_fixed(reg));
 
-    auto ap = AssignmentPartRef{
-        state.v.compiler->val_assignment(reg_file.reg_local_idx(reg)),
-        reg_file.reg_part(reg)};
-    ap.spill_if_needed(state.v.compiler);
+    auto ap =
+        AssignmentPartRef{compiler->val_assignment(reg_file.reg_local_idx(reg)),
+                          reg_file.reg_part(reg)};
+    ap.spill_if_needed(compiler);
     ap.set_register_valid(false);
     reg_file.unmark_used(reg);
   }
 
   if (ap.register_valid()) {
-    state.v.compiler->derived()->mov(
-        reg, AsmReg{ap.full_reg_id()}, ap.part_size());
+    compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()}, ap.part_size());
 
     reg_file.unmark_used(AsmReg{ap.full_reg_id()});
   } else {
     if (ap.variable_ref()) {
-      state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
+      compiler->derived()->load_address_of_var_reference(reg, ap);
     } else {
-      state.v.compiler->derived()->load_from_stack(
-          reg, ap.frame_off(), ap.part_size());
+      compiler->derived()->load_from_stack(reg, ap.frame_off(), ap.part_size());
     }
     ap.set_register_valid(true);
   }
@@ -306,18 +306,18 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   }
 
   assert(!state.v.locked);
-  auto &reg_file = state.v.compiler->register_file;
+  auto &reg_file = compiler->register_file;
 
   // Free the register if there is anything else in there
   if (reg_file.is_used(reg) &&
       (reg_file.reg_local_idx(reg) != state.v.local_idx ||
        reg_file.reg_part(reg) != state.v.part)) {
     assert(!reg_file.is_fixed(reg));
-    auto ap = AssignmentPartRef{
-        state.v.compiler->val_assignment(reg_file.reg_local_idx(reg)),
-        reg_file.reg_part(reg)};
+    auto ap =
+        AssignmentPartRef{compiler->val_assignment(reg_file.reg_local_idx(reg)),
+                          reg_file.reg_part(reg)};
     assert(!ap.fixed_assignment());
-    ap.spill_if_needed(state.v.compiler);
+    ap.spill_if_needed(compiler);
     ap.set_register_valid(false);
     reg_file.unmark_used(reg);
   }
@@ -325,26 +325,24 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   auto ap = assignment();
   if (ap.register_valid()) {
     if (ap.full_reg_id() == reg.id()) {
-      ap.spill_if_needed(state.v.compiler);
+      ap.spill_if_needed(compiler);
       ap.set_register_valid(false);
       assert(!reg_file.is_fixed(reg));
       reg_file.unmark_used(reg);
       return reg;
     }
 
-    state.v.compiler->derived()->mov(
-        reg, AsmReg{ap.full_reg_id()}, ap.part_size());
+    compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()}, ap.part_size());
   } else {
     assert(!ap.fixed_assignment());
     if (ap.variable_ref()) {
-      state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
+      compiler->derived()->load_address_of_var_reference(reg, ap);
     } else {
-      state.v.compiler->derived()->load_from_stack(
-          reg, ap.frame_off(), ap.part_size());
+      compiler->derived()->load_from_stack(reg, ap.frame_off(), ap.part_size());
     }
   }
 
-  state.v.compiler->register_file.mark_clobbered(reg);
+  compiler->register_file.mark_clobbered(reg);
   return reg;
 }
 
@@ -365,19 +363,17 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   if (ap.register_valid()) {
     assert(ap.full_reg_id() != reg.id());
 
-    state.v.compiler->derived()->mov(
-        reg, AsmReg{ap.full_reg_id()}, ap.part_size());
+    compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()}, ap.part_size());
   } else {
     assert(!ap.fixed_assignment());
     if (ap.variable_ref()) {
-      state.v.compiler->derived()->load_address_of_var_reference(reg, ap);
+      compiler->derived()->load_address_of_var_reference(reg, ap);
     } else {
-      state.v.compiler->derived()->load_from_stack(
-          reg, ap.frame_off(), ap.part_size());
+      compiler->derived()->load_from_stack(reg, ap.frame_off(), ap.part_size());
     }
   }
 
-  state.v.compiler->register_file.mark_clobbered(reg);
+  compiler->register_file.mark_clobbered(reg);
   return reg;
 }
 
@@ -391,8 +387,8 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::lock() noexcept {
   assert(ap.register_valid());
 
   const auto reg = AsmReg{ap.full_reg_id()};
-  state.v.compiler->register_file.mark_fixed(reg);
-  state.v.compiler->register_file.inc_lock_count(reg);
+  compiler->register_file.mark_fixed(reg);
+  compiler->register_file.inc_lock_count(reg);
 
   state.v.locked = true;
 }
@@ -407,9 +403,9 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::unlock() noexcept {
   assert(ap.register_valid());
 
   const auto reg = AsmReg{ap.full_reg_id()};
-  if (state.v.compiler->register_file.dec_lock_count(reg) == 0 &&
+  if (compiler->register_file.dec_lock_count(reg) == 0 &&
       !ap.fixed_assignment()) {
-    state.v.compiler->register_file.unmark_fixed(reg);
+    compiler->register_file.unmark_fixed(reg);
   }
 
   state.v.locked = false;
@@ -427,11 +423,10 @@ bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::can_salvage(
   }
 
   const auto &liveness =
-      state.v.compiler->analyzer.liveness_info((u32)state.v.local_idx);
+      compiler->analyzer.liveness_info((u32)state.v.local_idx);
   if (ref_count() <= ref_adjust &&
-      (liveness.last < state.v.compiler->cur_block_idx ||
-       (liveness.last == state.v.compiler->cur_block_idx &&
-        !liveness.last_full))) {
+      (liveness.last < compiler->cur_block_idx ||
+       (liveness.last == compiler->cur_block_idx && !liveness.last_full))) {
     return true;
   }
 
@@ -447,12 +442,11 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   auto cur_reg = AsmReg{ap.full_reg_id()};
 
   unlock();
-  assert(ap.fixed_assignment() ||
-         !state.v.compiler->register_file.is_fixed(cur_reg));
+  assert(ap.fixed_assignment() || !compiler->register_file.is_fixed(cur_reg));
   if (ap.fixed_assignment()) {
-    state.v.compiler->register_file.unmark_fixed(cur_reg);
+    compiler->register_file.unmark_fixed(cur_reg);
   }
-  state.v.compiler->register_file.unmark_used(cur_reg);
+  compiler->register_file.unmark_used(cur_reg);
 
   ap.set_register_valid(false);
   ap.set_fixed_assignment(false);
@@ -480,19 +474,18 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
     return;
   }
 
-  if (const auto &liveness = state.v.compiler->analyzer.liveness_info(
-          static_cast<u32>(state.v.local_idx));
-      liveness.last_full &&
-      static_cast<u32>(liveness.last) >=
-          static_cast<u32>(state.v.compiler->cur_block_idx)) {
+  if (const auto &liveness =
+          compiler->analyzer.liveness_info(static_cast<u32>(state.v.local_idx));
+      liveness.last_full && static_cast<u32>(liveness.last) >=
+                                static_cast<u32>(compiler->cur_block_idx)) {
     // need to wait until release
     auto &free_list_head =
-        state.v.compiler->assignments
+        compiler->assignments
             .delayed_free_lists[static_cast<u32>(liveness.last)];
     state.v.assignment->next_delayed_free_entry = free_list_head;
     free_list_head = state.v.local_idx;
   } else {
-    state.v.compiler->free_assignment(state.v.local_idx);
+    compiler->free_assignment(state.v.local_idx);
   }
 
   state.c = ConstantData{};

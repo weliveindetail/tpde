@@ -1933,7 +1933,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     u64 const_u64, u32 bank, u32 size, AsmReg dst) noexcept {
   // probably not the most efficient but I'm hoping the compiler can optimize
   // this
-  auto const_ref = ValuePartRef{&const_u64, size, bank};
+  auto const_ref = ValuePartRef{this, &const_u64, size, bank};
   materialize_constant(const_ref, dst);
 }
 
