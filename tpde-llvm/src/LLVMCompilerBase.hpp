@@ -2396,9 +2396,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
       }
       res_scratch.alloc_specific(src_ref.salvage());
     } else {
-      ScratchReg tmp{derived()};
-      auto src = this->val_as_reg(src_ref, tmp);
-
+      auto src = this->val_as_reg(src_ref);
       derived()->mov(res_scratch.alloc_gp(), src, 8);
     }
   }
@@ -2490,7 +2488,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
 
   auto src_ref = this->val_ref(src, 0);
 
-  ScratchReg orig_scratch{derived()};
   AsmReg orig;
   ValuePartRef res_ref{this};
   if (src_parts.reg_bank(0) == dst_parts.reg_bank(0)) {
@@ -2498,7 +2495,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
         inst, 0, std::move(src_ref), orig);
   } else {
     res_ref = this->result_ref_eager(inst, 0);
-    orig = this->val_as_reg(src_ref, orig_scratch);
+    orig = this->val_as_reg(src_ref);
   }
 
   if (orig != res_ref.cur_reg()) {
@@ -2730,9 +2727,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
   // indices, because the value reference must always be initialized.
   {
     ValuePartRef vec_ref = this->val_ref(inst->getOperand(0), 0);
-    ScratchReg tmp{this};
-    AsmReg orig_reg = this->val_as_reg(vec_ref, tmp);
+    AsmReg orig_reg = this->val_as_reg(vec_ref);
     if (vec_ref.can_salvage()) {
+      ScratchReg tmp{this};
       tmp.alloc_specific(vec_ref.salvage());
       this->set_value(result, tmp);
     } else {
@@ -3303,23 +3300,18 @@ template <typename Adaptor, typename Derived, typename Config>
 typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
     LLVMCompilerBase<Adaptor, Derived, Config>::resolved_gep_to_addr(
         ResolvedGEP &gep) noexcept {
-  ScratchReg index_scratch{this};
   typename GenericValuePart::Expr addr{};
   if (std::holds_alternative<ScratchReg>(gep.base)) {
     addr.base = std::move(std::get<ScratchReg>(gep.base));
   } else {
     auto &ref = std::get<ValuePartRef>(gep.base);
-    auto scratch = ScratchReg{this};
-    auto reg = this->val_as_reg(ref, scratch);
+    auto reg = this->val_as_reg(ref);
     if (ref.can_salvage()) {
+      ScratchReg scratch{this};
       scratch.alloc_specific(ref.salvage());
       addr.base = std::move(scratch);
     } else {
-      if (scratch.cur_reg.valid()) {
-        addr.base = std::move(scratch);
-      } else {
-        addr.base = reg;
-      }
+      addr.base = reg;
     }
   }
 
@@ -3333,12 +3325,10 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
       auto &ref = std::get<ValuePartRef>(*gep.index);
       const auto idx_size_bits = gep.idx_size_bits;
       if (idx_size_bits < 64) {
-        ScratchReg scratch{this};
-        AsmReg src_reg = this->val_as_reg(ref, scratch);
+        AsmReg src_reg = this->val_as_reg(ref);
         AsmReg dst_reg;
-        if (ref.is_const()) {
-          dst_reg = src_reg;
-        } else if (ref.can_salvage()) {
+        ScratchReg scratch{this};
+        if (ref.can_salvage()) {
           dst_reg = scratch.alloc_specific(ref.salvage());
         } else {
           dst_reg = scratch.alloc_gp();
@@ -3347,10 +3337,7 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
         addr.index = std::move(scratch);
       } else {
         assert(idx_size_bits == 64);
-        addr.index = this->val_as_reg(ref, index_scratch);
-        if (index_scratch.cur_reg.valid()) {
-          addr.index = std::move(index_scratch);
-        }
+        addr.index = this->val_as_reg(ref);
       }
     }
   }
@@ -3677,7 +3664,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       cmp_reg = scratch.cur_reg;
     } else if (width == 32) {
       width_is_32 = true;
-      cmp_reg = this->val_as_reg(arg_ref, scratch);
+      cmp_reg = this->val_as_reg(arg_ref);
       // make sure we can overwrite the register when we generate a jump
       // table
       if (arg_ref.can_salvage()) {
@@ -3694,7 +3681,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
                                 scratch);
       cmp_reg = scratch.cur_reg;
     } else {
-      cmp_reg = this->val_as_reg(arg_ref, scratch);
+      cmp_reg = this->val_as_reg(arg_ref);
       // make sure we can overwrite the register when we generate a jump
       // table
       if (arg_ref.can_salvage()) {

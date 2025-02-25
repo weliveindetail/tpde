@@ -806,8 +806,7 @@ u32 CallingConv::handle_call_args(
       ScratchReg scratch1(compiler), scratch2(compiler);
       auto ptr_ref = compiler->val_ref(arg.value, 0);
       assert(ptr_ref.has_assignment());
-      ScratchReg ptr_scratch{compiler};
-      AsmReg ptr_reg = compiler->val_as_reg(ptr_ref, ptr_scratch);
+      AsmReg ptr_reg = compiler->val_as_reg(ptr_ref);
 
       auto tmp_reg = scratch2.alloc_gp();
 
@@ -931,7 +930,7 @@ u32 CallingConv::handle_call_args(
           }
           arg_scratchs.push_back(std::move(scratch));
         } else {
-          auto reg = compiler->val_as_reg(ref, scratch);
+          auto reg = compiler->val_as_reg(ref);
           switch (ref.part_size()) {
           case 4:
             ASMC(compiler,

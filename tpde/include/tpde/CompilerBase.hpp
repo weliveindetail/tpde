@@ -250,7 +250,7 @@ public:
 
   /// Get the value as a register
   /// \warning This register must not be overwritten
-  AsmReg val_as_reg(ValuePartRef &val_ref, ScratchReg &scratch) noexcept;
+  AsmReg val_as_reg(ValuePartRef &val_ref) noexcept;
 
   /// Get the value into a specific register
   /// \warning The value is not saved specifically so may not be overwritten
@@ -770,8 +770,8 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::val_as_reg(ValuePartRef &val_ref,
-                                                       ScratchReg &) noexcept {
+    CompilerBase<Adaptor, Derived, Config>::val_as_reg(
+        ValuePartRef &val_ref) noexcept {
   return val_ref.alloc_reg(true);
 }
 
