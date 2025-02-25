@@ -12,6 +12,7 @@ namespace tpde {
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   struct ConstantData {
+    AsmReg reg = AsmReg::make_invalid();
     bool has_assignment = false;
     const u64 *data;
     u32 bank;
@@ -19,6 +20,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   };
 
   struct ValueData {
+    AsmReg reg = AsmReg::make_invalid(); // only valid if fixed/locked
     bool has_assignment = true;
     bool locked;
     CompilerBase::ValLocalIdx local_idx;
@@ -46,6 +48,9 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
                            }
   }, compiler(compiler) {
     assert(assignment().variable_ref() || state.v.assignment->references_left);
+#ifndef NDEBUG
+    state.v.reg = AsmReg::make_invalid();
+#endif
   }
 
   ValuePartRef(CompilerBase *compiler, const u64 *data, u32 size, u32 bank) noexcept
@@ -111,9 +116,8 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   /// If it is known that the value part has a register, this function can be
   /// used to quickly access it
   AsmReg cur_reg() noexcept {
-    assert(assignment().register_valid());
-    assert(assignment().fixed_assignment() || state.v.locked);
-    return AsmReg{assignment().full_reg_id()};
+    assert(state.v.reg.valid());
+    return state.v.reg;
   }
 
   /// Is the value part currently in the specified register?
@@ -199,7 +203,8 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   auto pa = assignment();
   if (pa.fixed_assignment()) {
     assert(!pa.variable_ref());
-    return AsmReg{pa.full_reg_id()};
+    state.v.reg = AsmReg{pa.full_reg_id()};
+    return state.v.reg;
   }
 
   if (pa.register_valid()) {
@@ -391,6 +396,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::lock() noexcept {
   compiler->register_file.mark_fixed(reg);
   compiler->register_file.inc_lock_count(reg);
 
+  state.v.reg = reg;
   state.v.locked = true;
 }
 
@@ -407,6 +413,10 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::unlock() noexcept {
   if (compiler->register_file.dec_lock_count(reg) == 0 &&
       !ap.fixed_assignment()) {
     compiler->register_file.unmark_fixed(reg);
+
+#ifndef NDEBUG
+    state.v.reg = AsmReg::make_invalid();
+#endif
   }
 
   state.v.locked = false;
