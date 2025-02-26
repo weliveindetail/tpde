@@ -86,6 +86,7 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
         u8 bank, u64 exclusion_mask, bool spill_if_needed) noexcept {
   auto &reg_file = compiler->register_file;
   if (!cur_reg.invalid()) {
+    assert(bank == reg_file.reg_bank(cur_reg));
     if (bank == reg_file.reg_bank(cur_reg) &&
         (exclusion_mask & (1ull << cur_reg.id())) == 0) {
       return cur_reg;

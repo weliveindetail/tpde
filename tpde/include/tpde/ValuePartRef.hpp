@@ -35,8 +35,10 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
 
   CompilerBase *compiler;
 
-  ValuePartRef(CompilerBase *compiler) noexcept
-      : state{ConstantData{}}, compiler(compiler) {}
+  ValuePartRef(CompilerBase *compiler, u32 bank = 0) noexcept
+      : state{ConstantData{.data = nullptr, .bank = bank}}, compiler(compiler) {
+    assert(bank < Config::NUM_BANKS);
+  }
 
   ValuePartRef(CompilerBase *compiler, ValLocalIdx local_idx, u32 part) noexcept
       : state{
@@ -57,6 +59,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
       : state{
             .c = ConstantData{.data = data, .bank = bank, .size = size}
   }, compiler(compiler) {
+    assert(data && "constant data must not be null");
     assert(bank < Config::NUM_BANKS);
   }
 
@@ -84,7 +87,9 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
 
   bool has_assignment() const noexcept { return state.v.has_assignment; }
 
-  bool is_const() const noexcept { return !state.c.has_assignment; }
+  bool is_const() const noexcept {
+    return !state.c.has_assignment && state.c.data;
+  }
 
   [[nodiscard]] AssignmentPartRef assignment() const noexcept {
     assert(has_assignment());
@@ -273,6 +278,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     state.v.reg = reg;
 
     if (reload) {
+      assert(is_const() && "cannot reload temporary value");
       compiler->derived()->materialize_constant(
           state.c.data, state.c.bank, state.c.size, reg);
     }
