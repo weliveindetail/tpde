@@ -222,6 +222,10 @@ protected:
   /// Frees an assignment, its stack slot and registers
   void free_assignment(ValLocalIdx local_idx) noexcept;
 
+  /// Release no longer used assignment. Freed immediately if no longer live,
+  /// otherwise freeing is delayed until the end of the live end block.
+  void release_assignment(ValLocalIdx local_idx) noexcept;
+
   u32 allocate_stack_slot(u32 size) noexcept;
   void free_stack_slot(u32 slot, u32 size) noexcept;
 
@@ -663,6 +667,23 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
   }
 
   deallocate_assignment(part_idx, local_idx);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::release_assignment(
+    const ValLocalIdx local_idx) noexcept {
+  const auto &liveness = analyzer.liveness_info(static_cast<u32>(local_idx));
+  if (liveness.last < cur_block_idx || !liveness.last_full) {
+    free_assignment(local_idx);
+    return;
+  }
+
+  // need to wait until release
+  TPDE_LOG_TRACE("Delay freeing assignment for value {}",
+                 static_cast<u32>(local_idx));
+  auto &free_list_head = assignments.delayed_free_lists[u32(liveness.last)];
+  val_assignment(local_idx)->next_delayed_free_entry = free_list_head;
+  free_list_head = local_idx;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

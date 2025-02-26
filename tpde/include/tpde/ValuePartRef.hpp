@@ -461,36 +461,16 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
     return;
   }
 
-  if (state.v.locked) {
-    unlock();
+  unlock();
+
+  auto &ref_count = state.v.assignment->references_left;
+  assert(ref_count != 0 || assignment().variable_ref());
+  if (ref_count != 0 && --ref_count == 0) {
+    compiler->release_assignment(state.v.local_idx);
   }
 
-  if (state.v.assignment->references_left == 0) {
-    assert(assignment().variable_ref());
-    state.c = ConstantData{};
-    return;
-  }
-
-  if (--state.v.assignment->references_left != 0) {
-    state.c = ConstantData{};
-    return;
-  }
-
-  if (const auto &liveness =
-          compiler->analyzer.liveness_info(static_cast<u32>(state.v.local_idx));
-      liveness.last_full && static_cast<u32>(liveness.last) >=
-                                static_cast<u32>(compiler->cur_block_idx)) {
-    // need to wait until release
-    auto &free_list_head =
-        compiler->assignments
-            .delayed_free_lists[static_cast<u32>(liveness.last)];
-    state.v.assignment->next_delayed_free_entry = free_list_head;
-    free_list_head = state.v.local_idx;
-  } else {
-    compiler->free_assignment(state.v.local_idx);
-  }
-
-  state.c = ConstantData{};
+  state.c.has_assignment = false;
+  state.c.reg = AsmReg::make_invalid();
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
