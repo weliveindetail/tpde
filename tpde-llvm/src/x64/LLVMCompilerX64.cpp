@@ -355,7 +355,7 @@ bool LLVMCompilerX64::compile_alloca(const llvm::AllocaInst *alloca) noexcept {
       ASM(SUB64ri, FE_SP, size_val);
     }
 
-    res_ref.alloc_reg(false);
+    res_ref.alloc_reg();
   } else {
     const auto elem_size = layout.getTypeAllocSize(alloca->getAllocatedType());
     ScratchReg scratch{this};
@@ -416,7 +416,7 @@ bool LLVMCompilerX64::compile_br(const llvm::BranchInst *br) noexcept {
 
   {
     auto cond_ref = this->val_ref(br->getCondition(), 0);
-    const auto cond_reg = this->val_as_reg(cond_ref);
+    const auto cond_reg = cond_ref.load_to_reg();
     ASM(TEST32ri, cond_reg, 1);
   }
 
@@ -610,18 +610,18 @@ bool LLVMCompilerX64::compile_icmp(const llvm::ICmpInst *cmp,
       ScratchReg scratch{this};
       lhs.reload_into_specific_fixed(this, res_scratch.alloc_gp());
       lhs_high.reload_into_specific_fixed(this, scratch.alloc_gp());
-      const auto rhs_reg = this->val_as_reg(rhs);
-      const auto rhs_reg_high = this->val_as_reg(rhs_high);
+      const auto rhs_reg = rhs.load_to_reg();
+      const auto rhs_reg_high = rhs_high.load_to_reg();
 
       ASM(XOR64rr, res_scratch.cur_reg, rhs_reg);
       ASM(XOR64rr, scratch.cur_reg, rhs_reg_high);
       ASM(OR64rr, res_scratch.cur_reg, scratch.cur_reg);
     } else {
-      const auto lhs_reg = this->val_as_reg(lhs);
+      const auto lhs_reg = lhs.load_to_reg();
       auto lhs_high_tmp =
           lhs_high.reload_into_specific_fixed(this, res_scratch.alloc_gp());
-      const auto rhs_reg = this->val_as_reg(rhs);
-      const auto rhs_reg_high = this->val_as_reg(rhs_high);
+      const auto rhs_reg = rhs.load_to_reg();
+      const auto rhs_reg_high = rhs_high.load_to_reg();
 
       ASM(CMP64rr, lhs_reg, rhs_reg);
       ASM(SBB64rr, lhs_high_tmp, rhs_reg_high);
@@ -852,7 +852,7 @@ bool LLVMCompilerX64::handle_intrin(const llvm::IntrinsicInst *inst) noexcept {
   case llvm::Intrinsic::vastart: {
     auto list_ref = this->val_ref(inst->getOperand(0), 0);
     ScratchReg scratch1{this};
-    auto list_reg = this->val_as_reg(list_ref);
+    auto list_reg = list_ref.load_to_reg();
     auto tmp_reg = scratch1.alloc_gp();
 
     u64 combined_off = (((static_cast<u64>(vec_arg_count) * 16) + 48) << 32) |
@@ -873,8 +873,8 @@ bool LLVMCompilerX64::handle_intrin(const llvm::IntrinsicInst *inst) noexcept {
     auto src_ref = this->val_ref(inst->getOperand(1), 0);
 
     ScratchReg scratch{this};
-    const auto src_reg = this->val_as_reg(src_ref);
-    const auto dst_reg = this->val_as_reg(dst_ref);
+    const auto src_reg = src_ref.load_to_reg();
+    const auto dst_reg = dst_ref.load_to_reg();
 
     const auto tmp_reg = scratch.alloc(1);
     ASM(SSE_MOVDQUrm, tmp_reg, FE_MEM(src_reg, 0, FE_NOREG, 0));
@@ -892,7 +892,7 @@ bool LLVMCompilerX64::handle_intrin(const llvm::IntrinsicInst *inst) noexcept {
   }
   case llvm::Intrinsic::stackrestore: {
     auto val_ref = this->val_ref(inst->getOperand(0), 0);
-    auto val_reg = this->val_as_reg(val_ref);
+    auto val_reg = val_ref.load_to_reg();
     ASM(MOV64rr, FE_SP, val_reg);
     return true;
   }
@@ -900,7 +900,7 @@ bool LLVMCompilerX64::handle_intrin(const llvm::IntrinsicInst *inst) noexcept {
     auto lhs_ref = this->val_ref(inst->getOperand(0), 0);
     auto rhs_ref = this->val_ref(inst->getOperand(1), 0);
     auto res_ref = this->result_ref_must_salvage(inst, 0, std::move(lhs_ref));
-    auto rhs_reg = this->val_as_reg(rhs_ref);
+    auto rhs_reg = rhs_ref.load_to_reg();
     ASM(CRC32_64rr, res_ref.cur_reg(), rhs_reg);
     this->set_value(res_ref, res_ref.cur_reg());
     return true;

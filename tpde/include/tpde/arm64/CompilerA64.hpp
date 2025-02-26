@@ -928,12 +928,11 @@ u32 CallingConv::handle_call_args(
   const auto vec_regs = arg_regs_vec();
   for (auto &arg : arguments) {
     if (arg.flag == CallArg::Flag::byval) {
-      ScratchReg scratch1(compiler), scratch2(compiler);
+      ScratchReg scratch(compiler);
       auto ptr_ref = compiler->val_ref(arg.value, 0);
-      assert(ptr_ref.has_assignment());
-      AsmReg ptr_reg = compiler->val_as_reg(ptr_ref);
+      AsmReg ptr_reg = ptr_ref.load_to_reg();
 
-      auto tmp_reg = scratch2.alloc_gp();
+      auto tmp_reg = scratch.alloc_gp();
 
       auto size = arg.byval_size;
       assert(arg.byval_align <= 16);
@@ -969,7 +968,6 @@ u32 CallingConv::handle_call_args(
       }
 
       stack_off += util::align_up(arg.byval_size, 8);
-      ptr_ref.unlock();
       continue;
     }
 
@@ -1052,7 +1050,7 @@ u32 CallingConv::handle_call_args(
           }
           arg_scratchs.push_back(std::move(scratch));
         } else {
-          auto reg = compiler->val_as_reg(ref);
+          auto reg = ref.load_to_reg();
           switch (ref.part_size()) {
           case 4:
             ASMC(compiler, STRsu, reg, DA_SP, stack_off);
@@ -2478,7 +2476,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
       this->register_file.clobbered |= (1ull << AsmReg::R9);
       reg = ref.reload_into_specific(derived(), AsmReg::R9);
     } else {
-      reg = ref.alloc_reg(/*reload=*/true);
+      reg = ref.load_to_reg();
       if (((1ull << reg.id()) & calling_conv.callee_saved_mask()) == 0) {
         ref.spill();
         ref.unlock();

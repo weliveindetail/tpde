@@ -248,10 +248,6 @@ public:
                                AsmReg reg,
                                u32 ref_adjust = 1) noexcept;
 
-  /// Get the value as a register
-  /// \warning This register must not be overwritten
-  AsmReg val_as_reg(ValuePartRef &val_ref) noexcept;
-
   /// Get a defining reference to a value
   ValuePartRef result_ref_lazy(IRValueRef value, u32 part) noexcept;
 
@@ -764,13 +760,6 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::val_as_reg(
-        ValuePartRef &val_ref) noexcept {
-  return val_ref.alloc_reg(true);
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::result_ref_lazy(IRValueRef value,
                                                             u32 part) noexcept {
@@ -790,7 +779,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::result_ref_eager(
         IRValueRef value, u32 part) noexcept {
   auto res_ref = this->result_ref_lazy(value, part);
-  res_ref.alloc_reg(false);
+  res_ref.alloc_reg();
   return res_ref;
 }
 
@@ -819,7 +808,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
   assert(ap_res.bank() == arg.bank());
 
   if (arg.is_const()) {
-    const auto reg = res_ref.alloc_reg(false);
+    const auto reg = res_ref.alloc_reg();
     derived()->materialize_constant(arg, reg);
   } else {
     auto ap_arg = arg.assignment();
@@ -833,7 +822,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
       salvage_reg_for_values(res_ref, arg);
       res_ref.lock();
     } else {
-      const auto reg = res_ref.alloc_reg(false);
+      const auto reg = res_ref.alloc_reg();
       arg.reload_into_specific_fixed(this, reg);
     }
   }
@@ -854,10 +843,10 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
   assert(ap_res.bank() == arg.bank());
 
   if (arg.is_const()) {
-    lhs_reg = res_ref.alloc_reg(false);
+    lhs_reg = res_ref.alloc_reg();
     derived()->materialize_constant(arg, lhs_reg);
   } else {
-    lhs_reg = arg.alloc_reg();
+    lhs_reg = arg.load_to_reg();
 
     const auto &liveness = analyzer.liveness_info((u32)arg.local_idx());
     if (!ap_res.fixed_assignment() && arg.ref_count() <= ref_adjust &&
@@ -870,7 +859,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
       res_ref.lock();
       lhs_reg = res_ref.cur_reg();
     } else {
-      res_ref.alloc_reg(false);
+      res_ref.alloc_reg();
     }
   }
 
@@ -1019,10 +1008,10 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     return std::get<ScratchReg>(gv.state).cur_reg;
   }
   if (std::holds_alternative<ValuePartRef>(gv.state)) {
-    return std::get<ValuePartRef>(gv.state).alloc_reg();
+    return std::get<ValuePartRef>(gv.state).load_to_reg();
   }
   if (std::holds_alternative<ValuePartRef *>(gv.state)) {
-    return std::get<ValuePartRef *>(gv.state)->alloc_reg();
+    return std::get<ValuePartRef *>(gv.state)->load_to_reg();
   }
   if (auto *expr = std::get_if<typename GenericValuePart::Expr>(&gv.state)) {
     if (expr->has_base() && !expr->has_index() && expr->disp == 0) {

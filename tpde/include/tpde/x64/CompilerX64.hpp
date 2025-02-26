@@ -805,8 +805,7 @@ u32 CallingConv::handle_call_args(
     if (arg.flag == CallArg::Flag::byval) {
       ScratchReg scratch1(compiler), scratch2(compiler);
       auto ptr_ref = compiler->val_ref(arg.value, 0);
-      assert(ptr_ref.has_assignment());
-      AsmReg ptr_reg = compiler->val_as_reg(ptr_ref);
+      AsmReg ptr_reg = ptr_ref.load_to_reg();
 
       auto tmp_reg = scratch2.alloc_gp();
 
@@ -930,7 +929,7 @@ u32 CallingConv::handle_call_args(
           }
           arg_scratchs.push_back(std::move(scratch));
         } else {
-          auto reg = compiler->val_as_reg(ref);
+          auto reg = ref.load_to_reg();
           switch (ref.part_size()) {
           case 4:
             ASMC(compiler,
@@ -2153,7 +2152,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
         assert(static_cast<i32>(-ap.frame_off()) < 0);
         ASM(CALLm, FE_MEM(FE_BP, 0, FE_NOREG, (i32)-ap.frame_off()));
       } else {
-        AsmReg reg = ref.alloc_reg(/*reload=*/true);
+        AsmReg reg = ref.load_to_reg();
         if (((1ull << reg.id()) & calling_conv.callee_saved_mask()) == 0) {
           ref.spill();
           ref.unlock();

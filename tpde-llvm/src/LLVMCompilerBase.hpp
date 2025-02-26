@@ -2392,11 +2392,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
     }
     if (src_ref.can_salvage()) {
       if (!src_ref.assignment().register_valid()) {
-        src_ref.alloc_reg(true);
+        src_ref.load_to_reg();
       }
       res_scratch.alloc_specific(src_ref.salvage());
     } else {
-      auto src = this->val_as_reg(src_ref);
+      auto src = src_ref.load_to_reg();
       derived()->mov(res_scratch.alloc_gp(), src, 8);
     }
   }
@@ -2495,7 +2495,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
         inst, 0, std::move(src_ref), orig);
   } else {
     res_ref = this->result_ref_eager(inst, 0);
-    orig = this->val_as_reg(src_ref);
+    orig = src_ref.load_to_reg();
   }
 
   if (orig != res_ref.cur_reg()) {
@@ -2727,7 +2727,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
   // indices, because the value reference must always be initialized.
   {
     ValuePartRef vec_ref = this->val_ref(inst->getOperand(0), 0);
-    AsmReg orig_reg = this->val_as_reg(vec_ref);
+    AsmReg orig_reg = vec_ref.load_to_reg();
     if (vec_ref.can_salvage()) {
       ScratchReg tmp{this};
       tmp.alloc_specific(vec_ref.salvage());
@@ -3305,7 +3305,7 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
     addr.base = std::move(std::get<ScratchReg>(gep.base));
   } else {
     auto &ref = std::get<ValuePartRef>(gep.base);
-    auto reg = this->val_as_reg(ref);
+    auto reg = ref.load_to_reg();
     if (ref.can_salvage()) {
       ScratchReg scratch{this};
       scratch.alloc_specific(ref.salvage());
@@ -3325,7 +3325,7 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
       auto &ref = std::get<ValuePartRef>(*gep.index);
       const auto idx_size_bits = gep.idx_size_bits;
       if (idx_size_bits < 64) {
-        AsmReg src_reg = this->val_as_reg(ref);
+        AsmReg src_reg = ref.load_to_reg();
         AsmReg dst_reg;
         ScratchReg scratch{this};
         if (ref.can_salvage()) {
@@ -3337,7 +3337,7 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
         addr.index = std::move(scratch);
       } else {
         assert(idx_size_bits == 64);
-        addr.index = this->val_as_reg(ref);
+        addr.index = ref.load_to_reg();
       }
     }
   }
@@ -3562,7 +3562,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
 
     ValuePartRef res_ref2 = this->val_ref(cmp, 0);
     res_ref2.inc_ref_count();
-    res_ref2.alloc_reg(true);
+    res_ref2.load_to_reg();
     auto dst_reg = res_ref2.cur_reg();
     // Stupid hack to do the actual comparison.
     // TODO: do a proper comparison here.
@@ -3664,7 +3664,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       cmp_reg = scratch.cur_reg;
     } else if (width == 32) {
       width_is_32 = true;
-      cmp_reg = this->val_as_reg(arg_ref);
+      cmp_reg = arg_ref.load_to_reg();
       // make sure we can overwrite the register when we generate a jump
       // table
       if (arg_ref.can_salvage()) {
@@ -3681,7 +3681,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
                                 scratch);
       cmp_reg = scratch.cur_reg;
     } else {
-      cmp_reg = this->val_as_reg(arg_ref);
+      cmp_reg = arg_ref.load_to_reg();
       // make sure we can overwrite the register when we generate a jump
       // table
       if (arg_ref.can_salvage()) {

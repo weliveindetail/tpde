@@ -60,7 +60,7 @@ bool TestIRCompilerX64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
     auto true_needs_split = this->branch_needs_split(true_block);
     auto false_needs_split = this->branch_needs_split(false_block);
 
-    auto val_reg = this->val_as_reg(val);
+    auto val_reg = val.load_to_reg();
 
     auto spilled = this->spill_before_branch();
 
@@ -129,7 +129,7 @@ bool TestIRCompilerX64::compile_add(IRInstRef inst_idx) noexcept {
       static_cast<IRValueRef>(inst_idx), 0, std::move(lhs), lhs_orig);
   auto res_reg = result.cur_reg();
 
-  auto rhs_reg = Base::val_as_reg(rhs);
+  auto rhs_reg = rhs.load_to_reg();
 
   if (res_reg.id() == lhs_orig.id()) {
     ASM(ADD64rr, res_reg, rhs_reg);
@@ -156,7 +156,7 @@ bool TestIRCompilerX64::compile_sub(IRInstRef inst_idx) noexcept {
       static_cast<IRValueRef>(inst_idx), 0, std::move(lhs));
   auto res_reg = result.cur_reg();
 
-  auto rhs_reg = Base::val_as_reg(rhs);
+  auto rhs_reg = rhs.load_to_reg();
 
   ASM(SUB64rr, res_reg, rhs_reg);
 

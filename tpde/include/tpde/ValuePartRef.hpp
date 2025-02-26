@@ -129,9 +129,18 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     return ap.register_valid() && AsmReg{ap.full_reg_id()} == reg;
   }
 
-  /// Allocate a register for the value part, reload from the stack if this is
-  /// desired, and lock the value into the register.
-  AsmReg alloc_reg(bool reload = true) noexcept;
+private:
+  AsmReg alloc_reg_impl(bool reload) noexcept;
+
+public:
+  /// Allocate and lock a register for the value part, *without* reloading the
+  /// value. Does nothing if a register is already allocated.
+  AsmReg alloc_reg() noexcept { return alloc_reg_impl(/*reload=*/false); }
+
+  /// Allocate, fill, and lock a register for the value part, reloading from
+  /// the stack or materializing the constant if necessary. Does nothing if a
+  /// register is already allocated.
+  AsmReg load_to_reg() noexcept { return alloc_reg_impl(/*reload=*/true); }
 
   /// Load the value into the specific register and update the assignment to
   /// reflect that
@@ -196,7 +205,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::ValuePartRef::alloc_reg(
+    CompilerBase<Adaptor, Derived, Config>::ValuePartRef::alloc_reg_impl(
         const bool reload) noexcept {
   u32 bank;
   if (has_assignment()) {
