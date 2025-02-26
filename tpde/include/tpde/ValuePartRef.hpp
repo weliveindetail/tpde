@@ -198,54 +198,74 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::alloc_reg(
         const bool reload) noexcept {
-  assert(has_assignment());
+  u32 bank;
+  if (has_assignment()) {
+    auto ap = assignment();
+    if (ap.fixed_assignment()) {
+      assert(!ap.variable_ref());
+      state.v.reg = AsmReg{ap.full_reg_id()};
+      return state.v.reg;
+    }
 
-  auto pa = assignment();
-  if (pa.fixed_assignment()) {
-    assert(!pa.variable_ref());
-    state.v.reg = AsmReg{pa.full_reg_id()};
-    return state.v.reg;
-  }
+    if (ap.register_valid()) {
+      lock();
+      return AsmReg{ap.full_reg_id()};
+    }
 
-  if (pa.register_valid()) {
-    lock();
-    return AsmReg{pa.full_reg_id()};
+    bank = ap.bank();
+  } else {
+    if (state.c.reg.valid()) {
+      return state.c.reg;
+    }
+    bank = state.c.bank;
   }
 
   auto &reg_file = compiler->register_file;
-  auto reg = reg_file.find_first_free_excluding(pa.bank(), 0);
+  auto reg = reg_file.find_first_free_excluding(bank, 0);
   // TODO(ts): need to grab this from the registerfile since the reg type
   // could be different
   if (reg.invalid()) {
-    reg = reg_file.find_clocked_nonfixed_excluding(pa.bank(), 0);
+    reg = reg_file.find_clocked_nonfixed_excluding(bank, 0);
 
     if (reg.invalid()) [[unlikely]] {
       TPDE_FATAL("ran out of registers for value part");
     }
 
-    AssignmentPartRef part{
+    AssignmentPartRef evict_part{
         compiler->val_assignment(reg_file.reg_local_idx(reg)),
         reg_file.reg_part(reg)};
-    part.spill_if_needed(compiler);
-    part.set_register_valid(false);
+    evict_part.spill_if_needed(compiler);
+    evict_part.set_register_valid(false);
     reg_file.unmark_used(reg);
   }
 
-  reg_file.mark_used(reg, state.v.local_idx, state.v.part);
   reg_file.mark_clobbered(reg);
-  auto ap = assignment();
-  ap.set_full_reg_id(reg.id());
-  ap.set_register_valid(true);
+  if (has_assignment()) {
+    reg_file.mark_used(reg, state.v.local_idx, state.v.part);
+    auto ap = assignment();
+    ap.set_full_reg_id(reg.id());
+    ap.set_register_valid(true);
 
-  // We must lock the value here, otherwise, load_from_stack could evict the
-  // register again.
-  lock();
+    // We must lock the value here, otherwise, load_from_stack could evict the
+    // register again.
+    lock();
 
-  if (reload) {
-    if (ap.variable_ref()) {
-      compiler->derived()->load_address_of_var_reference(reg, ap);
-    } else {
-      compiler->derived()->load_from_stack(reg, ap.frame_off(), ap.part_size());
+    if (reload) {
+      if (ap.variable_ref()) {
+        compiler->derived()->load_address_of_var_reference(reg, ap);
+      } else {
+        compiler->derived()->load_from_stack(
+            reg, ap.frame_off(), ap.part_size());
+      }
+    }
+  } else {
+    reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
+    reg_file.mark_fixed(reg);
+    state.v.reg = reg;
+
+    if (reload) {
+      compiler->derived()->materialize_constant(
+          state.c.data, state.c.bank, state.c.size, reg);
     }
   }
 
@@ -385,6 +405,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::lock() noexcept {
+  assert(has_assignment());
   if (state.v.locked) {
     return;
   }
@@ -402,6 +423,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::lock() noexcept {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::unlock() noexcept {
+  assert(has_assignment());
   if (!state.v.locked) {
     return;
   }
@@ -417,7 +439,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::can_salvage(
     const u32 ref_adjust) const noexcept {
   if (!has_assignment()) {
-    return false;
+    return state.c.reg.valid();
   }
 
   if (!assignment().register_valid() || assignment().variable_ref()) {
@@ -439,6 +461,14 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::salvage() noexcept {
   assert(can_salvage());
+  if (!has_assignment()) {
+    AsmReg reg = state.c.reg;
+    compiler->register_file.unmark_fixed(reg);
+    compiler->register_file.unmark_used(reg);
+    state.c.reg = AsmReg::make_invalid();
+    return reg;
+  }
+
   auto ap = assignment();
   assert(ap.register_valid());
   auto cur_reg = AsmReg{ap.full_reg_id()};
@@ -458,6 +488,12 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
   if (!has_assignment()) {
+    if (!state.c.reg.valid()) {
+      return;
+    }
+    compiler->register_file.unmark_fixed(state.c.reg);
+    compiler->register_file.unmark_used(state.c.reg);
+    state.c.reg = AsmReg::make_invalid();
     return;
   }
 
@@ -477,6 +513,12 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
     reset_without_refcount() noexcept {
   if (!has_assignment()) {
+    if (!state.c.reg.valid()) {
+      return;
+    }
+    compiler->register_file.unmark_fixed(state.c.reg);
+    compiler->register_file.unmark_used(state.c.reg);
+    state.c.reg = AsmReg::make_invalid();
     return;
   }
 

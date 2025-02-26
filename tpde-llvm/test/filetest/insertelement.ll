@@ -168,8 +168,6 @@ define <4 x i32> @ins_v4i32_chain(i32 %a, i32 %b, i32 %c, i32 %d) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    movi v0.16b, #0x0
-; ARM64-NEXT:    str q0, [x29, #0xb0]
-; ARM64-NEXT:    ldr q0, [x29, #0xb0]
 ; ARM64-NEXT:    mov v0.s[0], w0
 ; ARM64-NEXT:    mov v0.s[1], w1
 ; ARM64-NEXT:    mov v0.s[2], w2

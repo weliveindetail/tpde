@@ -770,14 +770,8 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::val_as_reg(
-        ValuePartRef &val_ref, ScratchReg &scratch) noexcept {
-  if (val_ref.is_const()) {
-    derived()->materialize_constant(val_ref, scratch);
-    assert(scratch.cur_reg.valid());
-    return scratch.cur_reg;
-  }
-
+    CompilerBase<Adaptor, Derived, Config>::val_as_reg(ValuePartRef &val_ref,
+                                                       ScratchReg &) noexcept {
   return val_ref.alloc_reg(true);
 }
 
