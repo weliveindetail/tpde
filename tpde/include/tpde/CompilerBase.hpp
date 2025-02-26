@@ -1044,14 +1044,6 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   if (std::holds_alternative<ValuePartRef *>(gv.state)) {
     return std::get<ValuePartRef *>(gv.state)->alloc_reg();
   }
-  if (auto *imm =
-          std::get_if<typename GenericValuePart::Immediate>(&gv.state)) {
-    ScratchReg dst{derived()};
-    const auto dst_reg = dst.alloc(imm->bank);
-    derived()->materialize_constant(imm->data, imm->bank, imm->size, dst_reg);
-    gv.state = std::move(dst);
-    return dst_reg;
-  }
   if (auto *expr = std::get_if<typename GenericValuePart::Expr>(&gv.state)) {
     if (expr->has_base() && !expr->has_index() && expr->disp == 0) {
       return expr->base_reg();

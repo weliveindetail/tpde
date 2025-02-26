@@ -50,20 +50,10 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
     [[nodiscard]] bool has_index() const noexcept { return scale != 0; }
   };
 
-  struct Immediate {
-    const u64 *data;
-    u32 bank, size;
-  };
-
   // TODO(ts): evaluate the use of std::variant
   // TODO(ts): I don't like the ValuePartRefs but we also don't want to
   // force all the operands into registers at the start of the encoding...
-  std::variant<std::monostate,
-               ValuePartRef,
-               ValuePartRef *,
-               ScratchReg,
-               Expr,
-               Immediate>
+  std::variant<std::monostate, ValuePartRef, ValuePartRef *, ScratchReg, Expr>
       state;
 
   GenericValuePart() = default;
@@ -103,10 +93,9 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
 
   // no salvaging
   GenericValuePart(ValuePartRef &ref) noexcept {
-    if (!ref.has_assignment()) {
-      state = Immediate{.data = ref.state.c.data,
-                        .bank = ref.state.c.bank,
-                        .size = ref.state.c.size};
+    if (ref.is_const()) {
+      state = ValuePartRef{
+          ref.compiler, ref.state.c.data, ref.state.c.size, ref.state.c.bank};
       return;
     }
     // TODO(ts): check if it is a variable_ref/frame_ptr and then
@@ -115,15 +104,7 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
   }
 
   // salvaging
-  GenericValuePart(ValuePartRef &&ref) noexcept {
-    if (!ref.has_assignment()) {
-      state = Immediate{.data = ref.state.c.data,
-                        .bank = ref.state.c.bank,
-                        .size = ref.state.c.size};
-      return;
-    }
-    state = std::move(ref);
-  }
+  GenericValuePart(ValuePartRef &&ref) noexcept : state{std::move(ref)} {}
 
   GenericValuePart(Expr expr) noexcept {
     ScratchReg *base_scratch = std::get_if<ScratchReg>(&expr.base);
@@ -134,23 +115,27 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
     }
   }
 
-  GenericValuePart(Immediate imm) noexcept { state = imm; }
-
   [[nodiscard]] bool is_expr() const noexcept {
     return std::holds_alternative<Expr>(state);
   }
 
   [[nodiscard]] bool is_imm() const noexcept {
-    return std::holds_alternative<Immediate>(state);
+    auto *ptr = std::get_if<ValuePartRef>(&state);
+    return ptr && ptr->is_const();
   }
 
-  [[nodiscard]] const Immediate &imm() const noexcept {
-    return std::get<Immediate>(state);
+  u32 imm_size() const noexcept {
+    assert(is_imm());
+    return val_ref().state.c.size;
   }
 
   [[nodiscard]] u64 imm64() const noexcept {
-    assert(is_imm() && imm().size <= 8);
-    return imm().data[0];
+    assert(is_imm() && val_ref().state.c.size <= 8);
+    return val_ref().state.c.data[0];
+  }
+
+  [[nodiscard]] const ValuePartRef &val_ref() const noexcept {
+    return std::get<ValuePartRef>(state);
   }
 
   [[nodiscard]] ValuePartRef &val_ref() noexcept {

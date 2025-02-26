@@ -504,7 +504,7 @@ define i32 @fshr_i32_221(i32 %a, i32 %b) {
 ; ARM64-NEXT:    lsl w0, w0, #1
 ; ARM64-NEXT:    mov x2, #0xdd // =221
 ; ARM64-NEXT:    mvn w3, w2
-; ARM64-NEXT:    lsr w1, w1, w2
+; ARM64-NEXT:    lsr w1, w1, #29
 ; ARM64-NEXT:    lsl w0, w0, w3
 ; ARM64-NEXT:    orr w2, w0, w1
 ; ARM64-NEXT:    mov w0, w2
@@ -693,7 +693,7 @@ define i64 @fshr_i64_221(i64 %a, i64 %b) {
 ; ARM64-NEXT:    lsl x0, x0, #1
 ; ARM64-NEXT:    mov x2, #0xdd // =221
 ; ARM64-NEXT:    mvn w3, w2
-; ARM64-NEXT:    lsr x1, x1, x2
+; ARM64-NEXT:    lsr x1, x1, #29
 ; ARM64-NEXT:    lsl x0, x0, x3
 ; ARM64-NEXT:    orr x2, x0, x1
 ; ARM64-NEXT:    mov x0, x2

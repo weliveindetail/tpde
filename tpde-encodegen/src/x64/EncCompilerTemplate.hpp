@@ -141,10 +141,8 @@ std::optional<i32> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
         return std::nullopt;
     }
 
-    const auto &data = std::get<typename GenericValuePart::Immediate>(gv.state);
-    assert(data.size <= 8);
     const u64 imm = gv.imm64();
-    if (data.size <= 4 || static_cast<i64>(static_cast<i32>(imm)) == static_cast<i64>(imm)) {
+    if (gv.imm_size() <= 4 || static_cast<i64>(static_cast<i32>(imm)) == static_cast<i64>(imm)) {
         // always encodeable
         return static_cast<i32>(imm);
     }
@@ -197,9 +195,7 @@ std::optional<FeMem> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
         return gp.idx == FE_NOREG.idx;
     };
 
-    if (const auto *imm = std::get_if<typename GenericValuePart::Immediate>(&gv.state)) {
-        if (imm->size > 8)
-            return std::nullopt;
+    if (gv.is_imm()) {
         if (auto disp = disp_encodeable(gv.imm64(), other.off))
             return FE_MEM(other.base, other.scale, other.idx, *disp);
         return std::nullopt;
@@ -318,6 +314,8 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                 if (ap.register_valid()) {
                     assert(AsmReg{ap.full_reg_id()} != reg);
                 }
+            } else if (op_ref.state.c.reg == reg) {
+                assert(0 && "not implemented");
             }
             continue;
         }
