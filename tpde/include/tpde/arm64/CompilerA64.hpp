@@ -1569,11 +1569,13 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_reg(
   u32 off = frame_off;
   u32 fp_mod = 0;
   auto addr_base = AsmReg{AsmReg::FP};
-  ScratchReg scratch{derived()};
+  ValuePartRef scratch{derived(), Config::GP_BANK};
   if (off >= 0x1000 * size) [[unlikely]] {
     // We cannot encode the offset in the store instruction.
-    auto tmp = scratch.alloc(Config::GP_BANK, 0, /*spill_if_needed=*/false);
+    auto tmp =
+        this->register_file.find_first_free_excluding(Config::GP_BANK, 0);
     if (tmp.valid()) {
+      scratch.alloc_specific(tmp);
       ASM(ADDxi, tmp, DA_GP(29), off & ~0xfff);
       off &= 0xfff;
       addr_base = tmp;

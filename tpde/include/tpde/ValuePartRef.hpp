@@ -136,23 +136,34 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
 
 private:
   AsmReg alloc_reg_impl(bool reload) noexcept;
+  AsmReg alloc_specific_impl(AsmReg reg, bool reload) noexcept;
 
 public:
   /// Allocate and lock a register for the value part, *without* reloading the
   /// value. Does nothing if a register is already allocated.
   AsmReg alloc_reg() noexcept { return alloc_reg_impl(/*reload=*/false); }
 
+  /// Allocate and lock a specific register for the value part, spilling the
+  /// register if it is currently used (must not be fixed), *without* reloading
+  /// or copying the value into the new register. An existing register is
+  /// discarded. Value part must not be a fixed assignment.
+  void alloc_specific(AsmReg reg) noexcept { alloc_specific_impl(reg, false); }
+
   /// Allocate, fill, and lock a register for the value part, reloading from
   /// the stack or materializing the constant if necessary. Does nothing if a
   /// register is already allocated.
   AsmReg load_to_reg() noexcept { return alloc_reg_impl(/*reload=*/true); }
 
-  /// Load the value into the specific register and update the assignment to
-  /// reflect that
+  /// Allocate, fill, and lock a specific register for the value part, spilling
+  /// the register if it is currently used (must not be fixed). The value is
+  /// moved (assignment updated) or reloaded to this register. Value part must
+  /// not be a fixed assignment.
   ///
   /// \warning Do not overwrite the register content as it is not saved
   /// \note The target register or the current value part may not be fixed
-  AsmReg move_into_specific(AsmReg reg) noexcept;
+  void load_to_specific(AsmReg reg) noexcept { alloc_specific_impl(reg, true); }
+
+  void move_into_specific(AsmReg reg) noexcept { load_to_specific(reg); }
 
   /// Load the value into the specific register *without* updating the
   /// assignment (or freeing the assignment if the value is in the target
@@ -289,46 +300,81 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::ValuePartRef::move_into_specific(
-        const AsmReg reg) noexcept {
-  assert(has_assignment());
+    CompilerBase<Adaptor, Derived, Config>::ValuePartRef::alloc_specific_impl(
+        AsmReg reg, const bool reload) noexcept {
+  if (has_assignment()) {
+    auto ap = assignment();
+    assert(!ap.fixed_assignment());
 
-  auto ap = assignment();
-  assert(!ap.fixed_assignment());
-  auto &reg_file = compiler->register_file;
-  if (ap.register_valid()) {
-    if (ap.full_reg_id() == reg.id()) {
-      return reg;
+    if (ap.register_valid() && ap.full_reg_id() == reg.id()) {
+      lock();
+      return AsmReg{ap.full_reg_id()};
     }
+
+    unlock();
+  } else if (state.c.reg == reg) {
+    return state.c.reg;
   }
 
+  auto &reg_file = compiler->register_file;
   if (reg_file.is_used(reg)) {
     assert(!reg_file.is_fixed(reg));
 
-    auto ap =
-        AssignmentPartRef{compiler->val_assignment(reg_file.reg_local_idx(reg)),
-                          reg_file.reg_part(reg)};
-    ap.spill_if_needed(compiler);
-    ap.set_register_valid(false);
+    AssignmentPartRef evict_part{
+        compiler->val_assignment(reg_file.reg_local_idx(reg)),
+        reg_file.reg_part(reg)};
+    evict_part.spill_if_needed(compiler);
+    evict_part.set_register_valid(false);
     reg_file.unmark_used(reg);
   }
 
-  if (ap.register_valid()) {
-    compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()}, ap.part_size());
-
-    reg_file.unmark_used(AsmReg{ap.full_reg_id()});
-  } else {
-    if (ap.variable_ref()) {
-      compiler->derived()->load_address_of_var_reference(reg, ap);
-    } else {
-      compiler->derived()->load_from_stack(reg, ap.frame_off(), ap.part_size());
+  reg_file.mark_clobbered(reg);
+  if (has_assignment()) {
+    reg_file.mark_used(reg, state.v.local_idx, state.v.part);
+    auto ap = assignment();
+    auto old_reg = AsmReg::make_invalid();
+    if (ap.register_valid()) {
+      old_reg = AsmReg{ap.full_reg_id()};
     }
+
+    ap.set_full_reg_id(reg.id());
     ap.set_register_valid(true);
+
+    // We must lock the value here, otherwise, load_from_stack could evict the
+    // register again.
+    lock();
+
+    if (reload) {
+      if (old_reg.valid()) {
+        compiler->derived()->mov(reg, old_reg, ap.part_size());
+        reg_file.unmark_used(old_reg);
+      } else if (ap.variable_ref()) {
+        compiler->derived()->load_address_of_var_reference(reg, ap);
+      } else {
+        compiler->derived()->load_from_stack(
+            reg, ap.frame_off(), ap.part_size());
+      }
+    }
+  } else {
+    reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
+    reg_file.mark_fixed(reg);
+
+    if (reload) {
+      if (state.c.reg.valid()) {
+        // TODO: size
+        compiler->derived()->mov(reg, state.c.reg, 8);
+        reg_file.unmark_fixed(state.c.reg);
+        reg_file.unmark_used(state.c.reg);
+      } else {
+        assert(is_const() && "cannot reload temporary value");
+        compiler->derived()->materialize_constant(
+            state.c.data, state.c.bank, state.c.size, reg);
+      }
+    }
+
+    state.c.reg = reg;
   }
 
-  ap.set_full_reg_id(reg.id());
-  reg_file.mark_used(reg, state.v.local_idx, state.v.part);
-  reg_file.mark_clobbered(reg);
   return reg;
 }
 
