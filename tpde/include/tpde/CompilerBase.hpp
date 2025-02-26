@@ -252,11 +252,6 @@ public:
   /// \warning This register must not be overwritten
   AsmReg val_as_reg(ValuePartRef &val_ref) noexcept;
 
-  /// Get the value into a specific register
-  /// \warning The value is not saved specifically so may not be overwritten
-  /// if it might be used later
-  AsmReg val_as_specific_reg(ValuePartRef &val_ref, AsmReg reg) noexcept;
-
   /// Get a defining reference to a value
   ValuePartRef result_ref_lazy(IRValueRef value, u32 part) noexcept;
 
@@ -773,21 +768,6 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::val_as_reg(
         ValuePartRef &val_ref) noexcept {
   return val_ref.alloc_reg(true);
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::val_as_specific_reg(
-        ValuePartRef &val_ref, AsmReg reg) noexcept {
-  if (val_ref.is_const()) {
-    derived()->materialize_constant(val_ref, reg);
-    return reg;
-  }
-
-  assert(!val_ref.assignment().fixed_assignment());
-  const auto res = val_ref.move_into_specific(reg);
-  val_ref.lock();
-  return res;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
