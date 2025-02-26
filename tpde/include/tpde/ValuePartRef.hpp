@@ -406,19 +406,10 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::unlock() noexcept {
     return;
   }
 
-  auto ap = assignment();
-  assert(ap.register_valid());
-
-  const auto reg = AsmReg{ap.full_reg_id()};
-  if (compiler->register_file.dec_lock_count(reg) == 0 &&
-      !ap.fixed_assignment()) {
-    compiler->register_file.unmark_fixed(reg);
-
+  compiler->register_file.dec_lock_count(state.v.reg);
 #ifndef NDEBUG
-    state.v.reg = AsmReg::make_invalid();
+  state.v.reg = AsmReg::make_invalid();
 #endif
-  }
-
   state.v.locked = false;
 }
 
@@ -455,7 +446,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   unlock();
   assert(ap.fixed_assignment() || !compiler->register_file.is_fixed(cur_reg));
   if (ap.fixed_assignment()) {
-    compiler->register_file.unmark_fixed(cur_reg);
+    compiler->register_file.dec_lock_count(cur_reg); // release fixed register
   }
   compiler->register_file.unmark_used(cur_reg);
 

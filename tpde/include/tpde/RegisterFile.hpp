@@ -90,7 +90,6 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
                              const ValLocalIdx local_idx,
                              const u32 part) noexcept {
     assert(is_used(reg));
-    assert(assignments[reg.id()].lock_count == 0);
     assignments[reg.id()].local_idx = local_idx;
     assignments[reg.id()].part = part;
   }
@@ -99,6 +98,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     assert(reg.id() < 64);
     assert(is_used(reg));
     assert(!is_fixed(reg));
+    assert(assignments[reg.id()].lock_count == 0);
     used &= ~(1ull << reg.id());
   }
 
@@ -115,17 +115,20 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     fixed &= ~(1ull << reg.id());
   }
 
-  u32 inc_lock_count(const Reg reg) noexcept {
+  void inc_lock_count(const Reg reg) noexcept {
     assert(reg.id() < 64);
     assert(is_used(reg));
-    return ++assignments[reg.id()].lock_count;
+    mark_fixed(reg);
+    ++assignments[reg.id()].lock_count;
   }
 
-  u32 dec_lock_count(const Reg reg) noexcept {
+  void dec_lock_count(const Reg reg) noexcept {
     assert(reg.id() < 64);
     assert(is_used(reg));
     assert(assignments[reg.id()].lock_count > 0);
-    return --assignments[reg.id()].lock_count;
+    if (--assignments[reg.id()].lock_count == 0) {
+      unmark_fixed(reg);
+    }
   }
 
   void mark_clobbered(const Reg reg) noexcept {

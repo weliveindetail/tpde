@@ -594,7 +594,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
         ap.set_register_valid(true);
         ap.set_fixed_assignment(true);
         register_file.mark_used(reg, local_idx, 0);
-        register_file.mark_fixed(reg);
+        register_file.inc_lock_count(reg); // fixed assignments always locked
         register_file.mark_clobbered(reg);
         ++assignments.cur_fixed_assignment_count[ap.bank()];
       }
@@ -632,7 +632,7 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
       assert(register_file.is_fixed(reg));
       assert(register_file.reg_local_idx(reg) == local_idx);
       assert(register_file.reg_part(reg) == part_idx);
-      register_file.unmark_fixed(reg);
+      register_file.dec_lock_count(reg); // release lock for fixed register
       register_file.unmark_used(reg);
       ap.set_fixed_assignment(false);
       ap.set_register_valid(false);
@@ -988,11 +988,11 @@ void CompilerBase<Adaptor, Derived, Config>::salvage_reg_for_values(
     if (ap_to.fixed_assignment()) {
       // free the register of `to` since we reuse `from`'s register
       const AsmReg res_reg = AsmReg{ap_to.full_reg_id()};
-      register_file.unmark_fixed(res_reg);
+      register_file.dec_lock_count(res_reg); // release fixed reg
       register_file.unmark_used(res_reg);
     } else {
       assert(!ap_to.register_valid());
-      register_file.unmark_fixed(from_reg);
+      register_file.dec_lock_count(from_reg); // release fixed reg
     }
 
     ap_from.set_fixed_assignment(false);
