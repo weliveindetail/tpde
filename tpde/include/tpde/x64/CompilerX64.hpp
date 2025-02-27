@@ -611,11 +611,10 @@ void CallingConv::handle_func_args(
 
       // need to use a ScratchReg here since otherwise the ValuePartRef
       // could allocate one of the argument registers
-      ScratchReg ptr_scratch{compiler};
       auto arg_ref = compiler->result_ref_lazy(arg, 0);
-      const auto res_reg = ptr_scratch.alloc(Config::GP_BANK, arg_regs_mask());
+      const auto res_reg = arg_ref.alloc_reg(arg_regs_mask());
       ASMC(compiler, LEA64rm, res_reg, FE_MEM(FE_BP, 0, FE_NOREG, frame_off));
-      compiler->set_value(arg_ref, ptr_scratch);
+      compiler->set_value(arg_ref, arg_ref.cur_reg());
 
       frame_off += util::align_up(size, 8);
       ++arg_idx;

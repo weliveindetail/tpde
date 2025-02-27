@@ -134,14 +134,24 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     return ap.register_valid() && AsmReg{ap.full_reg_id()} == reg;
   }
 
+  bool has_reg() const noexcept {
+    if (!has_assignment()) {
+      return state.c.reg.valid();
+    } else {
+      return state.v.locked;
+    }
+  }
+
 private:
-  AsmReg alloc_reg_impl(bool reload) noexcept;
+  AsmReg alloc_reg_impl(u64 exclusion_mask, bool reload) noexcept;
   AsmReg alloc_specific_impl(AsmReg reg, bool reload) noexcept;
 
 public:
   /// Allocate and lock a register for the value part, *without* reloading the
   /// value. Does nothing if a register is already allocated.
-  AsmReg alloc_reg() noexcept { return alloc_reg_impl(/*reload=*/false); }
+  AsmReg alloc_reg(u64 exclusion_mask = 0) noexcept {
+    return alloc_reg_impl(exclusion_mask, /*reload=*/false);
+  }
 
   /// Allocate and lock a specific register for the value part, spilling the
   /// register if it is currently used (must not be fixed), *without* reloading
@@ -152,7 +162,7 @@ public:
   /// Allocate, fill, and lock a register for the value part, reloading from
   /// the stack or materializing the constant if necessary. Does nothing if a
   /// register is already allocated.
-  AsmReg load_to_reg() noexcept { return alloc_reg_impl(/*reload=*/true); }
+  AsmReg load_to_reg() noexcept { return alloc_reg_impl(0, /*reload=*/true); }
 
   /// Allocate, fill, and lock a specific register for the value part, spilling
   /// the register if it is currently used (must not be fixed). The value is
@@ -222,35 +232,43 @@ public:
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::alloc_reg_impl(
-        const bool reload) noexcept {
+        u64 exclusion_mask, const bool reload) noexcept {
   u32 bank;
   if (has_assignment()) {
     auto ap = assignment();
     if (ap.fixed_assignment()) {
       assert(!ap.variable_ref());
       state.v.reg = AsmReg{ap.full_reg_id()};
+      assert((exclusion_mask & (1 << state.v.reg.id())) == 0 &&
+             "moving fixed registers in alloc_reg is unsupported");
       return state.v.reg;
     }
 
     if (ap.register_valid()) {
       lock();
+      // TODO: implement this if needed
+      assert((exclusion_mask & (1 << state.v.reg.id())) == 0 &&
+             "moving registers in alloc_reg is unsupported");
       return AsmReg{ap.full_reg_id()};
     }
 
     bank = ap.bank();
   } else {
     if (state.c.reg.valid()) {
+      // TODO: implement this if needed
+      assert((exclusion_mask & (1 << state.c.reg.id())) == 0 &&
+             "moving temporary registers in alloc_reg is unsupported");
       return state.c.reg;
     }
     bank = state.c.bank;
   }
 
   auto &reg_file = compiler->register_file;
-  auto reg = reg_file.find_first_free_excluding(bank, 0);
+  auto reg = reg_file.find_first_free_excluding(bank, exclusion_mask);
   // TODO(ts): need to grab this from the registerfile since the reg type
   // could be different
   if (reg.invalid()) {
-    reg = reg_file.find_clocked_nonfixed_excluding(bank, 0);
+    reg = reg_file.find_clocked_nonfixed_excluding(bank, exclusion_mask);
 
     if (reg.invalid()) [[unlikely]] {
       TPDE_FATAL("ran out of registers for value part");

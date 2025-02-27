@@ -657,6 +657,8 @@ void CallingConv::handle_func_args(
   using IRValueRef = typename Adaptor::IRValueRef;
   using ScratchReg =
       typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ScratchReg;
+  using ValuePartRef =
+      typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ValuePartRef;
 
   u32 scalar_reg_count = 0, vec_reg_count = 0;
   i32 frame_off = 0;
@@ -671,13 +673,13 @@ void CallingConv::handle_func_args(
   // getters
   compiler->fixed_assignment_nonallocatable_mask |= arg_regs_mask();
 
-  ScratchReg stack_off_scratch{compiler};
+  ValuePartRef stack_off_scratch{compiler, Config::GP_BANK};
   const auto stack_off_reg = [&]() {
-    if (stack_off_scratch.cur_reg.valid()) {
-      return stack_off_scratch.cur_reg;
+    if (stack_off_scratch.has_reg()) {
+      return stack_off_scratch.cur_reg();
     }
 
-    const auto reg = stack_off_scratch.alloc(Config::GP_BANK, arg_regs_mask());
+    const auto reg = stack_off_scratch.alloc_reg(arg_regs_mask());
     compiler->func_arg_stack_add_off = compiler->assembler.text_cur_off();
     compiler->func_arg_stack_add_reg = reg;
     ASMC(compiler, ADDxi, reg, DA_SP, 0);
@@ -699,12 +701,11 @@ void CallingConv::handle_func_args(
 
       // need to use a ScratchReg here since otherwise the ValuePartRef
       // could allocate one of the argument registers
-      ScratchReg ptr_scratch{compiler};
       auto arg_ref = compiler->result_ref_lazy(arg, 0);
       // TODO: multiple arguments?
-      const auto res_reg = ptr_scratch.alloc(Config::GP_BANK, arg_regs_mask());
+      const auto res_reg = arg_ref.alloc_reg(arg_regs_mask());
       ASMC(compiler, ADDxi, res_reg, stack_reg, frame_off);
-      compiler->set_value(arg_ref, ptr_scratch);
+      compiler->set_value(arg_ref, arg_ref.cur_reg());
 
       frame_off += util::align_up(size, 8);
       ++arg_idx;
