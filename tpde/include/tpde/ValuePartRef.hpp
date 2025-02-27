@@ -22,7 +22,6 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   struct ValueData {
     AsmReg reg = AsmReg::make_invalid(); // only valid if fixed/locked
     bool has_assignment = true;
-    bool locked;
     CompilerBase::ValLocalIdx local_idx;
     u32 part;
     ValueAssignment *assignment;
@@ -43,16 +42,12 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   ValuePartRef(CompilerBase *compiler, ValLocalIdx local_idx, u32 part) noexcept
       : state{
             .v = ValueData{
-                           .locked = false,
                            .local_idx = local_idx,
                            .part = part,
                            .assignment = compiler->val_assignment(local_idx),
                            }
   }, compiler(compiler) {
     assert(assignment().variable_ref() || state.v.assignment->references_left);
-#ifndef NDEBUG
-    state.v.reg = AsmReg::make_invalid();
-#endif
   }
 
   ValuePartRef(CompilerBase *compiler, const u64 *data, u32 size, u32 bank) noexcept
@@ -134,13 +129,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     return ap.register_valid() && AsmReg{ap.full_reg_id()} == reg;
   }
 
-  bool has_reg() const noexcept {
-    if (!has_assignment()) {
-      return state.c.reg.valid();
-    } else {
-      return state.v.locked;
-    }
-  }
+  bool has_reg() const noexcept { return state.v.reg.valid(); }
 
 private:
   AsmReg alloc_reg_impl(u64 exclusion_mask, bool reload) noexcept;
@@ -247,23 +236,12 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   u32 bank;
   if (has_assignment()) {
     auto ap = assignment();
-    if (ap.fixed_assignment()) {
-      assert(!ap.variable_ref());
-      state.v.reg = AsmReg{ap.full_reg_id()};
-      assert(compiler->register_file.is_used(state.v.reg));
-      assert(compiler->register_file.is_fixed(state.v.reg));
-      assert(compiler->register_file.reg_local_idx(state.v.reg) == local_idx());
-      assert((exclusion_mask & (1 << state.v.reg.id())) == 0 &&
-             "moving fixed registers in alloc_reg is unsupported");
-      return state.v.reg;
-    }
-
     if (ap.register_valid()) {
       lock();
       // TODO: implement this if needed
       assert((exclusion_mask & (1 << state.v.reg.id())) == 0 &&
              "moving registers in alloc_reg is unsupported");
-      return AsmReg{ap.full_reg_id()};
+      return state.v.reg;
     }
 
     bank = ap.bank();
@@ -424,7 +402,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     return reg;
   }
 
-  assert(!state.v.locked);
+  assert(!state.v.reg.valid());
   auto &reg_file = compiler->register_file;
 
   // Free the register if there is anything else in there
@@ -485,7 +463,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     return reg;
   }
 
-  assert(!state.v.locked);
+  assert(!state.v.reg.valid());
 
   auto ap = assignment();
   if (ap.register_valid()) {
@@ -508,7 +486,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::lock() noexcept {
   assert(has_assignment());
-  if (state.v.locked) {
+  if (state.v.reg.valid()) {
     return;
   }
 
@@ -520,21 +498,17 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::lock() noexcept {
   compiler->register_file.inc_lock_count(reg);
 
   state.v.reg = reg;
-  state.v.locked = true;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::unlock() noexcept {
   assert(has_assignment());
-  if (!state.v.locked) {
+  if (!state.v.reg.valid()) {
     return;
   }
 
   compiler->register_file.dec_lock_count(state.v.reg);
-#ifndef NDEBUG
   state.v.reg = AsmReg::make_invalid();
-#endif
-  state.v.locked = false;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -685,10 +659,9 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
     return;
   }
 
-  if (state.v.locked) {
-    unlock();
-  }
+  unlock();
 
-  state.c = ConstantData{};
+  state.c.has_assignment = false;
+  state.c.reg = AsmReg::make_invalid();
 }
 } // namespace tpde

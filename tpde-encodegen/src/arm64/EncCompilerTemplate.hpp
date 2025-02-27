@@ -264,7 +264,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
         if (std::holds_alternative<ValuePartRef>(op)) {
             auto &op_ref = std::get<ValuePartRef>(op);
             if (op_ref.has_assignment()) {
-                assert(!op_ref.state.v.locked);
+                assert(!op_ref.has_reg());
                 const auto ap = op_ref.assignment();
                 if (ap.register_valid()) {
                     assert(AsmReg{ap.full_reg_id()} != reg);
@@ -276,7 +276,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
         if (std::holds_alternative<ValuePartRef *>(op)) {
             auto &op_ref = *std::get<ValuePartRef *>(op);
             if (op_ref.has_assignment()) {
-                assert(!op_ref.state.v.locked);
+                assert(!op_ref.has_reg());
                 const auto ap = op_ref.assignment();
                 if (ap.register_valid()) {
                     assert(AsmReg{ap.full_reg_id()} != reg);
