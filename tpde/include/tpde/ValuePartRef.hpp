@@ -194,11 +194,21 @@ public:
   void lock() noexcept;
   void unlock() noexcept;
 
+  void set_value(ValuePartRef &&other) noexcept;
+
   bool can_salvage(u32 ref_adjust = 1) const noexcept;
 
+private:
+  AsmReg salvage_keep_used() noexcept;
+
+public:
   // only call when can_salvage returns true and a register is known to be
   // allocated
-  AsmReg salvage() noexcept;
+  AsmReg salvage() noexcept {
+    AsmReg reg = salvage_keep_used();
+    compiler->register_file.unmark_used(reg);
+    return reg;
+  }
 
   ValLocalIdx local_idx() const noexcept {
     assert(has_assignment());
@@ -239,6 +249,9 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     if (ap.fixed_assignment()) {
       assert(!ap.variable_ref());
       state.v.reg = AsmReg{ap.full_reg_id()};
+      assert(compiler->register_file.is_used(state.v.reg));
+      assert(compiler->register_file.is_fixed(state.v.reg));
+      assert(compiler->register_file.reg_local_idx(state.v.reg) == local_idx());
       assert((exclusion_mask & (1 << state.v.reg.id())) == 0 &&
              "moving fixed registers in alloc_reg is unsupported");
       return state.v.reg;
@@ -461,6 +474,13 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     compiler->derived()->materialize_constant(*this, reg);
     return reg;
   }
+  if (!has_assignment()) {
+    assert(has_reg());
+    assert(reg != cur_reg());
+    // TODO: value size
+    compiler->derived()->mov(reg, cur_reg(), 8);
+    return reg;
+  }
 
   assert(!state.v.locked);
 
@@ -515,6 +535,68 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::unlock() noexcept {
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::set_value(
+    ValuePartRef &&other) noexcept {
+  auto &reg_file = compiler->register_file;
+  if (!has_assignment()) {
+    assert(!is_const()); // probably don't want to allow mutating constants
+    // This is a temporary, which might currently have a register. We want to
+    // have a temporary register that holds the value at the end.
+    if (!other.has_assignment()) {
+      // When other is a temporary/constant, just take the value and drop our
+      // own register (if we have any).
+      *this = std::move(other);
+      return;
+    }
+
+    if (!other.can_salvage()) {
+      // We cannot take the register of other, so copy the value
+      AsmReg cur_reg = alloc_reg();
+      other.reload_into_specific_fixed(compiler, cur_reg);
+      other.reset();
+      return;
+    }
+
+    // We can take the register of other.
+    reset();
+
+    state.c.reg = other.salvage_keep_used();
+    reg_file.mark_fixed(state.c.reg);
+    reg_file.update_reg_assignment(state.c.reg, INVALID_VAL_LOCAL_IDX, 0);
+    return;
+  }
+
+  // Update the value of the assignment part
+  auto ap = assignment();
+  assert(!ap.variable_ref() && "cannot update variable ref");
+
+  if (ap.fixed_assignment() || !other.can_salvage()) {
+    // Source value owns no register or it is not reusable: copy value
+    AsmReg cur_reg = alloc_reg();
+    other.reload_into_specific_fixed(compiler, cur_reg);
+    other.reset();
+    ap.set_register_valid(true);
+    ap.set_modified(true);
+    return;
+  }
+
+  // Reuse register of other assignment
+  if (ap.register_valid()) {
+    // If we currently have a register, drop it
+    unlock();
+    AsmReg cur_reg{ap.full_reg_id()};
+    assert(!reg_file.is_fixed(cur_reg));
+    reg_file.unmark_used(cur_reg);
+  }
+
+  AsmReg new_reg = other.salvage_keep_used();
+  reg_file.update_reg_assignment(new_reg, local_idx(), part());
+  ap.set_full_reg_id(new_reg.id());
+  ap.set_register_valid(true);
+  ap.set_modified(true);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::can_salvage(
     const u32 ref_adjust) const noexcept {
   if (!has_assignment()) {
@@ -538,12 +620,12 @@ bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::can_salvage(
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::ValuePartRef::salvage() noexcept {
+    CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
+        salvage_keep_used() noexcept {
   assert(can_salvage());
   if (!has_assignment()) {
     AsmReg reg = state.c.reg;
     compiler->register_file.unmark_fixed(reg);
-    compiler->register_file.unmark_used(reg);
     state.c.reg = AsmReg::make_invalid();
     return reg;
   }
@@ -557,7 +639,6 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   if (ap.fixed_assignment()) {
     compiler->register_file.dec_lock_count(cur_reg); // release fixed register
   }
-  compiler->register_file.unmark_used(cur_reg);
 
   ap.set_register_valid(false);
   ap.set_fixed_assignment(false);

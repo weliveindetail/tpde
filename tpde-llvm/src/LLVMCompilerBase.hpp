@@ -2729,9 +2729,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
     ValuePartRef vec_ref = this->val_ref(inst->getOperand(0), 0);
     AsmReg orig_reg = vec_ref.load_to_reg();
     if (vec_ref.can_salvage()) {
-      ScratchReg tmp{this};
-      tmp.alloc_specific(vec_ref.salvage());
-      this->set_value(result, tmp);
+      result.set_value(std::move(vec_ref));
     } else {
       // TODO: don't spill when target insert_element doesn't need it?
       unsigned frame_off = result.assignment().frame_off();
