@@ -1685,7 +1685,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   cur_block_idx =
       static_cast<BlockIndex>(analyzer.block_idx(adaptor->cur_entry_block()));
 
-  derived()->reset_register_file();
+  register_file.reset();
 
   derived()->start_func(func_idx);
 

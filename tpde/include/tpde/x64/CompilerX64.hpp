@@ -454,8 +454,6 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
   u32 func_reserved_frame_size() noexcept;
 
-  void reset_register_file() noexcept;
-
   void reset() noexcept;
 
   // helpers
@@ -1061,6 +1059,9 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::start_func(
     }
   }
   this->assembler.start_func(this->func_syms[func_idx], personality_sym);
+
+  const CallingConv conv = derived()->cur_calling_convention();
+  this->register_file.allocatable = conv.initial_free_regs();
 }
 
 template <IRAdaptor Adaptor,
@@ -1346,20 +1347,6 @@ u32 CompilerX64<Adaptor, Derived, BaseTy, Config>::
     reserved_size += 176;
   }
   return reserved_size;
-}
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename> typename BaseTy,
-          typename Config>
-void CompilerX64<Adaptor, Derived, BaseTy, Config>::
-    reset_register_file() noexcept {
-  const CallingConv conv = derived()->cur_calling_convention();
-  this->register_file.fixed = this->register_file.used =
-      this->register_file.clobbered = 0;
-  this->register_file.allocatable = conv.initial_free_regs();
-  this->register_file.clocks[0] = 0;
-  this->register_file.clocks[1] = 0;
 }
 
 template <IRAdaptor Adaptor,

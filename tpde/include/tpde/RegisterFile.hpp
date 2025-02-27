@@ -49,16 +49,24 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
   /// Registers that were clobbered at some point. Used to track registers that
   /// need to be saved/restored.
   RegBitSet clobbered = 0;
-  u32 clocks[2] = {};
+  std::array<u8, 2> clocks{};
 
   struct Assignment {
     ValLocalIdx local_idx;
     u32 part;
-    u32 lock_count; // TODO(ts): put this somewhere else since it's probably
-                    // only used for a few assignments at a time
   };
 
   std::array<Assignment, 64> assignments;
+
+  std::array<u8, 64> lock_counts{};
+
+  void reset() noexcept {
+    used = {};
+    fixed = {};
+    clobbered = {};
+    clocks = {};
+    lock_counts = {};
+  }
 
   [[nodiscard]] bool is_used(const Reg reg) const noexcept {
     assert(reg.id() < 64);
@@ -81,9 +89,9 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     assert(reg.id() < 64);
     assert(!is_used(reg));
     assert(!is_fixed(reg));
+    assert(lock_counts[reg.id()] == 0);
     used |= (1ull << reg.id());
-    assignments[reg.id()] =
-        Assignment{.local_idx = local_idx, .part = part, .lock_count = 0};
+    assignments[reg.id()] = Assignment{.local_idx = local_idx, .part = part};
   }
 
   void update_reg_assignment(const Reg reg,
@@ -98,7 +106,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     assert(reg.id() < 64);
     assert(is_used(reg));
     assert(!is_fixed(reg));
-    assert(assignments[reg.id()].lock_count == 0);
+    assert(lock_counts[reg.id()] == 0);
     used &= ~(1ull << reg.id());
   }
 
@@ -119,14 +127,14 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     assert(reg.id() < 64);
     assert(is_used(reg));
     mark_fixed(reg);
-    ++assignments[reg.id()].lock_count;
+    ++lock_counts[reg.id()];
   }
 
   void dec_lock_count(const Reg reg) noexcept {
     assert(reg.id() < 64);
     assert(is_used(reg));
-    assert(assignments[reg.id()].lock_count > 0);
-    if (--assignments[reg.id()].lock_count == 0) {
+    assert(lock_counts[reg.id()] > 0);
+    if (--lock_counts[reg.id()] == 0) {
       unmark_fixed(reg);
     }
   }

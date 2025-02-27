@@ -235,11 +235,11 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
         auto      &assignment = reg_file.assignments[reg.id()];
         backup_reg.local_idx  = assignment.local_idx;
         backup_reg.part       = assignment.part;
-        backup_reg.lock_count = assignment.lock_count;
+        backup_reg.lock_count = reg_file.lock_counts[reg.id()];
 
         assignment.local_idx  = CompilerA64::INVALID_VAL_LOCAL_IDX;
         assignment.part       = 0;
-        assignment.lock_count = 0;
+        reg_file.lock_counts[reg.id()] = 0;
 
         assert(!scratch.has_reg());
         scratch.force_set_reg(reg);
@@ -338,7 +338,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
     auto &assignment      = reg_file.assignments[scratch.cur_reg().id()];
     assignment.local_idx  = backup_reg.local_idx;
     assignment.part       = backup_reg.part;
-    assignment.lock_count = backup_reg.lock_count;
+    reg_file.lock_counts[scratch.cur_reg().id()] = backup_reg.lock_count;
 
     assert(reg_file.reg_bank(scratch.cur_reg()) == 0);
     if (is_ret_reg) {

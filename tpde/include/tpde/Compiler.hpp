@@ -44,8 +44,6 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
   // (func_idx)
   { a.finish_func(ARG(u32)) };
 
-  { a.reset_register_file() };
-
   // (reg_to_spill, frame_off, size)
   { a.spill_reg(ARG(typename Config::AsmReg), ARG(u32), ARG(u32)) };
 
