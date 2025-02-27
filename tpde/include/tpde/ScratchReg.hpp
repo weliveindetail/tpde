@@ -6,10 +6,12 @@
 namespace tpde {
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 struct CompilerBase<Adaptor, Derived, Config>::ScratchReg {
+private:
   CompilerBase *compiler;
   // TODO(ts): get this using the CompilerConfig?
-  AsmReg cur_reg = AsmReg::make_invalid();
+  AsmReg reg = AsmReg::make_invalid();
 
+public:
   explicit ScratchReg(CompilerBase *compiler) : compiler(compiler) {}
 
   explicit ScratchReg(const ScratchReg &) = delete;
@@ -19,6 +21,13 @@ struct CompilerBase<Adaptor, Derived, Config>::ScratchReg {
 
   ScratchReg &operator=(const ScratchReg &) = delete;
   ScratchReg &operator=(ScratchReg &&) noexcept;
+
+  bool has_reg() const noexcept { return reg.valid(); }
+
+  AsmReg cur_reg() const noexcept {
+    assert(has_reg());
+    return reg;
+  }
 
   AsmReg alloc_specific(AsmReg reg) noexcept;
 
@@ -30,14 +39,17 @@ struct CompilerBase<Adaptor, Derived, Config>::ScratchReg {
   AsmReg alloc(u8 bank) noexcept;
 
   void reset() noexcept;
+
+  /// Forcefully change register without updating register file. Avoid.
+  void force_set_reg(AsmReg reg) noexcept { this->reg = reg; }
 };
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 CompilerBase<Adaptor, Derived, Config>::ScratchReg::ScratchReg(
     ScratchReg &&other) noexcept {
   this->compiler = other.compiler;
-  this->cur_reg = other.cur_reg;
-  other.cur_reg = AsmReg::make_invalid();
+  this->reg = other.reg;
+  other.reg = AsmReg::make_invalid();
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -50,8 +62,8 @@ typename CompilerBase<Adaptor, Derived, Config>::ScratchReg &
 
   reset();
   this->compiler = other.compiler;
-  this->cur_reg = other.cur_reg;
-  other.cur_reg = AsmReg::make_invalid();
+  this->reg = other.reg;
+  other.reg = AsmReg::make_invalid();
   return *this;
 }
 
@@ -74,7 +86,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   compiler->register_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
   compiler->register_file.mark_clobbered(reg);
   compiler->register_file.mark_fixed(reg);
-  cur_reg = reg;
+  this->reg = reg;
   return reg;
 }
 
@@ -83,9 +95,9 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ScratchReg::alloc(
         u8 bank) noexcept {
   auto &reg_file = compiler->register_file;
-  if (!cur_reg.invalid()) {
-    assert(bank == reg_file.reg_bank(cur_reg));
-    return cur_reg;
+  if (!reg.invalid()) {
+    assert(bank == reg_file.reg_bank(reg));
+    return reg;
   }
 
   // TODO(ts): try to first find a non callee-saved/clobbered register...
@@ -108,18 +120,18 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
   reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
   reg_file.mark_clobbered(reg);
   reg_file.mark_fixed(reg);
-  cur_reg = reg;
+  this->reg = reg;
   return reg;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ScratchReg::reset() noexcept {
-  if (cur_reg.invalid()) {
+  if (reg.invalid()) {
     return;
   }
 
-  compiler->register_file.unmark_fixed(cur_reg);
-  compiler->register_file.unmark_used(cur_reg);
-  cur_reg = AsmReg::make_invalid();
+  compiler->register_file.unmark_fixed(reg);
+  compiler->register_file.unmark_used(reg);
+  reg = AsmReg::make_invalid();
 }
 } // namespace tpde

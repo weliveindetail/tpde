@@ -469,7 +469,7 @@ bool generate_inst(std::string &buf,
             "!({})&&{}", parent_conds, if_cond.empty() ? "1" : if_cond));
 
         if (!asm_op_name.empty()) {
-          auto dst = std::format("scratch_{}.cur_reg",
+          auto dst = std::format("scratch_{}.cur_reg()",
                                  state.target->reg_name_lower(reg_id));
           // TODO(ts): try to salvage the register if possible
           // register should be allocated if we come into here
@@ -497,7 +497,7 @@ bool generate_inst(std::string &buf,
           // should we mark it as allocated here?
           state.fmt_line(buf,
                          8,
-                         "AsmReg {} = scratch_{}.cur_reg;",
+                         "AsmReg {} = scratch_{}.cur_reg();",
                          op_name,
                          state.target->reg_name_lower(reg_id));
           use_ops.push_back(std::move(op_name));
@@ -633,7 +633,7 @@ bool generate_inst(std::string &buf,
         // implicit defs do not show up in the argument list
         continue;
       }
-      ops.push_back(std::format("scratch_{}.cur_reg",
+      ops.push_back(std::format("scratch_{}.cur_reg()",
                                 state.target->reg_name_lower(reg_id)));
     }
 

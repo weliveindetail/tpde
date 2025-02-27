@@ -686,7 +686,7 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
         // register. This case is not easy to detect here, though. Therefore,
         // for now we always copy the value into a register that we own.
         // TODO: copy only when lhs_reg belongs to an overwritten PHI node.
-        if (res_scratch.cur_reg.invalid()) {
+        if (!res_scratch.has_reg()) {
           AsmReg src_reg = lhs_reg;
           lhs_reg = res_scratch.alloc_gp();
           this->mov(lhs_reg, src_reg, int_width <= 32 ? 4 : 8);
@@ -713,12 +713,12 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
       if (int_width <= 32) {
         if (!ASMIF(CMPwi, lhs_reg, imm)) {
           this->materialize_constant(imm, 0, 4, rhs_tmp.alloc_gp());
-          ASM(CMPw, lhs_reg, rhs_tmp.cur_reg);
+          ASM(CMPw, lhs_reg, rhs_tmp.cur_reg());
         }
       } else {
         if (!ASMIF(CMPxi, lhs_reg, imm)) {
           this->materialize_constant(imm, 0, 4, rhs_tmp.alloc_gp());
-          ASM(CMPx, lhs_reg, rhs_tmp.cur_reg);
+          ASM(CMPx, lhs_reg, rhs_tmp.cur_reg());
         }
       }
     } else {

@@ -613,9 +613,9 @@ bool LLVMCompilerX64::compile_icmp(const llvm::ICmpInst *cmp,
       const auto rhs_reg = rhs.load_to_reg();
       const auto rhs_reg_high = rhs_high.load_to_reg();
 
-      ASM(XOR64rr, res_scratch.cur_reg, rhs_reg);
-      ASM(XOR64rr, scratch.cur_reg, rhs_reg_high);
-      ASM(OR64rr, res_scratch.cur_reg, scratch.cur_reg);
+      ASM(XOR64rr, res_scratch.cur_reg(), rhs_reg);
+      ASM(XOR64rr, scratch.cur_reg(), rhs_reg_high);
+      ASM(OR64rr, res_scratch.cur_reg(), scratch.cur_reg());
     } else {
       const auto lhs_reg = lhs.load_to_reg();
       auto lhs_high_tmp =

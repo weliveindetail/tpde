@@ -27,7 +27,7 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
       if (std::holds_alternative<AsmReg>(base)) {
         return std::get<AsmReg>(base);
       }
-      return std::get<ScratchReg>(base).cur_reg;
+      return std::get<ScratchReg>(base).cur_reg();
     }
 
     [[nodiscard]] bool has_base() const noexcept {
@@ -44,7 +44,7 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
       if (std::holds_alternative<AsmReg>(index)) {
         return std::get<AsmReg>(index);
       }
-      return std::get<ScratchReg>(index).cur_reg;
+      return std::get<ScratchReg>(index).cur_reg();
     }
 
     [[nodiscard]] bool has_index() const noexcept { return scale != 0; }
@@ -81,13 +81,13 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
 
   // no salvaging
   GenericValuePart(const ScratchReg &reg) noexcept {
-    assert(!reg.cur_reg.invalid());
-    state = Expr(reg.cur_reg);
+    assert(reg.has_reg());
+    state = Expr(reg.cur_reg());
   }
 
   // salvaging
   GenericValuePart(ScratchReg &&reg) noexcept {
-    assert(!reg.cur_reg.invalid());
+    assert(reg.has_reg());
     state = std::move(reg);
   }
 

@@ -1030,7 +1030,7 @@ u32 CallingConv::handle_call_args(
             scratch.alloc_specific(
                 ref.reload_into_specific(compiler, target_reg));
           }
-          ext_reg(scratch.cur_reg);
+          ext_reg(scratch.cur_reg());
           arg_scratchs.push_back(std::move(scratch));
         } else {
           auto reg =
@@ -1117,22 +1117,18 @@ void CallingConv::fill_call_results(
       }
     } else {
       auto &[reg, bank] = std::get<std::pair<ScratchReg, u8>>(res);
-      reg.reset();
 
+      AsmReg res_reg;
       if (bank == 0) {
         assert(gp_reg_count < gp_regs.size());
-        reg.cur_reg = gp_regs[gp_reg_count++];
+        res_reg = gp_regs[gp_reg_count++];
       } else {
         assert(bank == 1);
         assert(vec_reg_count < vec_regs.size());
-        reg.cur_reg = vec_regs[vec_reg_count++];
+        res_reg = vec_regs[vec_reg_count++];
       }
-
-      compiler->register_file.mark_used(
-          reg.cur_reg,
-          CompilerA64<Adaptor, Derived, BaseTy, Config>::INVALID_VAL_LOCAL_IDX,
-          0);
-      compiler->register_file.mark_fixed(reg.cur_reg);
+      assert(!compiler->register_file.is_used(res_reg));
+      reg.alloc_specific(res_reg);
     }
   }
 }
@@ -1753,7 +1749,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
     } else {
       (void)scratch.alloc_gp();
     }
-    AsmReg dst = scratch.cur_reg;
+    AsmReg dst = scratch.cur_reg();
     if ((expr.scale & (expr.scale - 1)) == 0) {
       const auto shift = util::cnt_tz<u64>(expr.scale);
       ASM(LSLxi, dst, index_reg, shift);
@@ -1773,7 +1769,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
     } else {
       (void)scratch.alloc_gp();
     }
-    AsmReg dst = scratch.cur_reg;
+    AsmReg dst = scratch.cur_reg();
     if ((expr.scale & (expr.scale - 1)) == 0) {
       const auto shift = util::cnt_tz<u64>(expr.scale);
       ASM(ADDx_lsl, dst, base_reg, index_reg, shift);
@@ -1791,7 +1787,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
     } else {
       (void)scratch.alloc_gp();
     }
-    AsmReg dst = scratch.cur_reg;
+    AsmReg dst = scratch.cur_reg();
     if (ASMIF(ADDxi, dst, base_reg, expr.disp)) {
       expr.disp = 0;
     } else {
@@ -1801,7 +1797,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
     TPDE_UNREACHABLE("inconsistent GenericValuePart::Expr");
   }
 
-  AsmReg dst = scratch.cur_reg;
+  AsmReg dst = scratch.cur_reg();
   if (expr.disp != 0) {
     if (!ASMIF(ADDxi, dst, dst, expr.disp)) {
       ScratchReg scratch2{derived()};
@@ -2416,7 +2412,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
     CallingConv calling_conv,
     bool) {
   if (std::holds_alternative<ScratchReg>(target)) {
-    assert(((1ull << std::get<ScratchReg>(target).cur_reg.id()) &
+    assert(((1ull << std::get<ScratchReg>(target).cur_reg().id()) &
             calling_conv.arg_regs_mask()) == 0);
   }
 
@@ -2443,7 +2439,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
 
   u64 except_mask = 0;
   if (std::holds_alternative<ScratchReg>(target)) {
-    except_mask = (1ull << std::get<ScratchReg>(target).cur_reg.id());
+    except_mask = (1ull << std::get<ScratchReg>(target).cur_reg().id());
   } else if (std::holds_alternative<ValuePartRef>(target)) {
     auto &ref = std::get<ValuePartRef>(target);
     if (ref.assignment().register_valid()) {
@@ -2451,7 +2447,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
     }
   }
   for (const auto &reg : arg_regs) {
-    except_mask |= 1ull << reg.cur_reg.id();
+    except_mask |= 1ull << reg.cur_reg().id();
   }
   spill_before_call(calling_conv, except_mask);
 
@@ -2463,10 +2459,11 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
                                this->assembler.text_cur_off() - 4);
   } else if (std::holds_alternative<ScratchReg>(target)) {
     auto &reg = std::get<ScratchReg>(target);
-    assert(!reg.cur_reg.invalid());
-    ASM(BLR, reg.cur_reg);
+    assert(reg.has_reg());
+    ASM(BLR, reg.cur_reg());
 
-    if (((1ull << reg.cur_reg.id()) & calling_conv.callee_saved_mask()) == 0) {
+    if (((1ull << reg.cur_reg().id()) & calling_conv.callee_saved_mask()) ==
+        0) {
       reg.reset();
     }
   } else {

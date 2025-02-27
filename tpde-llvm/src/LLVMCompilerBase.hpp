@@ -2199,7 +2199,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
     sym = get_libfunc_sym(LibFunc::extenddftf2);
   }
 
-  if (res_scratch.cur_reg.valid()) {
+  if (res_scratch.has_reg()) {
     this->set_value(res_ref, res_scratch);
   } else if (sym.valid()) {
     IRValueRef src_ref = src_val;
@@ -2412,7 +2412,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
     ScratchReg scratch_high{derived()};
 
     if (sign) {
-      derived()->encode_fill_with_sign64(res_scratch.cur_reg, scratch_high);
+      derived()->encode_fill_with_sign64(res_scratch.cur_reg(), scratch_high);
     } else {
       u64 zero = 0;
       derived()->materialize_constant(
@@ -3661,7 +3661,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
                                   ValuePartRef{this, &mask, 4, Config::GP_BANK},
                                   scratch);
       }
-      cmp_reg = scratch.cur_reg;
+      cmp_reg = scratch.cur_reg();
     } else if (width == 32) {
       width_is_32 = true;
       cmp_reg = arg_ref.load_to_reg();
@@ -3672,14 +3672,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       } else if (arg_ref.has_assignment()) {
         arg_ref.unlock();
         arg_ref.reload_into_specific_fixed(this, scratch.alloc_gp());
-        cmp_reg = scratch.cur_reg;
+        cmp_reg = scratch.cur_reg();
       }
     } else if (width < 64) {
       u64 mask = (1ull << width) - 1;
       derived()->encode_landi64(std::move(arg_ref),
                                 ValuePartRef{this, &mask, 8, Config::GP_BANK},
                                 scratch);
-      cmp_reg = scratch.cur_reg;
+      cmp_reg = scratch.cur_reg();
     } else {
       cmp_reg = arg_ref.load_to_reg();
       // make sure we can overwrite the register when we generate a jump
@@ -3689,7 +3689,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       } else if (arg_ref.has_assignment()) {
         arg_ref.unlock();
         arg_ref.reload_into_specific_fixed(this, scratch.alloc_gp());
-        cmp_reg = scratch.cur_reg;
+        cmp_reg = scratch.cur_reg();
       }
     }
   }

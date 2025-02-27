@@ -907,7 +907,7 @@ u32 CallingConv::handle_call_args(
             scratch.alloc_specific(
                 ref.reload_into_specific(compiler, target_reg));
           }
-          ext_reg(scratch.cur_reg);
+          ext_reg(scratch.cur_reg());
           arg_scratchs.push_back(std::move(scratch));
         } else {
           auto reg =
@@ -1003,22 +1003,18 @@ void CallingConv::fill_call_results(
       }
     } else {
       auto &[reg, bank] = std::get<std::pair<ScratchReg, u8>>(res);
-      reg.reset();
 
+      AsmReg res_reg;
       if (bank == 0) {
         assert(gp_reg_count < gp_regs.size());
-        reg.cur_reg = gp_regs[gp_reg_count++];
+        res_reg = gp_regs[gp_reg_count++];
       } else {
         assert(bank == 1);
         assert(xmm_reg_count < xmm_regs.size());
-        reg.cur_reg = xmm_regs[xmm_reg_count++];
+        res_reg = xmm_regs[xmm_reg_count++];
       }
-
-      compiler->register_file.mark_used(
-          reg.cur_reg,
-          CompilerX64<Adaptor, Derived, BaseTy, Config>::INVALID_VAL_LOCAL_IDX,
-          0);
-      compiler->register_file.mark_fixed(reg.cur_reg);
+      assert(!compiler->register_file.is_used(res_reg));
+      reg.alloc_specific(res_reg);
     }
   }
 }
@@ -1588,7 +1584,7 @@ AsmReg CompilerX64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
   } else {
     (void)scratch.alloc_gp();
   }
-  auto dst = scratch.cur_reg;
+  auto dst = scratch.cur_reg();
   if (idx.valid()) {
     if ((expr.scale & (expr.scale - 1)) == 0 && expr.scale < 16) {
       u8 sc = expr.scale;
@@ -1615,7 +1611,7 @@ AsmReg CompilerX64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
       if (dst == base && std::holds_alternative<ScratchReg>(expr.index)) {
         // We can't use dst, it'd clobber base, so use the other
         // register we currently own.
-        idx_tmp = std::get<ScratchReg>(expr.index).cur_reg;
+        idx_tmp = std::get<ScratchReg>(expr.index).cur_reg();
       } else if (dst == base) {
         idx_tmp = idx_scratch.alloc_gp();
       }
@@ -2076,7 +2072,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     CallingConv calling_conv,
     const bool variable_args) {
   if (std::holds_alternative<ScratchReg>(target)) {
-    assert(((1ull << std::get<ScratchReg>(target).cur_reg.id()) &
+    assert(((1ull << std::get<ScratchReg>(target).cur_reg().id()) &
             calling_conv.arg_regs_mask()) == 0);
   }
 
@@ -2102,7 +2098,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
 
   u64 except_mask = 0;
   if (std::holds_alternative<ScratchReg>(target)) {
-    except_mask = (1ull << std::get<ScratchReg>(target).cur_reg.id());
+    except_mask = (1ull << std::get<ScratchReg>(target).cur_reg().id());
   } else if (std::holds_alternative<ValuePartRef>(target)) {
     auto &ref = std::get<ValuePartRef>(target);
     if (ref.assignment().register_valid()) {
@@ -2110,7 +2106,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     }
   }
   for (const auto &reg : arg_regs) {
-    except_mask |= 1ull << reg.cur_reg.id();
+    except_mask |= 1ull << reg.cur_reg().id();
   }
   spill_before_call(calling_conv, except_mask);
 
@@ -2131,10 +2127,11 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
                                -4);
   } else if (std::holds_alternative<ScratchReg>(target)) {
     auto &reg = std::get<ScratchReg>(target);
-    assert(!reg.cur_reg.invalid());
-    ASM(CALLr, reg.cur_reg);
+    assert(reg.has_reg());
+    ASM(CALLr, reg.cur_reg());
 
-    if (((1ull << reg.cur_reg.id()) & calling_conv.callee_saved_mask()) == 0) {
+    if (((1ull << reg.cur_reg().id()) & calling_conv.callee_saved_mask()) ==
+        0) {
       reg.reset();
     }
   } else {

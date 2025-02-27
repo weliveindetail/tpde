@@ -202,9 +202,9 @@ std::optional<FeMem> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
     }
     if (const auto *reg = std::get_if<ScratchReg>(&gv.state)) {
         if (is_noreg(other.base))
-            return FE_MEM(reg->cur_reg, other.scale, other.idx, other.off);
+            return FE_MEM(reg->cur_reg(), other.scale, other.idx, other.off);
         if (is_noreg(other.idx))
-            return FE_MEM(other.base, 1, reg->cur_reg, other.off);
+            return FE_MEM(other.base, 1, reg->cur_reg(), other.off);
         return std::nullopt;
     }
     if (const auto *expr = std::get_if<typename GenericValuePart::Expr>(&gv.state)) {
@@ -247,9 +247,11 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
                                u8              bank,
                                u32             size) noexcept {
     AsmReg reg = derived()->gval_as_reg_reuse(gv, dst_scratch);
-    if (dst_scratch.cur_reg != reg) {
+    if (!dst_scratch.has_reg()) {
         dst_scratch.alloc(bank);
-        derived()->mov(dst_scratch.cur_reg, reg, size);
+    }
+    if (dst_scratch.cur_reg() != reg) {
+        derived()->mov(dst_scratch.cur_reg(), reg, size);
     }
 }
 
@@ -286,8 +288,8 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
         assignment.part       = 0;
         assignment.lock_count = 0;
 
-        assert(scratch.cur_reg.invalid());
-        scratch.cur_reg = reg;
+        assert(!scratch.has_reg());
+        scratch.force_set_reg(reg);
 
         ASMD(MOV64rr, bak_reg, reg);
     };
@@ -297,10 +299,10 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
         auto &op = op_ptr->state;
         if (std::holds_alternative<ScratchReg>(op)) {
             auto &op_scratch = std::get<ScratchReg>(op);
-            if (op_scratch.cur_reg == reg) {
+            if (op_scratch.cur_reg() == reg) {
                 scratch = std::move(op_scratch);
                 op_scratch.alloc(bank);
-                ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                ASMD(MOV64rr, op_scratch.cur_reg(), reg);
                 return;
             }
             continue;
@@ -339,10 +341,10 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                     auto &op_scratch = std::get<ScratchReg>(expr.base);
                     scratch          = std::move(op_scratch);
                     op_scratch.alloc(bank);
-                    ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                    ASMD(MOV64rr, op_scratch.cur_reg(), reg);
                 } else {
                     alloc_backup();
-                    expr.base = backup_reg.scratch.cur_reg;
+                    expr.base = backup_reg.scratch.cur_reg();
                 }
                 return;
             }
@@ -351,10 +353,10 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                     auto &op_scratch = std::get<ScratchReg>(expr.index);
                     scratch          = std::move(op_scratch);
                     op_scratch.alloc(bank);
-                    ASMD(MOV64rr, op_scratch.cur_reg, reg);
+                    ASMD(MOV64rr, op_scratch.cur_reg(), reg);
                 } else {
                     alloc_backup();
-                    expr.index = backup_reg.scratch.cur_reg;
+                    expr.index = backup_reg.scratch.cur_reg();
                 }
                 return;
             }
@@ -376,31 +378,31 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
     scratch_check_fixed_backup(ScratchReg     &scratch,
                                FixedRegBackup &backup_reg,
                                const bool      is_ret_reg) noexcept {
-    if (backup_reg.scratch.cur_reg.invalid()) [[likely]] {
+    if (!backup_reg.scratch.has_reg()) [[likely]] {
         return;
     }
 
-    assert(!scratch.cur_reg.invalid());
+    assert(scratch.has_reg());
     auto &reg_file        = derived()->register_file;
-    auto &assignment      = reg_file.assignments[scratch.cur_reg.id()];
+    auto &assignment      = reg_file.assignments[scratch.cur_reg().id()];
     assignment.local_idx  = backup_reg.local_idx;
     assignment.part       = backup_reg.part;
     assignment.lock_count = backup_reg.lock_count;
 
-    assert(reg_file.reg_bank(scratch.cur_reg) == 0);
+    assert(reg_file.reg_bank(scratch.cur_reg()) == 0);
     if (is_ret_reg) {
         // TODO(ts): allocate another scratch? Though at this point the scratch
         // regs have not been released yet so we might need to spill...
 
         // need to switch around backup and reg so it can be returned as a
         // ScratchReg
-        ASMD(XCHG64rr, scratch.cur_reg, backup_reg.scratch.cur_reg);
-        scratch.cur_reg            = backup_reg.scratch.cur_reg;
-        backup_reg.scratch.cur_reg = AsmReg::make_invalid();
+        ASMD(XCHG64rr, scratch.cur_reg(), backup_reg.scratch.cur_reg());
+        scratch.force_set_reg(backup_reg.scratch.cur_reg());
+        backup_reg.scratch.force_set_reg(AsmReg::make_invalid());
     } else {
-        ASMD(MOV64rr, scratch.cur_reg, backup_reg.scratch.cur_reg);
+        ASMD(MOV64rr, scratch.cur_reg(), backup_reg.scratch.cur_reg());
 
-        scratch.cur_reg = AsmReg::make_invalid();
+        scratch.force_set_reg(AsmReg::make_invalid());
         backup_reg.scratch.reset();
     }
 }

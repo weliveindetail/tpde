@@ -910,8 +910,8 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::set_value(
     ValuePartRef &val_ref, ScratchReg &scratch) noexcept {
   auto ap = val_ref.assignment();
-  assert(!scratch.cur_reg.invalid());
-  auto reg = scratch.cur_reg;
+  assert(scratch.has_reg());
+  auto reg = scratch.cur_reg();
 
   if (ap.fixed_assignment()) {
     auto cur_reg = AsmReg{ap.full_reg_id()};
@@ -943,7 +943,7 @@ void CompilerBase<Adaptor, Derived, Config>::set_value(
   assert(register_file.is_used(reg));
   assert(register_file.is_fixed(reg));
   assert(register_file.is_clobbered(reg));
-  scratch.cur_reg = AsmReg::make_invalid();
+  scratch.force_set_reg(AsmReg::make_invalid());
   register_file.unmark_fixed(reg);
   register_file.update_reg_assignment(reg, val_ref.local_idx(), val_ref.part());
   ap.set_full_reg_id(reg.id());
@@ -1005,7 +1005,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::gval_as_reg(
         GenericValuePart &gv) noexcept {
   if (std::holds_alternative<ScratchReg>(gv.state)) {
-    return std::get<ScratchReg>(gv.state).cur_reg;
+    return std::get<ScratchReg>(gv.state).cur_reg();
   }
   if (std::holds_alternative<ValuePartRef>(gv.state)) {
     return std::get<ValuePartRef>(gv.state).load_to_reg();
@@ -1027,13 +1027,13 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::gval_as_reg_reuse(
         GenericValuePart &gv, ScratchReg &dst) noexcept {
   AsmReg reg = gval_as_reg(gv);
-  if (dst.cur_reg.invalid()) {
+  if (!dst.has_reg()) {
     if (auto *scratch = std::get_if<ScratchReg>(&gv.state)) {
       dst = std::move(*scratch);
     } else if (auto *val_ref = std::get_if<ValuePartRef>(&gv.state)) {
       if (val_ref->can_salvage()) {
         dst.alloc_specific(val_ref->salvage());
-        assert(dst.cur_reg == reg && "salvaging unsuccessful");
+        assert(dst.cur_reg() == reg && "salvaging unsuccessful");
       }
     }
   }
