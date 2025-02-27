@@ -189,7 +189,8 @@ public:
   /// This works similarily to reload_into_specific but will not free
   /// the target register
   AsmReg reload_into_specific_fixed(CompilerBase *compiler,
-                                    AsmReg reg) noexcept;
+                                    AsmReg reg,
+                                    unsigned size = 0) noexcept;
 
   void lock() noexcept;
   void unlock() noexcept;
@@ -468,7 +469,8 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
         reload_into_specific_fixed(CompilerBase *compiler,
-                                   AsmReg reg) noexcept {
+                                   AsmReg reg,
+                                   unsigned size) noexcept {
   if (is_const()) {
     // TODO(ts): store a compiler* in the constant data?
     compiler->derived()->materialize_constant(*this, reg);
@@ -478,7 +480,8 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     assert(has_reg());
     assert(reg != cur_reg());
     // TODO: value size
-    compiler->derived()->mov(reg, cur_reg(), 8);
+    assert(size != 0);
+    compiler->derived()->mov(reg, cur_reg(), size);
     return reg;
   }
 
@@ -573,7 +576,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::set_value(
   if (ap.fixed_assignment() || !other.can_salvage()) {
     // Source value owns no register or it is not reusable: copy value
     AsmReg cur_reg = alloc_reg();
-    other.reload_into_specific_fixed(compiler, cur_reg);
+    other.reload_into_specific_fixed(compiler, cur_reg, ap.part_size());
     other.reset();
     ap.set_register_valid(true);
     ap.set_modified(true);

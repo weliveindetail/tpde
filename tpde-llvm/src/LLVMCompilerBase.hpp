@@ -2357,16 +2357,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_trunc(
     const llvm::TruncInst *inst) noexcept {
   // this is a no-op since every operation that depends on it will
   // zero/sign-extend the value anyways
-  auto src_ref = this->val_ref(inst->getOperand(0), 0);
-
-  AsmReg orig;
-  auto res_ref =
-      this->result_ref_salvage_with_original(inst, 0, std::move(src_ref), orig);
-  if (orig != res_ref.cur_reg()) {
-    derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
-  }
-  this->set_value(res_ref, res_ref.cur_reg());
-
+  auto res_ref = this->result_ref_lazy(inst, 0);
+  res_ref.set_value(this->val_ref(inst->getOperand(0), 0));
   return true;
 }
 
@@ -2431,16 +2423,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ptr_to_int(
     const llvm::PtrToIntInst *inst) noexcept {
   // this is a no-op since every operation that depends on it will
   // zero/sign-extend the value anyways
-  auto src_ref = this->val_ref(inst->getOperand(0), 0);
-
-  AsmReg orig;
-  auto res_ref =
-      this->result_ref_salvage_with_original(inst, 0, std::move(src_ref), orig);
-  if (orig != res_ref.cur_reg()) {
-    derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
-  }
-  this->set_value(res_ref, res_ref.cur_reg());
-
+  auto res_ref = this->result_ref_lazy(inst, 0);
+  res_ref.set_value(this->val_ref(inst->getOperand(0), 0));
   return true;
 }
 
@@ -2452,18 +2436,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_ptr(
   const auto bit_width = src_val->getType()->getIntegerBitWidth();
 
   auto src_ref = this->val_ref(src_val, 0);
+  auto res_ref = this->result_ref_lazy(inst, 0);
   if (bit_width == 64) {
     // no-op
-    AsmReg orig;
-    auto res_ref = this->result_ref_salvage_with_original(
-        inst, 0, std::move(src_ref), orig);
-    if (orig != res_ref.cur_reg()) {
-      derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
-    }
-    this->set_value(res_ref, res_ref.cur_reg());
+    res_ref.set_value(std::move(src_ref));
     return true;
   } else if (bit_width < 64) {
-    auto res_ref = this->result_ref_lazy(inst, 0);
     auto res = derived()->ext_int(std::move(src_ref), false, bit_width, 64);
     this->set_value(res_ref, res);
     return true;
@@ -2488,20 +2466,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
 
   auto src_ref = this->val_ref(src, 0);
 
-  AsmReg orig;
-  ValuePartRef res_ref{this};
   if (src_parts.reg_bank(0) == dst_parts.reg_bank(0)) {
-    res_ref = this->result_ref_salvage_with_original(
-        inst, 0, std::move(src_ref), orig);
+    ValuePartRef res_ref = this->result_ref_lazy(inst, 0);
+    res_ref.set_value(std::move(src_ref));
   } else {
-    res_ref = this->result_ref_eager(inst, 0);
-    orig = src_ref.load_to_reg();
+    ValuePartRef res_ref = this->result_ref_eager(inst, 0);
+    AsmReg src_reg = src_ref.load_to_reg();
+    derived()->mov(res_ref.cur_reg(), src_reg, res_ref.part_size());
+    this->set_value(res_ref, res_ref.cur_reg());
   }
-
-  if (orig != res_ref.cur_reg()) {
-    derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
-  }
-  this->set_value(res_ref, res_ref.cur_reg());
 
   return true;
 }
