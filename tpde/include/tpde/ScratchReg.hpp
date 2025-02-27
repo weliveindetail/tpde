@@ -27,7 +27,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ScratchReg {
   /// Allocate register in the specified bank, optionally excluding certain
   /// non-fixed registers. Spilling can be disabled for spill code to avoid
   /// recursion; if spilling is disabled, the allocation can fail.
-  AsmReg alloc(u8 bank, u64 exclusion_mask = 0) noexcept;
+  AsmReg alloc(u8 bank) noexcept;
 
   void reset() noexcept;
 };
@@ -81,22 +81,18 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ScratchReg::alloc(
-        u8 bank, u64 exclusion_mask) noexcept {
+        u8 bank) noexcept {
   auto &reg_file = compiler->register_file;
   if (!cur_reg.invalid()) {
     assert(bank == reg_file.reg_bank(cur_reg));
-    if (bank == reg_file.reg_bank(cur_reg) &&
-        (exclusion_mask & (1ull << cur_reg.id())) == 0) {
-      return cur_reg;
-    }
-    reset();
+    return cur_reg;
   }
 
   // TODO(ts): try to first find a non callee-saved/clobbered register...
-  auto reg = reg_file.find_first_free_excluding(bank, exclusion_mask);
+  auto reg = reg_file.find_first_free_excluding(bank, 0);
   if (reg.invalid()) {
     // TODO(ts): use clock here?
-    reg = reg_file.find_first_nonfixed_excluding(bank, exclusion_mask);
+    reg = reg_file.find_first_nonfixed_excluding(bank, 0);
     if (reg.invalid()) [[unlikely]] {
       TPDE_FATAL("ran out of registers for scratch registers");
     }
