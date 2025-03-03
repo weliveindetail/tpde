@@ -774,19 +774,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::val_ref(IRValueRef value,
                                                     u32 part) noexcept {
-  if (auto ref = derived()->val_ref_special(value, part); ref) {
-    return std::move(*ref);
-  }
-
-  const auto local_idx =
-      static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
-
-  if (val_assignment(local_idx) == nullptr) {
-    init_assignment(value, local_idx);
-  }
-  assert(val_assignment(local_idx) != nullptr);
-
-  return ValuePartRef{this, local_idx, part};
+  return val_ref(value).part(part);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -806,15 +794,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::result_ref_lazy(IRValueRef value,
                                                             u32 part) noexcept {
-  const auto local_idx =
-      static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
-
-  if (val_assignment(local_idx) == nullptr) {
-    init_assignment(value, local_idx);
-  }
-  assert(val_assignment(local_idx) != nullptr);
-
-  return ValuePartRef{this, local_idx, part};
+  return result_ref(value).part(part);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

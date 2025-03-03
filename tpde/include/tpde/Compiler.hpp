@@ -90,14 +90,6 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
 
   { a.val_parts(ARG(typename T::IRValueRef)) } -> ValueParts;
 
-  /// Provides the implementation to return special ValuePartRefs, e.g. for
-  /// constants/globals
-  ///
-  /// (value, part)
-  {
-    a.val_ref_special(ARG(typename T::IRValueRef), ARG(u32))
-  } -> std::same_as<std::optional<typename T::ValuePartRef>>;
-
   /// A compiler can provide a data structure that is a non-assignment ValueRef.
   /// This struct is used in a union, so it must be a standard-layout struct and
   /// have "bool is_special;" as first member, which must always be true.

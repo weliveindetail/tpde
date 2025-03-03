@@ -63,13 +63,6 @@ struct TestIRCompilerA64 : a64::CompilerA64<TestIRAdaptor, TestIRCompilerA64> {
     return ir()->values[static_cast<u32>(value)].force_fixed_assignment;
   }
 
-  std::optional<ValuePartRef> val_ref_special(IRValueRef value,
-                                              u32 part) noexcept {
-    (void)value;
-    (void)part;
-    return {};
-  }
-
   std::optional<ValRefSpecial> val_ref_special(IRValueRef) noexcept {
     return {};
   }
