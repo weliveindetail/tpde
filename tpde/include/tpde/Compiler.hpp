@@ -6,6 +6,7 @@
 #include "CompilerConfig.hpp"
 #include "base.hpp"
 #include <concepts>
+#include <type_traits>
 
 #ifdef ARG
   #error ARG is used as a temporary preprocessor macro
@@ -28,6 +29,14 @@ concept ValueParts = requires(T a) {
 
   /// Provides the bank for a value part
   { a.reg_bank(ARG(u32)) } -> std::convertible_to<u8>;
+};
+
+template <typename T>
+concept ValRefSpecialStruct = requires(T a) {
+  // Clang does not support std::is_corresponding_member.
+  { a.is_special } -> std::same_as<bool &>;
+  requires std::is_standard_layout_v<T>;
+  requires offsetof(T, is_special) == 0;
 };
 
 template <typename T, typename Config>
@@ -88,6 +97,23 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
   {
     a.val_ref_special(ARG(typename T::IRValueRef), ARG(u32))
   } -> std::same_as<std::optional<typename T::ValuePartRef>>;
+
+  /// A compiler can provide a data structure that is a non-assignment ValueRef.
+  /// This struct is used in a union, so it must be a standard-layout struct and
+  /// have "bool is_special;" as first member, which must always be true.
+  requires ValRefSpecialStruct<typename T::ValRefSpecial>;
+
+  /// Provides the implementation to return special ValueRefs, e.g. for
+  /// constants or globals.
+  {
+    a.val_ref_special(ARG(typename T::IRValueRef))
+  } -> std::same_as<std::optional<typename T::ValRefSpecial>>;
+
+  /// Provides the implementation to construct a ValuePartRef from a
+  /// ValRefSpecial.
+  {
+    a.val_part_ref_special(ARG(typename T::ValRefSpecial &), ARG(u32))
+  } -> std::same_as<typename T::ValuePartRef>;
 
   /// The compiler numbers functions and this gives the derived implementation
   /// a chance to save that mapping

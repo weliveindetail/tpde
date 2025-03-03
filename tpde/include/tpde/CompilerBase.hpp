@@ -40,6 +40,13 @@ struct CompilerBase {
   using Assembler = typename Config::Assembler;
   using AsmReg = typename Config::AsmReg;
 
+  /// A default implementation for ValRefSpecial.
+  // Note: Subclasses can override this, always used Derived::ValRefSpecial.
+  struct ValRefSpecial {
+    bool is_special;
+    u64 const_data;
+  };
+
 #pragma region CompilerData
   Adaptor *adaptor;
   Analyzer<Adaptor> analyzer;
@@ -162,6 +169,7 @@ struct CompilerBase {
   struct ScratchReg;
   struct AssignmentPartRef;
   struct ValuePartRef;
+  struct ValueRef;
   struct GenericValuePart;
 #pragma endregion
 
@@ -230,6 +238,8 @@ protected:
   void free_stack_slot(u32 slot, u32 size) noexcept;
 
 public:
+  ValueRef val_ref(IRValueRef value) noexcept;
+
   ValuePartRef val_ref(IRValueRef value, u32 part) noexcept;
 
   /// Try to salvage the register of a value (i.e. if it does not have any
@@ -247,6 +257,9 @@ public:
                                ScratchReg &scratch_out,
                                AsmReg reg,
                                u32 ref_adjust = 1) noexcept;
+
+  /// Get a defining reference to a value
+  ValueRef result_ref(IRValueRef value) noexcept;
 
   /// Get a defining reference to a value
   ValuePartRef result_ref_lazy(IRValueRef value, u32 part) noexcept;
@@ -336,6 +349,7 @@ protected:
 #include "RegisterFile.hpp"
 #include "ScratchReg.hpp"
 #include "ValuePartRef.hpp"
+#include "ValueRef.hpp"
 
 namespace tpde {
 
@@ -741,6 +755,22 @@ void CompilerBase<Adaptor, Derived, Config>::free_stack_slot(
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValueRef
+    CompilerBase<Adaptor, Derived, Config>::val_ref(IRValueRef value) noexcept {
+  if (auto special = derived()->val_ref_special(value); special) {
+    return ValueRef{this, std::move(*special)};
+  }
+
+  const auto local_idx =
+      static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
+
+  if (val_assignment(local_idx) == nullptr) {
+    init_assignment(value, local_idx);
+  }
+  return ValueRef{this, local_idx};
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::val_ref(IRValueRef value,
                                                     u32 part) noexcept {
@@ -757,6 +787,19 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
   assert(val_assignment(local_idx) != nullptr);
 
   return ValuePartRef{this, local_idx, part};
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::ValueRef
+    CompilerBase<Adaptor, Derived, Config>::result_ref(
+        IRValueRef value) noexcept {
+  const auto local_idx =
+      static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
+
+  if (val_assignment(local_idx) == nullptr) {
+    init_assignment(value, local_idx);
+  }
+  return ValueRef{this, local_idx};
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

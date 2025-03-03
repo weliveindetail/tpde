@@ -4,6 +4,7 @@
 #pragma once
 
 #include "TestIR.hpp"
+#include "tpde/base.hpp"
 #include "tpde/x64/CompilerX64.hpp"
 
 namespace tpde::test {
@@ -62,6 +63,14 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
     (void)value;
     (void)part;
     return {};
+  }
+
+  std::optional<ValRefSpecial> val_ref_special(IRValueRef) noexcept {
+    return {};
+  }
+
+  ValuePartRef val_part_ref_special(ValRefSpecial &, u32) noexcept {
+    TPDE_UNREACHABLE("val_part_ref_special on IR without special values");
   }
 
   void define_func_idx(IRFuncRef func, const u32 idx) noexcept {

@@ -41,6 +41,7 @@ struct LLVMCompilerBase : public LLVMCompiler,
   using IRFuncRef = typename Base::IRFuncRef;
   using ScratchReg = typename Base::ScratchReg;
   using ValuePartRef = typename Base::ValuePartRef;
+  using ValueRef = typename Base::ValueRef;
   using AssignmentPartRef = typename Base::AssignmentPartRef;
   using GenericValuePart = typename Base::GenericValuePart;
   using ValLocalIdx = typename Base::ValLocalIdx;
@@ -50,6 +51,11 @@ struct LLVMCompilerBase : public LLVMCompiler,
   using SymRef = typename Assembler::SymRef;
 
   using AsmReg = typename Base::AsmReg;
+
+  struct ValRefSpecial {
+    bool is_special = true;
+    IRValueRef value;
+  };
 
   struct RelocInfo {
     enum RELOC_TYPE : uint8_t {
@@ -215,6 +221,31 @@ struct LLVMCompilerBase : public LLVMCompiler,
 
   std::optional<ValuePartRef> val_ref_constant(IRValueRef val_idx,
                                                u32 part) noexcept;
+
+  std::optional<ValRefSpecial> val_ref_special(IRValueRef value) noexcept {
+    if (llvm::isa<llvm::Constant>(value)) {
+      return val_ref_constant(value);
+    }
+    return std::nullopt;
+  }
+
+  ValuePartRef val_part_ref_special(ValRefSpecial &vrs, u32 part) noexcept {
+    return *val_ref_constant(vrs.value, part);
+  }
+
+  ValRefSpecial val_ref_constant(IRValueRef value) noexcept {
+    return ValRefSpecial{.value = value};
+  }
+
+  /// Specialized for llvm::Instruction to avoid type check in val_local_idx.
+  ValueRef result_ref(const llvm::Instruction *i) noexcept {
+    const auto local_idx =
+        static_cast<ValLocalIdx>(this->adaptor->inst_lookup_idx(i));
+    if (this->val_assignment(local_idx) == nullptr) {
+      this->init_assignment(i, local_idx);
+    }
+    return ValueRef{this, local_idx};
+  }
 
   ValuePartRef result_ref_lazy(const llvm::Value *v, u32 part) noexcept {
     return Base::result_ref_lazy(v, part);

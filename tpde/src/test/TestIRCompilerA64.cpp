@@ -70,6 +70,14 @@ struct TestIRCompilerA64 : a64::CompilerA64<TestIRAdaptor, TestIRCompilerA64> {
     return {};
   }
 
+  std::optional<ValRefSpecial> val_ref_special(IRValueRef) noexcept {
+    return {};
+  }
+
+  ValuePartRef val_part_ref_special(ValRefSpecial &, u32) noexcept {
+    TPDE_UNREACHABLE("val_part_ref_special on IR without special values");
+  }
+
   void define_func_idx(IRFuncRef func, const u32 idx) noexcept {
     assert(static_cast<u32>(func) == idx);
     (void)func;
