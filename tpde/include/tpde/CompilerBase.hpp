@@ -242,22 +242,6 @@ public:
 
   std::pair<ValueRef, ValuePartRef> val_ref_single(IRValueRef value) noexcept;
 
-  /// Try to salvage the register of a value (i.e. if it does not have any
-  /// references left) or get it into another register.
-  ///
-  /// ref_adjust is the amount of references that are allowed
-  /// to be left (might be higher if you are currently referencing multiple
-  /// parts)
-  // TODO(ts): get the register type from the RegisterFile or the
-  // CompilerConfig?
-  u8 val_salvage(ValuePartRef &&val_ref,
-                 ScratchReg &scratch_out,
-                 u32 ref_adjust = 1) noexcept;
-  u8 val_salvage_into_specific(ValuePartRef &&val_ref,
-                               ScratchReg &scratch_out,
-                               AsmReg reg,
-                               u32 ref_adjust = 1) noexcept;
-
   /// Get a defining reference to a value
   ValueRef result_ref(IRValueRef value) noexcept;
 
@@ -267,13 +251,6 @@ public:
   /// Get a defining reference to a value which will already have a register
   /// allocated that can be directly used as a result register
   ValuePartRef result_ref_eager(IRValueRef value, u32 part) noexcept;
-
-  /// Get a defining reference to a value and try to salvage the register of
-  /// another value if possible, otherwise allocate a register
-  ValuePartRef result_ref_salvage(IRValueRef value,
-                                  u32 part,
-                                  ValuePartRef &&arg,
-                                  u32 ref_adjust = 1) noexcept;
 
   /// Get a defining reference to a value that reuses a register of another
   /// value and spills it if necessary. This is useful if the implemented
@@ -807,18 +784,6 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
   auto res_ref = this->result_ref_lazy(value, part);
   res_ref.alloc_reg();
   return res_ref;
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::result_ref_salvage(
-        IRValueRef value,
-        u32 part,
-        ValuePartRef &&arg,
-        u32 ref_adjust) noexcept {
-  AsmReg orig;
-  return result_ref_salvage_with_original(
-      value, part, std::move(arg), orig, ref_adjust);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
