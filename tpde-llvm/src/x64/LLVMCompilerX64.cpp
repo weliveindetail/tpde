@@ -883,9 +883,9 @@ bool LLVMCompilerX64::handle_intrin(const llvm::IntrinsicInst *inst) noexcept {
     return true;
   }
   case llvm::Intrinsic::stacksave: {
-    auto res_ref = this->result_ref_eager(inst, 0);
-    ASM(MOV64rr, res_ref.cur_reg(), FE_SP);
-    this->set_value(res_ref, res_ref.cur_reg());
+    ValuePartRef res{this, CompilerConfig::GP_BANK};
+    ASM(MOV64rr, res.alloc_reg(), FE_SP);
+    this->result_ref(inst).part(0).set_value(std::move(res));
     return true;
   }
   case llvm::Intrinsic::stackrestore: {
@@ -904,25 +904,27 @@ bool LLVMCompilerX64::handle_intrin(const llvm::IntrinsicInst *inst) noexcept {
     return true;
   }
   case llvm::Intrinsic::returnaddress: {
-    auto res_ref = this->result_ref_eager(inst, 0);
+    ValuePartRef res{this, CompilerConfig::GP_BANK};
+    res.alloc_reg();
     auto op = llvm::cast<llvm::ConstantInt>(inst->getOperand(0));
     if (op->isZeroValue()) {
-      ASM(MOV64rm, res_ref.cur_reg(), FE_MEM(FE_BP, 0, FE_NOREG, 8));
+      ASM(MOV64rm, res.cur_reg(), FE_MEM(FE_BP, 0, FE_NOREG, 8));
     } else {
-      ASM(XOR32rr, res_ref.cur_reg(), res_ref.cur_reg());
+      ASM(XOR32rr, res.cur_reg(), res.cur_reg());
     }
-    this->set_value(res_ref, res_ref.cur_reg());
+    this->result_ref(inst).part(0).set_value(std::move(res));
     return true;
   }
   case llvm::Intrinsic::frameaddress: {
-    auto res_ref = this->result_ref_eager(inst, 0);
+    ValuePartRef res{this, CompilerConfig::GP_BANK};
+    res.alloc_reg();
     auto op = llvm::cast<llvm::ConstantInt>(inst->getOperand(0));
     if (op->isZeroValue()) {
-      ASM(MOV64rr, res_ref.cur_reg(), FE_BP);
+      ASM(MOV64rr, res.cur_reg(), FE_BP);
     } else {
-      ASM(XOR32rr, res_ref.cur_reg(), res_ref.cur_reg());
+      ASM(XOR32rr, res.cur_reg(), res.cur_reg());
     }
-    this->set_value(res_ref, res_ref.cur_reg());
+    this->result_ref(inst).part(0).set_value(std::move(res));
     return true;
   }
   case llvm::Intrinsic::trap: ASM(UD2); return true;

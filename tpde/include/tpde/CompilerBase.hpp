@@ -248,10 +248,6 @@ public:
   /// Get a defining reference to a value
   ValuePartRef result_ref_lazy(IRValueRef value, u32 part) noexcept;
 
-  /// Get a defining reference to a value which will already have a register
-  /// allocated that can be directly used as a result register
-  ValuePartRef result_ref_eager(IRValueRef value, u32 part) noexcept;
-
   /// Get a defining reference to a value that reuses a register of another
   /// value and spills it if necessary. This is useful if the implemented
   /// operation overwrites a register and therefore the original value cannot
@@ -775,15 +771,6 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::result_ref_lazy(IRValueRef value,
                                                             u32 part) noexcept {
   return result_ref(value).part(part);
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::result_ref_eager(
-        IRValueRef value, u32 part) noexcept {
-  auto res_ref = this->result_ref_lazy(value, part);
-  res_ref.alloc_reg();
-  return res_ref;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

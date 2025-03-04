@@ -372,7 +372,8 @@ bool LLVMCompilerArm64::compile_alloca(
 
   auto &layout = adaptor->mod->getDataLayout();
   if (auto opt = alloca->getAllocationSize(layout); opt) {
-    ValuePartRef res_ref = this->result_ref_eager(alloca, 0);
+    ValuePartRef res{this, CompilerConfig::GP_BANK};
+    res.alloc_reg();
 
     const auto size = *opt;
     assert(!size.isScalable());
@@ -393,13 +394,13 @@ bool LLVMCompilerArm64::compile_alloca(
     if (auto align = alloca->getAlign().value(); align >= 16) {
       // TODO(ae): we could avoid one move here
       align = ~(align - 1);
-      ASM(MOV_SPx, res_ref.cur_reg(), DA_SP);
-      ASM(ANDxi, DA_SP, res_ref.cur_reg(), align);
+      ASM(MOV_SPx, res.cur_reg(), DA_SP);
+      ASM(ANDxi, DA_SP, res.cur_reg(), align);
     }
 
-    ASM(MOV_SPx, res_ref.cur_reg(), DA_SP);
+    ASM(MOV_SPx, res.cur_reg(), DA_SP);
 
-    this->set_value(res_ref, res_ref.cur_reg());
+    this->result_ref(alloca).part(0).set_value(std::move(res));
     return true;
   }
 
@@ -954,9 +955,9 @@ bool LLVMCompilerArm64::handle_intrin(
     return true;
   }
   case llvm::Intrinsic::stacksave: {
-    auto res_ref = this->result_ref_eager(inst, 0);
-    ASM(MOV_SPx, res_ref.cur_reg(), DA_SP);
-    this->set_value(res_ref, res_ref.cur_reg());
+    ValuePartRef res{this, CompilerConfig::GP_BANK};
+    ASM(MOV_SPx, res.alloc_reg(), DA_SP);
+    this->result_ref(inst).part(0).set_value(std::move(res));
     return true;
   }
   case llvm::Intrinsic::stackrestore: {
@@ -966,21 +967,21 @@ bool LLVMCompilerArm64::handle_intrin(
     return true;
   }
   case llvm::Intrinsic::returnaddress: {
-    auto res_ref = this->result_ref_eager(inst, 0);
+    ValuePartRef res{this, CompilerConfig::GP_BANK};
     auto op = llvm::cast<llvm::ConstantInt>(inst->getOperand(0));
     if (op->isZero()) {
-      ASM(LDRxu, res_ref.cur_reg(), DA_GP(29), 8);
+      ASM(LDRxu, res.alloc_reg(), DA_GP(29), 8);
     } else {
-      ASM(MOVZx, res_ref.cur_reg(), 0);
+      ASM(MOVZx, res.alloc_reg(), 0);
     }
-    this->set_value(res_ref, res_ref.cur_reg());
+    this->result_ref(inst).part(0).set_value(std::move(res));
     return true;
   }
   case llvm::Intrinsic::frameaddress: {
-    auto res_ref = this->result_ref_eager(inst, 0);
+    ValuePartRef res{this, CompilerConfig::GP_BANK};
     auto op = llvm::cast<llvm::ConstantInt>(inst->getOperand(0));
-    ASM(MOVx, res_ref.cur_reg(), op->isZeroValue() ? DA_GP(29) : DA_ZR);
-    this->set_value(res_ref, res_ref.cur_reg());
+    ASM(MOVx, res.alloc_reg(), op->isZeroValue() ? DA_GP(29) : DA_ZR);
+    this->result_ref(inst).part(0).set_value(std::move(res));
     return true;
   }
   case llvm::Intrinsic::trap: ASM(BRK, 1); return true;

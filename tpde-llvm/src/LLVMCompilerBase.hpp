@@ -2474,14 +2474,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
 
   auto [_, src_ref] = this->val_ref_single(src);
 
+  ValueRef res_ref = this->result_ref(inst);
   if (src_parts.reg_bank(0) == dst_parts.reg_bank(0)) {
-    ValuePartRef res_ref = this->result_ref_lazy(inst, 0);
-    res_ref.set_value(std::move(src_ref));
+    res_ref.part(0).set_value(std::move(src_ref));
   } else {
-    ValuePartRef res_ref = this->result_ref_eager(inst, 0);
+    ValuePartRef res_vpr = res_ref.part(0);
     AsmReg src_reg = src_ref.load_to_reg();
-    derived()->mov(res_ref.cur_reg(), src_reg, res_ref.part_size());
-    this->set_value(res_ref, res_ref.cur_reg());
+    derived()->mov(res_vpr.alloc_reg(), src_reg, res_vpr.part_size());
+    res_vpr.set_modified();
   }
 
   return true;
@@ -3469,11 +3469,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
   const auto pred = cmp->getPredicate();
 
   if (pred == llvm::CmpInst::FCMP_FALSE || pred == llvm::CmpInst::FCMP_TRUE) {
-    auto res_ref = this->result_ref_eager(cmp, 0);
     u64 val = pred == llvm::CmpInst::FCMP_FALSE ? 0u : 1u;
     auto const_ref = ValuePartRef{this, &val, 1, Config::GP_BANK};
-    derived()->materialize_constant(const_ref, res_ref.cur_reg());
-    this->set_value(res_ref, res_ref.cur_reg());
+    this->result_ref(cmp).part(0).set_value(std::move(const_ref));
     return true;
   }
 
@@ -4671,10 +4669,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     const auto type_info_sym = lookup_type_info_sym(type);
     const u64 idx = this->assembler.except_type_idx_for_sym(type_info_sym);
 
-    auto res_ref = this->result_ref_eager(inst, 0);
     auto const_ref = ValuePartRef{this, &idx, 4, Config::GP_BANK};
-    derived()->materialize_constant(const_ref, res_ref.cur_reg());
-    this->set_value(res_ref, res_ref.cur_reg());
+    this->result_ref(inst).part(0).set_value(std::move(const_ref));
     return true;
   }
   case llvm::Intrinsic::is_constant: {
@@ -4684,11 +4680,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     // ref-count the argument
     this->val_ref(inst->getOperand(0)).part(0);
-    auto res_ref = this->result_ref_eager(inst, 0);
-    u64 zero = 0;
-    auto const_ref = ValuePartRef{this, &zero, 4, Config::GP_BANK};
-    derived()->materialize_constant(const_ref, res_ref.cur_reg());
-    this->set_value(res_ref, res_ref.cur_reg());
+    static const u64 zero = 0;
+    auto const_ref = ValuePartRef{this, &zero, 1, Config::GP_BANK};
+    this->result_ref(inst).part(0).set_value(std::move(const_ref));
     return true;
   }
   default: {

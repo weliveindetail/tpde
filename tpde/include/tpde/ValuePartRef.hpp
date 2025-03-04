@@ -184,6 +184,11 @@ public:
   void lock() noexcept;
   void unlock() noexcept;
 
+  void set_modified() noexcept {
+    assert(has_reg() && has_assignment());
+    assignment().set_modified(true);
+  }
+
   void set_value(ValuePartRef &&other) noexcept;
 
   bool can_salvage(u32 ref_adjust = 1) const noexcept;
