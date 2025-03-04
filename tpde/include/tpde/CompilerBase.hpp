@@ -242,6 +242,8 @@ public:
 
   ValuePartRef val_ref(IRValueRef value, u32 part) noexcept;
 
+  std::pair<ValueRef, ValuePartRef> val_ref_single(IRValueRef value) noexcept;
+
   /// Try to salvage the register of a value (i.e. if it does not have any
   /// references left) or get it into another register.
   ///
@@ -778,6 +780,16 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+std::pair<typename CompilerBase<Adaptor, Derived, Config>::ValueRef,
+          typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef>
+    CompilerBase<Adaptor, Derived, Config>::val_ref_single(
+        IRValueRef value) noexcept {
+  std::pair<ValueRef, ValuePartRef> res{val_ref(value), this};
+  res.second = res.first.part(0);
+  return res;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValueRef
     CompilerBase<Adaptor, Derived, Config>::result_ref(
         IRValueRef value) noexcept {
@@ -1134,11 +1146,11 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
       const auto phi_ref = adaptor->val_as_phi(phi_val);
       const IRValueRef inc_val = phi_ref.incoming_val_for_block(cur_block_ref);
       // TODO: we should query all parts here
-      auto ref = derived()->val_ref(inc_val, 0);
+      auto ref = derived()->val_ref(inc_val);
       if (!ref.has_assignment()) {
         continue;
       }
-      auto *assignment = ref.assignment().assignment;
+      auto *assignment = ref.assignment();
       ref.reset_without_refcount();
       u32 part_count = derived()->val_parts(inc_val).count();
       for (u32 i = 0; i < part_count; ++i) {
@@ -1379,27 +1391,29 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
 
     const auto parts = derived()->val_parts(incoming_val);
     u32 part_count = parts.count();
+    assert(part_count > 0);
+    auto phi_vr = derived()->val_ref(phi);
+    auto val_vr = derived()->val_ref(incoming_val);
     for (u32 i = 0; i < part_count; ++i) {
       // TODO(ts): just have this outside the loop and change the part
       // index? :P
-      auto phi_ref = val_ref(phi, i);
-      auto val_ref = derived()->val_ref(incoming_val, i);
-
       AsmReg reg{};
-      if (val_ref.is_const()) {
+      ValuePartRef val_vpr = val_vr.part(i);
+      if (val_vpr.is_const()) {
         derived()->materialize_constant(
-            val_ref, scratch.alloc_from_bank(val_ref.bank()));
+            val_vpr, scratch.alloc_from_bank(val_vpr.bank()));
         reg = scratch.cur_reg;
         assert(reg.valid());
-      } else if (val_ref.assignment().register_valid() ||
-                 val_ref.assignment().fixed_assignment()) {
-        reg = AsmReg{val_ref.assignment().full_reg_id()};
+      } else if (val_vpr.assignment().register_valid() ||
+                 val_vpr.assignment().fixed_assignment()) {
+        reg = AsmReg{val_vpr.assignment().full_reg_id()};
       } else {
-        reg = val_ref.reload_into_specific_fixed(
+        reg = val_vpr.reload_into_specific_fixed(
             this, scratch.alloc_from_bank(parts.reg_bank(i)));
       }
 
-      auto phi_ap = phi_ref.assignment();
+      ValuePartRef phi_vpr = phi_vr.part(i);
+      auto phi_ap = phi_vpr.assignment();
       if (phi_ap.fixed_assignment()) {
         derived()->mov(AsmReg{phi_ap.full_reg_id()}, reg, phi_ap.part_size());
       } else {
@@ -1414,8 +1428,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
       }
 
       if (i != part_count - 1) {
-        val_ref.inc_ref_count();
-        phi_ref.inc_ref_count();
+        val_vpr.inc_ref_count();
+        phi_vpr.inc_ref_count();
       }
     }
   };
@@ -1488,12 +1502,11 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
 
   const auto move_from_tmp_phi = [&](IRValueRef target_phi) {
     // ref-count the source val
-    auto inc_ref = val_ref(cur_tmp_val, 0);
-    inc_ref.reset();
+    (void)val_ref(cur_tmp_val).part(0);
 
+    auto phi_vr = val_ref(target_phi);
     if (cur_tmp_part_count <= 2) {
-      auto phi_ref = val_ref(target_phi, 0);
-      auto ap = phi_ref.assignment();
+      AssignmentPartRef ap{phi_vr.assignment(), 0};
       assert(!tmp_reg1.cur_reg.invalid());
       if (ap.fixed_assignment()) {
         derived()->mov(
@@ -1503,22 +1516,18 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
       }
 
       if (cur_tmp_part_count == 2) {
-        phi_ref.inc_ref_count();
-        auto phi_ref_high = val_ref(target_phi, 1);
-        auto ap_high = phi_ref_high.assignment();
+        AssignmentPartRef ap_high{phi_vr.assignment(), 1};
         assert(!ap_high.fixed_assignment());
         assert(!tmp_reg2.cur_reg.invalid());
         derived()->spill_reg(
             tmp_reg2.cur_reg, ap_high.frame_off(), ap_high.part_size());
       }
+      (void)phi_vr.part(0); // ref-count
       return;
     }
 
     for (u32 i = 0; i < cur_tmp_part_count; ++i) {
-      // TODO(ts): just have this outside the loop and change the part
-      // index? :P
-      auto phi_ref = val_ref(target_phi, i);
-      auto phi_ap = phi_ref.assignment();
+      AssignmentPartRef phi_ap{phi_vr.assignment(), i};
       assert(!phi_ap.fixed_assignment());
 
       auto slot_off = cur_tmp_slot;
@@ -1531,11 +1540,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
       auto reg = tmp_reg1.alloc_from_bank(phi_ap.bank());
       derived()->load_from_stack(reg, slot_off, phi_ap.part_size());
       derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
-
-      if (i != cur_tmp_part_count - 1) {
-        phi_ref.inc_ref_count();
-      }
     }
+    (void)phi_vr.part(0); // ref-count
   };
 
   while (handled_count != nodes.size()) {
@@ -1579,19 +1585,18 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
       } else {
         // TODO(ts): if the PHI is not fixed, then we can just reuse its
         // register if it has one
-        auto phi_ref = val_ref(phi_val, 0);
-        phi_ref.inc_ref_count();
-
-        auto reg = tmp_reg1.alloc_from_bank(phi_ref.bank());
-        phi_ref.reload_into_specific_fixed(this, reg);
+        auto phi_vr = this->val_ref(phi_val);
+        auto phi_vpr = phi_vr.part(0);
+        auto reg = tmp_reg1.alloc_from_bank(phi_vpr.bank());
+        phi_vpr.reload_into_specific_fixed(this, reg);
+        phi_vpr.reset_without_refcount();
 
         if (cur_tmp_part_count == 2) {
           // TODO(ts): just change the part ref on the lower ref?
-          auto phi_ref_high = val_ref(phi_val, 1);
-          phi_ref_high.inc_ref_count();
-
-          auto reg_high = tmp_reg2.alloc_from_bank(phi_ref_high.bank());
-          phi_ref_high.reload_into_specific_fixed(this, reg_high);
+          auto phi_vpr_high = phi_vr.part(1);
+          auto reg_high = tmp_reg2.alloc_from_bank(phi_vpr_high.bank());
+          phi_vpr_high.reload_into_specific_fixed(this, reg_high);
+          phi_vpr_high.reset_without_refcount();
         }
       }
 

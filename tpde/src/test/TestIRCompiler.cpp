@@ -22,7 +22,7 @@ bool TestIRCompilerX64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
     const auto op = static_cast<IRValueRef>(
         this->adaptor->ir->value_operands[value.op_begin_idx]);
 
-    ValuePartRef val_ref = this->val_ref(op, 0);
+    auto [_, val_ref] = this->val_ref_single(op);
     const auto call_conv = this->cur_calling_convention();
     if (val_ref.assignment().fixed_assignment()) {
       val_ref.reload_into_specific(this, call_conv.ret_regs_gp()[0]);
@@ -55,7 +55,7 @@ bool TestIRCompilerX64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
     auto false_block =
         static_cast<IRBlockRef>(ir()->value_operands[value.op_begin_idx + 2]);
 
-    auto val = this->val_ref(val_idx, 0);
+    auto [_, val] = this->val_ref_single(val_idx);
 
     auto true_needs_split = this->branch_needs_split(true_block);
     auto false_needs_split = this->branch_needs_split(false_block);
@@ -121,8 +121,8 @@ bool TestIRCompilerX64::compile_add(IRInstRef inst_idx) noexcept {
   const auto rhs_idx =
       static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx + 1]);
 
-  ValuePartRef lhs = Base::val_ref(lhs_idx, 0);
-  ValuePartRef rhs = Base::val_ref(rhs_idx, 0);
+  auto [lhs_vr, lhs] = this->val_ref_single(lhs_idx);
+  auto [rhs_vr, rhs] = this->val_ref_single(rhs_idx);
 
   AsmReg lhs_orig{};
   ValuePartRef result = Base::result_ref_salvage_with_original(
@@ -149,8 +149,8 @@ bool TestIRCompilerX64::compile_sub(IRInstRef inst_idx) noexcept {
   const auto rhs_idx =
       static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx + 1]);
 
-  ValuePartRef lhs = Base::val_ref(lhs_idx, 0);
-  ValuePartRef rhs = Base::val_ref(rhs_idx, 0);
+  auto [lhs_vr, lhs] = this->val_ref_single(lhs_idx);
+  auto [rhs_vr, rhs] = this->val_ref_single(rhs_idx);
 
   ValuePartRef result = Base::result_ref_must_salvage(
       static_cast<IRValueRef>(inst_idx), 0, std::move(lhs));

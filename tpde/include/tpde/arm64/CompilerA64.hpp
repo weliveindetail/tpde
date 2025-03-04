@@ -878,27 +878,29 @@ u32 CallingConv::calculate_call_stack_space(
       }
     }
 
+    auto vr = compiler->val_ref(arg.value);
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
-      auto ref = compiler->val_ref(arg.value, part_idx);
+      auto vpr = vr.part(part_idx);
 
-      if (ref.bank() == 0) {
+      if (vpr.bank() == 0) {
         if (gp_reg_count < gp_regs.size()) {
           ++gp_reg_count;
         } else {
           stack_space += 8;
         }
       } else {
-        assert(ref.bank() == 1);
+        assert(vpr.bank() == 1);
         if (vec_reg_count < vec_regs.size()) {
           ++vec_reg_count;
         } else {
-          stack_space = util::align_up(stack_space, ref.part_size());
-          stack_space += util::align_up(ref.part_size(), 8);
+          stack_space = util::align_up(stack_space, vpr.part_size());
+          stack_space += util::align_up(vpr.part_size(), 8);
         }
       }
 
-      ref.reset_without_refcount();
+      vpr.reset_without_refcount();
     }
+    vr.reset_without_refcount();
   }
 
   return stack_space;
@@ -928,7 +930,7 @@ u32 CallingConv::handle_call_args(
   for (auto &arg : arguments) {
     if (arg.flag == CallArg::Flag::byval) {
       ScratchReg scratch(compiler);
-      auto ptr_ref = compiler->val_ref(arg.value, 0);
+      auto [_, ptr_ref] = compiler->val_ref_single(arg.value);
       AsmReg ptr_reg = ptr_ref.load_to_reg();
 
       auto tmp_reg = scratch.alloc_gp();
@@ -972,7 +974,7 @@ u32 CallingConv::handle_call_args(
 
     if (arg.flag == CallArg::Flag::sret) {
       if (auto target_reg = sret_reg(); target_reg) {
-        auto ptr_ref = compiler->val_ref(arg.value, 0);
+        auto [_, ptr_ref] = compiler->val_ref_single(arg.value);
         arg_scratchs.emplace_back(compiler).alloc_specific(
             ptr_ref.reload_into_specific(compiler, *target_reg));
         continue;
@@ -997,8 +999,9 @@ u32 CallingConv::handle_call_args(
       }
     }
 
+    auto vr = compiler->val_ref(arg.value);
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
-      auto ref = compiler->val_ref(arg.value, part_idx);
+      auto ref = vr.part(part_idx);
       ScratchReg scratch(compiler);
 
       if (ref.bank() == 0) {
