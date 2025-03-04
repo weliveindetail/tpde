@@ -92,8 +92,10 @@ bool TestIRCompilerX64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
                                        value.op_begin_idx),
         value.op_count};
 
+    auto [_, res_ref] =
+        this->result_ref_single(static_cast<IRValueRef>(inst_idx));
     std::variant<ValuePartRef, std::pair<ScratchReg, u8>> res =
-        this->result_ref_lazy(static_cast<IRValueRef>(inst_idx), 0);
+        std::move(res_ref);
 
     util::SmallVector<CallArg, 8> arguments{};
     for (auto op : operands) {

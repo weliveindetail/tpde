@@ -12,7 +12,6 @@ define <4 x i32> @shufflevector_v4i32_v4i32_identity1(<4 x i32> %a) {
 ; X64-NEXT:    sub rsp, 0x50
 ; X64-NEXT:    movapd xmmword ptr [rbp - 0x40], xmm0
 ; X64-NEXT:    mov eax, dword ptr [rbp - 0x40]
-; X64-NEXT:    movapd xmmword ptr [rbp - 0x50], xmm1
 ; X64-NEXT:    mov dword ptr [rbp - 0x50], eax
 ; X64-NEXT:    mov eax, dword ptr [rbp - 0x3c]
 ; X64-NEXT:    mov dword ptr [rbp - 0x4c], eax
@@ -54,7 +53,6 @@ define <4 x i32> @shufflevector_v4i32_v4i32_mix(<4 x i32> %a, <4 x i32> %b) {
 ; X64-NEXT:    sub rsp, 0x60
 ; X64-NEXT:    movapd xmmword ptr [rbp - 0x40], xmm0
 ; X64-NEXT:    mov eax, dword ptr [rbp - 0x40]
-; X64-NEXT:    movapd xmmword ptr [rbp - 0x60], xmm2
 ; X64-NEXT:    mov dword ptr [rbp - 0x60], eax
 ; X64-NEXT:    movapd xmmword ptr [rbp - 0x50], xmm1
 ; X64-NEXT:    mov eax, dword ptr [rbp - 0x4c]
@@ -98,7 +96,6 @@ define <4 x i32> @shufflevector_v4i32_v4i32_mix_zero(<4 x i32> %a) {
 ; X64-NEXT:    sub rsp, 0x50
 ; X64-NEXT:    movapd xmmword ptr [rbp - 0x40], xmm0
 ; X64-NEXT:    mov eax, dword ptr [rbp - 0x40]
-; X64-NEXT:    movapd xmmword ptr [rbp - 0x50], xmm1
 ; X64-NEXT:    mov dword ptr [rbp - 0x50], eax
 ; X64-NEXT:    mov eax, 0x0
 ; X64-NEXT:    mov dword ptr [rbp - 0x4c], eax

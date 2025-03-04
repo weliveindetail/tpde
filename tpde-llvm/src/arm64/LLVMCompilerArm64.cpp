@@ -557,8 +557,9 @@ bool LLVMCompilerArm64::compile_call_inner(
 
   if (!call->getType()->isVoidTy()) {
     const auto res_part_count = this->adaptor->val_part_count(call);
+    auto res = this->result_ref(call);
     for (u32 part_idx = 0; part_idx < res_part_count; ++part_idx) {
-      auto res_ref = this->result_ref_lazy(call, part_idx);
+      auto res_ref = res.part(part_idx);
       if (part_idx != res_part_count - 1) {
         res_ref.inc_ref_count();
       }
@@ -742,7 +743,7 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
     generate_conditional_branch(jump, true_block, false_block);
     this->adaptor->inst_set_fused(*remaining.from, true);
   } else if (fuse_ext) {
-    auto res_ref = result_ref_lazy(*remaining.from, 0);
+    auto [_, res_ref] = this->result_ref_single(*remaining.from);
     if (llvm::isa<llvm::ZExtInst>(fuse_ext)) {
       generate_raw_set(jump, res_scratch.alloc_gp());
     } else {
@@ -751,7 +752,7 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
     set_value(res_ref, res_scratch);
     this->adaptor->inst_set_fused(*remaining.from, true);
   } else {
-    auto res_ref = result_ref_lazy(cmp, 0);
+    auto [_, res_ref] = this->result_ref_single(cmp);
     generate_raw_set(jump, res_scratch.alloc_gp());
     set_value(res_ref, res_scratch);
   }

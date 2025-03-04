@@ -229,6 +229,12 @@ struct LLVMCompilerBase : public LLVMCompiler,
     return ValRefSpecial{.value = value};
   }
 
+  ValueRef result_ref(const llvm::Value *v) noexcept {
+    assert(llvm::isa<llvm::Argument>(v));
+    // For arguments
+    return Base::result_ref(v);
+  }
+
   /// Specialized for llvm::Instruction to avoid type check in val_local_idx.
   ValueRef result_ref(const llvm::Instruction *i) noexcept {
     const auto local_idx =
@@ -237,15 +243,6 @@ struct LLVMCompilerBase : public LLVMCompiler,
       this->init_assignment(i, local_idx);
     }
     return ValueRef{this, local_idx};
-  }
-
-  ValuePartRef result_ref_lazy(const llvm::Value *v, u32 part) noexcept {
-    return Base::result_ref_lazy(v, part);
-  }
-
-  /// Specialized for llvm::Instruction to avoid type check in val_local_idx.
-  ValuePartRef result_ref_lazy(const llvm::Instruction *i, u32 part) noexcept {
-    return this->result_ref(i).part(part);
   }
 
 private:
@@ -1129,7 +1126,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ret(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
     const llvm::LoadInst *load, GenericValuePart &&ptr_op) noexcept {
-  auto res = this->result_ref_lazy(load, 0);
+  auto res = this->result_ref(load);
   // TODO(ts): if the ref-count is <= 1, then skip emitting the load as LLVM
   // does that, too. at least on ARM
 
@@ -1194,7 +1191,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
       return false;
     }
 
-    this->set_value(res, res_scratch);
+    ValuePartRef res_part = res.part(0);
+    this->set_value(res_part, res_scratch);
     return true;
   }
 
@@ -1228,12 +1226,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
   }
   case i128: {
     ScratchReg res_scratch_high{derived()};
-    res.inc_ref_count();
-    auto res_high = this->result_ref_lazy(load, 1);
+    auto res_low = res.part(0);
+    res_low.inc_ref_count();
+    auto res_high = res.part(1);
 
     derived()->encode_loadi128(
         std::move(ptr_op), res_scratch, res_scratch_high);
-    this->set_value(res, res_scratch);
+    this->set_value(res_low, res_scratch);
     this->set_value(res_high, res_scratch_high);
     return true;
   }
@@ -1252,8 +1251,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
     break;
   }
   case complex: {
-    res.reset_without_refcount();
-
     auto ty_idx = this->adaptor->val_info(load).complex_part_tys_idx;
     const LLVMComplexPart *part_descs =
         &this->adaptor->complex_part_types[ty_idx + 1];
@@ -1264,7 +1261,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
 
     unsigned off = 0;
     for (unsigned i = 0; i < part_count; i++) {
-      auto part_ref = this->result_ref_lazy(load, i);
+      auto part_ref = res.part(i);
       auto part_addr =
           typename GenericValuePart::Expr{ptr_reg, static_cast<tpde::i32>(off)};
       auto part_ty = part_descs[i].part.type;
@@ -1312,7 +1309,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
   default: assert(0); return false;
   }
 
-  this->set_value(res, res_scratch);
+  ValuePartRef res_ref = res.part(0);
+  this->set_value(res_ref, res_scratch);
 
   return true;
 }
@@ -1756,7 +1754,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
     auto lhs = this->val_ref(inst->getOperand(0));
     auto rhs = this->val_ref(inst->getOperand(1));
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     ScratchReg res{this};
     if (!(derived()->*encode_fn)(lhs.part(0), rhs.part(0), res)) {
       return false;
@@ -1774,9 +1772,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     llvm::Value *lhs_op = inst->getOperand(0);
     llvm::Value *rhs_op = inst->getOperand(1);
 
-    auto res_low = this->result_ref_lazy(inst, 0);
+    auto res = this->result_ref(inst);
+    auto res_low = res.part(0);
     res_low.inc_ref_count();
-    auto res_high = this->result_ref_lazy(inst, 1);
+    auto res_high = res.part(1);
 
     if (op == IntBinaryOp::udiv || op == IntBinaryOp::sdiv ||
         op == IntBinaryOp::urem || op == IntBinaryOp::srem) {
@@ -2022,7 +2021,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     }
   }
 
-  auto res = this->result_ref_lazy(inst, 0);
+  auto [res_vr, res] = this->result_ref_single(inst);
 
   auto res_scratch = ScratchReg{derived()};
 
@@ -2053,7 +2052,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
     SymRef sym = get_libfunc_sym(lf);
     std::array<IRValueRef, 2> srcs{inst->getOperand(0), inst->getOperand(1)};
 
-    ValuePartRef res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     derived()->create_helper_call(srcs, {&res_ref, 1}, sym);
     return true;
   }
@@ -2067,10 +2066,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
     if (inst_ty->isVectorTy()) {
       return false;
     }
+    auto [_, res_ref] = this->result_ref_single(inst);
     // TODO(ts): encodegen cannot encode calls atm
     derived()->create_frem_calls(inst->getOperand(0),
                                  inst->getOperand(1),
-                                 this->result_ref_lazy(inst, 0),
+                                 std::move(res_ref),
                                  is_double);
     return true;
   }
@@ -2133,7 +2133,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
   default: TPDE_UNREACHABLE("invalid basic type for float binary op");
   }
 
-  auto res = this->result_ref_lazy(inst, 0);
+  auto [res_vr, res] = this->result_ref_single(inst);
   auto lhs = this->val_ref(inst->getOperand(0));
   auto rhs = this->val_ref(inst->getOperand(1));
   ScratchReg res_scratch{derived()};
@@ -2154,7 +2154,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fneg(
   }
 
   auto src = this->val_ref(inst->getOperand(0));
-  auto res_ref = this->result_ref_lazy(inst, 0);
+  auto [res_vr, res_ref] = this->result_ref_single(inst);
   auto res_scratch = ScratchReg{derived()};
   switch (this->adaptor->val_info(inst).type) {
     using enum LLVMBasicValType;
@@ -2185,7 +2185,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
   auto *src_ty = src_val->getType();
   auto *dst_ty = inst->getType();
 
-  auto res_ref = this->result_ref_lazy(inst, 0);
+  auto [res_vr, res_ref] = this->result_ref_single(inst);
 
   ScratchReg res_scratch{derived()};
   SymRef sym;
@@ -2232,7 +2232,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
     LibFunc lf = sign ? LibFunc::fixtfdi : LibFunc::fixunstfdi;
     SymRef sym = get_libfunc_sym(lf);
 
-    ValuePartRef res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     derived()->create_helper_call({&src_val, 1}, {&res_ref, 1}, sym);
     return true;
   }
@@ -2244,7 +2244,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
   const auto src_double = src_ty->isDoubleTy();
 
   auto src_ref = this->val_ref(src_val);
-  auto res_ref = this->result_ref_lazy(inst, 0);
+  auto [res_vr, res_ref] = this->result_ref_single(inst);
   auto res_scratch = ScratchReg{derived()};
   if (sign) {
     if (src_double) {
@@ -2304,7 +2304,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
 
     SymRef sym = get_libfunc_sym(lf);
 
-    ValuePartRef res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     derived()->create_helper_call({&src_val, 1}, {&res_ref, 1}, sym);
     return true;
   }
@@ -2317,7 +2317,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
 
   ValueRef src_ref = this->val_ref(src_val);
   GenericValuePart src_op = src_ref.part(0);
-  auto res_ref = this->result_ref_lazy(inst, 0);
+  auto [res_vr, res_ref] = this->result_ref_single(inst);
   auto res_scratch = ScratchReg{derived()};
 
   if (bit_width != 32 && bit_width != 64) {
@@ -2364,7 +2364,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_trunc(
     const llvm::TruncInst *inst) noexcept {
   // this is a no-op since every operation that depends on it will
   // zero/sign-extend the value anyways
-  auto res_ref = this->result_ref_lazy(inst, 0);
+  auto [res_vr, res_ref] = this->result_ref_single(inst);
   res_ref.set_value(this->val_ref(inst->getOperand(0)).part(0));
   return true;
 }
@@ -2401,14 +2401,15 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
     }
   }
 
-  auto res_ref = this->result_ref_lazy(inst, 0);
+  auto res = this->result_ref(inst);
+  auto res_ref = res.part(0);
 
   if (dst_width == 128) {
     if (src_width > 64) {
       return false;
     }
     res_ref.inc_ref_count();
-    auto res_ref_high = this->result_ref_lazy(inst, 1);
+    auto res_ref_high = res.part(1);
     ScratchReg scratch_high{derived()};
 
     if (sign) {
@@ -2431,7 +2432,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ptr_to_int(
     const llvm::PtrToIntInst *inst) noexcept {
   // this is a no-op since every operation that depends on it will
   // zero/sign-extend the value anyways
-  auto res_ref = this->result_ref_lazy(inst, 0);
+  auto [res_vr, res_ref] = this->result_ref_single(inst);
   res_ref.set_value(this->val_ref(inst->getOperand(0)).part(0));
   return true;
 }
@@ -2444,7 +2445,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_ptr(
   const auto bit_width = src_val->getType()->getIntegerBitWidth();
 
   auto src_ref = this->val_ref(src_val);
-  auto res_ref = this->result_ref_lazy(inst, 0);
+  auto [res_vr, res_ref] = this->result_ref_single(inst);
   if (bit_width == 64) {
     // no-op
     res_ref.set_value(src_ref.part(0));
@@ -2628,7 +2629,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_element(
   assert((nelem & (nelem - 1)) == 0 && "vector nelem must be power of two");
   assert(index->getType()->getIntegerBitWidth() >= 8);
 
-  ValuePartRef result = this->result_ref_lazy(inst, 0);
+  auto [res_vr, result] = this->result_ref_single(inst);
   LLVMBasicValType bvt = this->adaptor->val_info(inst).type;
 
   ScratchReg scratch_res{this};
@@ -2689,7 +2690,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
   auto ins = inst->getOperand(1);
   auto [val_ref, val] = this->val_ref_single(ins);
 
-  ValuePartRef result = this->result_ref_lazy(inst, 0);
+  auto [res_vr, result] = this->result_ref_single(inst);
   auto [bvt, _] = this->adaptor->val_basic_type_uncached(ins, false);
   assert(bvt != LLVMBasicValType::complex);
 
@@ -2784,9 +2785,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
 
   {
     ScratchReg tmp{this};
-    ValuePartRef result = this->result_ref_lazy(inst, 0);
-    tmp.alloc(result.bank());
-    this->set_value(result, tmp);
+    auto [_, result] = this->result_ref_single(inst);
+    result.alloc_reg();
   }
 
   ScratchReg tmp{this};
@@ -2885,9 +2885,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
   auto cmp_ref = this->val_ref(cmp_val);
   auto new_ref = this->val_ref(new_val);
 
-  auto res_ref = this->result_ref_lazy(cmpxchg, 0);
+  auto res = this->result_ref(cmpxchg);
+  auto res_ref = res.part(0);
   res_ref.inc_ref_count();
-  auto res_ref_high = this->result_ref_lazy(cmpxchg, 1);
+  auto res_ref_high = res.part(1);
 
   ScratchReg orig_scratch{derived()};
   ScratchReg succ_scratch{derived()};
@@ -3096,7 +3097,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_atomicrmw(
 
   auto ptr_ref = this->val_ref(rmw->getPointerOperand());
   auto val_ref = this->val_ref(rmw->getValOperand());
-  auto res_ref = this->result_ref_lazy(rmw, 0);
+  auto [res_vr, res_ref] = this->result_ref_single(rmw);
   ScratchReg res{this};
   if (!(derived()->*fn)(ptr_ref.part(0), val_ref.part(0), res)) {
     return false;
@@ -3199,7 +3200,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
   auto rhs = this->val_ref(inst->getOperand(2));
 
   ScratchReg res_scratch{derived()};
-  auto res_ref = this->result_ref_lazy(inst, 0);
+  auto res = this->result_ref(inst);
 
   switch (this->adaptor->val_info(inst).type) {
     using enum LLVMBasicValType;
@@ -3244,7 +3245,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
     rhs.inc_ref_count();
 
     ScratchReg res_scratch_high{derived()};
-    auto res_ref_high = this->result_ref_lazy(inst, 1);
+    auto res_ref_high = res.part(1);
 
     derived()->encode_select_i128(std::move(cond),
                                   lhs.part(0),
@@ -3260,6 +3261,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
   default: TPDE_UNREACHABLE("invalid select basic type"); break;
   }
 
+  auto res_ref = res.part(0);
   this->set_value(res_ref, res_scratch);
   return true;
 }
@@ -3431,7 +3433,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     }
   }
 
-  auto res_ref = this->result_ref_lazy(final, 0);
+  auto [res_vr, res_ref] = this->result_ref_single(final);
 
   AsmReg res_reg = derived()->gval_as_reg(addr);
   if (auto *op_reg = std::get_if<ScratchReg>(&addr.state)) {
@@ -3524,7 +3526,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
     IRValueRef rhs = cmp->getOperand(1);
     std::array<IRValueRef, 2> args{lhs, rhs};
 
-    ValuePartRef res_ref = this->result_ref_lazy(cmp, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(cmp);
     derived()->create_helper_call(args, {&res_ref, 1}, sym);
 
     auto [res_vr2, res_ref2] = this->val_ref_single(cmp);
@@ -3590,7 +3592,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
   ValueRef lhs = this->val_ref(cmp->getOperand(0));
   ValueRef rhs = this->val_ref(cmp->getOperand(1));
   ScratchReg res_scratch{derived()};
-  auto res_ref = this->result_ref_lazy(cmp, 0);
+  auto [res_vr, res_ref] = this->result_ref_single(cmp);
 
   if (!(derived()->*fn)(lhs.part(0), rhs.part(0), res_scratch)) {
     return false;
@@ -3976,8 +3978,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_landing_pad(
     const llvm::LandingPadInst *inst) noexcept {
-  auto res_ref_first = this->result_ref_lazy(inst, 0);
-  auto res_ref_second = this->result_ref_lazy(inst, 1);
+  auto res_ref = this->result_ref(inst);
+  auto res_ref_first = res_ref.part(0);
+  auto res_ref_second = res_ref.part(1);
 
   this->set_value(res_ref_first, Derived::LANDING_PAD_RES_REGS[0]);
   this->set_value(res_ref_second, Derived::LANDING_PAD_RES_REGS[1]);
@@ -4086,7 +4089,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     auto ptr = this->val_ref(inst->getOperand(0));
     auto off = this->val_ref(inst->getOperand(1));
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     ScratchReg res{derived()};
     derived()->encode_loadreli64(ptr.part(0), off.part(0), res);
     this->set_value(res_ref, res);
@@ -4094,7 +4097,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
   }
   case llvm::Intrinsic::threadlocal_address: {
     auto gv = llvm::cast<llvm::GlobalValue>(inst->getOperand(0));
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     // TODO: optimize for different TLS access models
     ScratchReg res =
         derived()->tls_get_addr(global_sym(gv), tpde::TLSModel::GlobalDynamic);
@@ -4149,7 +4152,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     for (auto &op : inst->args()) {
       ops.push_back(op);
     }
-    ValuePartRef res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     derived()->create_helper_call(ops, {&res_ref, 1}, get_libfunc_sym(func));
     return true;
   }
@@ -4182,7 +4185,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     auto lhs = this->val_ref(inst->getOperand(0));
     auto rhs = this->val_ref(inst->getOperand(1));
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     ScratchReg res{derived()};
     if (!(derived()->*fn)(lhs.part(0), rhs.part(0), res)) {
       return false;
@@ -4198,7 +4201,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       return false;
     }
 
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     ScratchReg res_scratch{derived()};
 
     if (ty->isDoubleTy()) {
@@ -4216,7 +4219,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       return false;
     }
 
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     ScratchReg res_scratch{derived()};
     if (ty->isDoubleTy()) {
       derived()->encode_sqrtf64(this->val_ref(val).part(0), res_scratch);
@@ -4237,7 +4240,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     const auto is_double = inst->getOperand(0)->getType()->isDoubleTy();
 
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     ScratchReg res_scratch{derived()};
     if (is_double) {
       derived()->encode_fmaf64(
@@ -4268,7 +4271,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     }
 
     ScratchReg res{derived()};
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     if (width <= 32) {
       derived()->encode_absi32(std::move(op), res);
     } else {
@@ -4301,7 +4304,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     }
 
     ScratchReg res{derived()};
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     using EncodeFnTy = bool (Derived::*)(
         GenericValuePart &&, GenericValuePart &&, ScratchReg &);
     EncodeFnTy encode_fn = nullptr;
@@ -4332,7 +4335,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     // ptrmask is just an integer and.
     ValueRef lhs = this->val_ref(inst->getOperand(0));
     ValueRef rhs = this->val_ref(inst->getOperand(1));
-    auto res = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res] = this->result_ref_single(inst);
     auto res_scratch = ScratchReg{derived()};
     derived()->encode_landi64(lhs.part(0), rhs.part(0), res_scratch);
     this->set_value(res, res_scratch);
@@ -4433,7 +4436,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       }
     }
 
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     this->set_value(res_ref, res);
     return true;
   }
@@ -4461,7 +4464,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       return false;
     }
 
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     this->set_value(res_ref, res);
     return true;
   }
@@ -4489,7 +4492,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       derived()->encode_ctpopi64(std::move(op), res);
     }
 
-    ValuePartRef res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     this->set_value(res_ref, res);
     return true;
   }
@@ -4506,7 +4509,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         !llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->isZero();
 
     auto val_ref = this->val_ref(val);
-    auto res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     ScratchReg res{derived()};
 
     if (intrin_id == llvm::Intrinsic::ctlz) {
@@ -4610,7 +4613,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       derived()->encode_bitreversei64(std::move(op), res);
     }
 
-    ValuePartRef res_ref = this->result_ref_lazy(inst, 0);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
     this->set_value(res_ref, res);
     return true;
   }
@@ -4708,7 +4711,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
   };
 
   ScratchReg res_scratch{derived()};
-  auto res_ref = this->result_ref_lazy(inst, 0);
+  auto [res_vr, res_ref] = this->result_ref_single(inst);
   auto [op_vr, op_ref] = this->val_ref_single(op);
 
   u64 zero = 0;
@@ -4797,9 +4800,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
       return false;
     }
 
-    auto res_ref_val = this->result_ref_lazy(inst, 0);
-    auto res_ref_high = this->result_ref_lazy(inst, 1);
-    auto res_ref_of = this->result_ref_lazy(inst, 2);
+    auto res_ref = this->result_ref(inst);
+    auto res_ref_val = res_ref.part(0);
+    auto res_ref_high = res_ref.part(1);
+    auto res_ref_of = res_ref.part(2);
     this->set_value(res_ref_val, res_val);
     this->set_value(res_ref_high, res_val_high);
     this->set_value(res_ref_of, res_of);
@@ -4857,9 +4861,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
     return false;
   }
 
-  auto res_ref_val = this->result_ref_lazy(inst, 0);
-  auto res_ref_of = this->result_ref_lazy(inst, 1);
-
+  auto res_ref = this->result_ref(inst);
+  auto res_ref_val = res_ref.part(0);
+  auto res_ref_of = res_ref.part(1);
   this->set_value(res_ref_val, res_val);
   this->set_value(res_ref_of, res_of);
   res_ref_of.reset_without_refcount();
@@ -4916,7 +4920,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_saturating_intrin(
     return false;
   }
 
-  auto res_ref_val = this->result_ref_lazy(inst, 0);
+  auto [res_vr, res_ref_val] = this->result_ref_single(inst);
   this->set_value(res_ref_val, res);
   return true;
 }

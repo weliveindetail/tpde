@@ -568,7 +568,7 @@ void CallingConv::handle_func_args(
 
       // need to use a ScratchReg here since otherwise the ValuePartRef
       // could allocate one of the argument registers
-      auto arg_ref = compiler->result_ref_lazy(arg, 0);
+      auto [_, arg_ref] = compiler->result_ref_single(arg);
       const auto res_reg = arg_ref.alloc_reg(arg_regs_mask());
       ASMC(compiler, LEA64rm, res_reg, FE_MEM(FE_BP, 0, FE_NOREG, frame_off));
       compiler->set_value(arg_ref, arg_ref.cur_reg());
@@ -594,8 +594,9 @@ void CallingConv::handle_func_args(
       }
     }
 
+    auto arg_ref = compiler->result_ref(arg);
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
-      auto part_ref = compiler->result_ref_lazy(arg, part_idx);
+      auto part_ref = arg_ref.part(part_idx);
 
       if (parts.reg_bank(part_idx) == 0) {
         if (!must_pass_stack && scalar_reg_count < gp_regs.size()) {

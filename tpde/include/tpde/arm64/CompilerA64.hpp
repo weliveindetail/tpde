@@ -699,7 +699,7 @@ void CallingConv::handle_func_args(
 
       // need to use a ScratchReg here since otherwise the ValuePartRef
       // could allocate one of the argument registers
-      auto arg_ref = compiler->result_ref_lazy(arg, 0);
+      auto [_, arg_ref] = compiler->result_ref_single(arg);
       // TODO: multiple arguments?
       const auto res_reg = arg_ref.alloc_reg(arg_regs_mask());
       ASMC(compiler, ADDxi, res_reg, stack_reg, frame_off);
@@ -715,7 +715,7 @@ void CallingConv::handle_func_args(
     if (compiler->adaptor->cur_arg_is_sret(arg_idx)) {
       if (auto target_reg = sret_reg(); target_reg) {
         assert(part_count == 1 && "sret must be single-part");
-        auto arg_ref = compiler->result_ref_lazy(arg, 0);
+        auto [_, arg_ref] = compiler->result_ref_single(arg);
         compiler->set_value(arg_ref, *target_reg);
         ++arg_idx;
         continue;
@@ -741,8 +741,9 @@ void CallingConv::handle_func_args(
       }
     }
 
+    auto arg_ref = compiler->result_ref(arg);
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
-      auto part_ref = compiler->result_ref_lazy(arg, part_idx);
+      auto part_ref = arg_ref.part(part_idx);
       auto ap = part_ref.assignment();
       unsigned size = ap.part_size();
       unsigned bank = parts.reg_bank(part_idx);

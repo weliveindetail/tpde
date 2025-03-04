@@ -248,9 +248,6 @@ public:
   std::pair<ValueRef, ValuePartRef>
       result_ref_single(IRValueRef value) noexcept;
 
-  /// Get a defining reference to a value
-  ValuePartRef result_ref_lazy(IRValueRef value, u32 part) noexcept;
-
   // TODO(ts): this takes ownership of the register if the ValuePartRef is not
   // fixed which is a bit weird...
   void set_value(ValuePartRef &val_ref, AsmReg reg) noexcept;
@@ -753,13 +750,6 @@ std::pair<typename CompilerBase<Adaptor, Derived, Config>::ValueRef,
   std::pair<ValueRef, ValuePartRef> res{result_ref(value), this};
   res.second = res.first.part(0);
   return res;
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::result_ref_lazy(IRValueRef value,
-                                                            u32 part) noexcept {
-  return result_ref(value).part(part);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
