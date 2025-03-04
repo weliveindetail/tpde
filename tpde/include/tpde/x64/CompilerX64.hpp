@@ -16,71 +16,25 @@
   #error Got definition for ASM macros from somewhere else. Maybe you included compilers for multiple architectures?
 #endif
 
-#define ASM(op, ...)                                                           \
-  do {                                                                         \
-    this->assembler.text_ensure_space(16);                                     \
-    u32 inst_len = fe64_##op(this->assembler.text_write_ptr,                   \
-                             0 __VA_OPT__(, ) __VA_ARGS__);                    \
-    assert(inst_len != 0);                                                     \
-    this->assembler.text_write_ptr += inst_len;                                \
-  } while (false)
+// This is a lambda, because the parameters might call ASM macros themselves --
+// so we need to evaluate text_write_ptr after the arguments.
+#define ASM_FULL(compiler, reserve, op, flags, ...)                            \
+  [c = (compiler), f = (flags)]<typename... Args>(Args... args) {              \
+    (reserve ? c->assembler.text_ensure_space(reserve) : (void)0);             \
+    unsigned n = (fe64_##op)(c->assembler.text_write_ptr, f, args...);         \
+    assert(n != 0);                                                            \
+    assert(c->assembler.text_reserve_end - c->assembler.text_write_ptr >= n);  \
+    c->assembler.text_write_ptr += n;                                          \
+  }(__VA_ARGS__)
 
-// generate instruction with flags
-#define ASMF(op, flag, ...)                                                    \
-  do {                                                                         \
-    this->assembler.text_ensure_space(16);                                     \
-    u32 inst_len = fe64_##op(this->assembler.text_write_ptr,                   \
-                             flag __VA_OPT__(, ) __VA_ARGS__);                 \
-    assert(inst_len != 0);                                                     \
-    this->assembler.text_write_ptr += inst_len;                                \
-  } while (false)
-
-// generate instruction and reserve a custom amount of bytes
-#define ASME(bytes, op, ...)                                                   \
-  do {                                                                         \
-    assert(bytes >= 1);                                                        \
-    this->assembler.text_ensure_space(cnt);                                    \
-    u32 inst_len = fe64_##op(this->assembler.text_write_ptr,                   \
-                             0 __VA_OPT__(, ) __VA_ARGS__);                    \
-    assert(inst_len != 0);                                                     \
-    this->assembler.text_write_ptr += inst_len;                                \
-  } while (false)
-
-// generate an instruction without checking that enough space is available
-#define ASMNC(op, ...)                                                         \
-  do {                                                                         \
-    u32 inst_len = fe64_##op(this->assembler.text_write_ptr,                   \
-                             0 __VA_OPT__(, ) __VA_ARGS__);                    \
-    assert(inst_len != 0);                                                     \
-    assert(this->assembler.text_reserve_end -                                  \
-               this->assembler.text_write_ptr >=                               \
-           inst_len);                                                          \
-    this->assembler.text_write_ptr += inst_len;                                \
-  } while (false)
-
-// generate an instruction with a custom compiler ptr
+#define ASM(op, ...) ASM_FULL(this, 16, op, 0 __VA_OPT__(, ) __VA_ARGS__)
 #define ASMC(compiler, op, ...)                                                \
-  do {                                                                         \
-    compiler->assembler.text_ensure_space(16);                                 \
-    u32 inst_len = fe64_##op(compiler->assembler.text_write_ptr,               \
-                             0 __VA_OPT__(, ) __VA_ARGS__);                    \
-    assert(inst_len != 0);                                                     \
-    compiler->assembler.text_write_ptr += inst_len;                            \
-  } while (false)
-
-
-// generate an instruction without checking that enough space is available and a
-// flag
+  ASM_FULL(compiler, 16, op, 0 __VA_OPT__(, ) __VA_ARGS__)
+#define ASMF(op, flag, ...)                                                    \
+  ASM_FULL(this, 16, op, flag __VA_OPT__(, ) __VA_ARGS__)
 #define ASMNCF(op, flag, ...)                                                  \
-  do {                                                                         \
-    u32 inst_len = fe64_##op(this->assembler.text_write_ptr,                   \
-                             flag __VA_OPT__(, ) __VA_ARGS__);                 \
-    assert(inst_len != 0);                                                     \
-    assert(this->assembler.text_reserve_end -                                  \
-               this->assembler.text_write_ptr >=                               \
-           inst_len);                                                          \
-    this->assembler.text_write_ptr += inst_len;                                \
-  } while (false)
+  ASM_FULL(this, 0, op, flag __VA_OPT__(, ) __VA_ARGS__)
+#define ASMNC(op, ...) ASM_FULL(this, 0, op, 0 __VA_OPT__(, ) __VA_ARGS__)
 
 namespace tpde::x64 {
 
@@ -137,6 +91,11 @@ struct AsmReg : AsmRegBase {
   }
 
   constexpr operator FeRegGP() const noexcept {
+    assert(reg_id <= R15);
+    return FeRegGP{reg_id};
+  }
+
+  operator FeRegGPLH() const noexcept {
     assert(reg_id <= R15);
     return FeRegGP{reg_id};
   }
