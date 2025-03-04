@@ -283,6 +283,8 @@ define i128 @usub_i128_0(i128 %0, i128 %1) {
 ; X64-NEXT:    sbb rsi, rcx
 ; X64-NEXT:    setb cl
 ; X64-NEXT:    movzx ecx, cl
+; X64-NEXT:    mov rdx, rax
+; X64-NEXT:    mov rax, rdx
 ; X64-NEXT:    mov rdx, rsi
 ; X64-NEXT:    add rsp, 0x70
 ; X64-NEXT:    pop rbp
@@ -608,6 +610,8 @@ define i128 @ssub_i128_0(i128 %0, i128 %1) {
 ; X64-NEXT:    sbb rsi, rcx
 ; X64-NEXT:    seto cl
 ; X64-NEXT:    movzx ecx, cl
+; X64-NEXT:    mov rdx, rax
+; X64-NEXT:    mov rax, rdx
 ; X64-NEXT:    mov rdx, rsi
 ; X64-NEXT:    add rsp, 0x70
 ; X64-NEXT:    pop rbp

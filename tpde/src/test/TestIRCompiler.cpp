@@ -123,21 +123,19 @@ bool TestIRCompilerX64::compile_add(IRInstRef inst_idx) noexcept {
 
   auto [lhs_vr, lhs] = this->val_ref_single(lhs_idx);
   auto [rhs_vr, rhs] = this->val_ref_single(rhs_idx);
+  auto [res_vr, res] =
+      this->result_ref_single(static_cast<IRValueRef>(inst_idx));
 
-  AsmReg lhs_orig{};
-  ValuePartRef result = Base::result_ref_salvage_with_original(
-      static_cast<IRValueRef>(inst_idx), 0, std::move(lhs), lhs_orig);
-  auto res_reg = result.cur_reg();
+  AsmReg lhs_reg = lhs.load_to_reg();
+  AsmReg rhs_reg = rhs.load_to_reg();
+  AsmReg res_reg = res.alloc_try_reuse(lhs);
 
-  auto rhs_reg = rhs.load_to_reg();
-
-  if (res_reg.id() == lhs_orig.id()) {
+  if (res_reg == lhs_reg) {
     ASM(ADD64rr, res_reg, rhs_reg);
   } else {
-    ASM(LEA64rm, res_reg, FE_MEM(lhs_orig, 1, rhs_reg, 0));
+    ASM(LEA64rm, res_reg, FE_MEM(lhs_reg, 1, rhs_reg, 0));
   }
-
-  Base::set_value(result, res_reg);
+  res.set_modified();
   return true;
 }
 

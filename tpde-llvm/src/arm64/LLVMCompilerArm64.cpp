@@ -990,12 +990,12 @@ bool LLVMCompilerArm64::handle_intrin(
   case llvm::Intrinsic::aarch64_crc32cx: {
     auto [lhs_vr, lhs_ref] = this->val_ref_single(inst->getOperand(0));
     auto [rhs_vr, rhs_ref] = this->val_ref_single(inst->getOperand(1));
-    AsmReg lhs_reg;
-    auto res_ref = this->result_ref_salvage_with_original(
-        inst, 0, std::move(lhs_ref), lhs_reg);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
+
+    auto lhs_reg = lhs_ref.load_to_reg();
     auto rhs_reg = rhs_ref.load_to_reg();
-    ASM(CRC32CX, res_ref.cur_reg(), lhs_reg, rhs_reg);
-    this->set_value(res_ref, res_ref.cur_reg());
+    ASM(CRC32CX, res_ref.alloc_try_reuse(lhs_ref), lhs_reg, rhs_reg);
+    res_ref.set_modified();
     return true;
   }
   case llvm::Intrinsic::aarch64_neon_umull: {
@@ -1004,17 +1004,18 @@ bool LLVMCompilerArm64::handle_intrin(
 
     auto [lhs_vr, lhs_ref] = this->val_ref_single(inst->getOperand(0));
     auto [rhs_vr, rhs_ref] = this->val_ref_single(inst->getOperand(1));
-    AsmReg lhs_reg;
-    auto res_ref = this->result_ref_salvage_with_original(
-        inst, 0, std::move(lhs_ref), lhs_reg);
+    auto [res_vr, res_ref] = this->result_ref_single(inst);
+
+    auto lhs_reg = lhs_ref.load_to_reg();
     auto rhs_reg = rhs_ref.load_to_reg();
+    auto res_reg = res_ref.alloc_try_reuse(lhs_ref);
     switch (nelem) {
-    case 2: ASM(UMULL_2d, res_ref.cur_reg(), lhs_reg, rhs_reg); break;
-    case 4: ASM(UMULL_4s, res_ref.cur_reg(), lhs_reg, rhs_reg); break;
-    case 8: ASM(UMULL_8h, res_ref.cur_reg(), lhs_reg, rhs_reg); break;
+    case 2: ASM(UMULL_2d, res_reg, lhs_reg, rhs_reg); break;
+    case 4: ASM(UMULL_4s, res_reg, lhs_reg, rhs_reg); break;
+    case 8: ASM(UMULL_8h, res_reg, lhs_reg, rhs_reg); break;
     default: TPDE_UNREACHABLE("invalid intrinsic type");
     }
-    this->set_value(res_ref, res_ref.cur_reg());
+    res_ref.set_modified();
     return true;
   }
   default: return false;

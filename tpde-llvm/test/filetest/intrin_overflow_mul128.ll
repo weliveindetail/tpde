@@ -37,6 +37,8 @@ define i128 @umul_i128_0(i128 %0, i128 %1) {
 ; X64-NEXT:    setb dl
 ; X64-NEXT:    or dl, r10b
 ; X64-NEXT:    movzx edx, dl
+; X64-NEXT:    mov rcx, rax
+; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    mov rdx, r8
 ; X64-NEXT:    add rsp, 0x68
 ; X64-NEXT:    pop rbx

@@ -222,17 +222,14 @@ bool TestIRCompilerA64::compile_add(IRInstRef inst_idx) noexcept {
 
   auto [lhs_vr, lhs] = this->val_ref_single(lhs_idx);
   auto [rhs_vr, rhs] = this->val_ref_single(rhs_idx);
+  auto [res_vr, res] =
+      this->result_ref_single(static_cast<IRValueRef>(inst_idx));
 
-  AsmReg lhs_orig{};
-  ValuePartRef result = Base::result_ref_salvage_with_original(
-      static_cast<IRValueRef>(inst_idx), 0, std::move(lhs), lhs_orig);
-  auto res_reg = result.cur_reg();
-
-  auto rhs_reg = rhs.load_to_reg();
-
-  ASM(ADDx, res_reg, lhs_orig, rhs_reg);
-
-  Base::set_value(result, res_reg);
+  AsmReg lhs_reg = lhs.load_to_reg();
+  AsmReg rhs_reg = rhs.load_to_reg();
+  AsmReg res_reg = res.alloc_try_reuse(lhs);
+  ASM(ADDx, res_reg, lhs_reg, rhs_reg);
+  res.set_modified();
   return true;
 }
 
@@ -246,17 +243,14 @@ bool TestIRCompilerA64::compile_sub(IRInstRef inst_idx) noexcept {
 
   auto [lhs_vr, lhs] = this->val_ref_single(lhs_idx);
   auto [rhs_vr, rhs] = this->val_ref_single(rhs_idx);
+  auto [res_vr, res] =
+      this->result_ref_single(static_cast<IRValueRef>(inst_idx));
 
-  AsmReg lhs_orig{};
-  ValuePartRef result = Base::result_ref_salvage_with_original(
-      static_cast<IRValueRef>(inst_idx), 0, std::move(lhs), lhs_orig);
-  auto res_reg = result.cur_reg();
-
-  auto rhs_reg = rhs.load_to_reg();
-
-  ASM(SUBx, res_reg, lhs_orig, rhs_reg);
-
-  Base::set_value(result, res_reg);
+  AsmReg lhs_reg = lhs.load_to_reg();
+  AsmReg rhs_reg = rhs.load_to_reg();
+  AsmReg res_reg = res.alloc_try_reuse(lhs);
+  ASM(SUBx, res_reg, lhs_reg, rhs_reg);
+  res.set_modified();
   return true;
 }
 } // namespace

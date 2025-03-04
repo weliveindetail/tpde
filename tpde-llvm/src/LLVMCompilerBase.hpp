@@ -2496,25 +2496,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_value(
       this->adaptor->complex_part_for_index(src, extract->getIndices());
 
   auto src_ref = this->val_ref(src);
+  auto res_ref = this->result_ref(extract);
   for (unsigned i = first_part; i <= last_part; i++) {
     auto part_ref = src_ref.part(i);
     if (i != last_part) {
       part_ref.inc_ref_count();
     }
 
-    AsmReg orig;
-    auto res_ref =
-        this->result_ref_salvage_with_original(extract,
-                                               i - first_part,
-                                               std::move(part_ref),
-                                               orig,
-                                               i != last_part ? 2 : 1);
-    if (orig != res_ref.cur_reg()) {
-      derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
-    }
-    this->set_value(res_ref, res_ref.cur_reg());
+    ValuePartRef res = res_ref.part(i - first_part);
+    res.set_value(std::move(part_ref));
     if (i != last_part) {
-      res_ref.inc_ref_count();
+      res.inc_ref_count();
     }
   }
 
@@ -2533,6 +2525,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_value(
 
   ValueRef agg_ref = this->val_ref(agg);
   ValueRef ins_ref = this->val_ref(ins);
+  ValueRef res_ref = this->result_ref(insert);
   for (unsigned i = 0; i < part_count; i++) {
     ValuePartRef val_ref{this};
     bool inc_ref_count;
@@ -2547,15 +2540,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_value(
     if (inc_ref_count) {
       val_ref.inc_ref_count();
     }
-    AsmReg orig;
-    auto res_ref = this->result_ref_salvage_with_original(
-        insert, i, std::move(val_ref), orig, inc_ref_count ? 2 : 1);
-    if (orig != res_ref.cur_reg()) {
-      derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
-    }
-    this->set_value(res_ref, res_ref.cur_reg());
+
+    auto res = res_ref.part(i);
+    res.set_value(std::move(val_ref));
     if (i != part_count - 1) {
-      res_ref.inc_ref_count();
+      res.inc_ref_count();
     }
   }
 
@@ -3145,22 +3134,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_freeze(
   const auto part_count = this->adaptor->val_part_count(src_val);
 
   auto src_ref = this->val_ref(src_val);
+  auto res_ref = this->result_ref(inst);
   for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
     const auto last_part = (part_idx == part_count - 1);
     auto part_ref = src_ref.part(part_idx);
     if (!last_part) {
       part_ref.inc_ref_count();
     }
-    AsmReg orig;
-    auto res_ref = this->result_ref_salvage_with_original(
-        inst, part_idx, std::move(part_ref), orig, last_part ? 1 : 2);
-    if (orig != res_ref.cur_reg()) {
-      derived()->mov(res_ref.cur_reg(), orig, res_ref.part_size());
-    }
-    this->set_value(res_ref, res_ref.cur_reg());
-
+    ValuePartRef res = res_ref.part(part_idx);
+    res.set_value(std::move(part_ref));
     if (!last_part) {
-      res_ref.reset_without_refcount();
+      res.reset_without_refcount();
     }
   }
 

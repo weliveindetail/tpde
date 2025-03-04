@@ -245,28 +245,16 @@ public:
   /// Get a defining reference to a value
   ValueRef result_ref(IRValueRef value) noexcept;
 
+  std::pair<ValueRef, ValuePartRef>
+      result_ref_single(IRValueRef value) noexcept;
+
   /// Get a defining reference to a value
   ValuePartRef result_ref_lazy(IRValueRef value, u32 part) noexcept;
-
-  /// Get a defining reference to a value and try to salvage the register of
-  /// another value if possible, otherwise allocate a register. The register
-  /// where the other value is located is also returned
-  ValuePartRef result_ref_salvage_with_original(IRValueRef value,
-                                                u32 part,
-                                                ValuePartRef &&arg,
-                                                AsmReg &lhs_reg,
-                                                u32 ref_adjust = 1);
-  // TODO(ts): here we want smth that can output an operand that can house an
-  // imm/mem or reg operand and maybe keep the overload that only outputs to a
-  // reg? ValuePartRef result_ref_salvage_with_original(ValLocalIdx local_idx,
-  // u32 part) noexcept;
 
   // TODO(ts): this takes ownership of the register if the ValuePartRef is not
   // fixed which is a bit weird...
   void set_value(ValuePartRef &val_ref, AsmReg reg) noexcept;
   void set_value(ValuePartRef &val_ref, ScratchReg &scratch) noexcept;
-
-  void salvage_reg_for_values(ValuePartRef &to, ValuePartRef &from) noexcept;
 
   /// Get generic value part into a single register, evaluating expressions
   /// and materializing immediates as required.
@@ -758,46 +746,20 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueRef
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::result_ref_lazy(IRValueRef value,
-                                                            u32 part) noexcept {
-  return result_ref(value).part(part);
+std::pair<typename CompilerBase<Adaptor, Derived, Config>::ValueRef,
+          typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef>
+    CompilerBase<Adaptor, Derived, Config>::result_ref_single(
+        IRValueRef value) noexcept {
+  std::pair<ValueRef, ValuePartRef> res{result_ref(value), this};
+  res.second = res.first.part(0);
+  return res;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::result_ref_salvage_with_original(
-        IRValueRef value,
-        u32 part,
-        ValuePartRef &&arg,
-        AsmReg &lhs_reg,
-        u32 ref_adjust) {
-  auto res_ref = this->result_ref_lazy(value, part);
-  auto ap_res = res_ref.assignment();
-  assert(ap_res.bank() == arg.bank());
-
-  if (arg.is_const()) {
-    lhs_reg = res_ref.alloc_reg();
-    derived()->materialize_constant(arg, lhs_reg);
-  } else {
-    lhs_reg = arg.load_to_reg();
-
-    const auto &liveness = analyzer.liveness_info((u32)arg.local_idx());
-    if (!ap_res.fixed_assignment() && arg.ref_count() <= ref_adjust &&
-        (liveness.last < cur_block_idx ||
-         (liveness.last == cur_block_idx && !liveness.last_full))) {
-      // can salvage
-      arg.unlock();
-
-      salvage_reg_for_values(res_ref, arg);
-      res_ref.lock();
-      lhs_reg = res_ref.cur_reg();
-    } else {
-      res_ref.alloc_reg();
-    }
-  }
-
-  return res_ref;
+    CompilerBase<Adaptor, Derived, Config>::result_ref_lazy(IRValueRef value,
+                                                            u32 part) noexcept {
+  return result_ref(value).part(part);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -883,55 +845,6 @@ void CompilerBase<Adaptor, Derived, Config>::set_value(
   ap.set_full_reg_id(reg.id());
   ap.set_register_valid(true);
   ap.set_modified(true);
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::salvage_reg_for_values(
-    ValuePartRef &to, ValuePartRef &from) noexcept {
-  assert(to.has_assignment());
-  assert(from.has_assignment());
-
-  auto ap_from = from.assignment();
-  auto ap_to = to.assignment();
-  assert(ap_from.register_valid());
-  // Don't use cur_reg, which requires the register to be fixed/locked.
-  AsmReg from_reg{ap_from.full_reg_id()};
-
-  if (ap_from.fixed_assignment()) {
-    --assignments.cur_fixed_assignment_count[ap_from.bank()];
-
-    // take the register from the argument value
-    // with some special handling in case the result has a fixed
-    // assignment
-    if (ap_to.fixed_assignment()) {
-      // free the register of `to` since we reuse `from`'s register
-      const AsmReg res_reg = AsmReg{ap_to.full_reg_id()};
-      register_file.dec_lock_count(res_reg); // release fixed reg
-      register_file.unmark_used(res_reg);
-    } else {
-      assert(!ap_to.register_valid());
-      register_file.dec_lock_count(from_reg); // release fixed reg
-    }
-
-    ap_from.set_fixed_assignment(false);
-    ap_from.set_register_valid(false);
-    ap_to.set_register_valid(true);
-    ap_to.set_full_reg_id(from_reg.id());
-    register_file.update_reg_assignment(from_reg, to.local_idx(), to.part());
-  } else if (ap_to.fixed_assignment()) {
-    // cannot salvage if result has a fixed assignment but the
-    // source has not since this might cause non-callee-saved regs
-    // to become fixed which would cause issues for calls
-    const AsmReg to_reg = AsmReg{ap_to.full_reg_id()};
-    assert(ap_from.part_size() >= ap_to.part_size());
-    derived()->mov(to_reg, from_reg, ap_to.part_size());
-  } else {
-    assert(!register_file.is_fixed(from_reg));
-    ap_from.set_register_valid(false);
-    ap_to.set_full_reg_id(from_reg.id());
-    ap_to.set_register_valid(true);
-    register_file.update_reg_assignment(from_reg, to.local_idx(), to.part());
-  }
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
