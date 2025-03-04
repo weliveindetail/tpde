@@ -130,8 +130,8 @@ define i8 @fshr_rotate_i8_3(i8 %a) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    ror dil, 0x3
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    ror al, 0x3
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -148,8 +148,7 @@ define i8 @fshr_rotate_i8_3(i8 %a) {
 ; ARM64-NEXT:    and w2, w2, #0x7
 ; ARM64-NEXT:    lsr w3, w3, w1
 ; ARM64-NEXT:    lsl w2, w0, w2
-; ARM64-NEXT:    orr w4, w3, w2
-; ARM64-NEXT:    mov w0, w4
+; ARM64-NEXT:    orr w0, w3, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -163,8 +162,8 @@ define i8 @fshr_rotate_i8_221(i8 %a) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    ror dil, 0xdd
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    ror al, 0xdd
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -181,8 +180,7 @@ define i8 @fshr_rotate_i8_221(i8 %a) {
 ; ARM64-NEXT:    and w2, w2, #0x7
 ; ARM64-NEXT:    lsr w3, w3, w1
 ; ARM64-NEXT:    lsl w2, w0, w2
-; ARM64-NEXT:    orr w4, w3, w2
-; ARM64-NEXT:    mov w0, w4
+; ARM64-NEXT:    orr w0, w3, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -196,9 +194,9 @@ define i8 @fshr_rotate_i8_dyn(i8 %a, i8 %c) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    mov ecx, esi
-; X64-NEXT:    ror al, cl
+; X64-NEXT:    ror dil, cl
+; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -214,8 +212,7 @@ define i8 @fshr_rotate_i8_dyn(i8 %a, i8 %c) {
 ; ARM64-NEXT:    and w2, w2, #0x7
 ; ARM64-NEXT:    lsr w3, w3, w1
 ; ARM64-NEXT:    lsl w2, w0, w2
-; ARM64-NEXT:    orr w4, w3, w2
-; ARM64-NEXT:    mov w0, w4
+; ARM64-NEXT:    orr w0, w3, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -348,8 +345,8 @@ define i16 @fshr_rotate_i16_3(i16 %a) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    ror di, 0x3
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    ror ax, 0x3
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -366,8 +363,7 @@ define i16 @fshr_rotate_i16_3(i16 %a) {
 ; ARM64-NEXT:    and w2, w2, #0xf
 ; ARM64-NEXT:    lsr w3, w3, w1
 ; ARM64-NEXT:    lsl w2, w0, w2
-; ARM64-NEXT:    orr w4, w3, w2
-; ARM64-NEXT:    mov w0, w4
+; ARM64-NEXT:    orr w0, w3, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -381,8 +377,8 @@ define i16 @fshr_rotate_i16_221(i16 %a) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    ror di, 0xdd
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    ror ax, 0xdd
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -399,8 +395,7 @@ define i16 @fshr_rotate_i16_221(i16 %a) {
 ; ARM64-NEXT:    and w2, w2, #0xf
 ; ARM64-NEXT:    lsr w3, w3, w1
 ; ARM64-NEXT:    lsl w2, w0, w2
-; ARM64-NEXT:    orr w4, w3, w2
-; ARM64-NEXT:    mov w0, w4
+; ARM64-NEXT:    orr w0, w3, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -414,9 +409,9 @@ define i16 @fshr_rotate_i16_dyn(i16 %a, i16 %c) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    mov ecx, esi
-; X64-NEXT:    ror ax, cl
+; X64-NEXT:    ror di, cl
+; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -432,8 +427,7 @@ define i16 @fshr_rotate_i16_dyn(i16 %a, i16 %c) {
 ; ARM64-NEXT:    and w2, w2, #0xf
 ; ARM64-NEXT:    lsr w3, w3, w1
 ; ARM64-NEXT:    lsl w2, w0, w2
-; ARM64-NEXT:    orr w4, w3, w2
-; ARM64-NEXT:    mov w0, w4
+; ARM64-NEXT:    orr w0, w3, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -557,8 +551,8 @@ define i32 @fshr_rotate_i32_3(i32 %a) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    ror edi, 0x3
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    ror eax, 0x3
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -568,8 +562,7 @@ define i32 @fshr_rotate_i32_3(i32 %a) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ror w1, w0, #0x3
-; ARM64-NEXT:    mov w0, w1
+; ARM64-NEXT:    ror w0, w0, #0x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -583,8 +576,8 @@ define i32 @fshr_rotate_i32_221(i32 %a) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    ror edi, 0xdd
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    ror eax, 0xdd
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -594,8 +587,7 @@ define i32 @fshr_rotate_i32_221(i32 %a) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ror w1, w0, #0x1d
-; ARM64-NEXT:    mov w0, w1
+; ARM64-NEXT:    ror w0, w0, #0x1d
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -609,9 +601,9 @@ define i32 @fshr_rotate_i32_dyn(i32 %a, i32 %c) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    mov ecx, esi
-; X64-NEXT:    ror eax, cl
+; X64-NEXT:    ror edi, cl
+; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -621,8 +613,7 @@ define i32 @fshr_rotate_i32_dyn(i32 %a, i32 %c) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ror w1, w0, w1
-; ARM64-NEXT:    mov w0, w1
+; ARM64-NEXT:    ror w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -745,10 +736,10 @@ define i64 @fshr_rotate_i64_3(i64 %a) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    ror rdi, 0x3
 ; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    ror rax, 0x3
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -757,8 +748,7 @@ define i64 @fshr_rotate_i64_3(i64 %a) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ror x1, x0, #0x3
-; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    ror x0, x0, #0x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -771,10 +761,10 @@ define i64 @fshr_rotate_i64_221(i64 %a) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    ror rdi, 0xdd
 ; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    ror rax, 0xdd
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -783,8 +773,7 @@ define i64 @fshr_rotate_i64_221(i64 %a) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ror x1, x0, #0x1d
-; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    ror x0, x0, #0x1d
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -798,9 +787,9 @@ define i64 @fshr_rotate_i64_dyn(i64 %a, i64 %c) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x40
-; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    mov ecx, esi
-; X64-NEXT:    ror rax, cl
+; X64-NEXT:    ror rdi, cl
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -810,8 +799,7 @@ define i64 @fshr_rotate_i64_dyn(i64 %a, i64 %c) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ror x1, x0, x1
-; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    ror x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret

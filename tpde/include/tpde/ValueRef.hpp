@@ -23,6 +23,9 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
 
   CompilerBase *compiler;
 
+  ValueRef(CompilerBase *compiler) noexcept
+      : state{AssignmentData{}}, compiler(compiler) {}
+
   ValueRef(CompilerBase *compiler, ValLocalIdx local_idx) noexcept
       : state{AssignmentData{
                            .local_idx = local_idx,

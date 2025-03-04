@@ -240,8 +240,6 @@ protected:
 public:
   ValueRef val_ref(IRValueRef value) noexcept;
 
-  ValuePartRef val_ref(IRValueRef value, u32 part) noexcept;
-
   std::pair<ValueRef, ValuePartRef> val_ref_single(IRValueRef value) noexcept;
 
   /// Try to salvage the register of a value (i.e. if it does not have any
@@ -770,13 +768,6 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueRef
     init_assignment(value, local_idx);
   }
   return ValueRef{this, local_idx};
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::val_ref(IRValueRef value,
-                                                    u32 part) noexcept {
-  return val_ref(value).part(part);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

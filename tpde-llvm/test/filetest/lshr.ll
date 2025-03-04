@@ -371,10 +371,11 @@ define i128 @lshr_i128_74(i128 %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    shr rsi, 0xa
+; X64-NEXT:    xor eax, eax
+; X64-NEXT:    mov qword ptr [rbp - 0x48], rax
 ; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    shr rax, 0xa
-; X64-NEXT:    xor ecx, ecx
-; X64-NEXT:    mov rdx, rcx
+; X64-NEXT:    mov rdx, qword ptr [rbp - 0x48]
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -384,10 +385,11 @@ define i128 @lshr_i128_74(i128 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    lsr x2, x1, #10
-; ARM64-NEXT:    mov x3, xzr
-; ARM64-NEXT:    mov x0, x2
-; ARM64-NEXT:    mov x1, x3
+; ARM64-NEXT:    lsr x1, x1, #10
+; ARM64-NEXT:    mov x0, xzr
+; ARM64-NEXT:    str x0, [x29, #0xb8]
+; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    ldr x1, [x29, #0xb8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret

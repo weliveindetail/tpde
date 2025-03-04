@@ -125,12 +125,6 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
   {
     a.compile_inst(ARG(typename T::IRInstRef), ARG(typename T::InstRange))
   } -> std::convertible_to<bool>;
-
-
-  // all the base class stuff for auto-complete
-  {
-    a.val_ref(ARG(typename T::IRValueRef), ARG(u32))
-  } -> std::same_as<typename T::ValuePartRef>;
 };
 
 } // namespace tpde

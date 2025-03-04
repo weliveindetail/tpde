@@ -174,8 +174,9 @@ void LLVMCompilerArm64::move_val_to_ret_regs(llvm::Value *val) noexcept {
   unsigned gp_reg_idx = 0;
   unsigned fp_reg_idx = 0;
   unsigned cnt = this->adaptor->val_part_count(val);
+  auto vr = this->val_ref(val);
   for (unsigned i = 0; i != cnt; i++) {
-    auto val_ref = this->val_ref(val, i);
+    auto val_ref = vr.part(i);
     if (i != cnt - 1) {
       val_ref.inc_ref_count();
     }
@@ -288,7 +289,7 @@ void LLVMCompilerArm64::extract_element(IRValueRef vec,
                                         ScratchReg &out_reg) noexcept {
   assert(this->adaptor->val_part_count(vec) == 1);
 
-  ValuePartRef vec_ref = this->val_ref(vec, 0);
+  auto [_, vec_ref] = this->val_ref_single(vec);
   AsmReg vec_reg = vec_ref.load_to_reg();
   // TODO: reuse vec_reg if possible
   AsmReg dst_reg = out_reg.alloc(this->adaptor->basic_ty_part_bank(ty));
@@ -313,7 +314,7 @@ void LLVMCompilerArm64::insert_element(IRValueRef vec,
                                        GenericValuePart el) noexcept {
   assert(this->adaptor->val_part_count(vec) == 1);
 
-  ValuePartRef vec_ref = this->val_ref(vec, 0);
+  auto [_, vec_ref] = this->val_ref_single(vec);
   AsmReg vec_reg = vec_ref.load_to_reg();
   AsmReg src_reg = this->gval_as_reg(el);
   switch (ty) {
@@ -367,7 +368,7 @@ bool LLVMCompilerArm64::compile_alloca(
   assert(this->adaptor->cur_has_dynamic_alloca());
 
   // refcount
-  auto size_ref = this->val_ref(alloca->getArraySize(), 0);
+  auto [_, size_ref] = this->val_ref_single(alloca->getArraySize());
 
   auto &layout = adaptor->mod->getDataLayout();
   if (auto opt = alloca->getAllocationSize(layout); opt) {
@@ -457,7 +458,7 @@ bool LLVMCompilerArm64::compile_br(const llvm::BranchInst *br) noexcept {
 
   // TODO: use Tbz/Tbnz. Must retain register until branch.
   {
-    auto cond_ref = this->val_ref(br->getCondition(), 0);
+    auto [_, cond_ref] = this->val_ref_single(br->getCondition());
     const auto cond_reg = cond_ref.load_to_reg();
     ASM(TSTwi, cond_reg, 1);
   }
@@ -632,39 +633,38 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
     }
   }
 
-  auto lhs = this->val_ref(cmp->getOperand(0), 0);
-  auto rhs = this->val_ref(cmp->getOperand(1), 0);
+  auto lhs = this->val_ref(cmp->getOperand(0));
+  auto rhs = this->val_ref(cmp->getOperand(1));
   ScratchReg res_scratch{this};
 
   if (int_width == 128) {
-    auto lhs_high = this->val_ref(cmp->getOperand(0), 1);
-    auto rhs_high = this->val_ref(cmp->getOperand(1), 1);
-
-    const auto lhs_reg = lhs.load_to_reg();
-    const auto lhs_reg_high = lhs_high.load_to_reg();
-    const auto rhs_reg = rhs.load_to_reg();
-    const auto rhs_reg_high = rhs_high.load_to_reg();
+    auto lhs_lo = lhs.part(0);
+    auto lhs_hi = lhs.part(1);
+    auto rhs_lo = rhs.part(0);
+    auto rhs_hi = rhs.part(1);
+    auto lhs_reg_lo = lhs_lo.load_to_reg();
+    auto lhs_reg_hi = lhs_hi.load_to_reg();
+    auto rhs_reg_lo = rhs_lo.load_to_reg();
+    auto rhs_reg_hi = rhs_hi.load_to_reg();
     if ((jump == Jump::Jeq) || (jump == Jump::Jne)) {
       // Use CCMP for equality
-      ASM(CMPx, lhs_reg, rhs_reg);
-      ASM(CCMPx, lhs_reg_high, rhs_reg_high, 0, DA_EQ);
+      ASM(CMPx, lhs_reg_lo, rhs_reg_lo);
+      ASM(CCMPx, lhs_reg_hi, rhs_reg_hi, 0, DA_EQ);
     } else {
       // Compare the ints using carried subtraction
-      ASM(CMPx, lhs_reg, rhs_reg);
-      ASM(SBCSx, DA_ZR, lhs_reg_high, rhs_reg_high);
+      ASM(CMPx, lhs_reg_lo, rhs_reg_lo);
+      ASM(SBCSx, DA_ZR, lhs_reg_hi, rhs_reg_hi);
     }
-    lhs_high.reset_without_refcount();
-    rhs_high.reset_without_refcount();
-    lhs.reset();
-    rhs.reset();
+    lhs_hi.reset_without_refcount();
+    rhs_hi.reset_without_refcount();
   } else {
-    if (lhs.is_const() && !rhs.is_const()) {
-      std::swap(lhs, rhs);
+    GenericValuePart lhs_op = lhs.part(0);
+    GenericValuePart rhs_op = rhs.part(0);
+
+    if (lhs_op.is_imm() && !rhs_op.is_imm()) {
+      std::swap(lhs_op, rhs_op);
       jump = swap_jump(jump).kind;
     }
-
-    GenericValuePart lhs_op = std::move(lhs);
-    GenericValuePart rhs_op = std::move(rhs);
 
     if (int_width != 32 && int_width != 64) {
       unsigned ext_bits = tpde::util::align_up(int_width, 32);
@@ -912,7 +912,7 @@ bool LLVMCompilerArm64::handle_intrin(
   const auto intrin_id = inst->getIntrinsicID();
   switch (intrin_id) {
   case llvm::Intrinsic::vastart: {
-    auto list_ref = this->val_ref(inst->getOperand(0), 0);
+    auto [_, list_ref] = this->val_ref_single(inst->getOperand(0));
     ScratchReg scratch{this};
     auto list_reg = list_ref.load_to_reg();
     auto tmp_reg = scratch.alloc_gp();
@@ -940,8 +940,8 @@ bool LLVMCompilerArm64::handle_intrin(
     return true;
   }
   case llvm::Intrinsic::vacopy: {
-    auto dst_ref = this->val_ref(inst->getOperand(0), 0);
-    auto src_ref = this->val_ref(inst->getOperand(1), 0);
+    auto [dst_vr, dst_ref] = this->val_ref_single(inst->getOperand(0));
+    auto [src_vr, src_ref] = this->val_ref_single(inst->getOperand(1));
 
     ScratchReg scratch1{this}, scratch2{this};
     const auto src_reg = src_ref.load_to_reg();
@@ -960,7 +960,7 @@ bool LLVMCompilerArm64::handle_intrin(
     return true;
   }
   case llvm::Intrinsic::stackrestore: {
-    auto val_ref = this->val_ref(inst->getOperand(0), 0);
+    auto [val_vr, val_ref] = this->val_ref_single(inst->getOperand(0));
     auto val_reg = val_ref.load_to_reg();
     ASM(MOV_SPx, DA_SP, val_reg);
     return true;
@@ -986,8 +986,8 @@ bool LLVMCompilerArm64::handle_intrin(
   case llvm::Intrinsic::trap: ASM(BRK, 1); return true;
   case llvm::Intrinsic::debugtrap: ASM(BRK, 0xf000); return true;
   case llvm::Intrinsic::aarch64_crc32cx: {
-    auto lhs_ref = this->val_ref(inst->getOperand(0), 0);
-    auto rhs_ref = this->val_ref(inst->getOperand(1), 0);
+    auto [lhs_vr, lhs_ref] = this->val_ref_single(inst->getOperand(0));
+    auto [rhs_vr, rhs_ref] = this->val_ref_single(inst->getOperand(1));
     AsmReg lhs_reg;
     auto res_ref = this->result_ref_salvage_with_original(
         inst, 0, std::move(lhs_ref), lhs_reg);
@@ -1000,8 +1000,8 @@ bool LLVMCompilerArm64::handle_intrin(
     auto *vec_ty = llvm::cast<llvm::FixedVectorType>(inst->getType());
     unsigned nelem = vec_ty->getNumElements();
 
-    auto lhs_ref = this->val_ref(inst->getOperand(0), 0);
-    auto rhs_ref = this->val_ref(inst->getOperand(1), 0);
+    auto [lhs_vr, lhs_ref] = this->val_ref_single(inst->getOperand(0));
+    auto [rhs_vr, rhs_ref] = this->val_ref_single(inst->getOperand(1));
     AsmReg lhs_reg;
     auto res_ref = this->result_ref_salvage_with_original(
         inst, 0, std::move(lhs_ref), lhs_reg);

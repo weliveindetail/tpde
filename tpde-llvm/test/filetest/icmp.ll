@@ -2532,15 +2532,15 @@ define void @icmp_eq_i128_0(i128 %0) {
 ; X64-NEXT:    push rbx
 ; X64-NEXT:    nop dword ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x48
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    mov rcx, rsi
-; X64-NEXT:    mov edx, 0x0
-; X64-NEXT:    mov ebx, 0x0
-; X64-NEXT:    xor rax, rdx
-; X64-NEXT:    xor rcx, rbx
-; X64-NEXT:    or rax, rcx
 ; X64-NEXT:    mov eax, 0x0
-; X64-NEXT:    sete al
+; X64-NEXT:    mov ecx, 0x0
+; X64-NEXT:    mov rdx, rdi
+; X64-NEXT:    mov rbx, rsi
+; X64-NEXT:    xor rdx, rax
+; X64-NEXT:    xor rbx, rcx
+; X64-NEXT:    or rdx, rbx
+; X64-NEXT:    mov edx, 0x0
+; X64-NEXT:    sete dl
 ; X64-NEXT:    add rsp, 0x48
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
