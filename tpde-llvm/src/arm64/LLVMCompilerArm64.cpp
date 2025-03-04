@@ -406,25 +406,26 @@ bool LLVMCompilerArm64::compile_alloca(
 
   const auto elem_size = layout.getTypeAllocSize(alloca->getAllocatedType());
   ScratchReg scratch{this};
-  ValuePartRef res_ref =
-      this->result_ref_must_salvage(alloca, 0, std::move(size_ref));
-  const auto res_reg = res_ref.cur_reg();
+
+  ValuePartRef res{this, CompilerConfig::GP_BANK};
+  AsmReg size_reg = size_ref.load_to_reg();
+  AsmReg res_reg = res.alloc_try_reuse(size_ref);
 
   if (elem_size == 0) {
     ASM(MOVZw, res_reg, 0);
   } else if ((elem_size & (elem_size - 1)) == 0) {
     const auto shift = __builtin_ctzll(elem_size);
     if (shift <= 4) {
-      ASM(SUBx_uxtx, res_reg, DA_SP, res_reg, shift);
+      ASM(SUBx_uxtx, res_reg, DA_SP, size_reg, shift);
     } else {
-      ASM(LSLxi, res_reg, res_reg, shift);
+      ASM(LSLxi, res_reg, size_reg, shift);
       ASM(SUBx_uxtx, res_reg, DA_SP, res_reg, 0);
     }
   } else {
     ScratchReg scratch{this};
     auto tmp = scratch.alloc_gp();
     materialize_constant(elem_size, 0, 8, tmp);
-    ASM(MULx, res_reg, res_reg, tmp);
+    ASM(MULx, res_reg, size_reg, tmp);
     ASM(SUBx_uxtx, res_reg, DA_SP, res_reg, 0);
   }
 
@@ -439,7 +440,7 @@ bool LLVMCompilerArm64::compile_alloca(
 
   ASM(ANDxi, res_reg, res_reg, align);
   ASM(MOV_SPx, DA_SP, res_reg);
-  this->set_value(res_ref, res_ref.cur_reg());
+  this->result_ref(alloca).part(0).set_value(std::move(res));
   return true;
 }
 

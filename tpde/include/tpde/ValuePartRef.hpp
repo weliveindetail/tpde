@@ -142,6 +142,36 @@ public:
     return alloc_reg_impl(exclusion_mask, /*reload=*/false);
   }
 
+  /// Allocate register, but try to reuse the register from ref first. This
+  /// method is complicated and must be used carefully. If ref is locked in a
+  /// register and owns the register (can_salvage()), the ownership of the
+  /// register is transferred to this ValuePartRef without modifying the value.
+  /// Otherwise, a new register is allocated.
+  ///
+  /// Usage example:
+  ///   AsmReg operand_reg = operand_ref.load_to_reg();
+  ///   AsmReg result_reg = result_ref.alloc_try_reuse(operand_ref);
+  ///   if (operand_reg == result_reg) {
+  ///     // reuse successful
+  ///     ASM(ADD64ri, result_reg, 1);
+  ///   } else {
+  ///     ASM(LEA64rm, result_reg, FE_MEM(FE_NOREG, 1, operand_reg, 1));
+  ///   }
+  AsmReg alloc_try_reuse(ValuePartRef &ref) noexcept {
+    assert(ref.has_reg());
+    if (!has_assignment() || !assignment().register_valid()) {
+      assert(!has_assignment() || !assignment().fixed_assignment());
+      if (ref.can_salvage()) {
+        set_value(std::move(ref));
+        if (has_assignment()) {
+          lock();
+        }
+        return cur_reg();
+      }
+    }
+    return alloc_reg();
+  }
+
   /// Allocate and lock a specific register for the value part, spilling the
   /// register if it is currently used (must not be fixed), *without* reloading
   /// or copying the value into the new register. An existing register is
@@ -180,6 +210,14 @@ public:
   AsmReg reload_into_specific_fixed(CompilerBase *compiler,
                                     AsmReg reg,
                                     unsigned size = 0) noexcept;
+
+  /// Move into a temporary register, reuse an existing register if possible.
+  ValuePartRef into_temporary() && noexcept {
+    ValuePartRef res{compiler, bank()};
+    res.set_value(std::move(*this));
+    res.load_to_reg();
+    return res;
+  }
 
   void lock() noexcept;
   void unlock() noexcept;

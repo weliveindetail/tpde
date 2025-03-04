@@ -248,15 +248,6 @@ public:
   /// Get a defining reference to a value
   ValuePartRef result_ref_lazy(IRValueRef value, u32 part) noexcept;
 
-  /// Get a defining reference to a value that reuses a register of another
-  /// value and spills it if necessary. This is useful if the implemented
-  /// operation overwrites a register and therefore the original value cannot
-  /// be kept
-  ValuePartRef result_ref_must_salvage(IRValueRef value,
-                                       u32 part,
-                                       ValuePartRef &&arg,
-                                       u32 ref_adjust = 1) noexcept;
-
   /// Get a defining reference to a value and try to salvage the register of
   /// another value if possible, otherwise allocate a register. The register
   /// where the other value is located is also returned
@@ -771,41 +762,6 @@ typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
     CompilerBase<Adaptor, Derived, Config>::result_ref_lazy(IRValueRef value,
                                                             u32 part) noexcept {
   return result_ref(value).part(part);
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValuePartRef
-    CompilerBase<Adaptor, Derived, Config>::result_ref_must_salvage(
-        IRValueRef value,
-        u32 part,
-        ValuePartRef &&arg,
-        u32 ref_adjust) noexcept {
-  auto res_ref = this->result_ref_lazy(value, part);
-  auto ap_res = res_ref.assignment();
-  (void)ap_res;
-  assert(ap_res.bank() == arg.bank());
-
-  if (arg.is_const()) {
-    const auto reg = res_ref.alloc_reg();
-    derived()->materialize_constant(arg, reg);
-  } else {
-    auto ap_arg = arg.assignment();
-
-    const auto &liveness = analyzer.liveness_info((u32)arg.local_idx());
-    if (ap_arg.register_valid() && arg.ref_count() <= ref_adjust &&
-        (liveness.last < cur_block_idx ||
-         (liveness.last == cur_block_idx && !liveness.last_full))) {
-      // can salvage
-      arg.unlock();
-      salvage_reg_for_values(res_ref, arg);
-      res_ref.lock();
-    } else {
-      const auto reg = res_ref.alloc_reg();
-      arg.reload_into_specific_fixed(this, reg);
-    }
-  }
-
-  return res_ref;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

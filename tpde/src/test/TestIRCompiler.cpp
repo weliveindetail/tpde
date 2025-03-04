@@ -149,18 +149,14 @@ bool TestIRCompilerX64::compile_sub(IRInstRef inst_idx) noexcept {
   const auto rhs_idx =
       static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx + 1]);
 
-  auto [lhs_vr, lhs] = this->val_ref_single(lhs_idx);
-  auto [rhs_vr, rhs] = this->val_ref_single(rhs_idx);
+  auto lhs = this->val_ref(lhs_idx);
+  auto rhs = this->val_ref(rhs_idx);
 
-  ValuePartRef result = Base::result_ref_must_salvage(
-      static_cast<IRValueRef>(inst_idx), 0, std::move(lhs));
-  auto res_reg = result.cur_reg();
-
-  auto rhs_reg = rhs.load_to_reg();
-
-  ASM(SUB64rr, res_reg, rhs_reg);
-
-  Base::set_value(result, res_reg);
+  ValuePartRef result = lhs.part(0).into_temporary();
+  ASM(SUB64rr, result.cur_reg(), rhs.part(0).load_to_reg());
+  this->result_ref(static_cast<IRValueRef>(inst_idx))
+      .part(0)
+      .set_value(std::move(result));
   return true;
 }
 } // namespace tpde::test

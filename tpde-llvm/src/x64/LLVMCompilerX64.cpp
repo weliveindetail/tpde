@@ -360,30 +360,30 @@ bool LLVMCompilerX64::compile_alloca(const llvm::AllocaInst *alloca) noexcept {
   } else {
     const auto elem_size = layout.getTypeAllocSize(alloca->getAllocatedType());
     ScratchReg scratch{this};
-    // TODO: find better solution for this
-    res_ref.reset_without_refcount();
-    res_ref = this->result_ref_must_salvage(alloca, 0, std::move(size_ref));
-    const auto res_reg = res_ref.cur_reg();
+
+    ValuePartRef res = std::move(size_ref).into_temporary();
 
     if (elem_size == 0) {
-      ASM(XOR32rr, res_reg, res_reg);
+      ASM(XOR32rr, res.cur_reg(), res.cur_reg());
     } else if ((elem_size & (elem_size - 1)) == 0) {
       // elSize is power of two
       if (elem_size != 1) {
         const auto shift = __builtin_ctzll(elem_size);
-        ASM(SHL64ri, res_reg, shift);
+        ASM(SHL64ri, res.cur_reg(), shift);
       }
     } else {
       if (elem_size <= 0x7FFF'FFFF) [[likely]] {
-        ASM(IMUL64rri, res_reg, res_reg, elem_size);
+        ASM(IMUL64rri, res.cur_reg(), res.cur_reg(), elem_size);
       } else {
         auto tmp = scratch.alloc_gp();
         ASM(MOV64ri, tmp, elem_size);
-        ASM(IMUL64rr, res_reg, tmp);
+        ASM(IMUL64rr, res.cur_reg(), tmp);
       }
     }
 
-    ASM(SUB64rr, FE_SP, res_reg);
+    ASM(SUB64rr, FE_SP, res.cur_reg());
+    res_ref.set_value(std::move(res));
+    res_ref.lock();
   }
 
   auto align = alloca->getAlign().value();
@@ -895,12 +895,10 @@ bool LLVMCompilerX64::handle_intrin(const llvm::IntrinsicInst *inst) noexcept {
     return true;
   }
   case llvm::Intrinsic::x86_sse42_crc32_64_64: {
-    auto [lhs_vr, lhs_ref] = this->val_ref_single(inst->getOperand(0));
     auto [rhs_vr, rhs_ref] = this->val_ref_single(inst->getOperand(1));
-    auto res_ref = this->result_ref_must_salvage(inst, 0, std::move(lhs_ref));
-    auto rhs_reg = rhs_ref.load_to_reg();
-    ASM(CRC32_64rr, res_ref.cur_reg(), rhs_reg);
-    this->set_value(res_ref, res_ref.cur_reg());
+    auto res = this->val_ref(inst->getOperand(0)).part(0).into_temporary();
+    ASM(CRC32_64rr, res.cur_reg(), rhs_ref.load_to_reg());
+    this->result_ref(inst).part(0).set_value(std::move(res));
     return true;
   }
   case llvm::Intrinsic::returnaddress: {
