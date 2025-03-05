@@ -34,9 +34,9 @@ concept ValueParts = requires(T a) {
 template <typename T>
 concept ValRefSpecialStruct = requires(T a) {
   // Clang does not support std::is_corresponding_member.
-  { a.is_special } -> std::same_as<bool &>;
+  { a.mode } -> std::same_as<uint8_t &>;
   requires std::is_standard_layout_v<T>;
-  requires offsetof(T, is_special) == 0;
+  requires offsetof(T, mode) == 0;
 };
 
 template <typename T, typename Config>
@@ -92,7 +92,7 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
 
   /// A compiler can provide a data structure that is a non-assignment ValueRef.
   /// This struct is used in a union, so it must be a standard-layout struct and
-  /// have "bool is_special;" as first member, which must always be true.
+  /// have "uint8_t mode;" as first member, which must be >= 4.
   requires ValRefSpecialStruct<typename T::ValRefSpecial>;
 
   /// Provides the implementation to return special ValueRefs, e.g. for

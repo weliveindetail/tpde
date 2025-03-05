@@ -10,10 +10,10 @@ namespace tpde {
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
   struct AssignmentData {
-    bool is_special = false;
-    bool owned;
-    ValLocalIdx local_idx = INVALID_VAL_LOCAL_IDX;
-    ValueAssignment *assignment = nullptr;
+    /// 0 = unowned reference/invalid, 1 = ref-counted, 2 = owned
+    uint8_t mode;
+    ValLocalIdx local_idx;
+    ValueAssignment *assignment;
   };
   static_assert(ValRefSpecialStruct<AssignmentData>);
 
@@ -25,7 +25,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
   CompilerBase *compiler;
 
   ValueRef(CompilerBase *compiler) noexcept
-      : state{AssignmentData{}}, compiler(compiler) {}
+      : state{AssignmentData()}, compiler(compiler) {}
 
   ValueRef(CompilerBase *compiler, ValLocalIdx local_idx) noexcept
       : state{AssignmentData{
@@ -35,17 +35,23 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
   }, compiler(compiler) {
     const auto &liveness =
         compiler->analyzer.liveness_info((u32)state.a.local_idx);
-    state.a.owned =
-        !variable_ref() && state.a.assignment->references_left <= 1 &&
-        (liveness.last < compiler->cur_block_idx ||
-         (liveness.last == compiler->cur_block_idx && !liveness.last_full));
+    if (variable_ref()) {
+      state.a.mode = 0;
+    } else if (state.a.assignment->references_left <= 1 &&
+               (liveness.last < compiler->cur_block_idx ||
+                (liveness.last == compiler->cur_block_idx &&
+                 !liveness.last_full))) {
+      state.a.mode = 2;
+    } else {
+      state.a.mode = 1;
+    }
   }
 
   template <typename... T>
   ValueRef(CompilerBase *compiler, T &&...args) noexcept
       : state{.s = typename Derived::ValRefSpecial(std::forward<T>(args)...)},
         compiler(compiler) {
-    assert(state.a.is_special);
+    assert(state.a.mode >= 4);
   }
 
   explicit ValueRef(const ValueRef &) = delete;
@@ -66,11 +72,11 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
     reset();
     assert(compiler == other.compiler);
     this->state = other.state;
-    other.state.a = AssignmentData{};
+    other.state.a.mode = 0;
     return *this;
   }
 
-  bool has_assignment() const noexcept { return !state.a.is_special; }
+  bool has_assignment() const noexcept { return state.a.mode < 4; }
 
   [[nodiscard]] ValueAssignment *assignment() const noexcept {
     assert(has_assignment());
@@ -78,12 +84,11 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
     return state.a.assignment;
   }
 
-  /// Increment the reference count artificially; must be called before first
-  /// part is accessed.
+  /// Convert into an unowned reference; must be called before first part is
+  /// accessed.
   void disown() noexcept {
-    if (has_assignment() && !variable_ref()) {
-      ++state.a.assignment->references_left;
-      state.a.owned = false;
+    if (has_assignment()) {
+      state.a.mode = 0;
     }
   }
 
@@ -94,7 +99,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
 
   ValuePartRef part(unsigned part) noexcept [[clang::lifetimebound]] {
     if (has_assignment()) {
-      return ValuePartRef{compiler, local_idx(), part, state.a.owned};
+      return ValuePartRef{compiler, local_idx(), part, state.a.mode == 2};
     }
     return compiler->derived()->val_part_ref_special(state.s, part);
   }
@@ -111,12 +116,15 @@ private:
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValueRef::reset() noexcept {
-  if (has_assignment() && state.a.assignment != nullptr) {
-    ValLocalIdx local_idx = state.a.local_idx;
+  if (state.a.mode == 1 || state.a.mode == 2) {
+    bool owned = state.a.mode == 2;
+    state.a.mode = 0;
+
     auto &ref_count = state.a.assignment->references_left;
-    assert(ref_count != 0 || variable_ref());
-    if (ref_count != 0 && --ref_count == 0) {
-      if (state.a.owned) {
+    assert(ref_count != 0);
+    if (--ref_count == 0) {
+      ValLocalIdx local_idx = state.a.local_idx;
+      if (owned) {
         compiler->free_assignment(local_idx);
       } else {
         // need to wait until release
@@ -132,6 +140,9 @@ void CompilerBase<Adaptor, Derived, Config>::ValueRef::reset() noexcept {
     }
   }
 
-  state.a = AssignmentData{};
+#ifndef NDEBUG
+  state.a.assignment = nullptr;
+  state.a.local_idx = INVALID_VAL_LOCAL_IDX;
+#endif
 }
 } // namespace tpde

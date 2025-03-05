@@ -43,7 +43,7 @@ struct CompilerBase {
   /// A default implementation for ValRefSpecial.
   // Note: Subclasses can override this, always used Derived::ValRefSpecial.
   struct ValRefSpecial {
-    bool is_special;
+    uint8_t mode = 4;
     u64 const_data;
   };
 

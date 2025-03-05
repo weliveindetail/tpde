@@ -53,7 +53,7 @@ struct LLVMCompilerBase : public LLVMCompiler,
   using AsmReg = typename Base::AsmReg;
 
   struct ValRefSpecial {
-    bool is_special = true;
+    uint8_t mode = 4;
     IRValueRef value;
   };
 
