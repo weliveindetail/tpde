@@ -84,13 +84,13 @@ define i32 @sadd_sat_i32(i32, i32) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    lea eax, [rdi + rsi]
 ; X64-NEXT:    sar eax, 0x1f
 ; X64-NEXT:    add eax, 0x80000000
 ; X64-NEXT:    add edi, esi
 ; X64-NEXT:    cmovno eax, edi
-; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -129,7 +129,7 @@ define i64 @sadd_sat_i64(i64, i64) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <sadd_sat_i64>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -139,7 +139,7 @@ define i64 @sadd_sat_i64(i64, i64) {
 ; ARM64-NEXT:    csel x2, x1, x0, vs
 ; ARM64-NEXT:    mov x0, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
   %r = call i64 @llvm.sadd.sat.i64(i64 %0, i64 %1)
   ret i64 %r
@@ -214,11 +214,11 @@ define i32 @uadd_sat_i32(i32, i32) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    add edi, esi
 ; X64-NEXT:    mov eax, 0xffffffff
 ; X64-NEXT:    cmovae eax, edi
-; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -251,7 +251,7 @@ define i64 @uadd_sat_i64(i64, i64) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <uadd_sat_i64>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -259,7 +259,7 @@ define i64 @uadd_sat_i64(i64, i64) {
 ; ARM64-NEXT:    csinv x1, x0, xzr, lo
 ; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
   %r = call i64 @llvm.uadd.sat.i64(i64 %0, i64 %1)
   ret i64 %r

@@ -320,10 +320,9 @@ define i128 @shl_i128_3(i128 %0) {
 ; X64-NEXT:    sub rsp, 0x50
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    shl rax, 0x3
-; X64-NEXT:    mov rcx, rdi
-; X64-NEXT:    shr rcx, 0x3d
+; X64-NEXT:    shr rdi, 0x3d
 ; X64-NEXT:    shl rsi, 0x3
-; X64-NEXT:    or rsi, rcx
+; X64-NEXT:    or rsi, rdi
 ; X64-NEXT:    mov rdx, rsi
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
@@ -334,11 +333,12 @@ define i128 @shl_i128_3(i128 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    lsl x2, x1, #3
-; ARM64-NEXT:    lsl x3, x0, #3
+; ARM64-NEXT:    lsl x1, x1, #3
+; ARM64-NEXT:    lsl x2, x0, #3
 ; ARM64-NEXT:    lsr x0, x0, #61
-; ARM64-NEXT:    orr x1, x0, x2
-; ARM64-NEXT:    mov x0, x3
+; ARM64-NEXT:    orr x3, x0, x1
+; ARM64-NEXT:    mov x0, x2
+; ARM64-NEXT:    mov x1, x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -366,9 +366,9 @@ define i128 @shl_i128_74(i128 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsl x0, x0, #10
-; ARM64-NEXT:    mov x1, xzr
+; ARM64-NEXT:    mov x2, xzr
 ; ARM64-NEXT:    str x0, [x29, #0xb8]
-; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    mov x0, x2
 ; ARM64-NEXT:    ldr x1, [x29, #0xb8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
@@ -386,10 +386,9 @@ define i128 @shl_i128_128(i128 %0) {
 ; X64-NEXT:    sub rsp, 0x50
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    shl rax, 0x0
-; X64-NEXT:    mov rcx, rdi
-; X64-NEXT:    shr rcx, 0x0
+; X64-NEXT:    shr rdi, 0x0
 ; X64-NEXT:    shl rsi, 0x0
-; X64-NEXT:    or rsi, rcx
+; X64-NEXT:    or rsi, rdi
 ; X64-NEXT:    mov rdx, rsi
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
@@ -400,11 +399,12 @@ define i128 @shl_i128_128(i128 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    lsr x2, x1, #0
-; ARM64-NEXT:    lsr x3, x0, #0
+; ARM64-NEXT:    lsr x1, x1, #0
+; ARM64-NEXT:    lsr x2, x0, #0
 ; ARM64-NEXT:    lsr x0, x0, #0
-; ARM64-NEXT:    orr x1, x0, x2
-; ARM64-NEXT:    mov x0, x3
+; ARM64-NEXT:    orr x3, x0, x1
+; ARM64-NEXT:    mov x0, x2
+; ARM64-NEXT:    mov x1, x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret

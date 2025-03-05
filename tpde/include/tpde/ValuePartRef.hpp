@@ -22,6 +22,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   struct ValueData {
     AsmReg reg = AsmReg::make_invalid(); // only valid if fixed/locked
     bool has_assignment = true;
+    bool owned;
     CompilerBase::ValLocalIdx local_idx;
     u32 part;
     ValueAssignment *assignment;
@@ -39,15 +40,16 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
     assert(bank < Config::NUM_BANKS);
   }
 
-  ValuePartRef(CompilerBase *compiler, ValLocalIdx local_idx, u32 part) noexcept
+  ValuePartRef(CompilerBase *compiler, ValLocalIdx local_idx, u32 part, bool owned) noexcept
       : state{
-            .v = ValueData{
+            .v = ValueData{.owned = owned,
                            .local_idx = local_idx,
                            .part = part,
                            .assignment = compiler->val_assignment(local_idx),
                            }
   }, compiler(compiler) {
     assert(assignment().variable_ref() || state.v.assignment->references_left);
+    assert(!owned || state.v.assignment->references_left == 1);
   }
 
   ValuePartRef(CompilerBase *compiler, const u64 *data, u32 size, u32 bank) noexcept
@@ -89,21 +91,6 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef {
   [[nodiscard]] AssignmentPartRef assignment() const noexcept {
     assert(has_assignment());
     return AssignmentPartRef{state.v.assignment, state.v.part};
-  }
-
-  /// Increment the reference count artificially
-  void inc_ref_count() noexcept {
-    if (has_assignment()) {
-      ++state.v.assignment->references_left;
-    }
-  }
-
-  /// Decrement the reference count artificially
-  void dec_ref_count() noexcept {
-    if (has_assignment()) {
-      assert(state.v.assignment->references_left > 0);
-      --state.v.assignment->references_left;
-    }
   }
 
   /// Spill the value part to the stack frame
@@ -253,11 +240,6 @@ public:
     return state.v.part;
   }
 
-  u32 ref_count() const noexcept {
-    assert(has_assignment());
-    return state.v.assignment->references_left;
-  }
-
   u32 bank() const noexcept {
     return !has_assignment() ? state.c.bank : assignment().bank();
   }
@@ -268,8 +250,6 @@ public:
 
   /// Reset the reference to the value part
   void reset() noexcept;
-
-  void reset_without_refcount() noexcept;
 };
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -618,24 +598,12 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::set_value(
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::ValuePartRef::can_salvage(
-    const u32 ref_adjust) const noexcept {
+    const u32) const noexcept {
   if (!has_assignment()) {
     return state.c.reg.valid();
   }
 
-  if (!assignment().register_valid() || assignment().variable_ref()) {
-    return false;
-  }
-
-  const auto &liveness =
-      compiler->analyzer.liveness_info((u32)state.v.local_idx);
-  if (ref_count() <= ref_adjust &&
-      (liveness.last < compiler->cur_block_idx ||
-       (liveness.last == compiler->cur_block_idx && !liveness.last_full))) {
-    return true;
-  }
-
-  return false;
+  return state.v.owned && assignment().register_valid();
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -667,44 +635,25 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::reset() noexcept {
-  if (!has_assignment()) {
-    if (!state.c.reg.valid()) {
-      return;
-    }
-    compiler->register_file.unmark_fixed(state.c.reg);
-    compiler->register_file.unmark_used(state.c.reg);
-    state.c.reg = AsmReg::make_invalid();
+  AsmReg reg = state.c.reg;
+  if (!reg.valid()) {
     return;
   }
 
-  unlock();
-
-  auto &ref_count = state.v.assignment->references_left;
-  assert(ref_count != 0 || assignment().variable_ref());
-  if (ref_count != 0 && --ref_count == 0) {
-    compiler->release_assignment(state.v.local_idx);
-  }
-
-  state.c.has_assignment = false;
-  state.c.reg = AsmReg::make_invalid();
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::ValuePartRef::
-    reset_without_refcount() noexcept {
   if (!has_assignment()) {
-    if (!state.c.reg.valid()) {
-      return;
+    compiler->register_file.unmark_fixed(reg);
+    compiler->register_file.unmark_used(reg);
+  } else {
+    bool reg_unlocked = compiler->register_file.dec_lock_count(reg);
+    if (reg_unlocked && state.v.owned) {
+      assert(assignment().register_valid());
+      assert(!assignment().fixed_assignment());
+      compiler->register_file.unmark_used(reg);
+      assignment().set_register_valid(false);
     }
-    compiler->register_file.unmark_fixed(state.c.reg);
-    compiler->register_file.unmark_used(state.c.reg);
-    state.c.reg = AsmReg::make_invalid();
-    return;
   }
 
-  unlock();
-
-  state.c.has_assignment = false;
   state.c.reg = AsmReg::make_invalid();
 }
+
 } // namespace tpde

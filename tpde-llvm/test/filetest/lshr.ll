@@ -223,11 +223,11 @@ define void @lshr_i37_3(i37 %0) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movabs rax, 0x1fffffffff
 ; X64-NEXT:    and rdi, rax
 ; X64-NEXT:    shr rdi, 0x3
-; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -278,11 +278,11 @@ define void @lshr_i21_i21(i21 %0, i21 %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    and edi, 0x1fffff
 ; X64-NEXT:    mov ecx, esi
 ; X64-NEXT:    shr edi, cl
-; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -316,14 +316,14 @@ define void @lshr_i37_i37(i37 %0, i37 %1) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <lshr_i37_i37>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ubfx x0, x0, #0, #37
 ; ARM64-NEXT:    lsr x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
 entry:
     %2 = lshr i37 %0, %1
@@ -336,13 +336,11 @@ define i128 @lshr_i128_3(i128 %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x50
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    shr rax, 0x3
-; X64-NEXT:    mov rcx, rsi
-; X64-NEXT:    shl rcx, 0x3d
-; X64-NEXT:    or rcx, rax
+; X64-NEXT:    shr rdi, 0x3
+; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    shl rax, 0x3d
+; X64-NEXT:    or rax, rdi
 ; X64-NEXT:    shr rsi, 0x3
-; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    mov rdx, rsi
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
@@ -354,9 +352,10 @@ define i128 @lshr_i128_3(i128 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsl x2, x1, #61
-; ARM64-NEXT:    lsr x3, x0, #3
+; ARM64-NEXT:    lsr x0, x0, #3
 ; ARM64-NEXT:    lsr x1, x1, #3
-; ARM64-NEXT:    orr x0, x3, x2
+; ARM64-NEXT:    orr x3, x0, x2
+; ARM64-NEXT:    mov x0, x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -386,10 +385,9 @@ define i128 @lshr_i128_74(i128 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsr x1, x1, #10
-; ARM64-NEXT:    mov x0, xzr
-; ARM64-NEXT:    str x0, [x29, #0xb8]
+; ARM64-NEXT:    mov x2, xzr
 ; ARM64-NEXT:    mov x0, x1
-; ARM64-NEXT:    ldr x1, [x29, #0xb8]
+; ARM64-NEXT:    mov x1, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -404,13 +402,11 @@ define i128 @lshr_i128_128(i128 %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x50
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    shr rax, 0x0
-; X64-NEXT:    mov rcx, rsi
-; X64-NEXT:    shl rcx, 0x0
-; X64-NEXT:    or rcx, rax
+; X64-NEXT:    shr rdi, 0x0
+; X64-NEXT:    mov rax, rsi
+; X64-NEXT:    shl rax, 0x0
+; X64-NEXT:    or rax, rdi
 ; X64-NEXT:    shr rsi, 0x0
-; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    mov rdx, rsi
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
@@ -422,9 +418,10 @@ define i128 @lshr_i128_128(i128 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsr x2, x1, #0
-; ARM64-NEXT:    lsr x3, x0, #0
+; ARM64-NEXT:    lsr x0, x0, #0
 ; ARM64-NEXT:    lsr x1, x1, #0
-; ARM64-NEXT:    orr x0, x3, x2
+; ARM64-NEXT:    orr x3, x0, x2
+; ARM64-NEXT:    mov x0, x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -513,7 +510,7 @@ define void @lshr_i37_no_salvage_imm(i37 %0) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <lshr_i37_no_salvage_imm>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -522,7 +519,7 @@ define void @lshr_i37_no_salvage_imm(i37 %0) {
 ; ARM64-NEXT:    ubfx x0, x0, #0, #37
 ; ARM64-NEXT:    lsr x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
 entry:
     %1 = lshr i37 %0, 3

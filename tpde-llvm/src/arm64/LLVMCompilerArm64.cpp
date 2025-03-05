@@ -177,9 +177,6 @@ void LLVMCompilerArm64::move_val_to_ret_regs(llvm::Value *val) noexcept {
   auto vr = this->val_ref(val);
   for (unsigned i = 0; i != cnt; i++) {
     auto val_ref = vr.part(i);
-    if (i != cnt - 1) {
-      val_ref.inc_ref_count();
-    }
 
     const auto call_conv = this->cur_calling_convention();
     AsmReg reg;
@@ -289,7 +286,9 @@ void LLVMCompilerArm64::extract_element(IRValueRef vec,
                                         ScratchReg &out_reg) noexcept {
   assert(this->adaptor->val_part_count(vec) == 1);
 
-  auto [_, vec_ref] = this->val_ref_single(vec);
+  auto vec_vr = this->val_ref(vec);
+  vec_vr.disown();
+  auto vec_ref = vec_vr.part(0);
   AsmReg vec_reg = vec_ref.load_to_reg();
   // TODO: reuse vec_reg if possible
   AsmReg dst_reg = out_reg.alloc(this->adaptor->basic_ty_part_bank(ty));
@@ -304,8 +303,6 @@ void LLVMCompilerArm64::extract_element(IRValueRef vec,
   case f64: ASM(DUPd, dst_reg, vec_reg, idx); break;
   default: TPDE_UNREACHABLE("unexpected vector element type");
   }
-
-  vec_ref.reset_without_refcount();
 }
 
 void LLVMCompilerArm64::insert_element(IRValueRef vec,
@@ -314,7 +311,9 @@ void LLVMCompilerArm64::insert_element(IRValueRef vec,
                                        GenericValuePart el) noexcept {
   assert(this->adaptor->val_part_count(vec) == 1);
 
-  auto [_, vec_ref] = this->val_ref_single(vec);
+  auto vec_vr = this->val_ref(vec);
+  vec_vr.disown();
+  auto vec_ref = vec_vr.part(0);
   AsmReg vec_reg = vec_ref.load_to_reg();
   AsmReg src_reg = this->gval_as_reg(el);
   switch (ty) {
@@ -331,7 +330,6 @@ void LLVMCompilerArm64::insert_element(IRValueRef vec,
 
   assert(vec_ref.assignment().register_valid());
   vec_ref.assignment().set_modified(true);
-  vec_ref.reset_without_refcount();
 }
 
 void LLVMCompilerArm64::create_frem_calls(const IRValueRef lhs,
@@ -555,15 +553,12 @@ bool LLVMCompilerArm64::compile_call_inner(
     args.push_back(CallArg{op, flag, byval_align, byval_size});
   }
 
+  ValueRef res{this};
   if (!call->getType()->isVoidTy()) {
     const auto res_part_count = this->adaptor->val_part_count(call);
-    auto res = this->result_ref(call);
+    res = this->result_ref(call);
     for (u32 part_idx = 0; part_idx < res_part_count; ++part_idx) {
-      auto res_ref = res.part(part_idx);
-      if (part_idx != res_part_count - 1) {
-        res_ref.inc_ref_count();
-      }
-      results.push_back(std::move(res_ref));
+      results.push_back(res.part(part_idx));
     }
   }
 
@@ -658,8 +653,6 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
       ASM(CMPx, lhs_reg_lo, rhs_reg_lo);
       ASM(SBCSx, DA_ZR, lhs_reg_hi, rhs_reg_hi);
     }
-    lhs_hi.reset_without_refcount();
-    rhs_hi.reset_without_refcount();
   } else {
     GenericValuePart lhs_op = lhs.part(0);
     GenericValuePart rhs_op = rhs.part(0);

@@ -91,10 +91,8 @@ define i128 @call_i128_void() {
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    call <L0>
 ; X64-NEXT:     R_X86_64_PLT32 fn_i128_void-0x4
-; X64-NEXT:    mov rcx, rax
-; X64-NEXT:    add rcx, 0xa
+; X64-NEXT:    add rax, 0xa
 ; X64-NEXT:    adc rdx, 0x0
-; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -106,11 +104,10 @@ define i128 @call_i128_void() {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x110 <call_i128_void+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_i128_void
-; ARM64-NEXT:    adds x2, x0, #0xa
-; ARM64-NEXT:    mov w3, #0x0 // =0
-; ARM64-NEXT:    adc x3, x3, x1
-; ARM64-NEXT:    mov x0, x2
-; ARM64-NEXT:    mov x1, x3
+; ARM64-NEXT:    adds x0, x0, #0xa
+; ARM64-NEXT:    mov w2, #0x0 // =0
+; ARM64-NEXT:    adc x2, x2, x1
+; ARM64-NEXT:    mov x1, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -130,8 +127,7 @@ define i32 @call_i128_void_ret_i32(i32 %0) {
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    call <L0>
 ; X64-NEXT:     R_X86_64_PLT32 fn_i128_void-0x4
-; X64-NEXT:    mov rcx, rax
-; X64-NEXT:    add rcx, 0xa
+; X64-NEXT:    add rax, 0xa
 ; X64-NEXT:    adc rdx, 0x0
 ; X64-NEXT:    mov eax, dword ptr [rbp - 0x2c]
 ; X64-NEXT:    add rsp, 0x50
@@ -146,9 +142,9 @@ define i32 @call_i128_void_ret_i32(i32 %0) {
 ; ARM64-NEXT:    str w0, [x29, #0xa0]
 ; ARM64-NEXT:    bl 0x194 <call_i128_void_ret_i32+0x14>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_i128_void
-; ARM64-NEXT:    adds x2, x0, #0xa
-; ARM64-NEXT:    mov w3, #0x0 // =0
-; ARM64-NEXT:    adc x3, x3, x1
+; ARM64-NEXT:    adds x0, x0, #0xa
+; ARM64-NEXT:    mov w2, #0x0 // =0
+; ARM64-NEXT:    adc x2, x2, x1
 ; ARM64-NEXT:    ldr w0, [x29, #0xa0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0

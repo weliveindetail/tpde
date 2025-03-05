@@ -222,8 +222,8 @@ bool generate_inst(std::string &buf,
     auto dst_id = state.target->reg_id_from_mc_reg(dst_op.getReg());
     if (auto it = state.asm_operand_refs.find(src_id);
         it != state.asm_operand_refs.end()) {
-      state.asm_operand_refs[dst_id] = it->second;
       state.operand_ref_counts[it->second]++;
+      state.asm_operand_refs[dst_id] = it->second;
       if (src_op.isKill()) {
         llvm::raw_string_ostream os(buf);
         state.kill_reg(os, src_id);

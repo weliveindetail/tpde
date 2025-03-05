@@ -367,8 +367,7 @@ define void @and_i128_3(i128 %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x50
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    and rax, 0x3
+; X64-NEXT:    and rdi, 0x3
 ; X64-NEXT:    and rsi, 0x0
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
@@ -396,8 +395,7 @@ define void @and_i128_30000000000000003(i128 %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x50
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    and rax, 0x3
+; X64-NEXT:    and rdi, 0x3
 ; X64-NEXT:    and rsi, 0x3
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
@@ -408,7 +406,7 @@ define void @and_i128_30000000000000003(i128 %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and x2, x1, #0x3
+; ARM64-NEXT:    and x1, x1, #0x3
 ; ARM64-NEXT:    and x0, x0, #0x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
@@ -424,8 +422,7 @@ define void @and_i128_90000000000000003(i128 %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x50
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    and rax, 0x3
+; X64-NEXT:    and rdi, 0x3
 ; X64-NEXT:    and rsi, 0x9
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
@@ -453,8 +450,7 @@ define void @and_i128_90000000000000009(i128 %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x50
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    and rax, 0x9
+; X64-NEXT:    and rdi, 0x9
 ; X64-NEXT:    and rsi, 0x9
 ; X64-NEXT:    add rsp, 0x50
 ; X64-NEXT:    pop rbp
@@ -467,8 +463,8 @@ define void @and_i128_90000000000000009(i128 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x2, #0x9 // =9
 ; ARM64-NEXT:    and x2, x2, x1
-; ARM64-NEXT:    mov x3, #0x9 // =9
-; ARM64-NEXT:    and x3, x3, x0
+; ARM64-NEXT:    mov x1, #0x9 // =9
+; ARM64-NEXT:    and x1, x1, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -483,8 +479,7 @@ define void @and_i128_i128(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x60
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    and rax, rdx
+; X64-NEXT:    and rdi, rdx
 ; X64-NEXT:    and rsi, rcx
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
@@ -495,7 +490,7 @@ define void @and_i128_i128(i128 %0, i128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    and x4, x3, x1
+; ARM64-NEXT:    and x3, x3, x1
 ; ARM64-NEXT:    and x2, x2, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0
@@ -631,8 +626,7 @@ define void @and_i128_no_salvage_imm(i128 %0) {
 ; X64-NEXT:    and rax, 0x3
 ; X64-NEXT:    mov rcx, rsi
 ; X64-NEXT:    and rcx, 0x0
-; X64-NEXT:    mov rdx, rdi
-; X64-NEXT:    and rdx, rax
+; X64-NEXT:    and rdi, rax
 ; X64-NEXT:    and rsi, rcx
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
@@ -646,7 +640,7 @@ define void @and_i128_no_salvage_imm(i128 %0) {
 ; ARM64-NEXT:    mov w2, #0x0 // =0
 ; ARM64-NEXT:    and x2, x2, x1
 ; ARM64-NEXT:    and x3, x0, #0x3
-; ARM64-NEXT:    and x4, x2, x1
+; ARM64-NEXT:    and x2, x2, x1
 ; ARM64-NEXT:    and x3, x3, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xd0

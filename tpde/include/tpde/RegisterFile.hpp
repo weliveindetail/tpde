@@ -130,13 +130,16 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
     ++lock_counts[reg.id()];
   }
 
-  void dec_lock_count(const Reg reg) noexcept {
+  /// Returns true if the last lock was released.
+  bool dec_lock_count(const Reg reg) noexcept {
     assert(reg.id() < 64);
     assert(is_used(reg));
     assert(lock_counts[reg.id()] > 0);
     if (--lock_counts[reg.id()] == 0) {
       unmark_fixed(reg);
+      return true;
     }
+    return false;
   }
 
   void mark_clobbered(const Reg reg) noexcept {

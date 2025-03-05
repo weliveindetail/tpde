@@ -230,10 +230,6 @@ protected:
   /// Frees an assignment, its stack slot and registers
   void free_assignment(ValLocalIdx local_idx) noexcept;
 
-  /// Release no longer used assignment. Freed immediately if no longer live,
-  /// otherwise freeing is delayed until the end of the live end block.
-  void release_assignment(ValLocalIdx local_idx) noexcept;
-
   u32 allocate_stack_slot(u32 size) noexcept;
   void free_stack_slot(u32 slot, u32 size) noexcept;
 
@@ -624,23 +620,6 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::release_assignment(
-    const ValLocalIdx local_idx) noexcept {
-  const auto &liveness = analyzer.liveness_info(static_cast<u32>(local_idx));
-  if (liveness.last < cur_block_idx || !liveness.last_full) {
-    free_assignment(local_idx);
-    return;
-  }
-
-  // need to wait until release
-  TPDE_LOG_TRACE("Delay freeing assignment for value {}",
-                 static_cast<u32>(local_idx));
-  auto &free_list_head = assignments.delayed_free_lists[u32(liveness.last)];
-  val_assignment(local_idx)->next_delayed_free_entry = free_list_head;
-  free_list_head = local_idx;
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
     u32 size) noexcept {
   unsigned align_bits = 4;
@@ -947,13 +926,12 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
     for (const IRValueRef phi_val : adaptor->block_phis(succ)) {
       const auto phi_ref = adaptor->val_as_phi(phi_val);
       const IRValueRef inc_val = phi_ref.incoming_val_for_block(cur_block_ref);
-      // TODO: we should query all parts here
       auto ref = derived()->val_ref(inc_val);
       if (!ref.has_assignment()) {
         continue;
       }
       auto *assignment = ref.assignment();
-      ref.reset_without_refcount();
+      ref.disown();
       u32 part_count = derived()->val_parts(inc_val).count();
       for (u32 i = 0; i < part_count; ++i) {
         auto ap = AssignmentPartRef{assignment, i};
@@ -1214,8 +1192,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
             this, scratch.alloc_from_bank(parts.reg_bank(i)));
       }
 
-      ValuePartRef phi_vpr = phi_vr.part(i);
-      auto phi_ap = phi_vpr.assignment();
+      AssignmentPartRef phi_ap{phi_vr.assignment(), i};
       if (phi_ap.fixed_assignment()) {
         derived()->mov(AsmReg{phi_ap.full_reg_id()}, reg, phi_ap.part_size());
       } else {
@@ -1227,11 +1204,6 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
         assert(!register_file.is_fixed(cur_reg));
         register_file.unmark_used(cur_reg);
         phi_ap.set_register_valid(false);
-      }
-
-      if (i != part_count - 1) {
-        val_vpr.inc_ref_count();
-        phi_vpr.inc_ref_count();
       }
     }
   };
@@ -1388,17 +1360,16 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
         // TODO(ts): if the PHI is not fixed, then we can just reuse its
         // register if it has one
         auto phi_vr = this->val_ref(phi_val);
+        phi_vr.disown();
         auto phi_vpr = phi_vr.part(0);
         auto reg = tmp_reg1.alloc_from_bank(phi_vpr.bank());
         phi_vpr.reload_into_specific_fixed(this, reg);
-        phi_vpr.reset_without_refcount();
 
         if (cur_tmp_part_count == 2) {
           // TODO(ts): just change the part ref on the lower ref?
           auto phi_vpr_high = phi_vr.part(1);
           auto reg_high = tmp_reg2.alloc_from_bank(phi_vpr_high.bank());
           phi_vpr_high.reload_into_specific_fixed(this, reg_high);
-          phi_vpr_high.reset_without_refcount();
         }
       }
 

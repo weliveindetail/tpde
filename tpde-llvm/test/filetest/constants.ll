@@ -480,8 +480,8 @@ define void @phi_struct1(ptr %ptr) {
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    mov eax, dword ptr [rbp - 0x38]
 ; X64-NEXT:    mov dword ptr [rbx], eax
-; X64-NEXT:    mov ecx, dword ptr [rbp - 0x34]
-; X64-NEXT:    mov dword ptr [rbx + 0x4], ecx
+; X64-NEXT:    mov eax, dword ptr [rbp - 0x34]
+; X64-NEXT:    mov dword ptr [rbx + 0x4], eax
 ; X64-NEXT:    add rsp, 0x38
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
@@ -507,8 +507,8 @@ define void @phi_struct1(ptr %ptr) {
 ; ARM64-NEXT:    b 0x5c4 <phi_struct1+0x24>
 ; ARM64-NEXT:    ldr w0, [x29, #0xa8]
 ; ARM64-NEXT:    str w0, [x19]
-; ARM64-NEXT:    ldr w1, [x29, #0xac]
-; ARM64-NEXT:    str w1, [x19, #0x4]
+; ARM64-NEXT:    ldr w0, [x29, #0xac]
+; ARM64-NEXT:    str w0, [x19, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -549,8 +549,8 @@ define void @phi_struct2(ptr %ptr) {
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    mov eax, dword ptr [rbp - 0x40]
 ; X64-NEXT:    mov dword ptr [rbx], eax
-; X64-NEXT:    mov rcx, qword ptr [rbp - 0x38]
-; X64-NEXT:    mov qword ptr [rbx + 0x8], rcx
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x38]
+; X64-NEXT:    mov qword ptr [rbx + 0x8], rax
 ; X64-NEXT:    add rsp, 0x38
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
@@ -582,8 +582,8 @@ define void @phi_struct2(ptr %ptr) {
 ; ARM64-NEXT:    b 0x678 <phi_struct2+0x28>
 ; ARM64-NEXT:    ldr w0, [x29, #0xb0]
 ; ARM64-NEXT:    str w0, [x19]
-; ARM64-NEXT:    ldr x1, [x29, #0xb8]
-; ARM64-NEXT:    str x1, [x19, #0x8]
+; ARM64-NEXT:    ldr x0, [x29, #0xb8]
+; ARM64-NEXT:    str x0, [x19, #0x8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
 ; ARM64-NEXT:    add sp, sp, #0xc0
@@ -628,8 +628,8 @@ define void @phi_struct3(ptr %ptr) {
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    mov eax, dword ptr [rbp - 0x40]
 ; X64-NEXT:    mov dword ptr [rbx], eax
-; X64-NEXT:    mov ecx, dword ptr [rbp - 0x3c]
-; X64-NEXT:    mov dword ptr [rbx + 0x4], ecx
+; X64-NEXT:    mov eax, dword ptr [rbp - 0x3c]
+; X64-NEXT:    mov dword ptr [rbx + 0x4], eax
 ; X64-NEXT:    add rsp, 0x48
 ; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
@@ -665,8 +665,8 @@ define void @phi_struct3(ptr %ptr) {
 ; ARM64-NEXT:    b 0x730 <phi_struct3+0x30>
 ; ARM64-NEXT:    ldr w0, [x29, #0xb0]
 ; ARM64-NEXT:    str w0, [x19]
-; ARM64-NEXT:    ldr w1, [x29, #0xb4]
-; ARM64-NEXT:    str w1, [x19, #0x4]
+; ARM64-NEXT:    ldr w0, [x29, #0xb4]
+; ARM64-NEXT:    str w0, [x19, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
 ; ARM64-NEXT:    add sp, sp, #0xd0

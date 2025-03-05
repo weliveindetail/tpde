@@ -171,9 +171,6 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
   auto vr = this->val_ref(val);
   for (unsigned i = 0; i != cnt; i++) {
     auto val_ref = vr.part(i);
-    if (i != cnt - 1) {
-      val_ref.inc_ref_count();
-    }
 
     const auto call_conv = this->cur_calling_convention();
     AsmReg reg;
@@ -509,15 +506,12 @@ bool LLVMCompilerX64::compile_call_inner(
     args.push_back(CallArg{op, flag, byval_align, byval_size});
   }
 
+  ValueRef res{this};
   if (!call->getType()->isVoidTy()) {
     const auto res_part_count = this->adaptor->val_part_count(call);
-    auto res = this->result_ref(call);
+    res = this->result_ref(call);
     for (u32 part_idx = 0; part_idx < res_part_count; ++part_idx) {
-      auto res_ref = res.part(part_idx);
-      if (part_idx != res_part_count - 1) {
-        res_ref.inc_ref_count();
-      }
-      results.push_back(std::move(res_ref));
+      results.push_back(res.part(part_idx));
     }
   }
 
@@ -601,9 +595,6 @@ bool LLVMCompilerX64::compile_icmp(const llvm::ICmpInst *cmp,
       std::swap(lhs, rhs);
       jump = swap_jump(jump);
     }
-
-    lhs.inc_ref_count();
-    rhs.inc_ref_count();
 
     auto rhs_lo = rhs.part(0);
     auto rhs_hi = rhs.part(1);

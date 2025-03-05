@@ -179,7 +179,7 @@ define i37 @ctpop_i37(i37 %0) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movabs rax, 0x1fffffffff
 ; X64-NEXT:    and rdi, rax
 ; X64-NEXT:    mov rax, rdi
@@ -201,7 +201,7 @@ define i37 @ctpop_i37(i37 %0) {
 ; X64-NEXT:    movabs rax, 0x101010101010101
 ; X64-NEXT:    imul rax, rdx
 ; X64-NEXT:    shr rax, 0x38
-; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -227,7 +227,7 @@ define i64 @ctpop_i64(i64 %0) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    shr rax
 ; X64-NEXT:    movabs rcx, 0x5555555555555555
@@ -247,7 +247,7 @@ define i64 @ctpop_i64(i64 %0) {
 ; X64-NEXT:    movabs rax, 0x101010101010101
 ; X64-NEXT:    imul rax, rdx
 ; X64-NEXT:    shr rax, 0x38
-; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;

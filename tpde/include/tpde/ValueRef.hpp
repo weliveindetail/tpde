@@ -11,6 +11,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
   struct AssignmentData {
     bool is_special = false;
+    bool owned;
     ValLocalIdx local_idx = INVALID_VAL_LOCAL_IDX;
     ValueAssignment *assignment = nullptr;
   };
@@ -31,7 +32,14 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
                            .local_idx = local_idx,
                            .assignment = compiler->val_assignment(local_idx),
                            }
-  }, compiler(compiler) {}
+  }, compiler(compiler) {
+    const auto &liveness =
+        compiler->analyzer.liveness_info((u32)state.a.local_idx);
+    state.a.owned =
+        !variable_ref() && state.a.assignment->references_left <= 1 &&
+        (liveness.last < compiler->cur_block_idx ||
+         (liveness.last == compiler->cur_block_idx && !liveness.last_full));
+  }
 
   template <typename... T>
   ValueRef(CompilerBase *compiler, T &&...args) noexcept
@@ -70,10 +78,12 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
     return state.a.assignment;
   }
 
-  /// Increment the reference count artificially
-  void inc_ref_count() noexcept {
-    if (has_assignment()) {
+  /// Increment the reference count artificially; must be called before first
+  /// part is accessed.
+  void disown() noexcept {
+    if (has_assignment() && !variable_ref()) {
       ++state.a.assignment->references_left;
+      state.a.owned = false;
     }
   }
 
@@ -82,14 +92,9 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
     return state.a.local_idx;
   }
 
-  u32 ref_count() const noexcept {
-    assert(has_assignment());
-    return state.a.assignment->references_left;
-  }
-
-  ValuePartRef part(unsigned part) noexcept {
+  ValuePartRef part(unsigned part) noexcept [[clang::lifetimebound]] {
     if (has_assignment()) {
-      return ValuePartRef{compiler, local_idx(), part};
+      return ValuePartRef{compiler, local_idx(), part, state.a.owned};
     }
     return compiler->derived()->val_part_ref_special(state.s, part);
   }
@@ -97,18 +102,36 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
   /// Reset the reference to the value part
   void reset() noexcept;
 
-  void reset_without_refcount() noexcept;
+private:
+  bool variable_ref() const noexcept {
+    assert(has_assignment());
+    return AssignmentPartRef{state.a.assignment, 0}.variable_ref();
+  }
 };
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValueRef::reset() noexcept {
-  // TODO: decrement reference count when ValuePartRef doesn't track it.
-  state.a = AssignmentData{};
-}
+  if (has_assignment() && state.a.assignment != nullptr) {
+    ValLocalIdx local_idx = state.a.local_idx;
+    auto &ref_count = state.a.assignment->references_left;
+    assert(ref_count != 0 || variable_ref());
+    if (ref_count != 0 && --ref_count == 0) {
+      if (state.a.owned) {
+        compiler->free_assignment(local_idx);
+      } else {
+        // need to wait until release
+        TPDE_LOG_TRACE("Delay freeing assignment for value {}",
+                       static_cast<u32>(local_idx));
+        const auto &liveness =
+            compiler->analyzer.liveness_info(static_cast<u32>(local_idx));
+        auto &free_list_head =
+            compiler->assignments.delayed_free_lists[u32(liveness.last)];
+        state.a.assignment->next_delayed_free_entry = free_list_head;
+        free_list_head = local_idx;
+      }
+    }
+  }
 
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::ValueRef::
-    reset_without_refcount() noexcept {
   state.a = AssignmentData{};
 }
 } // namespace tpde

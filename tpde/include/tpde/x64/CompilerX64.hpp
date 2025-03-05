@@ -650,10 +650,6 @@ void CallingConv::handle_func_args(
           }
         }
       }
-
-      if (part_idx != part_count - 1) {
-        part_ref.inc_ref_count();
-      }
     }
 
     ++arg_idx;
@@ -713,6 +709,7 @@ u32 CallingConv::calculate_call_stack_space(
     }
 
     auto vr = compiler->val_ref(arg.value);
+    vr.disown();
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
       auto vpr = vr.part(part_idx);
       if (vpr.bank() == 0) {
@@ -729,10 +726,7 @@ u32 CallingConv::calculate_call_stack_space(
           stack_space += util::align_up(vpr.part_size(), 8);
         }
       }
-
-      vpr.reset_without_refcount();
     }
-    vr.reset_without_refcount();
   }
 
   return stack_space;
@@ -917,10 +911,6 @@ u32 CallingConv::handle_call_args(
           default: TPDE_FATAL("invalid size for passing vector register");
           }
         }
-      }
-
-      if (part_idx != part_count - 1) {
-        ref.reset_without_refcount();
       }
     }
   }

@@ -9,7 +9,7 @@ define i17 @smaxi17(i17 %0, i17 %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    shl edi, 0xf
 ; X64-NEXT:    sar edi, 0xf
 ; X64-NEXT:    shl esi, 0xf
@@ -17,7 +17,7 @@ define i17 @smaxi17(i17 %0, i17 %1) {
 ; X64-NEXT:    cmp edi, esi
 ; X64-NEXT:    cmovg esi, edi
 ; X64-NEXT:    mov eax, esi
-; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -82,7 +82,7 @@ define i37 @smaxi37(i37 %0, i37 %1) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <smaxi37>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xc0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -91,7 +91,7 @@ define i37 @smaxi37(i37 %0, i37 %1) {
 ; ARM64-NEXT:    cmp x0, x1
 ; ARM64-NEXT:    csel x0, x0, x1, gt
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
   %res = call i37 @llvm.smax.i37(i37 %0, i37 %1)
   ret i37 %res

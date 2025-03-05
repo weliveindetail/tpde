@@ -471,7 +471,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
       ap.set_variable_ref(true);
       ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
     }
-    return ValuePartRef{this, local_idx, 0};
+    return ValuePartRef{this, local_idx, 0, /*owned=*/false};
   }
 
   if (llvm::isa<llvm::PoisonValue>(const_val) ||
@@ -1227,7 +1227,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
   case i128: {
     ScratchReg res_scratch_high{derived()};
     auto res_low = res.part(0);
-    res_low.inc_ref_count();
     auto res_high = res.part(1);
 
     derived()->encode_loadi128(
@@ -1300,9 +1299,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
       off += part_descs[i].part.size + part_descs[i].part.pad_after;
 
       this->set_value(part_ref, res_scratch);
-      if (i != part_count - 1) {
-        part_ref.reset_without_refcount();
-      }
     }
     return true;
   }
@@ -1436,7 +1432,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
     derived()->encode_storei64(std::move(ptr_op), op_ref.part(0));
     break;
   case i128:
-    op_ref.inc_ref_count();
     derived()->encode_storei128(
         std::move(ptr_op), op_ref.part(0), op_ref.part(1));
     break;
@@ -1501,9 +1496,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
       }
 
       off += part_descs[i].part.size + part_descs[i].part.pad_after;
-      if (i != part_count - 1) {
-        part_ref.reset_without_refcount();
-      }
     }
     return true;
   }
@@ -1774,7 +1766,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
     auto res = this->result_ref(inst);
     auto res_low = res.part(0);
-    res_low.inc_ref_count();
     auto res_high = res.part(1);
 
     if (op == IntBinaryOp::udiv || op == IntBinaryOp::sdiv ||
@@ -1845,7 +1836,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       if (shift_amt.is_const()) {
         imm1 = shift_amt.state.c.data[0] & 0b111'1111; // amt
         if (imm1 < 64) {
-          lhs.inc_ref_count();
           imm2 = (64 - imm1) & 0b11'1111; // iamt
           if (op == IntBinaryOp::shl) {
             derived()->encode_shli128_lt64(
@@ -1899,7 +1889,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         break;
       }
 
-      lhs.inc_ref_count();
       if (op == IntBinaryOp::shl) {
         derived()->encode_shli128(lhs.part(0),
                                   lhs.part(1),
@@ -1923,8 +1912,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       break;
     }
     default:
-      lhs.inc_ref_count();
-      rhs.inc_ref_count();
       (derived()->*(encode_ptrs[static_cast<u32>(op)]))(lhs.part(0),
                                                         lhs.part(1),
                                                         rhs.part(0),
@@ -2408,7 +2395,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
     if (src_width > 64) {
       return false;
     }
-    res_ref.inc_ref_count();
     auto res_ref_high = res.part(1);
     ScratchReg scratch_high{derived()};
 
@@ -2499,16 +2485,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_value(
   auto src_ref = this->val_ref(src);
   auto res_ref = this->result_ref(extract);
   for (unsigned i = first_part; i <= last_part; i++) {
-    auto part_ref = src_ref.part(i);
-    if (i != last_part) {
-      part_ref.inc_ref_count();
-    }
-
-    ValuePartRef res = res_ref.part(i - first_part);
-    res.set_value(std::move(part_ref));
-    if (i != last_part) {
-      res.inc_ref_count();
-    }
+    res_ref.part(i - first_part).set_value(src_ref.part(i));
   }
 
   return true;
@@ -2529,24 +2506,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_value(
   ValueRef res_ref = this->result_ref(insert);
   for (unsigned i = 0; i < part_count; i++) {
     ValuePartRef val_ref{this};
-    bool inc_ref_count;
     if (i >= first_part && i <= last_part) {
       val_ref = ins_ref.part(i - first_part);
-      inc_ref_count = i != last_part;
     } else {
       val_ref = agg_ref.part(i);
-      inc_ref_count = i != part_count - 1 &&
-                      (last_part != part_count - 1 || i != first_part - 1);
     }
-    if (inc_ref_count) {
-      val_ref.inc_ref_count();
-    }
-
-    auto res = res_ref.part(i);
-    res.set_value(std::move(val_ref));
-    if (i != part_count - 1) {
-      res.inc_ref_count();
-    }
+    res_ref.part(i).set_value(std::move(val_ref));
   }
 
   return true;
@@ -2560,7 +2525,9 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::extract_element(
     ScratchReg &out_reg) noexcept {
   assert(this->adaptor->val_part_count(vec) == 1);
 
-  auto [_, vec_ref] = this->val_ref_single(vec);
+  auto vec_vr = this->val_ref(vec);
+  vec_vr.disown();
+  auto vec_ref = vec_vr.part(0);
   vec_ref.spill();
   vec_ref.unlock();
 
@@ -2579,8 +2546,6 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::extract_element(
   case f64: derived()->encode_loadf64(std::move(addr), out_reg); break;
   default: TPDE_UNREACHABLE("unexpected vector element type");
   }
-
-  vec_ref.reset_without_refcount();
 }
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -2591,7 +2556,9 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::insert_element(
     GenericValuePart el) noexcept {
   assert(this->adaptor->val_part_count(vec) == 1);
 
-  auto [_, vec_ref] = this->val_ref_single(vec);
+  auto vec_vr = this->val_ref(vec);
+  vec_vr.disown();
+  auto vec_ref = vec_vr.part(0);
   vec_ref.spill();
   vec_ref.unlock();
   if (vec_ref.assignment().register_valid()) {
@@ -2614,8 +2581,6 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::insert_element(
   case f64: derived()->encode_storef64(std::move(addr), std::move(el)); break;
   default: TPDE_UNREACHABLE("unexpected vector element type");
   }
-
-  vec_ref.reset_without_refcount();
 }
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -2887,7 +2852,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
 
   auto res = this->result_ref(cmpxchg);
   auto res_ref = res.part(0);
-  res_ref.inc_ref_count();
   auto res_ref_high = res.part(1);
 
   ScratchReg orig_scratch{derived()};
@@ -3137,16 +3101,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_freeze(
   auto src_ref = this->val_ref(src_val);
   auto res_ref = this->result_ref(inst);
   for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
-    const auto last_part = (part_idx == part_count - 1);
-    auto part_ref = src_ref.part(part_idx);
-    if (!last_part) {
-      part_ref.inc_ref_count();
-    }
-    ValuePartRef res = res_ref.part(part_idx);
-    res.set_value(std::move(part_ref));
-    if (!last_part) {
-      res.reset_without_refcount();
-    }
+    res_ref.part(part_idx).set_value(src_ref.part(part_idx));
   }
 
   return true;
@@ -3241,9 +3196,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
   }
     [[fallthrough]];
   case i128: {
-    lhs.inc_ref_count();
-    rhs.inc_ref_count();
-
     ScratchReg res_scratch_high{derived()};
     auto res_ref_high = res.part(1);
 
@@ -3255,7 +3207,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
                                   res_scratch,
                                   res_scratch_high);
     this->set_value(res_ref_high, res_scratch_high);
-    res_ref_high.reset_without_refcount();
     break;
   }
   default: TPDE_UNREACHABLE("invalid select basic type"); break;
@@ -3528,15 +3479,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
 
     auto [res_vr, res_ref] = this->result_ref_single(cmp);
     derived()->create_helper_call(args, {&res_ref, 1}, sym);
-
-    auto [res_vr2, res_ref2] = this->val_ref_single(cmp);
-    res_ref2.inc_ref_count();
-    res_ref2.load_to_reg();
-    auto dst_reg = res_ref2.cur_reg();
-    // Stupid hack to do the actual comparison.
-    // TODO: do a proper comparison here.
-    derived()->compile_i32_cmp_zero(dst_reg, cmp_pred);
-    this->set_value(res_ref2, dst_reg);
+    derived()->compile_i32_cmp_zero(res_vr.part(0).load_to_reg(), cmp_pred);
 
     return true;
   }
@@ -3985,7 +3928,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_landing_pad(
   this->set_value(res_ref_first, Derived::LANDING_PAD_RES_REGS[0]);
   this->set_value(res_ref_second, Derived::LANDING_PAD_RES_REGS[1]);
 
-  res_ref_second.reset_without_refcount();
   return true;
 }
 
@@ -4373,9 +4315,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       return false;
     }
 
-    auto lhs = this->val_ref(inst->getOperand(0));
-    auto rhs = this->val_ref(inst->getOperand(1));
-    auto amt = this->val_ref(inst->getOperand(2));
     ScratchReg res{derived()};
 
     // TODO: generate better code for constant amounts.
@@ -4403,7 +4342,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         }
       }
 
-      rhs.part(0); // ref-count
+      // ref-count; do this first so that lhs might see ref_count == 1
+      (void)this->val_ref(inst->getOperand(1));
+      auto lhs = this->val_ref(inst->getOperand(0));
+      auto amt = this->val_ref(inst->getOperand(2));
       if (!(derived()->*fn)(lhs.part(0), amt.part(0), res)) {
         return false;
       }
@@ -4431,6 +4373,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
         }
       }
 
+      auto lhs = this->val_ref(inst->getOperand(0));
+      auto rhs = this->val_ref(inst->getOperand(1));
+      auto amt = this->val_ref(inst->getOperand(2));
       if (!(derived()->*fn)(lhs.part(0), rhs.part(0), amt.part(0), res)) {
         return false;
       }
@@ -4783,8 +4728,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
   if (width == 128) {
     auto lhs_ref = lhs.part(0);
     auto rhs_ref = rhs.part(0);
-    lhs_ref.inc_ref_count();
-    rhs_ref.inc_ref_count();
     GenericValuePart lhs_op_high = lhs.part(1);
     GenericValuePart rhs_op_high = rhs.part(1);
     ScratchReg res_val{derived()}, res_val_high{derived()}, res_of{derived()};
@@ -4807,9 +4750,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
     this->set_value(res_ref_val, res_val);
     this->set_value(res_ref_high, res_val_high);
     this->set_value(res_ref_of, res_of);
-
-    res_ref_high.reset_without_refcount();
-    res_ref_of.reset_without_refcount();
     return true;
   }
 
@@ -4866,7 +4806,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_overflow_intrin(
   auto res_ref_of = res_ref.part(1);
   this->set_value(res_ref_val, res_val);
   this->set_value(res_ref_of, res_of);
-  res_ref_of.reset_without_refcount();
   return true;
 }
 

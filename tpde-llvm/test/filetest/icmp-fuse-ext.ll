@@ -38,12 +38,12 @@ define i32 @icmp_fuse_zext32(i32, i32) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    cmp edi, esi
 ; X64-NEXT:    mov edi, 0x0
 ; X64-NEXT:    setl dil
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -161,13 +161,13 @@ define i32 @icmp_fuse_sext32(i32, i32) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    cmp edi, esi
 ; X64-NEXT:    mov edi, 0x0
 ; X64-NEXT:    setl dil
 ; X64-NEXT:    neg rdi
 ; X64-NEXT:    mov eax, edi
-; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;

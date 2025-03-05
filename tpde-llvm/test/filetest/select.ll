@@ -101,9 +101,9 @@ define i128 @select_i128_reg(i1 %0, i128 %1, i128 %2) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x60
 ; X64-NEXT:    test dil, 0x1
-; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    cmove rax, rcx
+; X64-NEXT:    cmove rsi, rcx
 ; X64-NEXT:    cmove rdx, r8
+; X64-NEXT:    mov rax, rsi
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -114,8 +114,9 @@ define i128 @select_i128_reg(i1 %0, i128 %1, i128 %2) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    csel x0, x4, x2, eq
+; ARM64-NEXT:    csel x4, x4, x2, eq
 ; ARM64-NEXT:    csel x5, x5, x3, eq
+; ARM64-NEXT:    mov x0, x4
 ; ARM64-NEXT:    mov x1, x5
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xe0
@@ -197,9 +198,9 @@ define %struct.i8_i64 @select_i8_i64_0(i1 %0, %struct.i8_i64 %1, %struct.i8_i64 
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x60
 ; X64-NEXT:    test dil, 0x1
-; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    cmove rax, rcx
+; X64-NEXT:    cmove rsi, rcx
 ; X64-NEXT:    cmove rdx, r8
+; X64-NEXT:    mov eax, esi
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -210,8 +211,9 @@ define %struct.i8_i64 @select_i8_i64_0(i1 %0, %struct.i8_i64 %1, %struct.i8_i64 
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    csel x0, x3, x1, eq
+; ARM64-NEXT:    csel x3, x3, x1, eq
 ; ARM64-NEXT:    csel x4, x4, x2, eq
+; ARM64-NEXT:    mov w0, w3
 ; ARM64-NEXT:    mov x1, x4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xe0
@@ -228,9 +230,9 @@ define %struct.i8_i64 @select_i8_i64_1(i1 %0, %struct.i8_i64 %1, %struct.i8_i64 
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x60
 ; X64-NEXT:    test dil, 0x1
-; X64-NEXT:    mov rax, rcx
-; X64-NEXT:    cmove rax, rsi
+; X64-NEXT:    cmove rcx, rsi
 ; X64-NEXT:    cmove r8, rdx
+; X64-NEXT:    mov eax, ecx
 ; X64-NEXT:    mov rdx, r8
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
@@ -242,8 +244,9 @@ define %struct.i8_i64 @select_i8_i64_1(i1 %0, %struct.i8_i64 %1, %struct.i8_i64 
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    csel x0, x1, x3, eq
+; ARM64-NEXT:    csel x1, x1, x3, eq
 ; ARM64-NEXT:    csel x2, x2, x4, eq
+; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    mov x1, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xe0
@@ -260,9 +263,9 @@ define [2 x i64] @select_a2i64(i1 %0, [2 x i64] %1, [2 x i64] %2) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x60
 ; X64-NEXT:    test dil, 0x1
-; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    cmove rax, rcx
+; X64-NEXT:    cmove rsi, rcx
 ; X64-NEXT:    cmove rdx, r8
+; X64-NEXT:    mov rax, rsi
 ; X64-NEXT:    add rsp, 0x60
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -273,8 +276,9 @@ define [2 x i64] @select_a2i64(i1 %0, [2 x i64] %1, [2 x i64] %2) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    csel x0, x3, x1, eq
+; ARM64-NEXT:    csel x3, x3, x1, eq
 ; ARM64-NEXT:    csel x4, x4, x2, eq
+; ARM64-NEXT:    mov x0, x3
 ; ARM64-NEXT:    mov x1, x4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xe0

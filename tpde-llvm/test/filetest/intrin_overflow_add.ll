@@ -274,13 +274,11 @@ define i128 @uadd_i128_0(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x70
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    add rax, rdx
+; X64-NEXT:    add rdi, rdx
 ; X64-NEXT:    adc rsi, rcx
-; X64-NEXT:    setb cl
-; X64-NEXT:    movzx ecx, cl
-; X64-NEXT:    mov rdx, rax
-; X64-NEXT:    mov rax, rdx
+; X64-NEXT:    setb al
+; X64-NEXT:    movzx eax, al
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    mov rdx, rsi
 ; X64-NEXT:    add rsp, 0x70
 ; X64-NEXT:    pop rbp
@@ -291,11 +289,9 @@ define i128 @uadd_i128_0(i128 %0, i128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adds x4, x0, x2
-; ARM64-NEXT:    adcs x5, x1, x3
-; ARM64-NEXT:    cset w6, hs
-; ARM64-NEXT:    mov x0, x4
-; ARM64-NEXT:    mov x1, x5
+; ARM64-NEXT:    adds x0, x0, x2
+; ARM64-NEXT:    adcs x1, x1, x3
+; ARM64-NEXT:    cset w4, hs
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xe0
 ; ARM64-NEXT:    ret
@@ -311,12 +307,10 @@ define i1 @uadd_i128_1(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x80
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    add rax, rdx
+; X64-NEXT:    add rdi, rdx
 ; X64-NEXT:    adc rsi, rcx
-; X64-NEXT:    setb cl
-; X64-NEXT:    movzx ecx, cl
-; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    setb al
+; X64-NEXT:    movzx eax, al
 ; X64-NEXT:    add rsp, 0x80
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -326,10 +320,10 @@ define i1 @uadd_i128_1(i128 %0, i128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adds x4, x0, x2
-; ARM64-NEXT:    adcs x5, x1, x3
-; ARM64-NEXT:    cset w6, hs
-; ARM64-NEXT:    mov w0, w6
+; ARM64-NEXT:    adds x0, x0, x2
+; ARM64-NEXT:    adcs x1, x1, x3
+; ARM64-NEXT:    cset w4, hs
+; ARM64-NEXT:    mov w0, w4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xf0
 ; ARM64-NEXT:    ret
@@ -601,13 +595,11 @@ define i128 @sadd_i128_0(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x70
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    add rax, rdx
+; X64-NEXT:    add rdi, rdx
 ; X64-NEXT:    adc rsi, rcx
-; X64-NEXT:    seto cl
-; X64-NEXT:    movzx ecx, cl
-; X64-NEXT:    mov rdx, rax
-; X64-NEXT:    mov rax, rdx
+; X64-NEXT:    seto al
+; X64-NEXT:    movzx eax, al
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    mov rdx, rsi
 ; X64-NEXT:    add rsp, 0x70
 ; X64-NEXT:    pop rbp
@@ -618,11 +610,9 @@ define i128 @sadd_i128_0(i128 %0, i128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adds x4, x0, x2
-; ARM64-NEXT:    adcs x5, x1, x3
-; ARM64-NEXT:    cset w6, vs
-; ARM64-NEXT:    mov x0, x4
-; ARM64-NEXT:    mov x1, x5
+; ARM64-NEXT:    adds x0, x0, x2
+; ARM64-NEXT:    adcs x1, x1, x3
+; ARM64-NEXT:    cset w4, vs
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xe0
 ; ARM64-NEXT:    ret
@@ -638,12 +628,10 @@ define i1 @sadd_i128_1(i128 %0, i128 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x80
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    add rax, rdx
+; X64-NEXT:    add rdi, rdx
 ; X64-NEXT:    adc rsi, rcx
-; X64-NEXT:    seto cl
-; X64-NEXT:    movzx ecx, cl
-; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    seto al
+; X64-NEXT:    movzx eax, al
 ; X64-NEXT:    add rsp, 0x80
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -653,10 +641,10 @@ define i1 @sadd_i128_1(i128 %0, i128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adds x4, x0, x2
-; ARM64-NEXT:    adcs x5, x1, x3
-; ARM64-NEXT:    cset w6, vs
-; ARM64-NEXT:    mov w0, w6
+; ARM64-NEXT:    adds x0, x0, x2
+; ARM64-NEXT:    adcs x1, x1, x3
+; ARM64-NEXT:    cset w4, vs
+; ARM64-NEXT:    mov w0, w4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xf0
 ; ARM64-NEXT:    ret
