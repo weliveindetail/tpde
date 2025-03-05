@@ -256,6 +256,13 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePartRef::alloc_reg_impl(
         u64 exclusion_mask, const bool reload) noexcept {
+  if (state.c.reg.valid()) {
+    // TODO: implement this if needed
+    assert((exclusion_mask & (1 << state.c.reg.id())) == 0 &&
+           "moving temporary registers in alloc_reg is unsupported");
+    return state.c.reg;
+  }
+
   u32 bank;
   if (has_assignment()) {
     auto ap = assignment();
@@ -269,12 +276,6 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
     bank = ap.bank();
   } else {
-    if (state.c.reg.valid()) {
-      // TODO: implement this if needed
-      assert((exclusion_mask & (1 << state.c.reg.id())) == 0 &&
-             "moving temporary registers in alloc_reg is unsupported");
-      return state.c.reg;
-    }
     bank = state.c.bank;
   }
 

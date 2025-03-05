@@ -692,9 +692,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueRef
   const auto local_idx =
       static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
 
-  if (val_assignment(local_idx) == nullptr) {
-    init_assignment(value, local_idx);
-  }
+  assert(val_assignment(local_idx) != nullptr && "value use before def");
   return ValueRef{this, local_idx};
 }
 
@@ -926,12 +924,15 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
     for (const IRValueRef phi_val : adaptor->block_phis(succ)) {
       const auto phi_ref = adaptor->val_as_phi(phi_val);
       const IRValueRef inc_val = phi_ref.incoming_val_for_block(cur_block_ref);
-      auto ref = derived()->val_ref(inc_val);
-      if (!ref.has_assignment()) {
+      if (derived()->val_ref_special(inc_val)) {
         continue;
       }
-      auto *assignment = ref.assignment();
-      ref.disown();
+      ValLocalIdx local_idx =
+          static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(inc_val));
+      auto *assignment = this->val_assignment(local_idx);
+      if (!assignment) {
+        continue;
+      }
       u32 part_count = derived()->val_parts(inc_val).count();
       for (u32 i = 0; i < part_count; ++i) {
         auto ap = AssignmentPartRef{assignment, i};
@@ -1172,7 +1173,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
     const auto parts = derived()->val_parts(incoming_val);
     u32 part_count = parts.count();
     assert(part_count > 0);
-    auto phi_vr = derived()->val_ref(phi);
+    auto phi_vr = derived()->result_ref(phi);
     auto val_vr = derived()->val_ref(incoming_val);
     for (u32 i = 0; i < part_count; ++i) {
       // TODO(ts): just have this outside the loop and change the part

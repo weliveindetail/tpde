@@ -230,8 +230,8 @@ struct LLVMCompilerBase : public LLVMCompiler,
   }
 
   ValueRef result_ref(const llvm::Value *v) noexcept {
-    assert(llvm::isa<llvm::Argument>(v));
-    // For arguments
+    assert((llvm::isa<llvm::Argument, llvm::PHINode>(v)));
+    // For arguments, phis nodes
     return Base::result_ref(v);
   }
 

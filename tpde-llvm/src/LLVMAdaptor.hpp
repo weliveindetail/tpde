@@ -506,7 +506,7 @@ public:
     if (auto *arg = llvm::dyn_cast<llvm::Argument>(val)) {
       return arg_lookup_idx(arg);
     }
-    TPDE_FATAL("unhandled value type");
+    TPDE_UNREACHABLE("unhandled value type");
   }
 
   const ValInfo &val_info(const llvm::Instruction *inst) const noexcept {
