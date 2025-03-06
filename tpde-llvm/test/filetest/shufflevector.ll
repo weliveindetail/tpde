@@ -4,6 +4,37 @@
 ; RUN: tpde-llc --target=x86_64 %s | %objdump | FileCheck %s -check-prefixes=X64
 ; RUN: tpde-llc --target=aarch64 %s | %objdump | FileCheck %s -check-prefixes=ARM64
 
+define void @shufflevector_unused() {
+; X64-LABEL: <shufflevector_unused>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    mov qword ptr [rbp - 0x40], rax
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <shufflevector_unused>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    ldr q0, [x29, #0xa0]
+; ARM64-NEXT:    mov v0.d[0], x0
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    mov v0.d[1], x0
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+  %1 = shufflevector <2 x i64> zeroinitializer, <2 x i64> zeroinitializer, <2 x i32> <i32 1, i32 0>
+  ret void
+}
+
 define <4 x i32> @shufflevector_v4i32_v4i32_identity1(<4 x i32> %a) {
 ; X64-LABEL: <shufflevector_v4i32_v4i32_identity1>:
 ; X64:         push rbp
@@ -129,3 +160,35 @@ define <4 x i32> @shufflevector_v4i32_v4i32_mix_zero(<4 x i32> %a) {
   ret <4 x i32> %r
 }
 
+define <2 x i32> @shufflevector_v2i32_v4i32_hightolow(<4 x i32> %a) {
+; X64-LABEL: <shufflevector_v2i32_v4i32_hightolow>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    movapd xmmword ptr [rbp - 0x40], xmm0
+; X64-NEXT:    mov eax, dword ptr [rbp - 0x38]
+; X64-NEXT:    mov dword ptr [rbp - 0x30], eax
+; X64-NEXT:    mov eax, dword ptr [rbp - 0x34]
+; X64-NEXT:    mov dword ptr [rbp - 0x2c], eax
+; X64-NEXT:    movq xmm0, qword ptr [rbp - 0x30]
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <shufflevector_v2i32_v4i32_hightolow>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov w0, v0.s[2]
+; ARM64-NEXT:    mov v1.s[0], w0
+; ARM64-NEXT:    mov w0, v0.s[3]
+; ARM64-NEXT:    mov v1.s[1], w0
+; ARM64-NEXT:    mov v0.16b, v1.16b
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+  %r = shufflevector <4 x i32> %a, <4 x i32> poison, <2 x i32> <i32 2, i32 3>
+  ret <2 x i32> %r
+}

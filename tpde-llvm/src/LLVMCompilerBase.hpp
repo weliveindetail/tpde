@@ -2725,13 +2725,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
   llvm::Value *lhs = inst->getOperand(0);
   llvm::Value *rhs = inst->getOperand(1);
 
-  auto *vec_ty = llvm::cast<llvm::FixedVectorType>(inst->getType());
-  unsigned nelem = vec_ty->getNumElements();
-  assert((nelem & (nelem - 1)) == 0 && "vector nelem must be power of two");
+  auto *dst_ty = llvm::cast<llvm::FixedVectorType>(inst->getType());
+  auto *src_ty = llvm::cast<llvm::FixedVectorType>(lhs->getType());
+  unsigned dst_nelem = dst_ty->getNumElements();
+  unsigned src_nelem = src_ty->getNumElements();
+  assert((dst_nelem & (dst_nelem - 1)) == 0 && "invalid dst vector size");
+  assert((src_nelem & (src_nelem - 1)) == 0 && "invalid src vector size");
 
   // TODO: deduplicate with adaptor
   LLVMBasicValType bvt;
-  auto *elem_ty = vec_ty->getElementType();
+  assert(dst_ty->getElementType() == src_ty->getElementType());
+  auto *elem_ty = dst_ty->getElementType();
   if (elem_ty->isFloatTy()) {
     bvt = LLVMBasicValType::f32;
   } else if (elem_ty->isDoubleTy()) {
@@ -2748,19 +2752,19 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
     TPDE_UNREACHABLE("invalid element type for shufflevector");
   }
 
-  {
-    ScratchReg tmp{this};
-    auto [_, result] = this->result_ref_single(inst);
-    result.alloc_reg();
-  }
+  ValueRef result = this->result_ref(inst);
+  // Make sure the results has an allocated register. insert_element will use
+  // load_to_reg to lock the value into a register, but if we don't allocate a
+  // register here, the first load will reload the value from the stack.
+  result.part(0).alloc_reg();
 
   ScratchReg tmp{this};
   llvm::ArrayRef<int> mask = inst->getShuffleMask();
-  for (unsigned i = 0; i < nelem; i++) {
+  for (unsigned i = 0; i < dst_nelem; i++) {
     if (mask[i] == llvm::PoisonMaskElem) {
       continue;
     }
-    IRValueRef src = unsigned(mask[i]) < nelem ? lhs : rhs;
+    IRValueRef src = unsigned(mask[i]) < src_nelem ? lhs : rhs;
     if (auto *cst = llvm::dyn_cast<llvm::Constant>(src)) {
       auto *cst_elem = cst->getAggregateElement(i);
       u64 const_elem;
@@ -2778,7 +2782,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
       ValuePartRef const_ref{this, &const_elem, size, bank};
       derived()->materialize_constant(const_ref, tmp);
     } else {
-      derived()->extract_element(src, mask[i] & (nelem - 1), bvt, tmp);
+      derived()->extract_element(src, mask[i] & (src_nelem - 1), bvt, tmp);
     }
     derived()->insert_element(inst, i, bvt, std::move(tmp));
   }
