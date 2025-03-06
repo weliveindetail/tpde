@@ -2349,6 +2349,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_trunc(
     const llvm::TruncInst *inst) noexcept {
+  if (!inst->getType()->isIntegerTy()) {
+    return false;
+  }
+
   // this is a no-op since every operation that depends on it will
   // zero/sign-extend the value anyways
   auto [res_vr, res_ref] = this->result_ref_single(inst);
@@ -2359,6 +2363,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_trunc(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
     const llvm::CastInst *inst, bool sign) noexcept {
+  if (!inst->getType()->isIntegerTy()) {
+    return false;
+  }
+
   auto *src_val = inst->getOperand(0);
 
   unsigned src_width = src_val->getType()->getIntegerBitWidth();
@@ -2416,6 +2424,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ptr_to_int(
     const llvm::PtrToIntInst *inst) noexcept {
+  if (!inst->getType()->isIntegerTy()) {
+    return false;
+  }
+
   // this is a no-op since every operation that depends on it will
   // zero/sign-extend the value anyways
   auto [res_vr, res_ref] = this->result_ref_single(inst);
@@ -2426,6 +2438,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ptr_to_int(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_ptr(
     const llvm::IntToPtrInst *inst) noexcept {
+  if (!inst->getType()->isPointerTy()) {
+    return false;
+  }
+
   // zero-extend the value
   auto *src_val = inst->getOperand(0);
   const auto bit_width = src_val->getType()->getIntegerBitWidth();
@@ -2450,6 +2466,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
     const llvm::BitCastInst *inst) noexcept {
   // at most this should be fine to implement as a copy operation
   // as the values cannot be aggregates
+  // TODO: this is not necessarily a no-op for vectors
   const auto src = inst->getOperand(0);
 
   const auto src_parts = this->adaptor->val_parts(src);
