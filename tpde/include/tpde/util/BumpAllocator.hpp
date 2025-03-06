@@ -15,6 +15,7 @@ class BumpAllocator {
   uintptr_t cur = 0;
   uintptr_t end = 0;
   SmallVector<void *> slabs;
+  SmallVector<std::pair<void *, size_t>, 0> large_slabs;
 
   static constexpr auto SLAB_ALIGNMENT =
       std::align_val_t(alignof(std::max_align_t));
@@ -22,9 +23,8 @@ class BumpAllocator {
 public:
   BumpAllocator() = default;
   ~BumpAllocator() noexcept {
-    for (void *slab : slabs) {
-      ::operator delete(slab, SlabSize, SLAB_ALIGNMENT);
-    }
+    deallocate_slabs();
+    deallocate_large_slabs();
   }
 
   BumpAllocator(const BumpAllocator &) = delete;
@@ -34,13 +34,12 @@ public:
   /// Deallocate all but the first slab and reset current pointer to beginning.
   void reset() noexcept {
     if (!slabs.empty()) {
-      for (size_t i = 1; i < slabs.size(); ++i) {
-        ::operator delete(slabs[i], SlabSize, SLAB_ALIGNMENT);
-      }
+      deallocate_slabs(1);
       slabs.resize(1);
       cur = reinterpret_cast<uintptr_t>(slabs[0]);
       end = cur + SlabSize;
     }
+    deallocate_large_slabs();
   }
 
   void *allocate(size_t size, size_t align) noexcept {
@@ -55,14 +54,31 @@ public:
   }
 
   void *allocate_slab(size_t size, [[maybe_unused]] size_t align) noexcept {
-    // TODO: support this
-    assert(size <= SlabSize && "cannot allocate more than slab size");
     assert(align <= alignof(std::max_align_t) && "alignment type unsupported");
+    if (size > SlabSize) [[unlikely]] {
+      void *slab = ::operator new(size, SLAB_ALIGNMENT, std::nothrow);
+      large_slabs.emplace_back(slab, size);
+      return slab;
+    }
+
     void *slab = ::operator new(SlabSize, SLAB_ALIGNMENT, std::nothrow);
     slabs.push_back(slab);
     cur = reinterpret_cast<uintptr_t>(slab) + size;
     end = reinterpret_cast<uintptr_t>(slab) + SlabSize;
     return slab;
+  }
+
+private:
+  void deallocate_slabs(size_t skip = 0) noexcept {
+    for (size_t i = skip; i < slabs.size(); ++i) {
+      ::operator delete(slabs[i], SlabSize, SLAB_ALIGNMENT);
+    }
+  }
+
+  void deallocate_large_slabs() noexcept {
+    for (auto [slab, size] : large_slabs) {
+      ::operator delete(slab, size, SLAB_ALIGNMENT);
+    }
   }
 };
 
