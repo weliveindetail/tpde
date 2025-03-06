@@ -457,8 +457,9 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     assert(ty == LLVMBasicValType::ptr && sub_part == 0);
     auto local_idx =
         static_cast<ValLocalIdx>(this->adaptor->val_local_idx(const_val));
-    if (!this->val_assignment(local_idx)) {
-      auto *assignment = this->allocate_assignment(1);
+    auto *assignment = this->val_assignment(local_idx);
+    if (!assignment) {
+      assignment = this->allocate_assignment(1);
       assignment->initialize(u32(local_idx),
                              Config::PLATFORM_POINTER_SIZE,
                              0,
@@ -471,7 +472,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
       ap.set_variable_ref(true);
       ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
     }
-    return ValuePartRef{this, local_idx, 0, /*owned=*/false};
+    return ValuePartRef{this, local_idx, assignment, 0, /*owned=*/false};
   }
 
   if (llvm::isa<llvm::PoisonValue>(const_val) ||

@@ -99,7 +99,8 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
 
   ValuePartRef part(unsigned part) noexcept [[clang::lifetimebound]] {
     if (has_assignment()) {
-      return ValuePartRef{compiler, local_idx(), part, state.a.mode == 2};
+      return ValuePartRef{
+          compiler, local_idx(), state.a.assignment, part, state.a.mode == 2};
     }
     return compiler->derived()->val_part_ref_special(state.s, part);
   }
