@@ -1468,30 +1468,32 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
       auto part_ty = part_descs[i].part.type;
       switch (part_ty) {
       case i1:
-      case i8: derived()->encode_storei8(std::move(part_addr), part_ref); break;
+      case i8:
+        derived()->encode_storei8(std::move(part_addr), std::move(part_ref));
+        break;
       case i16:
-        derived()->encode_storei16(std::move(part_addr), part_ref);
+        derived()->encode_storei16(std::move(part_addr), std::move(part_ref));
         break;
       case i32:
-        derived()->encode_storei32(std::move(part_addr), part_ref);
+        derived()->encode_storei32(std::move(part_addr), std::move(part_ref));
         break;
       case i64:
       case ptr:
-        derived()->encode_storei64(std::move(part_addr), part_ref);
+        derived()->encode_storei64(std::move(part_addr), std::move(part_ref));
         break;
       case i128:
-        derived()->encode_storei64(std::move(part_addr), part_ref);
+        derived()->encode_storei64(std::move(part_addr), std::move(part_ref));
         break;
       case v32:
       case f32:
-        derived()->encode_storef32(std::move(part_addr), part_ref);
+        derived()->encode_storef32(std::move(part_addr), std::move(part_ref));
         break;
       case v64:
       case f64:
-        derived()->encode_storef64(std::move(part_addr), part_ref);
+        derived()->encode_storef64(std::move(part_addr), std::move(part_ref));
         break;
       case v128:
-        derived()->encode_storev128(std::move(part_addr), part_ref);
+        derived()->encode_storev128(std::move(part_addr), std::move(part_ref));
         break;
       default: assert(0); return false;
       }
@@ -4721,10 +4723,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
   if (test == cond) {                                                          \
     if (is_double) {                                                           \
       derived()->encode_is_fpclass_##name##_double(                            \
-          zero_ref, std::move(op_ref), res_scratch);                           \
+          std::move(zero_ref), std::move(op_ref), res_scratch);                \
     } else {                                                                   \
       derived()->encode_is_fpclass_##name##_float(                             \
-          zero_ref, std::move(op_ref), res_scratch);                           \
+          std::move(zero_ref), std::move(op_ref), res_scratch);                \
     }                                                                          \
     this->set_value(res_ref, res_scratch);                                     \
     return true;                                                               \
@@ -4739,6 +4741,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
   // zero
   derived()->materialize_constant(zero_ref, res_scratch.alloc_gp());
 
+  AsmReg op_reg = op_ref.load_to_reg();
+
 #define TEST(cond, name)                                                       \
   if (test & cond) {                                                           \
     if (is_double) {                                                           \
@@ -4747,10 +4751,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
        * GenericValuePart and res_scratch becomes invalid by the time          \
        * the encode function is entered */                                     \
       derived()->encode_is_fpclass_##name##_double(                            \
-          std::move(res_scratch), op_ref, res_scratch);                        \
+          std::move(res_scratch), op_reg, res_scratch);                        \
     } else {                                                                   \
       derived()->encode_is_fpclass_##name##_float(                             \
-          std::move(res_scratch), op_ref, res_scratch);                        \
+          std::move(res_scratch), op_reg, res_scratch);                        \
     }                                                                          \
   }
   TEST(SIGNALING_NAN, snan)

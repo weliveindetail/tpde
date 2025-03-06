@@ -157,20 +157,16 @@ template <typename Adaptor,
           typename Config>
 std::optional<FeMem> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
     encodeable_as_mem(GenericValuePart &gv, unsigned align) noexcept {
-    const ValuePartRef *ptr;
-    if (std::holds_alternative<ValuePartRef>(gv.state)) {
-        ptr = &std::get<ValuePartRef>(gv.state);
-    } else if (std::holds_alternative<ValuePartRef *>(gv.state)) {
-        ptr = std::get<ValuePartRef *>(gv.state);
-    } else {
+    if (!std::holds_alternative<ValuePartRef>(gv.state)) {
+        return std::nullopt;
+    }
+    const ValuePartRef &vpr = std::get<ValuePartRef>(gv.state);
+
+    if (!vpr.has_assignment()) {
         return std::nullopt;
     }
 
-    if (!ptr->has_assignment()) {
-        return std::nullopt;
-    }
-
-    const auto ap = ptr->assignment();
+    const auto ap = vpr.assignment();
     if (ap.register_valid() || ap.variable_ref())
         return std::nullopt;
     if (ap.frame_off() & (align - 1))
@@ -318,18 +314,6 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                 }
             } else if (op_ref.state.c.reg == reg) {
                 assert(0 && "not implemented");
-            }
-            continue;
-        }
-
-        if (std::holds_alternative<ValuePartRef *>(op)) {
-            auto &op_ref = *std::get<ValuePartRef *>(op);
-            if (op_ref.has_assignment()) {
-                assert(!op_ref.has_reg());
-                const auto ap = op_ref.assignment();
-                if (ap.register_valid()) {
-                    assert(AsmReg{ap.full_reg_id()} != reg);
-                }
             }
             continue;
         }

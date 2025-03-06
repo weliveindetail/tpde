@@ -53,8 +53,7 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
   // TODO(ts): evaluate the use of std::variant
   // TODO(ts): I don't like the ValuePartRefs but we also don't want to
   // force all the operands into registers at the start of the encoding...
-  std::variant<std::monostate, ValuePartRef, ValuePartRef *, ScratchReg, Expr>
-      state;
+  std::variant<std::monostate, ValuePartRef, ScratchReg, Expr> state;
 
   GenericValuePart() = default;
 
@@ -89,18 +88,6 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
   GenericValuePart(ScratchReg &&reg) noexcept {
     assert(reg.has_reg());
     state = std::move(reg);
-  }
-
-  // no salvaging
-  GenericValuePart(ValuePartRef &ref) noexcept {
-    if (ref.is_const()) {
-      state = ValuePartRef{
-          ref.compiler, ref.state.c.data, ref.state.c.size, ref.state.c.bank};
-      return;
-    }
-    // TODO(ts): check if it is a variable_ref/frame_ptr and then
-    // turning it into an Address?
-    state = &ref;
   }
 
   // salvaging
