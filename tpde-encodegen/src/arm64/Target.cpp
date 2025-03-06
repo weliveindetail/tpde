@@ -88,6 +88,21 @@ void EncodingTargetArm64::get_inst_candidates(
                                      << ".second);\n";
                                 });
         (void)mnemu;
+        candidates.emplace_back(
+            [mnem, shift](llvm::raw_ostream &os,
+                          const llvm::MachineInstr &mi,
+                          std::span<const std::string> ops) {
+              os << "    ASMD(" << mnem << ", ";
+              unsigned op_idx = 0;
+              if (mi.getOperand(0).isImm()) {
+                os << "(Da64PrfOp)" << mi.getOperand(0).getImm();
+              } else {
+                os << format_reg(mi.getOperand(0), ops[0]);
+                op_idx += 1;
+              }
+              os << ", " << format_reg(mi.getOperand(1), ops[op_idx]);
+              os << ", " << (mi.getOperand(2).getImm() << shift) << ");\n";
+            });
       };
   const auto handle_shift_imm = [&](std::string_view mnem, unsigned size) {
     candidates.emplace_back(
@@ -261,9 +276,9 @@ void EncodingTargetArm64::get_inst_candidates(
                                      std::string_view mnemu,
                                      unsigned shift) {
     if (std::string_view{Name} == mnem_llvm) {
+      // This also handles the default case, which is difficult due to shift.
       handle_mem_imm(mnem, mnemu, shift);
       // TODO: If offset is zero, handle expr with base+index
-      handle_default(mnem);
     }
   };
   case_mem_unsigned("LDRBBui", "LDRBu", "LDURB", 0);

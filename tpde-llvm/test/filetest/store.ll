@@ -838,7 +838,7 @@ define void @store_i48(ptr %a, i48 %b) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsr x2, x1, #32
 ; ARM64-NEXT:    str w1, [x0]
-; ARM64-NEXT:    strh w2, [x0, #0x2]
+; ARM64-NEXT:    strh w2, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -901,7 +901,7 @@ define void @store_i48_const(ptr %a) {
 ; ARM64-NEXT:    movk x1, #0x1337, lsl #32
 ; ARM64-NEXT:    lsr x2, x1, #32
 ; ARM64-NEXT:    str w1, [x0]
-; ARM64-NEXT:    strh w2, [x0, #0x2]
+; ARM64-NEXT:    strh w2, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -936,7 +936,7 @@ define void @store_i56(ptr %a, i56 %b) {
 ; ARM64-NEXT:    lsr x3, x1, #32
 ; ARM64-NEXT:    str w1, [x0]
 ; ARM64-NEXT:    strb w2, [x0, #0x6]
-; ARM64-NEXT:    strh w3, [x0, #0x2]
+; ARM64-NEXT:    strh w3, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -975,7 +975,7 @@ define void @store_i56_const(ptr %a) {
 ; ARM64-NEXT:    lsr x3, x1, #32
 ; ARM64-NEXT:    str w1, [x0]
 ; ARM64-NEXT:    strb w2, [x0, #0x6]
-; ARM64-NEXT:    strh w3, [x0, #0x2]
+; ARM64-NEXT:    strh w3, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret

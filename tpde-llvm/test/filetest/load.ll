@@ -436,7 +436,7 @@ define i48 @load_i48(ptr %a) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldrh w1, [x0, #0x2]
+; ARM64-NEXT:    ldrh w1, [x0, #0x4]
 ; ARM64-NEXT:    ldr w0, [x0]
 ; ARM64-NEXT:    orr x2, x0, x1, lsl #32
 ; ARM64-NEXT:    mov x0, x2
@@ -472,10 +472,10 @@ define i48 @load_i48_alt(ptr %a) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ldrh w1, [x0, #0x2]
+; ARM64-NEXT:    ldrh w1, [x0, #0x4]
 ; ARM64-NEXT:    ldr w2, [x0]
 ; ARM64-NEXT:    orr x3, x2, x1, lsl #32
-; ARM64-NEXT:    ldrh w1, [x0, #0x2]
+; ARM64-NEXT:    ldrh w1, [x0, #0x4]
 ; ARM64-NEXT:    ldr w0, [x0]
 ; ARM64-NEXT:    orr x2, x0, x1, lsl #32
 ; ARM64-NEXT:    mov x0, x2
@@ -512,7 +512,7 @@ define i56 @load_i56(ptr %a) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ldrb w1, [x0, #0x6]
-; ARM64-NEXT:    ldrh w2, [x0, #0x2]
+; ARM64-NEXT:    ldrh w2, [x0, #0x4]
 ; ARM64-NEXT:    orr w1, w2, w1, lsl #16
 ; ARM64-NEXT:    ldr w2, [x0]
 ; ARM64-NEXT:    orr x0, x2, x1, lsl #32
@@ -591,12 +591,12 @@ define i56 @load_i56_alt(ptr %a) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    ldrb w1, [x0, #0x6]
-; ARM64-NEXT:    ldrh w2, [x0, #0x2]
+; ARM64-NEXT:    ldrh w2, [x0, #0x4]
 ; ARM64-NEXT:    orr w1, w2, w1, lsl #16
 ; ARM64-NEXT:    ldr w2, [x0]
 ; ARM64-NEXT:    orr x3, x2, x1, lsl #32
 ; ARM64-NEXT:    ldrb w1, [x0, #0x6]
-; ARM64-NEXT:    ldrh w2, [x0, #0x2]
+; ARM64-NEXT:    ldrh w2, [x0, #0x4]
 ; ARM64-NEXT:    orr w1, w2, w1, lsl #16
 ; ARM64-NEXT:    ldr w2, [x0]
 ; ARM64-NEXT:    orr x0, x2, x1, lsl #32
