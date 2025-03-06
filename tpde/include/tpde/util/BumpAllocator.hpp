@@ -56,12 +56,12 @@ public:
   void *allocate_slab(size_t size, [[maybe_unused]] size_t align) noexcept {
     assert(align <= alignof(std::max_align_t) && "alignment type unsupported");
     if (size > SlabSize) [[unlikely]] {
-      void *slab = ::operator new(size, SLAB_ALIGNMENT, std::nothrow);
+      void *slab = allocate_mem(size, SLAB_ALIGNMENT);
       large_slabs.emplace_back(slab, size);
       return slab;
     }
 
-    void *slab = ::operator new(SlabSize, SLAB_ALIGNMENT, std::nothrow);
+    void *slab = allocate_mem(SlabSize, SLAB_ALIGNMENT);
     slabs.push_back(slab);
     cur = reinterpret_cast<uintptr_t>(slab) + size;
     end = reinterpret_cast<uintptr_t>(slab) + SlabSize;
@@ -69,15 +69,29 @@ public:
   }
 
 private:
+  void *allocate_mem(size_t size, std::align_val_t align) noexcept {
+    return ::operator new(size, align, std::nothrow);
+  }
+
+  void deallocate_mem(void *ptr,
+                      [[maybe_unused]] size_t size,
+                      std::align_val_t align) noexcept {
+#ifdef __cpp_sized_deallocation
+    ::operator delete(ptr, size, align);
+#else
+    ::operator delete(ptr, align);
+#endif
+  }
+
   void deallocate_slabs(size_t skip = 0) noexcept {
     for (size_t i = skip; i < slabs.size(); ++i) {
-      ::operator delete(slabs[i], SlabSize, SLAB_ALIGNMENT);
+      deallocate_mem(slabs[i], SlabSize, SLAB_ALIGNMENT);
     }
   }
 
   void deallocate_large_slabs() noexcept {
     for (auto [slab, size] : large_slabs) {
-      ::operator delete(slab, size, SLAB_ALIGNMENT);
+      deallocate_mem(slab, size, SLAB_ALIGNMENT);
     }
   }
 };
