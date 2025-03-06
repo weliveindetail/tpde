@@ -633,6 +633,9 @@ void EncodingTargetArm64::get_inst_candidates(
   case_default("SSHLv2i32", "SSHL2s");
   case_default("SSHLv4i32", "SSHL4s");
   case_default("SSHLv2i64", "SSHL2d");
+  case_default("XTNv8i8", "XTN_8b");
+  case_default("XTNv4i16", "XTN_4h");
+  case_default("XTNv2i32", "XTN_2s");
   case_default("FNEGv2f32", "FNEG2s");
   case_default("FNEGv4f32", "FNEG4s");
   case_default("FNEGv2f64", "FNEG2d");

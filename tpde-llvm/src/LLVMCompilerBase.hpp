@@ -2349,15 +2349,47 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_trunc(
     const llvm::TruncInst *inst) noexcept {
-  if (!inst->getType()->isIntegerTy()) {
-    return false;
-  }
+  ValueRef res_vr = this->result_ref(inst);
+  ValueRef src_vr = this->val_ref(inst->getOperand(0));
 
-  // this is a no-op since every operation that depends on it will
-  // zero/sign-extend the value anyways
-  auto [res_vr, res_ref] = this->result_ref_single(inst);
-  res_ref.set_value(this->val_ref(inst->getOperand(0)).part(0));
-  return true;
+  LLVMBasicValType bvt = this->adaptor->val_info(inst).type;
+  switch (bvt) {
+    using enum LLVMBasicValType;
+  case i8:
+  case i16:
+  case i32:
+  case i64:
+    // no-op, users will extend anyways. When truncating an i128, the first part
+    // contains the lowest bits.
+    res_vr.part(0).set_value(src_vr.part(0));
+    return true;
+  case v64: {
+    auto dst_width = inst->getType()->getScalarType()->getIntegerBitWidth();
+    auto src_width =
+        inst->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth();
+    // With the currently legal vector types, we only support halving vectors.
+    if (dst_width * 2 != src_width) {
+      return false;
+    }
+
+    using EncodeFnTy = bool (Derived::*)(GenericValuePart &&, ScratchReg &);
+    EncodeFnTy encode_fn = nullptr;
+    switch (dst_width) {
+    case 8: encode_fn = &Derived::encode_trunc_v8i16_8; break;
+    case 16: encode_fn = &Derived::encode_trunc_v4i32_16; break;
+    case 32: encode_fn = &Derived::encode_trunc_v2i64_32; break;
+    default: return false;
+    }
+    ScratchReg res{derived()};
+    if (!(derived()->*encode_fn)(src_vr.part(0), res)) {
+      return false;
+    }
+    ValuePartRef res_ref = res_vr.part(0);
+    this->set_value(res_ref, res);
+    return true;
+  }
+  default: return false;
+  }
 }
 
 template <typename Adaptor, typename Derived, typename Config>

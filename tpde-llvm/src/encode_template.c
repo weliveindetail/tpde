@@ -339,6 +339,14 @@ i64 TARGET_V1 sat_add_i64(i64 a, i64 b) { i64 r; return __builtin_add_overflow(a
 i64 TARGET_V1 sat_sub_i64(i64 a, i64 b) { i64 r; return __builtin_sub_overflow(a, b, &r) ? a < 0 ? INT64_MIN : INT64_MAX : r; }
 
 // --------------------------
+// vector casts
+// --------------------------
+
+v8i8 TARGET_V1 trunc_v8i16_8(v8i16 v) { return __builtin_convertvector(v, v8i8); }
+v4i16 TARGET_V1 trunc_v4i32_16(v4i32 v) { return __builtin_convertvector(v, v4i16); }
+v2i32 TARGET_V1 trunc_v2i64_32(v2i64 v) { return __builtin_convertvector(v, v2i32); }
+
+// --------------------------
 // vector integer arithmetic
 // --------------------------
 
