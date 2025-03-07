@@ -191,7 +191,6 @@ struct AssemblerElfBase {
   struct DataSection {
     std::vector<u8> data;
     std::vector<Elf64_Rela> relocs;
-    std::vector<u32> relocs_to_patch;
 
     Elf64_Shdr hdr;
     SymRef sym;

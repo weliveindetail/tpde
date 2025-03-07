@@ -309,9 +309,6 @@ void AssemblerElfBase::reloc_sec(const SecRef sec_ref,
   rel.r_addend = addend;
   DataSection &sec = get_section(sec_ref);
   sec.relocs.push_back(rel);
-  if (!sym_is_local(sym)) {
-    sec.relocs_to_patch.push_back(sec.relocs.size() - 1);
-  }
 }
 
 void AssemblerElfBase::reloc_sec(const SecRef sec,
@@ -861,18 +858,21 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
     out.resize(out.size() + pad);
 
     if (i + 1 < sections.size() && sections[i + 1].hdr.sh_type == SHT_RELA) {
-      // patch relocations
-      for (auto idx : sec.relocs_to_patch) {
-        auto ty = ELF64_R_TYPE(sec.relocs[idx].r_info);
-        auto sym = ELF64_R_SYM(sec.relocs[idx].r_info);
-        sym = (sym & ~0x8000'0000u) + local_symbols.size();
-        sec.relocs[idx].r_info = ELF64_R_INFO(sym, ty);
-      }
-
       const auto rela_sh_off = out.size();
       out.insert(out.end(),
                  reinterpret_cast<uint8_t *>(&*sec.relocs.begin()),
                  reinterpret_cast<uint8_t *>(&*sec.relocs.end()));
+
+      // patch relocations in output
+      std::span<Elf64_Rela> out_relocs{
+          reinterpret_cast<Elf64_Rela *>(&out[rela_sh_off]), sec.relocs.size()};
+      for (auto &reloc : out_relocs) {
+        if (u32 sym = ELF64_R_SYM(reloc.r_info); !sym_is_local(SymRef{sym})) {
+          auto ty = ELF64_R_TYPE(reloc.r_info);
+          auto fixed_sym = (sym & ~0x8000'0000u) + local_symbols.size();
+          reloc.r_info = ELF64_R_INFO(fixed_sym, ty);
+        }
+      }
 
       auto *hdr = sec_hdr(i + 1);
       hdr->sh_name = sections[i + 1].hdr.sh_name;
