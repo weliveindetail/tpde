@@ -96,6 +96,15 @@ private:
   }
 };
 
+template <typename T>
+struct BumpAllocatorDeleter {
+  constexpr BumpAllocatorDeleter() noexcept = default;
+  void operator()(T *ptr) const { std::destroy_at(ptr); }
+};
+
+template <typename T>
+using BumpAllocUniquePtr = std::unique_ptr<T, BumpAllocatorDeleter<T>>;
+
 } // namespace tpde::util
 
 template <size_t SlabSize>

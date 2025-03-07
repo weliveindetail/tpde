@@ -96,6 +96,8 @@ consteval static u32 sec_count() {
 
 void AssemblerElfBase::reset() noexcept {
   sections.clear();
+  section_allocator.reset();
+
   global_symbols.clear();
   local_symbols.resize(1); // first symbol must be null
   temp_symbols.clear();
@@ -120,6 +122,13 @@ void AssemblerElfBase::reset() noexcept {
   eh_init_cie();
 }
 
+AssemblerElfBase::SecRef AssemblerElfBase::create_section(
+    unsigned type, unsigned flags, unsigned name) noexcept {
+  SecRef ref = static_cast<SecRef>(sections.size());
+  sections.emplace_back(new (section_allocator) DataSection(type, flags, name));
+  return ref;
+}
+
 AssemblerElfBase::DataSection &
     AssemblerElfBase::get_or_create_section(SecRef &ref,
                                             unsigned rela_name,
@@ -128,13 +137,12 @@ AssemblerElfBase::DataSection &
                                             unsigned align,
                                             bool with_rela) noexcept {
   if (ref == INVALID_SEC_REF) [[unlikely]] {
-    ref = static_cast<SecRef>(sections.size());
     const auto str_off = strtab.size();
     if (with_rela) {
-      sections.push_back(DataSection(type, flags, rela_name + 5));
-      sections.push_back(DataSection(SHT_RELA, 0, rela_name));
+      ref = create_section(type, flags, rela_name + 5);
+      (void)create_section(SHT_RELA, 0, rela_name);
     } else {
-      sections.push_back(DataSection(type, flags, rela_name));
+      ref = create_section(type, flags, rela_name);
     }
 
     std::string_view name{elf::SHSTRTAB.data() + rela_name +
@@ -207,7 +215,9 @@ AssemblerElfBase::SecRef
 }
 
 void AssemblerElfBase::init_sections() noexcept {
-  sections.resize(elf::sec_count());
+  for (size_t i = 0; i < elf::sec_count(); i++) {
+    (void)create_section(SHT_NULL, 0, 0);
+  }
 
   unsigned off_text = elf::sec_off(".rela.text");
   (void)get_or_create_section(
@@ -736,13 +746,13 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
 
   std::vector<u8> out{};
 
-  u32 obj_size = sizeof(Elf64_Shdr) + sizeof(Elf64_Shdr) * sections.size() + 16;
+  u32 obj_size = sizeof(Elf64_Ehdr) + sizeof(Elf64_Shdr) * sections.size() + 16;
   obj_size +=
       sizeof(Elf64_Sym) * (local_symbols.size() + global_symbols.size());
   obj_size += strtab.size();
   obj_size += SHSTRTAB.size();
-  for (const DataSection &sec : sections) {
-    obj_size += sec.data.size() + sec.relocs.size() * sizeof(Elf64_Rela) + 16;
+  for (const auto &sec : sections) {
+    obj_size += sec->data.size() + sec->relocs.size() * sizeof(Elf64_Rela) + 16;
   }
   out.reserve(obj_size);
 
@@ -848,7 +858,7 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
   }
 
   for (size_t i = sec_count(); i < sections.size(); ++i) {
-    DataSection &sec = sections[i];
+    DataSection &sec = *sections[i];
     sec.hdr.sh_offset = out.size();
     sec.hdr.sh_size = sec.size();
     *sec_hdr(i) = sec.hdr;
@@ -857,7 +867,7 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
     out.insert(out.end(), sec.data.begin(), sec.data.end());
     out.resize(out.size() + pad);
 
-    if (i + 1 < sections.size() && sections[i + 1].hdr.sh_type == SHT_RELA) {
+    if (i + 1 < sections.size() && sections[i + 1]->hdr.sh_type == SHT_RELA) {
       const auto rela_sh_off = out.size();
       out.insert(out.end(),
                  reinterpret_cast<uint8_t *>(&*sec.relocs.begin()),
@@ -875,7 +885,7 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
       }
 
       auto *hdr = sec_hdr(i + 1);
-      hdr->sh_name = sections[i + 1].hdr.sh_name;
+      hdr->sh_name = sections[i + 1]->hdr.sh_name;
       hdr->sh_type = SHT_RELA;
       hdr->sh_flags = SHF_INFO_LINK;
       hdr->sh_offset = rela_sh_off;

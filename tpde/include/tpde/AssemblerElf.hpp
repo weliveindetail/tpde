@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base.hpp"
+#include "tpde/util/BumpAllocator.hpp"
 #include "util/SmallVector.hpp"
 #include "util/misc.hpp"
 
@@ -207,7 +208,8 @@ struct AssemblerElfBase {
 private:
   const TargetInfo &target_info;
 
-  util::SmallVector<DataSection, 16> sections;
+  util::BumpAllocator<> section_allocator;
+  util::SmallVector<util::BumpAllocUniquePtr<DataSection>, 16> sections;
 
   std::vector<Elf64_Sym> global_symbols, local_symbols;
 
@@ -302,16 +304,20 @@ public:
 
   DataSection &get_section(SecRef ref) noexcept {
     assert(ref != INVALID_SEC_REF);
-    return sections[static_cast<u32>(ref)];
+    return *sections[static_cast<u32>(ref)];
   }
 
   const DataSection &get_section(SecRef ref) const noexcept {
     assert(ref != INVALID_SEC_REF);
-    return sections[static_cast<u32>(ref)];
+    return *sections[static_cast<u32>(ref)];
   }
 
 private:
   void init_sections() noexcept;
+
+  /// Allocate a new section.
+  [[nodiscard]] SecRef
+      create_section(unsigned type, unsigned flags, unsigned name) noexcept;
 
   DataSection &get_or_create_section(SecRef &ref,
                                      unsigned rela_name,

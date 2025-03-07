@@ -92,7 +92,7 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
   util::SmallVector<AllocSection> alloc_sections;
 
   for (size_t i = 0; i < assembler.sections.size(); ++i) {
-    const auto &sec = assembler.sections[i];
+    const auto &sec = *assembler.sections[i];
     if (!(sec.hdr.sh_flags & SHF_ALLOC)) {
       continue;
     }
@@ -184,7 +184,7 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
       } else if (elf_sym->st_shndx == SHN_ABS) {
         sym_addrs[idx] = reinterpret_cast<void *>(elf_sym->st_value);
       } else if (elf_sym->st_shndx < SHN_LORESERVE) {
-        auto off = assembler.sections[elf_sym->st_shndx].hdr.sh_addr;
+        auto off = assembler.sections[elf_sym->st_shndx]->hdr.sh_addr;
         sym_addrs[idx] = mapped_addr + off + elf_sym->st_value;
       } else {
         TPDE_LOG_ERR("unhandled section index {:x}", elf_sym->st_shndx);
