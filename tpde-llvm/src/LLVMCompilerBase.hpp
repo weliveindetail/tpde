@@ -80,7 +80,6 @@ struct LLVMCompilerBase : public LLVMCompiler,
   struct VarRefInfo {
     IRValueRef val;
     bool alloca;
-    bool local;
     u32 alloca_frame_off;
   };
 
@@ -972,7 +971,6 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
     for (auto entry : this->adaptor->global_lookup) {
       variable_refs[entry.second].val = entry.first;
       variable_refs[entry.second].alloca = false;
-      variable_refs[entry.second].local = entry.first->hasLocalLinkage();
       // assignments are initialized lazily in val_ref_special.
     }
   }

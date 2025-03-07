@@ -232,7 +232,8 @@ void LLVMCompilerX64::load_address_of_var_reference(
       // only support access to thread-local variables through the intrinsic.
       TPDE_FATAL("thread-local variable access without intrinsic");
     }
-    if (!info.local) {
+    // External weak might be undefined, hence cannot use relative addressing.
+    if (!global->isDSOLocal() || global->hasExternalWeakLinkage()) {
       // mov the ptr from the GOT
       ASM(MOV64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
       this->assembler.reloc_text(
