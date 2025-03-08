@@ -54,7 +54,7 @@ void EncodingTargetArm64::get_inst_candidates(
     unsigned esize = 1 << len;
     uint64_t welem = ((uint64_t)1 << (s + 1)) - 1;
     // ROR(welem, r) as bits(esize)
-    welem = (welem >> r) | (welem << (esize - r));
+    welem = r ? (welem >> r) | (welem << (esize - r)) : welem;
     if (esize < 64) {
       welem &= ((uint64_t)1 << esize) - 1;
     }
@@ -66,44 +66,44 @@ void EncodingTargetArm64::get_inst_candidates(
     return wmask;
   };
 
-  const auto handle_mem_imm =
-      [&](std::string_view mnem, std::string_view mnemu, unsigned shift) {
-        auto cond1 =
-            std::format("{:#x}, {}", mi.getOperand(2).getImm() << shift, shift);
-        candidates.emplace_back(1,
-                                "encodeable_with_mem_uoff12",
-                                cond1,
-                                [mnem](llvm::raw_ostream &os,
-                                       const llvm::MachineInstr &mi,
-                                       std::span<const std::string> ops) {
-                                  os << "    ASMD(" << mnem << ", ";
-                                  if (mi.getOperand(0).isImm()) {
-                                    os << "(Da64PrfOp)"
-                                       << mi.getOperand(0).getImm();
-                                  } else {
-                                    os << format_reg(mi.getOperand(0), ops[0]);
-                                  }
-                                  const auto &mem_op = ops[ops.size() - 1];
-                                  os << ", " << mem_op << ".first, " << mem_op
-                                     << ".second);\n";
-                                });
-        (void)mnemu;
-        candidates.emplace_back(
-            [mnem, shift](llvm::raw_ostream &os,
-                          const llvm::MachineInstr &mi,
-                          std::span<const std::string> ops) {
-              os << "    ASMD(" << mnem << ", ";
-              unsigned op_idx = 0;
-              if (mi.getOperand(0).isImm()) {
-                os << "(Da64PrfOp)" << mi.getOperand(0).getImm();
-              } else {
-                os << format_reg(mi.getOperand(0), ops[0]);
-                op_idx += 1;
-              }
-              os << ", " << format_reg(mi.getOperand(1), ops[op_idx]);
-              os << ", " << (mi.getOperand(2).getImm() << shift) << ");\n";
-            });
-      };
+  const auto handle_mem_imm = [&](std::string_view mnem,
+                                  std::string_view mnemu,
+                                  unsigned shift) {
+    auto cond1 =
+        std::format("{:#x}, {}", mi.getOperand(2).getImm() << shift, shift);
+    candidates.emplace_back(1,
+                            "encodeable_with_mem_uoff12",
+                            cond1,
+                            [mnem](llvm::raw_ostream &os,
+                                   const llvm::MachineInstr &mi,
+                                   std::span<const std::string> ops) {
+                              os << "    ASMD(" << mnem << ", ";
+                              if (mi.getOperand(0).isImm()) {
+                                os << "(Da64PrfOp)"
+                                   << mi.getOperand(0).getImm();
+                              } else {
+                                os << format_reg(mi.getOperand(0), ops[0]);
+                              }
+                              const auto &mem_op = ops[ops.size() - 1];
+                              os << ", " << mem_op << ".first, " << mem_op
+                                 << ".second);\n";
+                            });
+    (void)mnemu;
+    candidates.emplace_back([mnem, shift](llvm::raw_ostream &os,
+                                          const llvm::MachineInstr &mi,
+                                          std::span<const std::string> ops) {
+      os << "    ASMD(" << mnem << ", ";
+      unsigned op_idx = 0;
+      if (mi.getOperand(0).isImm()) {
+        os << "(Da64PrfOp)" << mi.getOperand(0).getImm();
+      } else {
+        os << format_reg(mi.getOperand(0), ops[0]);
+        op_idx += 1;
+      }
+      os << ", " << format_reg(mi.getOperand(1), ops[op_idx]);
+      os << ", " << (mi.getOperand(2).getImm() << shift) << ");\n";
+    });
+  };
   const auto handle_shift_imm = [&](std::string_view mnem, unsigned size) {
     candidates.emplace_back(
         2,
@@ -658,7 +658,7 @@ void EncodingTargetArm64::get_inst_candidates(
     uint64_t imm = 0;
     unsigned op = mi.getOperand(1).getImm();
     for (int i = 0; i < 8; i++) {
-      imm |= op & (1 << i) ? 0xff << 8 * i : 0;
+      imm |= op & (1 << i) ? uint64_t{0xff} << 8 * i : 0;
     }
     handle_noimm("MOVI2d", std::format(", {:#x}", imm));
   }

@@ -46,13 +46,14 @@ inline void
   switch (static_cast<UnresolvedEntryKind>(fixup.kind)) {
   case UnresolvedEntryKind::JMP_OR_MEM_DISP: {
     // fix the jump immediate
-    *reinterpret_cast<u32 *>(dst_ptr) = (info.off - fixup.off) - 4;
+    u32 value = (info.off - fixup.off) - 4;
+    std::memcpy(dst_ptr, &value, sizeof(u32));
     break;
   }
   case UnresolvedEntryKind::JUMP_TABLE: {
     const auto table_off = *reinterpret_cast<u32 *>(dst_ptr);
     const auto diff = (i32)info.off - (i32)table_off;
-    *reinterpret_cast<i32 *>(dst_ptr) = diff;
+    std::memcpy(dst_ptr, &diff, sizeof(u32));
     break;
   }
   }

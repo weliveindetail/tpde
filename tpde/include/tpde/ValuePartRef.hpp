@@ -277,7 +277,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
         const bool reload) noexcept {
   if (state.c.reg.valid()) {
     // TODO: implement this if needed
-    assert((exclusion_mask & (1 << state.c.reg.id())) == 0 &&
+    assert((exclusion_mask & (1ull << state.c.reg.id())) == 0 &&
            "moving temporary registers in alloc_reg is unsupported");
     return state.c.reg;
   }
@@ -288,7 +288,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     if (ap.register_valid()) {
       lock(compiler);
       // TODO: implement this if needed
-      assert((exclusion_mask & (1 << state.v.reg.id())) == 0 &&
+      assert((exclusion_mask & (1ull << state.v.reg.id())) == 0 &&
              "moving registers in alloc_reg is unsupported");
       return state.v.reg;
     }

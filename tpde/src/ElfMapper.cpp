@@ -250,14 +250,19 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
 
     if constexpr (TargetArch == Arch::X86_64) {
       switch (ELF64_R_TYPE(reloc.r_info)) {
-      case R_X86_64_64: *reinterpret_cast<u64 *>(pc) = syma; break;
+      case R_X86_64_64: {
+        u64 v64 = syma;
+        std::memcpy(reinterpret_cast<u8 *>(pc), &v64, sizeof(u64));
+        break;
+      }
       case R_X86_64_PC32: {
         auto v = syma - pc;
         if (util::sext(v, 32) != intptr_t(v)) {
           TPDE_LOG_ERR("R_X86_64_PC32 out of range: {:x}", v);
           success = false;
         }
-        *reinterpret_cast<u32 *>(pc) = v;
+        u32 v32 = v;
+        std::memcpy(reinterpret_cast<u8 *>(pc), &v32, sizeof(u32));
         break;
       }
       case R_X86_64_PLT32: {
@@ -269,7 +274,8 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
           TPDE_LOG_ERR("R_X86_64_PLT32 out of range: {:x}", v);
           success = false;
         }
-        *reinterpret_cast<u32 *>(pc) = v;
+        u32 v32 = v;
+        std::memcpy(reinterpret_cast<u8 *>(pc), &v32, sizeof(u32));
         break;
       }
       case R_X86_64_GOTPCREL: {
@@ -279,7 +285,8 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
           TPDE_LOG_ERR("R_X86_64_GOTPCREL out of range: {:x}", v);
           success = false;
         }
-        *reinterpret_cast<u32 *>(pc) = v;
+        u32 v32 = v;
+        std::memcpy(reinterpret_cast<u8 *>(pc), &v32, sizeof(u32));
         break;
       }
       default:
@@ -288,14 +295,19 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
       }
     } else if constexpr (TargetArch == Arch::AArch64) {
       switch (ELF64_R_TYPE(reloc.r_info)) {
-      case R_AARCH64_ABS64: *reinterpret_cast<u64 *>(pc) = syma; break;
+      case R_AARCH64_ABS64: {
+        u64 v64 = syma;
+        std::memcpy(reinterpret_cast<u8 *>(pc), &v64, sizeof(u64));
+        break;
+      }
       case R_AARCH64_PREL32: {
         auto v = syma - pc;
         if (util::sext(v, 32) != intptr_t(v)) {
           TPDE_LOG_ERR("R_AARCH64_PREL32 out of range: {:x}", v);
           success = false;
         }
-        *reinterpret_cast<u32 *>(pc) = v;
+        u32 v32 = v;
+        std::memcpy(reinterpret_cast<u8 *>(pc), &v32, sizeof(u32));
         break;
       }
       case R_AARCH64_CALL26: {

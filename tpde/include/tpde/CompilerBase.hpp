@@ -104,10 +104,12 @@ struct CompilerBase {
     // 16 bytes for values with only one part (the majority)
     union {
       ValueAssignment *next_free_list_entry;
-      ValLocalIdx next_delayed_free_entry;
 
       struct {
-        u32 references_left;
+        union {
+          ValLocalIdx next_delayed_free_entry;
+          u32 references_left;
+        };
         u8 max_part_size;
         u8 lock_count;
 

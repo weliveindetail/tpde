@@ -866,9 +866,11 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
 
     if (i + 1 < sections.size() && sections[i + 1]->hdr.sh_type == SHT_RELA) {
       const auto rela_sh_off = out.size();
-      out.insert(out.end(),
-                 reinterpret_cast<uint8_t *>(&*sec.relocs.begin()),
-                 reinterpret_cast<uint8_t *>(&*sec.relocs.end()));
+      if (!sec.relocs.empty()) {
+        out.insert(out.end(),
+                   reinterpret_cast<uint8_t *>(&*sec.relocs.begin()),
+                   reinterpret_cast<uint8_t *>(&*sec.relocs.end()));
+      }
 
       // patch relocations in output
       std::span<Elf64_Rela> out_relocs{
