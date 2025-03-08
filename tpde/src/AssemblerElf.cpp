@@ -451,11 +451,8 @@ void AssemblerElfBase::eh_init_cie(SymRef personality_func_addr) noexcept {
 
   u32 bias = (!personality_func_addr.valid()) ? 0 : 2;
 
-  // code_alignment_factor is 1
-  data[off + 12 + bias] = 1;
-
-  // data_alignment_factor is 127 representing -1
-  data[off + 13 + bias] = 127;
+  data[off + 12 + bias] = target_info.cie_code_alignment_factor;
+  data[off + 13 + bias] = target_info.cie_data_alignment_factor;
 
   // return_addr_register is defined by the derived impl
   data[off + 14 + bias] = target_info.cie_return_addr_register;

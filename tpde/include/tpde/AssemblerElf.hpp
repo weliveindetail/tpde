@@ -148,6 +148,10 @@ struct AssemblerElfBase {
     u8 cie_return_addr_register;
     /// The initial instructions for the CIE.
     std::span<const u8> cie_instrs;
+    /// Code alignment factor for the CIE, ULEB128, must be one byte.
+    u8 cie_code_alignment_factor;
+    /// Data alignment factor for the CIE, SLEB128, must be one byte.
+    u8 cie_data_alignment_factor;
 
     /// The relocation type for 32-bit pc-relative offsets.
     u32 reloc_pc32;

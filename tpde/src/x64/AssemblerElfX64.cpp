@@ -21,7 +21,7 @@ static constexpr auto get_cie_initial_instrs() {
       dst, dwarf::DW_CFA_def_cfa, dwarf::x64::DW_reg_rsp, 8);
   // cfa_offset ra, 8
   dst += AssemblerElfX64::write_eh_inst(
-      dst, dwarf::DW_CFA_offset, dwarf::x64::DW_reg_ra, 8);
+      dst, dwarf::DW_CFA_offset, dwarf::x64::DW_reg_ra, 1);
   return std::make_pair(data, dst - data.data());
 }
 
@@ -35,6 +35,8 @@ const AssemblerElfBase::TargetInfo AssemblerElfX64::TARGET_INFO{
 
     .cie_return_addr_register = dwarf::x64::DW_reg_ra,
     .cie_instrs = {cie_instrs.first.data(), cie_instrs.second},
+    .cie_code_alignment_factor = 1, // ULEB128 1
+    .cie_data_alignment_factor = 120, // SLEB128 -8
 
     .reloc_pc32 = R_X86_64_PC32,
     .reloc_abs64 = R_X86_64_64,

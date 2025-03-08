@@ -9,8 +9,8 @@
 ; EH-NEXT:   Format:                DWARF32
 ; EH-NEXT:   Version:               1
 ; EH-NEXT:   Augmentation:          "zR"
-; EH-NEXT:   Code alignment factor: 1
-; EH-NEXT:   Data alignment factor: -1
+; EH-NEXT:   Code alignment factor: 4
+; EH-NEXT:   Data alignment factor: -8
 ; EH-NEXT:   Return address column: 30
 ; EH-NEXT:   Augmentation data:     1B
 ; EH-EMPTY:
@@ -31,6 +31,8 @@ add1(%a, %b) {
 ; EH-NEXT:   DW_CFA_offset: W29 -192
 ; EH-NEXT:   DW_CFA_offset: W30 -184
 ; EH-NEXT:   DW_CFA_advance_loc: 0 to 0x2c
+; EH-NEXT:   DW_CFA_nop:
+; EH-NEXT:   DW_CFA_nop:
 ; EH-NEXT:   DW_CFA_nop:
 ; EH-EMPTY:
 ; ASM-LABEL: 0000000000000020 <add1>:

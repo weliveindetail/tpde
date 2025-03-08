@@ -1117,12 +1117,13 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
     u32 func_idx) noexcept {
   const CallingConv conv = Base::derived()->cur_calling_convention();
 
+  // NB: code alignment factor 1, data alignment factor -8.
   const auto fde_off = this->assembler.eh_begin_fde();
   // push rbp
   this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 1);
   this->assembler.eh_write_inst(dwarf::DW_CFA_def_cfa_offset, 16);
   this->assembler.eh_write_inst(
-      dwarf::DW_CFA_offset, dwarf::x64::DW_reg_rbp, 16);
+      dwarf::DW_CFA_offset, dwarf::x64::DW_reg_rbp, 2);
   // mov rbp, rsp
   this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 3);
   this->assembler.eh_write_inst(dwarf::DW_CFA_def_cfa_register,
@@ -1166,7 +1167,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
         dwarf::x64::DW_reg_r15,
     };
     u8 dwarf_reg = gpreg_to_dwarf[reg];
-    auto cfa_off = 16 + 8 * num_saved_regs;
+    auto cfa_off = num_saved_regs + 2;
     this->assembler.eh_write_inst(dwarf::DW_CFA_offset, dwarf_reg, cfa_off);
   }
 

@@ -10,7 +10,7 @@
 ; EH-NEXT:   Version:               1
 ; EH-NEXT:   Augmentation:          "zR"
 ; EH-NEXT:   Code alignment factor: 1
-; EH-NEXT:   Data alignment factor: -1
+; EH-NEXT:   Data alignment factor: -8
 ; EH-NEXT:   Return address column: 16
 ; EH-NEXT:   Augmentation data:     1B
 ; EH-EMPTY:
