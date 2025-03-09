@@ -91,11 +91,6 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                       LLVMBasicValType ty,
                       GenericValuePart el) noexcept;
 
-  void create_frem_calls(IRValueRef lhs,
-                         IRValueRef rhs,
-                         ValuePartRef &&res,
-                         bool is_double) noexcept;
-
   bool compile_unreachable(const llvm::UnreachableInst *) noexcept;
   bool compile_alloca(const llvm::AllocaInst *) noexcept;
   bool compile_br(const llvm::BranchInst *) noexcept;
@@ -325,28 +320,6 @@ void LLVMCompilerArm64::insert_element(ValuePart &vec_ref,
   }
 
   vec_ref.set_modified();
-}
-
-void LLVMCompilerArm64::create_frem_calls(const IRValueRef lhs,
-                                          const IRValueRef rhs,
-                                          ValuePartRef &&res_val,
-                                          const bool is_double) noexcept {
-  SymRef sym;
-  if (is_double) {
-    sym = get_libfunc_sym(LibFunc::fmod);
-  } else {
-    sym = get_libfunc_sym(LibFunc::fmodf);
-  }
-
-  std::array<CallArg, 2> args = {
-      {CallArg{lhs}, CallArg{rhs}}
-  };
-
-  std::variant<ValuePartRef, std::pair<ScratchReg, u8>> res =
-      std::move(res_val);
-
-  generate_call(
-      sym, args, std::span{&res, 1}, tpde::a64::CallingConv::SYSV_CC, false);
 }
 
 bool LLVMCompilerArm64::compile_unreachable(

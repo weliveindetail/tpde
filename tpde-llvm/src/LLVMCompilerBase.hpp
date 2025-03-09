@@ -2055,12 +2055,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
     if (inst_ty->isVectorTy()) {
       return false;
     }
+
+    SymRef sym = get_libfunc_sym(is_double ? LibFunc::fmod : LibFunc::fmodf);
+    std::array<IRValueRef, 2> srcs{inst->getOperand(0), inst->getOperand(1)};
+
     auto [_, res_ref] = this->result_ref_single(inst);
-    // TODO(ts): encodegen cannot encode calls atm
-    derived()->create_frem_calls(inst->getOperand(0),
-                                 inst->getOperand(1),
-                                 std::move(res_ref),
-                                 is_double);
+    derived()->create_helper_call(srcs, {&res_ref, 1}, sym);
     return true;
   }
 

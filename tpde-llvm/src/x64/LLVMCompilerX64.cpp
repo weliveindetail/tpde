@@ -82,11 +82,6 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                      unsigned from,
                      unsigned to) noexcept;
 
-  void create_frem_calls(IRValueRef lhs,
-                         IRValueRef rhs,
-                         ValuePartRef &&res,
-                         bool is_double) noexcept;
-
   bool compile_unreachable(const llvm::UnreachableInst *) noexcept;
   bool compile_alloca(const llvm::AllocaInst *) noexcept;
   bool compile_br(const llvm::BranchInst *) noexcept;
@@ -305,28 +300,6 @@ LLVMCompilerX64::ScratchReg LLVMCompilerX64::ext_int(GenericValuePart op,
   AsmReg src = gval_as_reg_reuse(op, scratch);
   ext_int(scratch.alloc_gp(), src, sign, from, to);
   return scratch;
-}
-
-void LLVMCompilerX64::create_frem_calls(const IRValueRef lhs,
-                                        const IRValueRef rhs,
-                                        ValuePartRef &&res_val,
-                                        const bool is_double) noexcept {
-  SymRef sym;
-  if (is_double) {
-    sym = get_libfunc_sym(LibFunc::fmod);
-  } else {
-    sym = get_libfunc_sym(LibFunc::fmodf);
-  }
-
-  std::array<CallArg, 2> args = {
-      {CallArg{lhs}, CallArg{rhs}}
-  };
-
-  std::variant<ValuePartRef, std::pair<ScratchReg, u8>> res =
-      std::move(res_val);
-
-  generate_call(
-      sym, args, std::span{&res, 1}, tpde::x64::CallingConv::SYSV_CC, false);
 }
 
 bool LLVMCompilerX64::compile_unreachable(
