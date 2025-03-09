@@ -464,12 +464,12 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
                              Config::PLATFORM_POINTER_SIZE,
                              0,
                              Config::PLATFORM_POINTER_SIZE);
+      assignment->variable_ref = true;
       this->assignments.value_ptrs[u32(local_idx)] = assignment;
 
       auto ap = AssignmentPartRef{assignment, 0};
       ap.reset();
       ap.set_bank(Config::GP_BANK);
-      ap.set_variable_ref(true);
       ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
     }
     return ValuePartRef{this, local_idx, assignment, 0, /*owned=*/false};
@@ -997,12 +997,12 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
                            Config::PLATFORM_POINTER_SIZE,
                            0,
                            Config::PLATFORM_POINTER_SIZE);
+    assignment->variable_ref = true;
     this->assignments.value_ptrs[this->adaptor->val_local_idx(v)] = assignment;
 
     auto ap = AssignmentPartRef{assignment, 0};
     ap.reset();
     ap.set_bank(Config::GP_BANK);
-    ap.set_variable_ref(true);
     ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
   }
 }

@@ -112,7 +112,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
 private:
   bool variable_ref() const noexcept {
     assert(has_assignment());
-    return AssignmentPartRef{state.a.assignment, 0}.variable_ref();
+    return state.a.assignment->variable_ref;
   }
 };
 

@@ -119,6 +119,9 @@ struct CompilerBase {
         /// catch use-after-frees.
         bool pending_free : 1;
 
+        /// Whether the assignment is a single-part variable reference.
+        bool variable_ref : 1;
+
         // TODO: get the type of parts from Derived
         // note: the top bit of each part is reserved to indicate
         // whether there is another part after this
@@ -583,6 +586,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
 #ifndef NDEBUG
   assignment->pending_free = false;
 #endif
+  assignment->variable_ref = false;
   assignment->size = size;
   assignment->frame_off = frame_off;
   assignment->references_left =
@@ -597,7 +601,7 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
 
   ValueAssignment *assignment =
       assignments.value_ptrs[static_cast<u32>(local_idx)];
-  const auto is_var_ref = AssignmentPartRef{assignment, 0}.variable_ref();
+  const auto is_var_ref = assignment->variable_ref;
 
   // free registers
   u32 part_idx = 0;
@@ -1544,12 +1548,12 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
                              size,
                              analyzer.liveness_info(local_idx).ref_count,
                              Config::PLATFORM_POINTER_SIZE);
+      assignment->variable_ref = true;
       assignments.value_ptrs[local_idx] = assignment;
 
       auto ap = AssignmentPartRef{assignment, 0};
       ap.reset();
       ap.set_bank(Config::GP_BANK);
-      ap.set_variable_ref(true);
       ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
     }
   } else {
