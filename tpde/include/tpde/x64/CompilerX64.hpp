@@ -327,6 +327,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   using AssignmentPartRef = typename Base::AssignmentPartRef;
   using ScratchReg = typename Base::ScratchReg;
   using ValuePartRef = typename Base::ValuePartRef;
+  using ValuePart = typename Base::ValuePart;
   using GenericValuePart = typename Base::GenericValuePart;
 
   using Assembler = typename PlatformConfig::Assembler;
@@ -431,7 +432,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
   void mov(AsmReg dst, AsmReg src, u32 size) noexcept;
 
-  GenericValuePart val_spill_slot(ValuePartRef &val_ref) noexcept {
+  GenericValuePart val_spill_slot(ValuePart &val_ref) noexcept {
     const auto ap = val_ref.assignment();
     assert(!ap.modified() && !ap.variable_ref());
     return typename GenericValuePart::Expr(AsmReg::BP, -i64(ap.frame_off()));

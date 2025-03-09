@@ -41,6 +41,7 @@ struct LLVMCompilerBase : public LLVMCompiler,
   using IRFuncRef = typename Base::IRFuncRef;
   using ScratchReg = typename Base::ScratchReg;
   using ValuePartRef = typename Base::ValuePartRef;
+  using ValuePart = typename Base::ValuePart;
   using ValueRef = typename Base::ValueRef;
   using AssignmentPartRef = typename Base::AssignmentPartRef;
   using GenericValuePart = typename Base::GenericValuePart;
@@ -315,7 +316,7 @@ public:
                        unsigned idx,
                        LLVMBasicValType ty,
                        ScratchReg &out) noexcept;
-  void insert_element(IRValueRef vec,
+  void insert_element(ValuePart &vec_ref,
                       unsigned idx,
                       LLVMBasicValType ty,
                       GenericValuePart el) noexcept;
@@ -2600,17 +2601,13 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::extract_element(
 
 template <typename Adaptor, typename Derived, typename Config>
 void LLVMCompilerBase<Adaptor, Derived, Config>::insert_element(
-    IRValueRef vec,
+    ValuePart &vec_ref,
     unsigned idx,
     LLVMBasicValType ty,
     GenericValuePart el) noexcept {
-  assert(this->adaptor->val_part_count(vec) == 1);
-
-  auto vec_vr = this->val_ref(vec);
-  vec_vr.disown();
-  auto vec_ref = vec_vr.part(0);
-  vec_ref.spill();
-  vec_ref.unlock();
+  assert(vec_ref.has_assignment());
+  vec_ref.spill(this);
+  vec_ref.unlock(this);
   if (vec_ref.assignment().register_valid()) {
     vec_ref.assignment().set_register_valid(false);
     this->register_file.unmark_used(AsmReg{vec_ref.assignment().full_reg_id()});
@@ -2712,24 +2709,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
   // We do the dynamic insert in the spill slot of result.
   // TODO: reuse spill slot of vec_ref if possible.
 
-  // First, copy value into the spill slot. We must also do this for constant
+  // First, copy value into the result. We must also do this for constant
   // indices, because the value reference must always be initialized.
-  {
-    auto [_, vec_ref] = this->val_ref_single(inst->getOperand(0));
-    AsmReg orig_reg = vec_ref.load_to_reg();
-    if (vec_ref.can_salvage()) {
-      result.set_value(std::move(vec_ref));
-    } else {
-      // TODO: don't spill when target insert_element doesn't need it?
-      unsigned frame_off = result.assignment().frame_off();
-      unsigned part_size = result.assignment().part_size();
-      derived()->spill_reg(orig_reg, frame_off, part_size);
-    }
-  }
+  result.set_value(this->val_ref(inst->getOperand(0)).part(0));
 
   if (auto *ci = llvm::dyn_cast<llvm::ConstantInt>(index)) {
     unsigned cidx = ci->getZExtValue();
-    derived()->insert_element(inst, cidx, bvt, std::move(val));
+    derived()->insert_element(result, cidx, bvt, std::move(val));
     // No need for ref counting: all operands and results were ValuePartRefs.
     return true;
   }
@@ -2802,11 +2788,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
     TPDE_UNREACHABLE("invalid element type for shufflevector");
   }
 
-  ValueRef result = this->result_ref(inst);
+  auto [res_vr, res_ref] = this->result_ref_single(inst);
   // Make sure the results has an allocated register. insert_element will use
   // load_to_reg to lock the value into a register, but if we don't allocate a
   // register here, the first load will reload the value from the stack.
-  result.part(0).alloc_reg();
+  res_ref.alloc_reg();
 
   ScratchReg tmp{this};
   llvm::ArrayRef<int> mask = inst->getShuffleMask();
@@ -2834,7 +2820,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
     } else {
       derived()->extract_element(src, mask[i] & (src_nelem - 1), bvt, tmp);
     }
-    derived()->insert_element(inst, i, bvt, std::move(tmp));
+    derived()->insert_element(res_ref, i, bvt, std::move(tmp));
   }
   (void)this->val_ref(lhs).part(0); // ref-counting
   (void)this->val_ref(rhs).part(0); // ref-counting

@@ -24,7 +24,6 @@ define void @shufflevector_unused() {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov w0, #0x0 // =0
-; ARM64-NEXT:    ldr q0, [x29, #0xa0]
 ; ARM64-NEXT:    mov v0.d[0], x0
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    mov v0.d[1], x0

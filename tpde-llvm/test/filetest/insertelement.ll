@@ -324,3 +324,34 @@ define <2 x double> @ins_v2f64_const(<2 x double> %v) {
   %r = insertelement <2 x double> %v, double 1.0, i32 1
   ret <2 x double> %r
 }
+
+define <2 x float> @ins_v2f32_const_nosalvage(<2 x float> %v) {
+; X64-LABEL: <ins_v2f32_const_nosalvage>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    movq qword ptr [rbp - 0x30], xmm0
+; X64-NEXT:  <L0>:
+; X64-NEXT:    movq xmm0, qword ptr [rbp - 0x30]
+; X64-NEXT:    movq qword ptr [rbp - 0x38], xmm0
+; X64-NEXT:    pxor xmm0, xmm0
+; X64-NEXT:    movss dword ptr [rbp - 0x38], xmm0
+; X64-NEXT:    jmp <L0>
+;
+; ARM64-LABEL: <ins_v2f32_const_nosalvage>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    str d8, [sp, #0x10]
+; ARM64-NEXT:    mov v8.16b, v0.16b
+; ARM64-NEXT:    mov v0.16b, v8.16b
+; ARM64-NEXT:    movi v1.8b, #0x0
+; ARM64-NEXT:    mov v0.s[0], v1.s[0]
+; ARM64-NEXT:    b 0x544 <ins_v2f32_const_nosalvage+0x14>
+  br label %loop
+
+loop:
+  %ie = insertelement <2 x float> %v, float 0.0, i64 0
+  br label %loop
+}

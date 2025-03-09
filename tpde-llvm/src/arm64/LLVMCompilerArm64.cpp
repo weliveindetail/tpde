@@ -86,7 +86,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                        unsigned idx,
                        LLVMBasicValType ty,
                        ScratchReg &out) noexcept;
-  void insert_element(IRValueRef vec,
+  void insert_element(ValuePart &vec_ref,
                       unsigned idx,
                       LLVMBasicValType ty,
                       GenericValuePart el) noexcept;
@@ -306,16 +306,11 @@ void LLVMCompilerArm64::extract_element(IRValueRef vec,
   }
 }
 
-void LLVMCompilerArm64::insert_element(IRValueRef vec,
+void LLVMCompilerArm64::insert_element(ValuePart &vec_ref,
                                        unsigned idx,
                                        LLVMBasicValType ty,
                                        GenericValuePart el) noexcept {
-  assert(this->adaptor->val_part_count(vec) == 1);
-
-  auto vec_vr = this->val_ref(vec);
-  vec_vr.disown();
-  auto vec_ref = vec_vr.part(0);
-  AsmReg vec_reg = vec_ref.load_to_reg();
+  AsmReg vec_reg = vec_ref.load_to_reg(this);
   AsmReg src_reg = this->gval_as_reg(el);
   switch (ty) {
     using enum LLVMBasicValType;
@@ -328,9 +323,6 @@ void LLVMCompilerArm64::insert_element(IRValueRef vec,
   case f64: ASM(INSd, vec_reg, idx, src_reg, 0); break;
   default: TPDE_UNREACHABLE("unexpected vector element type");
   }
-
-  assert(vec_ref.assignment().register_valid());
-  vec_ref.assignment().set_modified(true);
 }
 
 void LLVMCompilerArm64::create_frem_calls(const IRValueRef lhs,
