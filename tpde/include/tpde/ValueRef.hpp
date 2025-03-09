@@ -35,6 +35,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
   }, compiler(compiler) {
     const auto &liveness =
         compiler->analyzer.liveness_info((u32)state.a.local_idx);
+    assert(!state.a.assignment->pending_free && "access of free'd assignment");
     if (variable_ref()) {
       state.a.mode = 0;
     } else if (state.a.assignment->references_left <= 1 &&
@@ -121,6 +122,8 @@ void CompilerBase<Adaptor, Derived, Config>::ValueRef::reset() noexcept {
     bool owned = state.a.mode == 2;
     state.a.mode = 0;
 
+    assert(!state.a.assignment->pending_free && "access of free'd assignment");
+
     auto &ref_count = state.a.assignment->references_left;
     assert(ref_count != 0);
     if (--ref_count == 0) {
@@ -136,6 +139,9 @@ void CompilerBase<Adaptor, Derived, Config>::ValueRef::reset() noexcept {
         auto &free_list_head =
             compiler->assignments.delayed_free_lists[u32(liveness.last)];
         state.a.assignment->next_delayed_free_entry = free_list_head;
+#ifndef NDEBUG
+        state.a.assignment->pending_free = true;
+#endif
         free_list_head = local_idx;
       }
     }

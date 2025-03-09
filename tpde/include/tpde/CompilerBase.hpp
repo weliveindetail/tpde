@@ -113,7 +113,11 @@ struct CompilerBase {
           u32 references_left;
         };
         u8 max_part_size;
-        u8 lock_count;
+
+        /// Whether the assignment is in a delayed free list and the reference
+        /// count is therefore invalid (zero). Set/used in debug builds only to
+        /// catch use-after-frees.
+        bool pending_free : 1;
 
         // TODO: get the type of parts from Derived
         // note: the top bit of each part is reserved to indicate
@@ -576,7 +580,9 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
 
   assert(max_part_size <= 256);
   assignment->max_part_size = max_part_size;
-  assignment->lock_count = 0;
+#ifndef NDEBUG
+  assignment->pending_free = false;
+#endif
   assignment->size = size;
   assignment->frame_off = frame_off;
   assignment->references_left =
