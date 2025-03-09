@@ -193,8 +193,6 @@ bool TestIRCompilerA64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
 
     auto [_, res_ref] =
         this->result_ref_single(static_cast<IRValueRef>(inst_idx));
-    std::variant<ValuePartRef, std::pair<ScratchReg, u8>> res =
-        std::move(res_ref);
 
     util::SmallVector<CallArg, 8> arguments{};
     for (auto op : operands) {
@@ -203,7 +201,7 @@ bool TestIRCompilerA64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
 
     this->generate_call(this->func_syms[func_idx],
                         arguments,
-                        std::span{&res, 1},
+                        std::span{static_cast<ValuePart *>(&res_ref), 1},
                         a64::CallingConv::SYSV_CC,
                         false);
     return true;

@@ -491,9 +491,7 @@ bool LLVMCompilerArm64::compile_call_inner(
     bool var_arg) noexcept {
   ValueRef res{this}; // must outlive results.
   tpde::util::SmallVector<CallArg, 16> args;
-  tpde::util::SmallVector<std::variant<ValuePartRef, std::pair<ScratchReg, u8>>,
-                          4>
-      results;
+  tpde::util::SmallVector<ValuePart, 4> results;
 
   const auto num_args = call->arg_size();
   args.reserve(num_args);
@@ -861,8 +859,7 @@ void LLVMCompilerArm64::create_helper_call(std::span<IRValueRef> args,
     arg_vec.push_back(CallArg{arg});
   }
 
-  tpde::util::SmallVector<std::variant<ValuePartRef, std::pair<ScratchReg, u8>>>
-      res_vec{};
+  tpde::util::SmallVector<ValuePart> res_vec{};
   for (auto &res : results) {
     res_vec.push_back(std::move(res));
   }

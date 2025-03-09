@@ -233,6 +233,12 @@ public:
 
   void set_value(CompilerBase *compiler, ValuePart &&other) noexcept;
 
+  /// Set the value to the value of the specified register, possibly taking
+  /// ownership of the register. Intended for filling in arguments/calls results
+  /// which inherently get stored to fixed registers. There must not be a
+  /// currently locked register.
+  void set_value_reg(CompilerBase *compiler, AsmReg reg) noexcept;
+
   bool can_salvage(u32 ref_adjust = 1) const noexcept;
 
 private:
@@ -622,6 +628,53 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value(
   AsmReg new_reg = other.salvage_keep_used(compiler);
   reg_file.update_reg_assignment(new_reg, local_idx(), part());
   ap.set_full_reg_id(new_reg.id());
+  ap.set_register_valid(true);
+  ap.set_modified(true);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value_reg(
+    CompilerBase *compiler, AsmReg value_reg) noexcept {
+  auto &reg_file = compiler->register_file;
+
+  // We could support this, but there shouldn't bee the need for that.
+  assert(value_reg.valid() && "cannot initialize with invalid register");
+  assert(!state.c.reg.valid() &&
+         "attempted to overwrite already initialized and locked ValuePartRef");
+
+  if (!has_assignment()) {
+    assert(!is_const() && "cannot mutate constant ValuePartRef");
+    state.c.reg = value_reg;
+    reg_file.mark_used(state.c.reg, INVALID_VAL_LOCAL_IDX, 0);
+    reg_file.mark_fixed(state.c.reg);
+    return;
+  }
+
+  // Update the value of the assignment part
+  auto ap = assignment();
+  assert(!ap.variable_ref() && "cannot update variable ref");
+
+  if (ap.fixed_assignment()) {
+    // For fixed assignments, copy the value into the fixed register.
+    auto cur_reg = AsmReg{ap.full_reg_id()};
+    assert(reg_file.is_used(cur_reg));
+    assert(reg_file.is_fixed(cur_reg));
+    assert(reg_file.reg_local_idx(cur_reg) == local_idx());
+    // TODO: can this happen? If so, conditionally emit move.
+    assert(cur_reg != value_reg);
+    compiler->derived()->mov(cur_reg, value_reg, ap.part_size());
+    ap.set_register_valid(true);
+    ap.set_modified(true);
+    return;
+  }
+
+  // Otherwise, take the register.
+  assert(!ap.register_valid() && !ap.stack_valid() &&
+         "attempted to overwrite already initialized ValuePartRef");
+
+  reg_file.mark_used(value_reg, local_idx(), part());
+  reg_file.mark_clobbered(value_reg);
+  ap.set_full_reg_id(value_reg.id());
   ap.set_register_valid(true);
   ap.set_modified(true);
 }

@@ -333,11 +333,9 @@ struct CallingConv {
             typename Config>
   void fill_call_results(
       CompilerA64<Adaptor, Derived, BaseTy, Config> *,
-      std::span<std::variant<
-          typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ValuePartRef,
-          std::pair<typename CompilerA64<Adaptor, Derived, BaseTy, Config>::
-                        ScratchReg,
-                    u8>>> results) noexcept;
+      std::span<
+          typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ValuePart>
+          results) noexcept;
 
   struct SysV {
     constexpr static std::array<AsmReg, 8> arg_regs_gp{AsmReg::R0,
@@ -634,7 +632,7 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   void generate_call(
       std::variant<Assembler::SymRef, ScratchReg, ValuePartRef> &&target,
       std::span<CallArg> arguments,
-      std::span<std::variant<ValuePartRef, std::pair<ScratchReg, u8>>> results,
+      std::span<ValuePart> results,
       CallingConv calling_conv,
       bool variable_args);
 
@@ -1083,48 +1081,25 @@ template <typename Adaptor,
           typename Config>
 void CallingConv::fill_call_results(
     CompilerA64<Adaptor, Derived, BaseTy, Config> *compiler,
-    std::span<std::variant<
-        typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ValuePartRef,
-        std::pair<
-            typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ScratchReg,
-            u8>>> results) noexcept {
-  using ValuePartRef =
-      typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ValuePartRef;
-  using ScratchReg =
-      typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ScratchReg;
-
+    std::span<typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ValuePart>
+        results) noexcept {
   u32 gp_reg_count = 0, vec_reg_count = 0;
 
   const auto gp_regs = ret_regs_gp();
   const auto vec_regs = ret_regs_vec();
 
-  for (auto &res : results) {
-    if (std::holds_alternative<ValuePartRef>(res)) {
-      auto &ref = std::get<ValuePartRef>(res);
-      assert(ref.has_assignment());
-      if (ref.bank() == 0) {
-        assert(gp_reg_count < gp_regs.size());
-        compiler->set_value(ref, gp_regs[gp_reg_count++]);
-      } else {
-        assert(ref.bank() == 1);
-        assert(vec_reg_count < vec_regs.size());
-        compiler->set_value(ref, vec_regs[vec_reg_count++]);
-      }
+  for (auto &ref : results) {
+    AsmReg reg = AsmReg::make_invalid();
+    if (ref.bank() == 0) {
+      assert(gp_reg_count < gp_regs.size());
+      reg = gp_regs[gp_reg_count++];
     } else {
-      auto &[reg, bank] = std::get<std::pair<ScratchReg, u8>>(res);
-
-      AsmReg res_reg;
-      if (bank == 0) {
-        assert(gp_reg_count < gp_regs.size());
-        res_reg = gp_regs[gp_reg_count++];
-      } else {
-        assert(bank == 1);
-        assert(vec_reg_count < vec_regs.size());
-        res_reg = vec_regs[vec_reg_count++];
-      }
-      assert(!compiler->register_file.is_used(res_reg));
-      reg.alloc_specific(res_reg);
+      assert(ref.bank() == 1);
+      assert(vec_reg_count < vec_regs.size());
+      reg = vec_regs[vec_reg_count++];
     }
+
+    ref.set_value_reg(compiler, reg);
   }
 }
 
@@ -2393,22 +2368,12 @@ template <IRAdaptor Adaptor,
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
     std::variant<Assembler::SymRef, ScratchReg, ValuePartRef> &&target,
     std::span<CallArg> arguments,
-    std::span<std::variant<ValuePartRef, std::pair<ScratchReg, u8>>> results,
+    std::span<ValuePart> results,
     CallingConv calling_conv,
     bool) {
   if (std::holds_alternative<ScratchReg>(target)) {
     assert(((1ull << std::get<ScratchReg>(target).cur_reg().id()) &
             calling_conv.arg_regs_mask()) == 0);
-  }
-
-  // in case results are locked, we unlock them here
-  // TODO(ts): can that actually happen?
-  for (auto &res : results) {
-    if (std::holds_alternative<ValuePartRef>(res)) {
-      std::get<ValuePartRef>(res).unlock();
-    } else {
-      std::get<std::pair<ScratchReg, u8>>(res).first.reset();
-    }
   }
 
   const auto stack_space_used = util::align_up(
