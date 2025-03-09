@@ -367,12 +367,12 @@ bool LLVMCompilerArm64::compile_alloca(
   assert(this->adaptor->cur_has_dynamic_alloca());
 
   // refcount
-  auto [_, size_ref] = this->val_ref_single(alloca->getArraySize());
+  auto [size_vr, size_ref] = this->val_ref_single(alloca->getArraySize());
+  auto [res_vr, res_ref] = this->result_ref_single(alloca);
 
   auto &layout = adaptor->mod->getDataLayout();
   if (auto opt = alloca->getAllocationSize(layout); opt) {
-    ValuePartRef res{this, CompilerConfig::GP_BANK};
-    res.alloc_reg();
+    AsmReg res_reg = res_ref.alloc_reg();
 
     const auto size = *opt;
     assert(!size.isScalable());
@@ -393,22 +393,21 @@ bool LLVMCompilerArm64::compile_alloca(
     if (auto align = alloca->getAlign().value(); align >= 16) {
       // TODO(ae): we could avoid one move here
       align = ~(align - 1);
-      ASM(MOV_SPx, res.cur_reg(), DA_SP);
-      ASM(ANDxi, DA_SP, res.cur_reg(), align);
+      ASM(MOV_SPx, res_reg, DA_SP);
+      ASM(ANDxi, DA_SP, res_reg, align);
     }
 
-    ASM(MOV_SPx, res.cur_reg(), DA_SP);
+    ASM(MOV_SPx, res_reg, DA_SP);
 
-    this->result_ref(alloca).part(0).set_value(std::move(res));
+    res_ref.set_modified();
     return true;
   }
 
   const auto elem_size = layout.getTypeAllocSize(alloca->getAllocatedType());
   ScratchReg scratch{this};
 
-  ValuePartRef res{this, CompilerConfig::GP_BANK};
   AsmReg size_reg = size_ref.load_to_reg();
-  AsmReg res_reg = res.alloc_try_reuse(size_ref);
+  AsmReg res_reg = res_ref.alloc_try_reuse(size_ref);
 
   if (elem_size == 0) {
     ASM(MOVZw, res_reg, 0);
@@ -439,7 +438,7 @@ bool LLVMCompilerArm64::compile_alloca(
 
   ASM(ANDxi, res_reg, res_reg, align);
   ASM(MOV_SPx, DA_SP, res_reg);
-  this->result_ref(alloca).part(0).set_value(std::move(res));
+  res_ref.set_modified();
   return true;
 }
 
