@@ -1352,6 +1352,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
         auto *assignment = val_assignment(
             static_cast<ValLocalIdx>(adaptor->val_local_idx(phi_val)));
         cur_tmp_slot = allocate_stack_slot(assignment->size);
+        cur_tmp_slot_size = assignment->size;
 
         for (u32 i = 0; i < cur_tmp_part_count; ++i) {
           auto ap = AssignmentPartRef{assignment, i};

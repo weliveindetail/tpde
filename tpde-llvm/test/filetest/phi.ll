@@ -187,3 +187,159 @@ define ptr @phi_cycles_selfref() {
   %4 = phi i32 [ 3, %0 ], [ %4, %1 ]
   br label %1
 }
+
+define void @phi_cycle_i128(i1 %c, i128 %v1, i128 %v2) {
+; X64-LABEL: <phi_cycle_i128>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    mov qword ptr [rbp - 0x60], rsi
+; X64-NEXT:    mov qword ptr [rbp - 0x58], rdx
+; X64-NEXT:    mov qword ptr [rbp - 0x40], rcx
+; X64-NEXT:    mov qword ptr [rbp - 0x38], r8
+; X64-NEXT:  <L0>:
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x60]
+; X64-NEXT:    mov rcx, qword ptr [rbp - 0x58]
+; X64-NEXT:    mov rdx, qword ptr [rbp - 0x40]
+; X64-NEXT:    mov qword ptr [rbp - 0x60], rdx
+; X64-NEXT:    mov rdx, qword ptr [rbp - 0x38]
+; X64-NEXT:    mov qword ptr [rbp - 0x58], rdx
+; X64-NEXT:    mov qword ptr [rbp - 0x40], rax
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rcx
+; X64-NEXT:    jmp <L0>
+;
+; ARM64-LABEL: <phi_cycle_i128>:
+; ARM64:         sub sp, sp, #0xe0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    str x2, [x29, #0xd0]
+; ARM64-NEXT:    str x3, [x29, #0xd8]
+; ARM64-NEXT:    str x4, [x29, #0xb0]
+; ARM64-NEXT:    str x5, [x29, #0xb8]
+; ARM64-NEXT:    ldr x0, [x29, #0xd0]
+; ARM64-NEXT:    ldr x1, [x29, #0xd8]
+; ARM64-NEXT:    ldr x2, [x29, #0xb0]
+; ARM64-NEXT:    str x2, [x29, #0xd0]
+; ARM64-NEXT:    ldr x2, [x29, #0xb8]
+; ARM64-NEXT:    str x2, [x29, #0xd8]
+; ARM64-NEXT:    str x0, [x29, #0xb0]
+; ARM64-NEXT:    str x1, [x29, #0xb8]
+; ARM64-NEXT:    b 0x1b0 <phi_cycle_i128+0x20>
+  br label %1
+
+1:
+  %2 = phi i128 [ %v1, %0 ], [ %3, %1 ]
+  %3 = phi i128 [ %v2, %0 ], [ %2, %1 ]
+  br label %1
+}
+
+define void @phi_cycle_multipart(i1 %c, [4 x i64] %v1, [4 x i64] %v2) {
+; X64-LABEL: <phi_cycle_multipart>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x90
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x10]
+; X64-NEXT:    mov qword ptr [rbp - 0x68], rax
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x18]
+; X64-NEXT:    mov qword ptr [rbp - 0x60], rax
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x20]
+; X64-NEXT:    mov qword ptr [rbp - 0x58], rax
+; X64-NEXT:    mov qword ptr [rbp - 0x90], rsi
+; X64-NEXT:    mov qword ptr [rbp - 0x88], rdx
+; X64-NEXT:    mov qword ptr [rbp - 0x80], rcx
+; X64-NEXT:    mov qword ptr [rbp - 0x78], r8
+; X64-NEXT:    mov qword ptr [rbp - 0x50], r9
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x68]
+; X64-NEXT:    mov qword ptr [rbp - 0x48], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x60]
+; X64-NEXT:    mov qword ptr [rbp - 0x40], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x58]
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
+; X64-NEXT:  <L0>:
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x90]
+; X64-NEXT:    mov qword ptr [rbp - 0x70], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x88]
+; X64-NEXT:    mov qword ptr [rbp - 0x68], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x80]
+; X64-NEXT:    mov qword ptr [rbp - 0x60], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x78]
+; X64-NEXT:    mov qword ptr [rbp - 0x58], rax
+; X64-NEXT:    mov rcx, qword ptr [rbp - 0x50]
+; X64-NEXT:    mov qword ptr [rbp - 0x90], rcx
+; X64-NEXT:    mov rcx, qword ptr [rbp - 0x48]
+; X64-NEXT:    mov qword ptr [rbp - 0x88], rcx
+; X64-NEXT:    mov rcx, qword ptr [rbp - 0x40]
+; X64-NEXT:    mov qword ptr [rbp - 0x80], rcx
+; X64-NEXT:    mov rcx, qword ptr [rbp - 0x38]
+; X64-NEXT:    mov qword ptr [rbp - 0x78], rcx
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x70]
+; X64-NEXT:    mov qword ptr [rbp - 0x50], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x68]
+; X64-NEXT:    mov qword ptr [rbp - 0x48], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x60]
+; X64-NEXT:    mov qword ptr [rbp - 0x40], rax
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x58]
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
+; X64-NEXT:    jmp <L0>
+;
+; ARM64-LABEL: <phi_cycle_multipart>:
+; ARM64:         sub sp, sp, #0x110
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x8, sp, #0x110
+; ARM64-NEXT:    ldr x0, [x8]
+; ARM64-NEXT:    str x0, [x29, #0xd0]
+; ARM64-NEXT:    ldr x0, [x8, #0x8]
+; ARM64-NEXT:    str x0, [x29, #0xd8]
+; ARM64-NEXT:    ldr x0, [x8, #0x10]
+; ARM64-NEXT:    str x0, [x29, #0xe0]
+; ARM64-NEXT:    ldr x0, [x8, #0x18]
+; ARM64-NEXT:    str x0, [x29, #0xe8]
+; ARM64-NEXT:    str x1, [x29, #0xf0]
+; ARM64-NEXT:    str x2, [x29, #0xf8]
+; ARM64-NEXT:    str x3, [x29, #0x100]
+; ARM64-NEXT:    str x4, [x29, #0x108]
+; ARM64-NEXT:    ldr x0, [x29, #0xd0]
+; ARM64-NEXT:    str x0, [x29, #0xb0]
+; ARM64-NEXT:    ldr x0, [x29, #0xd8]
+; ARM64-NEXT:    str x0, [x29, #0xb8]
+; ARM64-NEXT:    ldr x0, [x29, #0xe0]
+; ARM64-NEXT:    str x0, [x29, #0xc0]
+; ARM64-NEXT:    ldr x0, [x29, #0xe8]
+; ARM64-NEXT:    str x0, [x29, #0xc8]
+; ARM64-NEXT:    ldr x0, [x29, #0xf0]
+; ARM64-NEXT:    str x0, [x29, #0xd0]
+; ARM64-NEXT:    ldr x0, [x29, #0xf8]
+; ARM64-NEXT:    str x0, [x29, #0xd8]
+; ARM64-NEXT:    ldr x0, [x29, #0x100]
+; ARM64-NEXT:    str x0, [x29, #0xe0]
+; ARM64-NEXT:    ldr x0, [x29, #0x108]
+; ARM64-NEXT:    str x0, [x29, #0xe8]
+; ARM64-NEXT:    ldr x1, [x29, #0xb0]
+; ARM64-NEXT:    str x1, [x29, #0xf0]
+; ARM64-NEXT:    ldr x1, [x29, #0xb8]
+; ARM64-NEXT:    str x1, [x29, #0xf8]
+; ARM64-NEXT:    ldr x1, [x29, #0xc0]
+; ARM64-NEXT:    str x1, [x29, #0x100]
+; ARM64-NEXT:    ldr x1, [x29, #0xc8]
+; ARM64-NEXT:    str x1, [x29, #0x108]
+; ARM64-NEXT:    ldr x0, [x29, #0xd0]
+; ARM64-NEXT:    str x0, [x29, #0xb0]
+; ARM64-NEXT:    ldr x0, [x29, #0xd8]
+; ARM64-NEXT:    str x0, [x29, #0xb8]
+; ARM64-NEXT:    ldr x0, [x29, #0xe0]
+; ARM64-NEXT:    str x0, [x29, #0xc0]
+; ARM64-NEXT:    ldr x0, [x29, #0xe8]
+; ARM64-NEXT:    str x0, [x29, #0xc8]
+; ARM64-NEXT:    b 0x264 <phi_cycle_multipart+0x64>
+  br label %1
+
+1:
+  %2 = phi [4 x i64] [ %v1, %0 ], [ %3, %1 ]
+  %3 = phi [4 x i64] [ %v2, %0 ], [ %2, %1 ]
+  br label %1
+}
