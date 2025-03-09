@@ -323,6 +323,8 @@ void LLVMCompilerArm64::insert_element(ValuePart &vec_ref,
   case f64: ASM(INSd, vec_reg, idx, src_reg, 0); break;
   default: TPDE_UNREACHABLE("unexpected vector element type");
   }
+
+  vec_ref.set_modified();
 }
 
 void LLVMCompilerArm64::create_frem_calls(const IRValueRef lhs,

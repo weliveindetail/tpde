@@ -2791,8 +2791,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
   auto [res_vr, res_ref] = this->result_ref_single(inst);
   // Make sure the results has an allocated register. insert_element will use
   // load_to_reg to lock the value into a register, but if we don't allocate a
-  // register here, the first load will reload the value from the stack.
+  // register here, that will fail because the value is uninitialized.
   res_ref.alloc_reg();
+  // But, as the value is uninitialized, the stack slot is also valid. This
+  // avoids spilling an unitialized register in insert_element.
+  res_ref.assignment().set_stack_valid();
 
   ScratchReg tmp{this};
   llvm::ArrayRef<int> mask = inst->getShuffleMask();

@@ -332,6 +332,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
       if (ap.variable_ref()) {
         compiler->derived()->load_address_of_var_reference(reg, ap);
       } else {
+        assert(ap.stack_valid());
         compiler->derived()->load_from_stack(
             reg, ap.frame_off(), ap.part_size());
       }
@@ -404,9 +405,12 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
       } else if (ap.variable_ref()) {
         compiler->derived()->load_address_of_var_reference(reg, ap);
       } else {
+        assert(ap.stack_valid());
         compiler->derived()->load_from_stack(
             reg, ap.frame_off(), ap.part_size());
       }
+    } else {
+      assert(!ap.stack_valid() && "alloc_reg with valid stack slot");
     }
   } else {
     reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
@@ -479,6 +483,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     if (ap.variable_ref()) {
       compiler->derived()->load_address_of_var_reference(reg, ap);
     } else {
+      assert(ap.stack_valid());
       compiler->derived()->load_from_stack(reg, ap.frame_off(), ap.part_size());
     }
   }
@@ -519,6 +524,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     if (ap.variable_ref()) {
       compiler->derived()->load_address_of_var_reference(reg, ap);
     } else {
+      assert(ap.stack_valid());
       compiler->derived()->load_from_stack(reg, ap.frame_off(), ap.part_size());
     }
   }

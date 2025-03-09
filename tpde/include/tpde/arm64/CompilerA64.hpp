@@ -509,7 +509,7 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
 
   GenericValuePart val_spill_slot(ValuePart &val_ref) noexcept {
     const auto ap = val_ref.assignment();
-    assert(!ap.modified() && !ap.variable_ref());
+    assert(ap.stack_valid() && !ap.variable_ref());
     return typename GenericValuePart::Expr(AsmReg::R29, ap.frame_off());
   }
 
@@ -773,6 +773,7 @@ void CallingConv::handle_func_args(
           } else {
             // TODO(ts): do we need to spill here?
             compiler->spill_reg(dst, ap.frame_off(), size);
+            ap.set_stack_valid();
           }
           frame_off += 8;
         }
@@ -798,6 +799,7 @@ void CallingConv::handle_func_args(
             ap.set_modified(true);
           } else {
             compiler->spill_reg(dst, ap.frame_off(), size);
+            ap.set_stack_valid();
           }
 
           frame_off += word_size;

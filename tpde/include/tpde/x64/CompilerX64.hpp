@@ -434,7 +434,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
   GenericValuePart val_spill_slot(ValuePart &val_ref) noexcept {
     const auto ap = val_ref.assignment();
-    assert(!ap.modified() && !ap.variable_ref());
+    assert(ap.stack_valid() && !ap.variable_ref());
     return typename GenericValuePart::Expr(AsmReg::BP, -i64(ap.frame_off()));
   }
 
@@ -618,6 +618,7 @@ void CallingConv::handle_func_args(
             auto tmp_reg = scratch.alloc_gp();
             compiler->load_from_stack(tmp_reg, -frame_off, size);
             compiler->spill_reg(tmp_reg, ap.frame_off(), size);
+            ap.set_stack_valid();
           }
           frame_off += 8;
         }
@@ -643,6 +644,7 @@ void CallingConv::handle_func_args(
             auto tmp_reg = scratch.alloc(Config::FP_BANK);
             compiler->load_from_stack(tmp_reg, -frame_off, size);
             compiler->spill_reg(tmp_reg, ap.frame_off(), size);
+            ap.set_stack_valid();
           }
 
           frame_off += 8;

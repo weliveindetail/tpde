@@ -24,11 +24,19 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
   // IM: Is the current register value not on the stack?
   // FA: Is the assignment a fixed assignment?
   //
+  // RV + IM form a unit describing the following states:
+  //  - !RV +  IM: value uninitialized (default state)
+  //  -  RV +  IM: register dirty, must be spilled before evicting
+  //  - !RV + !IM: register invalid, value stored only in stack slot
+  //  -  RV + !IM: register identical to value in stack slot
 
   AssignmentPartRef(ValueAssignment *assignment, const u32 part)
       : assignment(assignment), part(part) {}
 
-  void reset() noexcept { assignment->parts[part] = 0; }
+  void reset() noexcept {
+    assignment->parts[part] = 0;
+    set_modified(true);
+  }
 
   [[nodiscard]] u8 bank() const noexcept {
     return (assignment->parts[part] >> 5) & 0b111;
@@ -97,6 +105,12 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
       assignment->parts[part] &= ~(1u << 11);
     }
   }
+
+  [[nodiscard]] bool stack_valid() const noexcept {
+    return (assignment->parts[part] & (1u << 9)) == 0;
+  }
+
+  void set_stack_valid() noexcept { set_modified(false); }
 
   [[nodiscard]] u32 part_size() const noexcept {
     return 1u << ((assignment->parts[part] >> 12) & 0b111);

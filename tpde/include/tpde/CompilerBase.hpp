@@ -1105,6 +1105,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
           auto ap = AssignmentPartRef{assignment, part};
           if (!ap.variable_ref()) {
             // TODO(ts): assert that this always happens?
+            assert(ap.stack_valid());
             self->derived()->load_from_stack(
                 cur_reg, ap.frame_off(), ap.part_size());
           }
@@ -1211,6 +1212,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
         derived()->mov(AsmReg{phi_ap.full_reg_id()}, reg, phi_ap.part_size());
       } else {
         derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
+        phi_ap.set_stack_valid();
       }
 
       if (phi_ap.register_valid() && !phi_ap.fixed_assignment()) {
@@ -1366,6 +1368,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
             derived()->spill_reg(reg, slot_off, ap.part_size());
           } else {
             auto reg = tmp_reg1.alloc_from_bank(ap.bank());
+            assert(ap.stack_valid());
             derived()->load_from_stack(reg, ap.frame_off(), ap.part_size());
             derived()->spill_reg(reg, slot_off, ap.part_size());
           }
