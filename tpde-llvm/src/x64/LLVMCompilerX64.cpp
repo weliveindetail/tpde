@@ -478,6 +478,7 @@ bool LLVMCompilerX64::compile_call_inner(
     const llvm::CallBase *call,
     std::variant<SymRef, ValuePartRef> &target,
     bool var_arg) noexcept {
+  ValueRef res{this}; // must outlive results.
   tpde::util::SmallVector<CallArg, 16> args;
   tpde::util::SmallVector<std::variant<ValuePartRef, std::pair<ScratchReg, u8>>,
                           4>
@@ -507,7 +508,6 @@ bool LLVMCompilerX64::compile_call_inner(
     args.push_back(CallArg{op, flag, byval_align, byval_size});
   }
 
-  ValueRef res{this};
   if (!call->getType()->isVoidTy()) {
     const auto res_part_count = this->adaptor->val_part_count(call);
     res = this->result_ref(call);

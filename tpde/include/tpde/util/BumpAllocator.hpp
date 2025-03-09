@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include "tpde/util/AddressSanitizer.hpp"
 #include "tpde/util/SmallVector.hpp"
 #include "tpde/util/misc.hpp"
 
@@ -36,6 +37,7 @@ public:
     if (!slabs.empty()) {
       deallocate_slabs(1);
       slabs.resize(1);
+      util::poison_memory_region(slabs[0], SlabSize);
       cur = reinterpret_cast<uintptr_t>(slabs[0]);
       end = cur + SlabSize;
     }
@@ -48,6 +50,7 @@ public:
     uintptr_t alloc_end = aligned + size;
     if (alloc_end <= end) [[likely]] {
       cur = alloc_end;
+      util::unpoison_memory_region(reinterpret_cast<void *>(aligned), size);
       return reinterpret_cast<void *>(aligned);
     }
     return allocate_slab(size, align);
@@ -62,9 +65,11 @@ public:
     }
 
     void *slab = allocate_mem(SlabSize, SLAB_ALIGNMENT);
+    util::poison_memory_region(slab, SlabSize);
     slabs.push_back(slab);
     cur = reinterpret_cast<uintptr_t>(slab) + size;
     end = reinterpret_cast<uintptr_t>(slab) + SlabSize;
+    util::unpoison_memory_region(slab, size);
     return slab;
   }
 

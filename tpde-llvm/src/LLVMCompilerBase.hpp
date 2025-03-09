@@ -3164,11 +3164,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_freeze(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
     const llvm::CallBase *call) noexcept {
-  std::variant<SymRef, ValuePartRef> call_target;
-  auto var_arg = false;
-
   // For indirect calls, target_ref must outlive call_target.
   ValueRef target_ref{this};
+
+  std::variant<SymRef, ValuePartRef> call_target;
+  auto var_arg = false;
 
   if (auto *fn = call->getCalledFunction(); fn) {
     if (fn->isIntrinsic()) {

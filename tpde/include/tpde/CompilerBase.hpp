@@ -9,6 +9,8 @@
 #include "Compiler.hpp"
 #include "CompilerConfig.hpp"
 #include "IRAdaptor.hpp"
+#include "tpde/util/AddressSanitizer.hpp"
+#include "tpde/util/misc.hpp"
 
 namespace tpde {
 // TODO(ts): formulate concept for full compiler so that there is *some* check
@@ -220,8 +222,9 @@ struct CompilerBase {
   void reset();
 
 protected:
-  /// Return assignment (size, free_list_idx).
-  static std::pair<u32, u32> get_assignment_alloc_info(u32 part_count) noexcept;
+  /// Return assignment (size, allocsize, free_list_idx).
+  static std::tuple<u32, u32, u32>
+      get_assignment_alloc_info(u32 part_count) noexcept;
 
   ValueAssignment *allocate_assignment(u32 part_count,
                                        bool skip_free_list = false) noexcept;
@@ -386,7 +389,7 @@ void CompilerBase<Adaptor, Derived, Config>::reset() {
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-std::pair<u32, u32>
+std::tuple<u32, u32, u32>
     CompilerBase<Adaptor, Derived, Config>::get_assignment_alloc_info(
         const u32 part_count) noexcept {
   u32 size = sizeof(ValueAssignment);
@@ -396,23 +399,26 @@ std::pair<u32, u32>
       sizeof(ValueAssignment::first_part);
   if (part_count > PARTS_INCLUDED) {
     size += (part_count - PARTS_INCLUDED) * sizeof(ValueAssignment::first_part);
-    size = util::align_up(size, alignof(ValueAssignment));
   }
-  assert(size <= ASSIGNMENT_BUF_SIZE);
+  u32 allocsize = util::align_up(size, alignof(ValueAssignment));
+  u32 red_zone = util::address_sanitizer_active ? 16 : 0;
+  assert(allocsize <= ASSIGNMENT_BUF_SIZE);
 
-  u32 list_idx = (size - sizeof(ValueAssignment)) / alignof(ValueAssignment);
-  return {size, list_idx};
+  u32 list_idx =
+      (allocsize - sizeof(ValueAssignment)) / alignof(ValueAssignment);
+  return {size, allocsize + red_zone, list_idx};
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
     CompilerBase<Adaptor, Derived, Config>::allocate_assignment(
         const u32 part_count, bool skip_free_list) noexcept {
-  auto [size, free_list_idx] = get_assignment_alloc_info(part_count);
+  auto [size, allocsize, free_list_idx] = get_assignment_alloc_info(part_count);
 
   if (!skip_free_list) {
     if (free_list_idx <= 1) [[likely]] {
       if (auto *a = assignments.fixed_free_lists[free_list_idx]; a != nullptr) {
+        util::unpoison_memory_region(a, size);
         assignments.fixed_free_lists[free_list_idx] = a->next_free_list_entry;
         return a;
       }
@@ -420,6 +426,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
       auto it = assignments.dynamic_free_lists.find(free_list_idx);
       if (it != assignments.dynamic_free_lists.end()) {
         if (auto *a = it->second; a != nullptr) {
+          util::unpoison_memory_region(a, size);
           it->second = a->next_free_list_entry;
           return a;
         }
@@ -430,11 +437,12 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
 
   // need to allocate new assignment
   if (ASSIGNMENT_BUF_SIZE - assignments.buffers[assignments.cur_buf].cur_off >=
-      size) {
+      allocsize) {
     auto &buf = assignments.buffers[assignments.cur_buf];
     auto *assignment =
         reinterpret_cast<ValueAssignment *>(buf.data.get() + buf.cur_off);
-    buf.cur_off += size;
+    buf.cur_off += allocsize;
+    util::unpoison_memory_region(assignment, size);
 
     new (assignment) ValueAssignment{};
     return assignment;
@@ -444,13 +452,16 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
   if (assignments.cur_buf == assignments.buffers.size()) {
     assignments.buffers.emplace_back(
         std::make_unique<u8[]>(ASSIGNMENT_BUF_SIZE), 0);
+    util::poison_memory_region(assignments.buffers.back().data.get(),
+                               ASSIGNMENT_BUF_SIZE);
   }
   assert(assignments.cur_buf < assignments.buffers.size());
   assert(assignments.buffers[assignments.cur_buf].cur_off == 0);
 
   auto &buf = assignments.buffers[assignments.cur_buf];
   auto *assignment = reinterpret_cast<ValueAssignment *>(buf.data.get());
-  buf.cur_off = size;
+  buf.cur_off = allocsize;
+  util::unpoison_memory_region(assignment, size);
 
   new (assignment) ValueAssignment{};
   return assignment;
@@ -459,7 +470,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::deallocate_assignment(
     u32 part_count, ValLocalIdx local_idx) noexcept {
-  auto [size, free_list_idx] = get_assignment_alloc_info(part_count);
+  auto [size, allocsize, free_list_idx] = get_assignment_alloc_info(part_count);
 
   ValueAssignment *assignment = val_assignment(local_idx);
   if (free_list_idx <= 1) [[likely]] {
@@ -471,6 +482,8 @@ void CompilerBase<Adaptor, Derived, Config>::deallocate_assignment(
     assignment->next_free_list_entry = entry;
     entry = assignment;
   }
+
+  util::poison_memory_region(assignment, size);
 
   assignments.value_ptrs[static_cast<u32>(local_idx)] = nullptr;
 }
@@ -1470,6 +1483,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   assignments.value_ptrs.clear();
   assignments.value_ptrs.resize(analyzer.liveness.size());
   for (auto &buf : assignments.buffers) {
+    util::poison_memory_region(buf.data.get(), ASSIGNMENT_BUF_SIZE);
     buf.cur_off = 0;
   }
   assignments.cur_buf = 0;
@@ -1482,6 +1496,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   if (assignments.buffers.empty()) {
     assignments.buffers.emplace_back(
         std::make_unique<u8[]>(ASSIGNMENT_BUF_SIZE), 0);
+    util::poison_memory_region(assignments.buffers.back().data.get(),
+                               ASSIGNMENT_BUF_SIZE);
   }
 
   cur_block_idx =

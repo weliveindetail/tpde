@@ -660,6 +660,12 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePart::reset(
     CompilerBase *compiler) noexcept {
+#ifndef NDEBUG
+  // In debug builds, touch assignment to catch cases where the assignment was
+  // already free'ed.
+  assert(!has_assignment() || assignment().modified() || true);
+#endif
+
   AsmReg reg = state.c.reg;
   if (!reg.valid()) {
     return;
