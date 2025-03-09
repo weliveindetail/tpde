@@ -342,6 +342,8 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
         compiler->derived()->load_from_stack(
             reg, ap.frame_off(), ap.part_size());
       }
+    } else {
+      assert(!ap.stack_valid() && "alloc_reg called on initialized value");
     }
   } else {
     reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
@@ -817,6 +819,10 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef : ValuePart {
 
   void set_value(ValuePart &&other) noexcept {
     ValuePart::set_value(compiler, std::move(other));
+  }
+
+  void set_value_reg(AsmReg value_reg) noexcept {
+    ValuePart::set_value_reg(compiler, value_reg);
   }
 
   AsmReg salvage() noexcept { return ValuePart::salvage(compiler); }

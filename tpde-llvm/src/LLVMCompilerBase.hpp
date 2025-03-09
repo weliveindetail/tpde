@@ -3965,11 +3965,8 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_landing_pad(
     const llvm::LandingPadInst *inst) noexcept {
   auto res_ref = this->result_ref(inst);
-  auto res_ref_first = res_ref.part(0);
-  auto res_ref_second = res_ref.part(1);
-
-  this->set_value(res_ref_first, Derived::LANDING_PAD_RES_REGS[0]);
-  this->set_value(res_ref_second, Derived::LANDING_PAD_RES_REGS[1]);
+  res_ref.part(0).set_value_reg(Derived::LANDING_PAD_RES_REGS[0]);
+  res_ref.part(1).set_value_reg(Derived::LANDING_PAD_RES_REGS[1]);
 
   return true;
 }

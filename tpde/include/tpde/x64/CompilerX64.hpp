@@ -570,7 +570,6 @@ void CallingConv::handle_func_args(
       auto [_, arg_ref] = compiler->result_ref_single(arg);
       const auto res_reg = arg_ref.alloc_reg(arg_regs_mask());
       ASMC(compiler, LEA64rm, res_reg, FE_MEM(FE_BP, 0, FE_NOREG, frame_off));
-      compiler->set_value(arg_ref, arg_ref.cur_reg());
 
       frame_off += util::align_up(size, 8);
       ++arg_idx;
@@ -599,7 +598,7 @@ void CallingConv::handle_func_args(
 
       if (parts.reg_bank(part_idx) == 0) {
         if (!must_pass_stack && scalar_reg_count < gp_regs.size()) {
-          compiler->set_value(part_ref, gp_regs[scalar_reg_count++]);
+          part_ref.set_value_reg(gp_regs[scalar_reg_count++]);
         } else {
           const auto size = parts.size_bytes(part_idx);
           //  TODO(ts): maybe allow negative frame offsets for value
@@ -622,7 +621,7 @@ void CallingConv::handle_func_args(
         }
       } else {
         if (!must_pass_stack && xmm_reg_count < xmm_regs.size()) {
-          compiler->set_value(part_ref, xmm_regs[xmm_reg_count++]);
+          part_ref.set_value_reg(xmm_regs[xmm_reg_count++]);
         } else {
           auto ap = part_ref.assignment();
           auto size = ap.part_size();

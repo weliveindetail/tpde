@@ -702,7 +702,6 @@ void CallingConv::handle_func_args(
       // TODO: multiple arguments?
       const auto res_reg = arg_ref.alloc_reg(arg_regs_mask());
       ASMC(compiler, ADDxi, res_reg, stack_reg, frame_off);
-      compiler->set_value(arg_ref, arg_ref.cur_reg());
 
       frame_off += util::align_up(size, 8);
       ++arg_idx;
@@ -714,8 +713,7 @@ void CallingConv::handle_func_args(
     if (compiler->adaptor->cur_arg_is_sret(arg_idx)) {
       if (auto target_reg = sret_reg(); target_reg) {
         assert(part_count == 1 && "sret must be single-part");
-        auto [_, arg_ref] = compiler->result_ref_single(arg);
-        compiler->set_value(arg_ref, *target_reg);
+        compiler->result_ref(arg).part(0).set_value_reg(*target_reg);
         ++arg_idx;
         continue;
       }
@@ -750,7 +748,7 @@ void CallingConv::handle_func_args(
 
       if (bank == 0) {
         if (scalar_reg_count < gp_regs.size()) {
-          compiler->set_value(part_ref, gp_regs[scalar_reg_count++]);
+          part_ref.set_value_reg(gp_regs[scalar_reg_count++]);
         } else {
           const auto stack_reg = stack_off_reg();
 
@@ -777,7 +775,7 @@ void CallingConv::handle_func_args(
         }
       } else {
         if (vec_reg_count < vec_regs.size()) {
-          compiler->set_value(part_ref, vec_regs[vec_reg_count++]);
+          part_ref.set_value_reg(vec_regs[vec_reg_count++]);
         } else {
           const auto stack_reg = stack_off_reg();
           uint64_t word_size = size <= 8 ? 8 : 16;

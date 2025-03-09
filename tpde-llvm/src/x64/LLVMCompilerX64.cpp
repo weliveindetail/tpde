@@ -368,7 +368,6 @@ bool LLVMCompilerX64::compile_alloca(const llvm::AllocaInst *alloca) noexcept {
 
   ASM(AND64ri, FE_SP, align);
   ASM(MOV64rr, res_ref.cur_reg(), FE_SP);
-  this->set_value(res_ref, res_ref.cur_reg());
   return true;
 }
 

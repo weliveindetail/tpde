@@ -257,9 +257,6 @@ public:
   std::pair<ValueRef, ValuePartRef>
       result_ref_single(IRValueRef value) noexcept;
 
-  // TODO(ts): this takes ownership of the register if the ValuePartRef is not
-  // fixed which is a bit weird...
-  void set_value(ValuePartRef &val_ref, AsmReg reg) noexcept;
   void set_value(ValuePartRef &val_ref, ScratchReg &scratch) noexcept;
 
   /// Get generic value part into a single register, evaluating expressions
@@ -753,46 +750,6 @@ std::pair<typename CompilerBase<Adaptor, Derived, Config>::ValueRef,
   std::pair<ValueRef, ValuePartRef> res{result_ref(value), this};
   res.second = res.first.part(0);
   return res;
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::set_value(ValuePartRef &val_ref,
-                                                       AsmReg reg) noexcept {
-  auto ap = val_ref.assignment();
-
-  if (ap.fixed_assignment()) {
-    auto cur_reg = AsmReg{ap.full_reg_id()};
-    assert(register_file.is_used(cur_reg));
-    assert(register_file.is_fixed(cur_reg));
-    assert(register_file.reg_local_idx(cur_reg) == val_ref.local_idx());
-
-    if (cur_reg.id() != reg.id()) {
-      derived()->mov(cur_reg, reg, ap.part_size());
-    }
-
-    ap.set_register_valid(true);
-    ap.set_modified(true);
-    return;
-  }
-
-  if (ap.register_valid()) {
-    auto cur_reg = AsmReg{ap.full_reg_id()};
-    if (cur_reg.id() == reg.id()) {
-      ap.set_modified(true);
-      return;
-    }
-    val_ref.unlock();
-    assert(!register_file.is_fixed(cur_reg));
-    register_file.unmark_used(cur_reg);
-  }
-
-  assert(!register_file.is_used(reg));
-
-  register_file.mark_used(reg, val_ref.local_idx(), val_ref.part());
-  register_file.mark_clobbered(reg);
-  ap.set_full_reg_id(reg.id());
-  ap.set_register_valid(true);
-  ap.set_modified(true);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
