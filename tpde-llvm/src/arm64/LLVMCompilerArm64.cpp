@@ -128,7 +128,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                                bool width_is_32) noexcept;
 
   void create_helper_call(std::span<IRValueRef> args,
-                          std::span<ValuePartRef> results,
+                          std::span<ValuePart> results,
                           SymRef sym) noexcept;
 
   bool handle_intrin(const llvm::IntrinsicInst *) noexcept;
@@ -852,19 +852,14 @@ void LLVMCompilerArm64::switch_emit_binary_step(
 }
 
 void LLVMCompilerArm64::create_helper_call(std::span<IRValueRef> args,
-                                           std::span<ValuePartRef> results,
+                                           std::span<ValuePart> results,
                                            SymRef sym) noexcept {
   tpde::util::SmallVector<CallArg, 8> arg_vec{};
   for (auto arg : args) {
     arg_vec.push_back(CallArg{arg});
   }
 
-  tpde::util::SmallVector<ValuePart> res_vec{};
-  for (auto &res : results) {
-    res_vec.push_back(std::move(res));
-  }
-
-  generate_call(sym, arg_vec, res_vec, tpde::a64::CallingConv::SYSV_CC, false);
+  generate_call(sym, arg_vec, results, tpde::a64::CallingConv::SYSV_CC, false);
 }
 
 bool LLVMCompilerArm64::handle_intrin(
