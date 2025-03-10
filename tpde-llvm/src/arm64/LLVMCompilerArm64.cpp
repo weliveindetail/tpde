@@ -5,6 +5,7 @@
 #include <fstream>
 
 #include <llvm/IR/InlineAsm.h>
+#include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicsAArch64.h>
 
@@ -91,9 +92,11 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                       LLVMBasicValType ty,
                       GenericValuePart el) noexcept;
 
-  bool compile_unreachable(const llvm::UnreachableInst *) noexcept;
-  bool compile_alloca(const llvm::AllocaInst *) noexcept;
-  bool compile_br(const llvm::BranchInst *) noexcept;
+  bool compile_unreachable(const llvm::Instruction *,
+                           const ValInfo &,
+                           u64) noexcept;
+  bool compile_alloca(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_br(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   void generate_conditional_branch(Jump jmp,
                                    IRBlockRef true_target,
                                    IRBlockRef false_target) noexcept;
@@ -101,7 +104,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
   bool compile_call_inner(const llvm::CallBase *,
                           std::variant<SymRef, ValuePartRef> &,
                           bool) noexcept;
-  bool compile_icmp(const llvm::ICmpInst *, InstRange) noexcept;
+  bool compile_icmp(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
   void resolved_gep_to_base_reg(ResolvedGEP &gep) noexcept;
@@ -322,15 +325,18 @@ void LLVMCompilerArm64::insert_element(ValuePart &vec_ref,
   vec_ref.set_modified();
 }
 
-bool LLVMCompilerArm64::compile_unreachable(
-    const llvm::UnreachableInst *) noexcept {
+bool LLVMCompilerArm64::compile_unreachable(const llvm::Instruction *,
+                                            const ValInfo &,
+                                            u64) noexcept {
   ASM(UDF, 1);
   this->release_regs_after_return();
   return true;
 }
 
-bool LLVMCompilerArm64::compile_alloca(
-    const llvm::AllocaInst *alloca) noexcept {
+bool LLVMCompilerArm64::compile_alloca(const llvm::Instruction *inst,
+                                       const ValInfo &,
+                                       u64) noexcept {
+  const auto *alloca = llvm::cast<llvm::AllocaInst>(inst);
   assert(this->adaptor->cur_has_dynamic_alloca());
 
   // refcount
@@ -409,7 +415,10 @@ bool LLVMCompilerArm64::compile_alloca(
   return true;
 }
 
-bool LLVMCompilerArm64::compile_br(const llvm::BranchInst *br) noexcept {
+bool LLVMCompilerArm64::compile_br(const llvm::Instruction *inst,
+                                   const ValInfo &,
+                                   u64) noexcept {
+  const auto *br = llvm::cast<llvm::BranchInst>(inst);
   if (br->isUnconditional()) {
     auto spilled = this->spill_before_branch();
 
@@ -542,8 +551,10 @@ bool LLVMCompilerArm64::compile_call_inner(
   return true;
 }
 
-bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
-                                     InstRange remaining) noexcept {
+bool LLVMCompilerArm64::compile_icmp(const llvm::Instruction *inst,
+                                     const ValInfo &,
+                                     u64) noexcept {
+  const auto *cmp = llvm::cast<llvm::ICmpInst>(inst);
   auto *cmp_ty = cmp->getOperand(0)->getType();
   assert(cmp_ty->isIntegerTy() || cmp_ty->isPointerTy());
   u32 int_width = 64;
@@ -582,9 +593,8 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
 
   const llvm::BranchInst *fuse_br = nullptr;
   const llvm::Instruction *fuse_ext = nullptr;
-  if (!cmp->user_empty() && remaining.from != remaining.to &&
-      (analyzer.liveness_info((u32)val_idx(cmp)).ref_count <= 2) &&
-      *cmp->user_begin() == cmp->getNextNode()) {
+  if (!cmp->user_empty() && *cmp->user_begin() == cmp->getNextNode() &&
+      (analyzer.liveness_info((u32)val_idx(cmp)).ref_count <= 2)) {
     auto *fuse_inst = cmp->getNextNode();
     assert(cmp->hasNUses(1));
     if (auto *br = llvm::dyn_cast<llvm::BranchInst>(fuse_inst)) {
@@ -660,7 +670,7 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
         auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
         auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
         generate_conditional_branch(cbz, true_block, false_block);
-        this->adaptor->inst_set_fused(*remaining.from, true);
+        this->adaptor->inst_set_fused(fuse_br, true);
         return true;
       }
 
@@ -699,16 +709,16 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::ICmpInst *cmp,
     auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
     auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
     generate_conditional_branch(jump, true_block, false_block);
-    this->adaptor->inst_set_fused(*remaining.from, true);
+    this->adaptor->inst_set_fused(fuse_br, true);
   } else if (fuse_ext) {
-    auto [_, res_ref] = this->result_ref_single(*remaining.from);
+    auto [_, res_ref] = this->result_ref_single(fuse_ext);
     if (llvm::isa<llvm::ZExtInst>(fuse_ext)) {
       generate_raw_set(jump, res_scratch.alloc_gp());
     } else {
       generate_raw_mask(jump, res_scratch.alloc_gp());
     }
     set_value(res_ref, res_scratch);
-    this->adaptor->inst_set_fused(*remaining.from, true);
+    this->adaptor->inst_set_fused(fuse_ext, true);
   } else {
     auto [_, res_ref] = this->result_ref_single(cmp);
     generate_raw_set(jump, res_scratch.alloc_gp());

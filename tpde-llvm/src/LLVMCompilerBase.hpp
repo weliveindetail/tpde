@@ -53,6 +53,8 @@ struct LLVMCompilerBase : public LLVMCompiler,
 
   using AsmReg = typename Base::AsmReg;
 
+  using ValInfo = typename Adaptor::ValInfo;
+
   struct ValRefSpecial {
     uint8_t mode = 4;
     IRValueRef value;
@@ -84,28 +86,32 @@ struct LLVMCompilerBase : public LLVMCompiler,
     u32 alloca_frame_off;
   };
 
-  enum class IntBinaryOp {
-    add,
-    sub,
-    mul,
-    udiv,
-    sdiv,
-    urem,
-    srem,
-    land,
-    lor,
-    lxor,
-    shl,
-    shr,
-    ashr,
+  struct IntBinaryOp {
+    enum {
+      add,
+      sub,
+      mul,
+      udiv,
+      sdiv,
+      urem,
+      srem,
+      land,
+      lor,
+      lxor,
+      shl,
+      shr,
+      ashr,
+    };
   };
 
-  enum class FloatBinaryOp {
-    add,
-    sub,
-    mul,
-    div,
-    rem
+  struct FloatBinaryOp {
+    enum {
+      add,
+      sub,
+      mul,
+      div,
+      rem
+    };
   };
 
   enum class OverflowOp {
@@ -287,30 +293,56 @@ public:
 
   bool compile(llvm::Module &mod) noexcept;
 
+  bool compile_unknown(const llvm::Instruction *,
+                       const ValInfo &,
+                       u64) noexcept {
+    return false;
+  }
+
   bool compile_inst(const llvm::Instruction *, InstRange) noexcept;
 
-  bool compile_ret(const llvm::ReturnInst *) noexcept;
+  bool compile_ret(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   bool compile_load_generic(const llvm::LoadInst *,
                             GenericValuePart &&) noexcept;
-  bool compile_load(const llvm::LoadInst *) noexcept;
+  bool compile_load(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   bool compile_store_generic(const llvm::StoreInst *,
                              GenericValuePart &&) noexcept;
-  bool compile_store(const llvm::StoreInst *) noexcept;
-  bool compile_int_binary_op(const llvm::BinaryOperator *,
-                             IntBinaryOp op) noexcept;
-  bool compile_float_binary_op(const llvm::BinaryOperator *,
-                               FloatBinaryOp op) noexcept;
-  bool compile_fneg(const llvm::UnaryOperator *) noexcept;
-  bool compile_float_ext_trunc(const llvm::CastInst *) noexcept;
-  bool compile_float_to_int(const llvm::CastInst *, bool sign) noexcept;
-  bool compile_int_to_float(const llvm::CastInst *, bool sign) noexcept;
-  bool compile_int_trunc(const llvm::TruncInst *) noexcept;
-  bool compile_int_ext(const llvm::CastInst *, bool sign) noexcept;
-  bool compile_ptr_to_int(const llvm::PtrToIntInst *) noexcept;
-  bool compile_int_to_ptr(const llvm::IntToPtrInst *) noexcept;
-  bool compile_bitcast(const llvm::BitCastInst *) noexcept;
-  bool compile_extract_value(const llvm::ExtractValueInst *) noexcept;
-  bool compile_insert_value(const llvm::InsertValueInst *) noexcept;
+  bool compile_store(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_int_binary_op(const llvm::Instruction *,
+                             const ValInfo &,
+                             u64) noexcept;
+  bool compile_float_binary_op(const llvm::Instruction *,
+                               const ValInfo &,
+                               u64) noexcept;
+  bool compile_fneg(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_float_ext_trunc(const llvm::Instruction *,
+                               const ValInfo &,
+                               u64) noexcept;
+  bool compile_float_to_int(const llvm::Instruction *,
+                            const ValInfo &,
+                            u64) noexcept;
+  bool compile_int_to_float(const llvm::Instruction *,
+                            const ValInfo &,
+                            u64) noexcept;
+  bool compile_int_trunc(const llvm::Instruction *,
+                         const ValInfo &,
+                         u64) noexcept;
+  bool
+      compile_int_ext(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_ptr_to_int(const llvm::Instruction *,
+                          const ValInfo &,
+                          u64) noexcept;
+  bool compile_int_to_ptr(const llvm::Instruction *,
+                          const ValInfo &,
+                          u64) noexcept;
+  bool
+      compile_bitcast(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_extract_value(const llvm::Instruction *,
+                             const ValInfo &,
+                             u64) noexcept;
+  bool compile_insert_value(const llvm::Instruction *,
+                            const ValInfo &,
+                            u64) noexcept;
 
   void extract_element(IRValueRef vec,
                        unsigned idx,
@@ -320,23 +352,34 @@ public:
                       unsigned idx,
                       LLVMBasicValType ty,
                       GenericValuePart el) noexcept;
-  bool compile_extract_element(const llvm::ExtractElementInst *) noexcept;
-  bool compile_insert_element(const llvm::InsertElementInst *) noexcept;
-  bool compile_shuffle_vector(const llvm::ShuffleVectorInst *) noexcept;
+  bool compile_extract_element(const llvm::Instruction *,
+                               const ValInfo &,
+                               u64) noexcept;
+  bool compile_insert_element(const llvm::Instruction *,
+                              const ValInfo &,
+                              u64) noexcept;
+  bool compile_shuffle_vector(const llvm::Instruction *,
+                              const ValInfo &,
+                              u64) noexcept;
 
-  bool compile_cmpxchg(const llvm::AtomicCmpXchgInst *) noexcept;
-  bool compile_atomicrmw(const llvm::AtomicRMWInst *) noexcept;
-  bool compile_fence(const llvm::FenceInst *) noexcept;
-  bool compile_freeze(const llvm::FreezeInst *) noexcept;
-  bool compile_call(const llvm::CallBase *) noexcept;
-  bool compile_select(const llvm::SelectInst *) noexcept;
+  bool
+      compile_cmpxchg(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_atomicrmw(const llvm::Instruction *,
+                         const ValInfo &,
+                         u64) noexcept;
+  bool compile_fence(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_freeze(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_call(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_select(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   GenericValuePart resolved_gep_to_addr(ResolvedGEP &gep) noexcept;
-  bool compile_gep(const llvm::GetElementPtrInst *, InstRange) noexcept;
-  bool compile_fcmp(const llvm::FCmpInst *) noexcept;
-  bool compile_switch(const llvm::SwitchInst *) noexcept;
-  bool compile_invoke(const llvm::InvokeInst *) noexcept;
-  bool compile_landing_pad(const llvm::LandingPadInst *) noexcept;
-  bool compile_resume(const llvm::ResumeInst *) noexcept;
+  bool compile_gep(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_fcmp(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_switch(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_invoke(const llvm::Instruction *, const ValInfo &, u64) noexcept;
+  bool compile_landing_pad(const llvm::Instruction *,
+                           const ValInfo &,
+                           u64) noexcept;
+  bool compile_resume(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   SymRef lookup_type_info_sym(IRValueRef value) noexcept;
   bool compile_intrin(const llvm::IntrinsicInst *) noexcept;
   bool compile_is_fpclass(const llvm::IntrinsicInst *) noexcept;
@@ -351,7 +394,9 @@ public:
 
   bool compile_alloca(const llvm::AllocaInst *) noexcept { return false; }
 
-  bool compile_br(const llvm::BranchInst *) noexcept { return false; }
+  bool compile_br(const llvm::Instruction *, const ValInfo &, u64) noexcept {
+    return false;
+  }
 
   bool compile_inline_asm(const llvm::CallBase *) { return false; }
   bool compile_call_inner(const llvm::CallInst *,
@@ -1041,81 +1086,103 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
-    const llvm::Instruction *i, InstRange remaining) noexcept {
+    const llvm::Instruction *i, InstRange) noexcept {
   TPDE_LOG_TRACE("Compiling inst {}", this->adaptor->inst_fmt_ref(i));
+  static constexpr auto fns = []() constexpr {
+    // TODO: maybe don't use member-function pointers here, these are twice the
+    // size of regular function pointers (hence an entry size is 0x18).
+    using CompileFn = bool (Derived::*)(
+        const llvm::Instruction *, const ValInfo &, u64) noexcept;
+    std::array<std::pair<CompileFn, u64>, llvm::Instruction::OtherOpsEnd> res{};
+    res.fill({&Derived::compile_unknown, 0});
 
-  // TODO: const-correctness
-  switch (i->getOpcode()) {
     // clang-format off
-  case llvm::Instruction::Ret: return compile_ret(llvm::cast<llvm::ReturnInst>(i));
-  case llvm::Instruction::Load: return compile_load(llvm::cast<llvm::LoadInst>(i));
-  case llvm::Instruction::Store: return compile_store(llvm::cast<llvm::StoreInst>(i));
-  case llvm::Instruction::Add: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::add);
-  case llvm::Instruction::Sub: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::sub);
-  case llvm::Instruction::Mul: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::mul);
-  case llvm::Instruction::UDiv: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::udiv);
-  case llvm::Instruction::SDiv: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::sdiv);
-  case llvm::Instruction::URem: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::urem);
-  case llvm::Instruction::SRem: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::srem);
-  case llvm::Instruction::And: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::land);
-  case llvm::Instruction::Or: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::lor);
-  case llvm::Instruction::Xor: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::lxor);
-  case llvm::Instruction::Shl: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::shl);
-  case llvm::Instruction::LShr: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::shr);
-  case llvm::Instruction::AShr: return compile_int_binary_op(llvm::cast<llvm::BinaryOperator>(i), IntBinaryOp::ashr);
-  case llvm::Instruction::FAdd: return compile_float_binary_op(llvm::cast<llvm::BinaryOperator>(i), FloatBinaryOp::add);
-  case llvm::Instruction::FSub: return compile_float_binary_op(llvm::cast<llvm::BinaryOperator>(i), FloatBinaryOp::sub);
-  case llvm::Instruction::FMul: return compile_float_binary_op(llvm::cast<llvm::BinaryOperator>(i), FloatBinaryOp::mul);
-  case llvm::Instruction::FDiv: return compile_float_binary_op(llvm::cast<llvm::BinaryOperator>(i), FloatBinaryOp::div);
-  case llvm::Instruction::FRem: return compile_float_binary_op(llvm::cast<llvm::BinaryOperator>(i), FloatBinaryOp::rem);
-  case llvm::Instruction::FNeg: return compile_fneg(llvm::cast<llvm::UnaryOperator>(i));
-  case llvm::Instruction::FPExt:
-  case llvm::Instruction::FPTrunc: return compile_float_ext_trunc(llvm::cast<llvm::CastInst>(i));
-  case llvm::Instruction::FPToSI: return compile_float_to_int(llvm::cast<llvm::CastInst>(i), true);
-  case llvm::Instruction::FPToUI: return compile_float_to_int(llvm::cast<llvm::CastInst>(i), false);
-  case llvm::Instruction::SIToFP: return compile_int_to_float(llvm::cast<llvm::CastInst>(i), true);
-  case llvm::Instruction::UIToFP: return compile_int_to_float(llvm::cast<llvm::CastInst>(i), false);
-  case llvm::Instruction::Trunc: return compile_int_trunc(llvm::cast<llvm::TruncInst>(i));
-  case llvm::Instruction::SExt: return compile_int_ext(llvm::cast<llvm::CastInst>(i), true);
-  case llvm::Instruction::ZExt: return compile_int_ext(llvm::cast<llvm::CastInst>(i), false);
-  case llvm::Instruction::PtrToInt: return compile_ptr_to_int(llvm::cast<llvm::PtrToIntInst>(i));
-  case llvm::Instruction::IntToPtr: return compile_int_to_ptr(llvm::cast<llvm::IntToPtrInst>(i));
-  case llvm::Instruction::BitCast: return compile_bitcast(llvm::cast<llvm::BitCastInst>(i));
-  case llvm::Instruction::ExtractValue: return compile_extract_value(llvm::cast<llvm::ExtractValueInst>(i));
-  case llvm::Instruction::InsertValue: return compile_insert_value(llvm::cast<llvm::InsertValueInst>(i));
-  case llvm::Instruction::ExtractElement: return compile_extract_element(llvm::cast<llvm::ExtractElementInst>(i));
-  case llvm::Instruction::InsertElement: return compile_insert_element(llvm::cast<llvm::InsertElementInst>(i));
-  case llvm::Instruction::ShuffleVector: return compile_shuffle_vector(llvm::cast<llvm::ShuffleVectorInst>(i));
-  case llvm::Instruction::AtomicCmpXchg: return compile_cmpxchg(llvm::cast<llvm::AtomicCmpXchgInst>(i));
-  case llvm::Instruction::AtomicRMW: return compile_atomicrmw(llvm::cast<llvm::AtomicRMWInst>(i));
-  case llvm::Instruction::Fence: return compile_fence(llvm::cast<llvm::FenceInst>(i));
-  case llvm::Instruction::PHI: TPDE_UNREACHABLE("PHI nodes shouldn't be compiled");
-  case llvm::Instruction::Freeze: return compile_freeze(llvm::cast<llvm::FreezeInst>(i));
-  case llvm::Instruction::Unreachable: return derived()->compile_unreachable(llvm::cast<llvm::UnreachableInst>(i));
-  case llvm::Instruction::Alloca: return derived()->compile_alloca(llvm::cast<llvm::AllocaInst>(i));
-  case llvm::Instruction::Br: return derived()->compile_br(llvm::cast<llvm::BranchInst>(i));
-  case llvm::Instruction::Call: return compile_call(llvm::cast<llvm::CallBase>(i));
-  case llvm::Instruction::Select: return compile_select(llvm::cast<llvm::SelectInst>(i));
-  case llvm::Instruction::GetElementPtr: return compile_gep(llvm::cast<llvm::GetElementPtrInst>(i), remaining);
-  case llvm::Instruction::ICmp: return derived()->compile_icmp(llvm::cast<llvm::ICmpInst>(i), remaining);
-  case llvm::Instruction::FCmp: return compile_fcmp(llvm::cast<llvm::FCmpInst>(i));
-  case llvm::Instruction::Switch: return compile_switch(llvm::cast<llvm::SwitchInst>(i));
-  case llvm::Instruction::Invoke: return compile_invoke(llvm::cast<llvm::InvokeInst>(i));
-  case llvm::Instruction::LandingPad: return compile_landing_pad(llvm::cast<llvm::LandingPadInst>(i));
-  case llvm::Instruction::Resume: return compile_resume(llvm::cast<llvm::ResumeInst>(i));
-    // clang-format on
 
-  default: return false;
-  }
+    // Terminators
+    res[llvm::Instruction::Ret] = {&Derived::compile_ret, 0};
+    res[llvm::Instruction::Br] = {&Derived::compile_br, 0};
+    res[llvm::Instruction::Switch] = {&Derived::compile_switch, 0};
+    // TODO: IndirectBr
+    res[llvm::Instruction::Invoke] = {&Derived::compile_invoke, 0};
+    res[llvm::Instruction::Resume] = {&Derived::compile_resume, 0};
+    res[llvm::Instruction::Unreachable] = {&Derived::compile_unreachable, 0};
+
+    // Standard unary operators
+    res[llvm::Instruction::FNeg] = {&Derived::compile_fneg, 0};
+
+    // Standard binary operators
+    res[llvm::Instruction::Add] = {&Derived::compile_int_binary_op, IntBinaryOp::add};
+    res[llvm::Instruction::FAdd] = {&Derived::compile_float_binary_op, FloatBinaryOp::add};
+    res[llvm::Instruction::Sub] = {&Derived::compile_int_binary_op, IntBinaryOp::sub};
+    res[llvm::Instruction::FSub] = {&Derived::compile_float_binary_op, FloatBinaryOp::sub};
+    res[llvm::Instruction::Mul] = {&Derived::compile_int_binary_op, IntBinaryOp::mul};
+    res[llvm::Instruction::FMul] = {&Derived::compile_float_binary_op, FloatBinaryOp::mul};
+    res[llvm::Instruction::UDiv] = {&Derived::compile_int_binary_op, IntBinaryOp::udiv};
+    res[llvm::Instruction::SDiv] = {&Derived::compile_int_binary_op, IntBinaryOp::sdiv};
+    res[llvm::Instruction::FDiv] = {&Derived::compile_float_binary_op, FloatBinaryOp::div};
+    res[llvm::Instruction::URem] = {&Derived::compile_int_binary_op, IntBinaryOp::urem};
+    res[llvm::Instruction::SRem] = {&Derived::compile_int_binary_op, IntBinaryOp::srem};
+    res[llvm::Instruction::FRem] = {&Derived::compile_float_binary_op, FloatBinaryOp::rem};
+    res[llvm::Instruction::Shl] = {&Derived::compile_int_binary_op, IntBinaryOp::shl};
+    res[llvm::Instruction::LShr] = {&Derived::compile_int_binary_op, IntBinaryOp::shr};
+    res[llvm::Instruction::AShr] = {&Derived::compile_int_binary_op, IntBinaryOp::ashr};
+    res[llvm::Instruction::And] = {&Derived::compile_int_binary_op, IntBinaryOp::land};
+    res[llvm::Instruction::Or] = {&Derived::compile_int_binary_op, IntBinaryOp::lor};
+    res[llvm::Instruction::Xor] = {&Derived::compile_int_binary_op, IntBinaryOp::lxor};
+
+    // Memory operators
+    res[llvm::Instruction::Alloca] = {&Derived::compile_alloca, 0};
+    res[llvm::Instruction::Load] = {&Derived::compile_load, 0};
+    res[llvm::Instruction::Store] = {&Derived::compile_store, 0};
+    res[llvm::Instruction::GetElementPtr] = {&Derived::compile_gep, 0};
+    res[llvm::Instruction::Fence] = {&Derived::compile_fence, 0};
+    res[llvm::Instruction::AtomicCmpXchg] = {&Derived::compile_cmpxchg, 0};
+    res[llvm::Instruction::AtomicRMW] = {&Derived::compile_atomicrmw, 0};
+
+    // Cast operators
+    res[llvm::Instruction::Trunc] = {&Derived::compile_int_trunc, 0};
+    res[llvm::Instruction::ZExt] = {&Derived::compile_int_ext, /*sign=*/false};
+    res[llvm::Instruction::SExt] = {&Derived::compile_int_ext, /*sign=*/true};
+    res[llvm::Instruction::FPToUI] = {&Derived::compile_float_to_int, /*sign=*/false};
+    res[llvm::Instruction::FPToSI] = {&Derived::compile_float_to_int, /*sign=*/true};
+    res[llvm::Instruction::UIToFP] = {&Derived::compile_int_to_float, /*sign=*/false};
+    res[llvm::Instruction::SIToFP] = {&Derived::compile_int_to_float, /*sign=*/true};
+    res[llvm::Instruction::FPTrunc] = {&Derived::compile_float_ext_trunc, 0};
+    res[llvm::Instruction::FPExt] = {&Derived::compile_float_ext_trunc, 0};
+    res[llvm::Instruction::PtrToInt] = {&Derived::compile_ptr_to_int, 0};
+    res[llvm::Instruction::IntToPtr] = {&Derived::compile_int_to_ptr, 0};
+    res[llvm::Instruction::BitCast] = {&Derived::compile_bitcast, 0};
+    // TODO: AddrSpaceCast
+
+    // Other operators
+    res[llvm::Instruction::ICmp] = {&Derived::compile_icmp, 0};
+    res[llvm::Instruction::FCmp] = {&Derived::compile_fcmp, 0};
+    // PHI will not be called
+    res[llvm::Instruction::Call] = {&Derived::compile_call, 0};
+    res[llvm::Instruction::Select] = {&Derived::compile_select, 0};
+    res[llvm::Instruction::ExtractElement] = {&Derived::compile_extract_element, 0};
+    res[llvm::Instruction::InsertElement] = {&Derived::compile_insert_element, 0};
+    res[llvm::Instruction::ShuffleVector] = {&Derived::compile_shuffle_vector, 0};
+    res[llvm::Instruction::ExtractValue] = {&Derived::compile_extract_value, 0};
+    res[llvm::Instruction::InsertValue] = {&Derived::compile_insert_value, 0};
+    res[llvm::Instruction::LandingPad] = {&Derived::compile_landing_pad, 0};
+    res[llvm::Instruction::Freeze] = {&Derived::compile_freeze, 0};
+
+    // clang-format on
+    return res;
+  }();
+
+  const ValInfo &val_info = this->adaptor->val_info(i);
+  assert(i->getOpcode() < fns.size());
+  const auto [compile_fn, arg] = fns[i->getOpcode()];
+  return (derived()->*compile_fn)(i, val_info, arg);
 }
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ret(
-    const llvm::ReturnInst *ret) noexcept {
-  assert(llvm::isa<llvm::ReturnInst>(ret));
-
-  if (ret->getNumOperands() != 0) {
-    derived()->move_val_to_ret_regs(ret->getOperand(0));
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  if (inst->getNumOperands() != 0) {
+    derived()->move_val_to_ret_regs(inst->getOperand(0));
   }
 
   derived()->gen_func_epilog();
@@ -1313,7 +1380,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
-    const llvm::LoadInst *load) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  const auto *load = llvm::cast<llvm::LoadInst>(inst);
   auto [_, ptr_ref] = this->val_ref_single(load->getPointerOperand());
   if (ptr_ref.has_assignment() && ptr_ref.assignment().variable_ref()) {
     const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
@@ -1509,7 +1577,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
-    const llvm::StoreInst *store) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  const auto *store = llvm::cast<llvm::StoreInst>(inst);
   auto [_, ptr_ref] = this->val_ref_single(store->getPointerOperand());
   if (ptr_ref.has_assignment() && ptr_ref.assignment().variable_ref()) {
     const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
@@ -1524,7 +1593,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
-    const llvm::BinaryOperator *inst, const IntBinaryOp op) noexcept {
+    const llvm::Instruction *inst, const ValInfo &info, u64 op) noexcept {
   auto *inst_ty = inst->getType();
 
   if (inst_ty->isVectorTy()) {
@@ -1534,7 +1603,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     using EncodeFnTy = bool (Derived::*)(
         GenericValuePart &&, GenericValuePart &&, ScratchReg &);
     EncodeFnTy encode_fn = nullptr;
-    LLVMBasicValType bvt = this->adaptor->val_info(inst).type;
+    LLVMBasicValType bvt = info.type;
     switch (op) {
     case IntBinaryOp::add:
       switch (bvt) {
@@ -2024,7 +2093,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
-    const llvm::BinaryOperator *inst, FloatBinaryOp op) noexcept {
+    const llvm::Instruction *inst, const ValInfo &val_info, u64 op) noexcept {
   auto *inst_ty = inst->getType();
   auto *scalar_ty = inst_ty->getScalarType();
 
@@ -2070,7 +2139,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
       bool (Derived::*)(GenericValuePart &&, GenericValuePart &&, ScratchReg &);
   EncodeFnTy encode_fn = nullptr;
 
-  switch (this->adaptor->val_info(inst).type) {
+  switch (val_info.type) {
     using enum LLVMBasicValType;
   case f32:
     assert(!is_double);
@@ -2137,7 +2206,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fneg(
-    const llvm::UnaryOperator *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &val_info, u64) noexcept {
   auto *scalar_ty = inst->getType()->getScalarType();
   const bool is_double = scalar_ty->isDoubleTy();
   if (!scalar_ty->isFloatTy() && !scalar_ty->isDoubleTy()) {
@@ -2147,7 +2216,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fneg(
   auto src = this->val_ref(inst->getOperand(0));
   auto [res_vr, res_ref] = this->result_ref_single(inst);
   auto res_scratch = ScratchReg{derived()};
-  switch (this->adaptor->val_info(inst).type) {
+  switch (val_info.type) {
     using enum LLVMBasicValType;
   case f32: derived()->encode_fnegf32(src.part(0), res_scratch); break;
   case f64: derived()->encode_fnegf64(src.part(0), res_scratch); break;
@@ -2171,7 +2240,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fneg(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
-    const llvm::CastInst *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   auto *src_val = inst->getOperand(0);
   auto *src_ty = src_val->getType();
   auto *dst_ty = inst->getType();
@@ -2211,7 +2280,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
-    const llvm::CastInst *inst, const bool sign) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64 sign) noexcept {
   const llvm::Value *src_val = inst->getOperand(0);
   auto *src_ty = src_val->getType();
   const auto bit_width = inst->getType()->getIntegerBitWidth();
@@ -2275,7 +2344,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
-    const llvm::CastInst *inst, const bool sign) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64 sign) noexcept {
   const llvm::Value *src_val = inst->getOperand(0);
   auto *dst_ty = inst->getType();
   auto bit_width = src_val->getType()->getIntegerBitWidth();
@@ -2355,11 +2424,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_trunc(
-    const llvm::TruncInst *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &val_info, u64) noexcept {
   ValueRef res_vr = this->result_ref(inst);
   ValueRef src_vr = this->val_ref(inst->getOperand(0));
 
-  LLVMBasicValType bvt = this->adaptor->val_info(inst).type;
+  LLVMBasicValType bvt = val_info.type;
   switch (bvt) {
     using enum LLVMBasicValType;
   case i8:
@@ -2401,7 +2470,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_trunc(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
-    const llvm::CastInst *inst, bool sign) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64 sign) noexcept {
   if (!inst->getType()->isIntegerTy()) {
     return false;
   }
@@ -2462,7 +2531,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ptr_to_int(
-    const llvm::PtrToIntInst *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   if (!inst->getType()->isIntegerTy()) {
     return false;
   }
@@ -2476,7 +2545,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ptr_to_int(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_ptr(
-    const llvm::IntToPtrInst *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   if (!inst->getType()->isPointerTy()) {
     return false;
   }
@@ -2502,7 +2571,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_ptr(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
-    const llvm::BitCastInst *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   // at most this should be fine to implement as a copy operation
   // as the values cannot be aggregates
   // TODO: this is not necessarily a no-op for vectors
@@ -2532,7 +2601,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_bitcast(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_value(
-    const llvm::ExtractValueInst *extract) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  const auto *extract = llvm::cast<llvm::ExtractValueInst>(inst);
   auto src = extract->getAggregateOperand();
 
   auto [first_part, last_part] =
@@ -2549,7 +2619,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_value(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_value(
-    const llvm::InsertValueInst *insert) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  const auto *insert = llvm::cast<llvm::InsertValueInst>(inst);
   auto agg = insert->getAggregateOperand();
   auto ins = insert->getInsertedValueOperand();
 
@@ -2637,7 +2708,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::insert_element(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_element(
-    const llvm::ExtractElementInst *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &val_info, u64) noexcept {
   llvm::Value *src = inst->getOperand(0);
   llvm::Value *index = inst->getOperand(1);
 
@@ -2647,7 +2718,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_element(
   assert(index->getType()->getIntegerBitWidth() >= 8);
 
   auto [res_vr, result] = this->result_ref_single(inst);
-  LLVMBasicValType bvt = this->adaptor->val_info(inst).type;
+  LLVMBasicValType bvt = val_info.type;
 
   ScratchReg scratch_res{this};
   if (auto *ci = llvm::dyn_cast<llvm::ConstantInt>(index)) {
@@ -2696,7 +2767,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_element(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
-    const llvm::InsertElementInst *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   llvm::Value *index = inst->getOperand(2);
 
   auto *vec_ty = llvm::cast<llvm::FixedVectorType>(inst->getType());
@@ -2762,11 +2833,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
-    const llvm::ShuffleVectorInst *inst) noexcept {
-  llvm::Value *lhs = inst->getOperand(0);
-  llvm::Value *rhs = inst->getOperand(1);
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  const auto *shuffle = llvm::cast<llvm::ShuffleVectorInst>(inst);
+  llvm::Value *lhs = shuffle->getOperand(0);
+  llvm::Value *rhs = shuffle->getOperand(1);
 
-  auto *dst_ty = llvm::cast<llvm::FixedVectorType>(inst->getType());
+  auto *dst_ty = llvm::cast<llvm::FixedVectorType>(shuffle->getType());
   auto *src_ty = llvm::cast<llvm::FixedVectorType>(lhs->getType());
   unsigned dst_nelem = dst_ty->getNumElements();
   unsigned src_nelem = src_ty->getNumElements();
@@ -2803,7 +2875,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
   res_ref.assignment().set_stack_valid();
 
   ScratchReg tmp{this};
-  llvm::ArrayRef<int> mask = inst->getShuffleMask();
+  llvm::ArrayRef<int> mask = shuffle->getShuffleMask();
   for (unsigned i = 0; i < dst_nelem; i++) {
     if (mask[i] == llvm::PoisonMaskElem) {
       continue;
@@ -2837,7 +2909,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
-    const llvm::AtomicCmpXchgInst *cmpxchg) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  const auto *cmpxchg = llvm::cast<llvm::AtomicCmpXchgInst>(inst);
   auto *cmp_val = cmpxchg->getCompareOperand();
   auto *new_val = cmpxchg->getNewValOperand();
   auto *val_ty = new_val->getType();
@@ -2865,9 +2938,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
                                        GenericValuePart &&,
                                        ScratchReg &,
                                        ScratchReg &);
-  static const auto fns = []() constexpr {
+  static constexpr auto fns = []() constexpr {
     using enum llvm::AtomicOrdering;
-    std::array<EncodeFnTy[size_t(LAST) + 1], 4> res;
+    std::array<EncodeFnTy[size_t(LAST) + 1], 4> res{};
     res[0][u32(Monotonic)] = &Derived::encode_cmpxchg_u8_monotonic;
     res[1][u32(Monotonic)] = &Derived::encode_cmpxchg_u16_monotonic;
     res[2][u32(Monotonic)] = &Derived::encode_cmpxchg_u32_monotonic;
@@ -2933,7 +3006,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_cmpxchg(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_atomicrmw(
-    const llvm::AtomicRMWInst *rmw) noexcept {
+    const llvm::Instruction *inst, const ValInfo &val_info, u64) noexcept {
+  const auto *rmw = llvm::cast<llvm::AtomicRMWInst>(inst);
   llvm::Type *ty = rmw->getType();
   unsigned size = this->adaptor->mod->getDataLayout().getTypeSizeInBits(ty);
   // This is checked by the IR verifier.
@@ -2952,7 +3026,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_atomicrmw(
     return false;
   }
 
-  auto bvt = this->adaptor->val_info(rmw).type;
+  auto bvt = val_info.type;
 
   // TODO: implement non-seq_cst orderings more efficiently
   // TODO: use more efficient implementation when the result is not used. On
@@ -3120,7 +3194,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_atomicrmw(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fence(
-    const llvm::FenceInst *fence) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  const auto *fence = llvm::cast<llvm::FenceInst>(inst);
   if (fence->getSyncScopeID() == llvm::SyncScope::SingleThread) {
     // memory barrier only
     return true;
@@ -3140,7 +3215,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fence(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_freeze(
-    const llvm::FreezeInst *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   // essentially a no-op
   auto *src_val = inst->getOperand(0);
 
@@ -3157,7 +3232,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_freeze(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
-    const llvm::CallBase *call) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  const auto *call = llvm::cast<llvm::CallBase>(inst);
+
   // For indirect calls, target_ref must outlive call_target.
   ValueRef target_ref{this};
 
@@ -3197,7 +3274,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
-    const llvm::SelectInst *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &val_info, u64) noexcept {
   auto [cond_vr, cond] = this->val_ref_single(inst->getOperand(0));
   auto lhs = this->val_ref(inst->getOperand(1));
   auto rhs = this->val_ref(inst->getOperand(2));
@@ -3205,7 +3282,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
   ScratchReg res_scratch{derived()};
   auto res = this->result_ref(inst);
 
-  switch (this->adaptor->val_info(inst).type) {
+  switch (val_info.type) {
     using enum LLVMBasicValType;
   case i1:
   case i8:
@@ -3319,7 +3396,8 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
-    const llvm::GetElementPtrInst *gep, InstRange remaining) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  auto *gep = llvm::cast<llvm::GetElementPtrInst>(inst);
   auto ptr = gep->getPointerOperand();
 
   ValueRef ptr_ref = this->val_ref(ptr);
@@ -3396,8 +3474,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
   // fuse geps
   // TODO: use llvm statistic or analyzer liveness stat?
   const llvm::Instruction *final = gep;
-  while (gep->hasOneUse() && remaining.from != remaining.to) {
-    auto *next_val = *remaining.from;
+  while (gep->hasOneUse()) {
+    auto *next_val = gep->getNextNode();
     auto *next_gep = llvm::dyn_cast<llvm::GetElementPtrInst>(next_val);
     if (!next_gep || next_gep->getPointerOperand() != gep ||
         gep->getResultElementType() != next_gep->getResultElementType()) {
@@ -3413,13 +3491,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     this->adaptor->inst_set_fused(next_val, true);
     final = next_val; // we set the result for nextInst
     gep = next_gep;
-    ++remaining.from;
   }
 
   GenericValuePart addr = this->resolved_gep_to_addr(resolved);
 
-  if (gep->hasOneUse() && remaining.from != remaining.to) {
-    auto *next_val = *remaining.from;
+  if (gep->hasOneUse()) {
+    auto *next_val = gep->getNextNode();
     if (auto *store = llvm::dyn_cast<llvm::StoreInst>(next_val);
         store && store->getPointerOperand() == gep) {
       this->adaptor->inst_set_fused(next_val, true);
@@ -3449,7 +3526,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
-    const llvm::FCmpInst *cmp) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  const auto *cmp = llvm::cast<llvm::FCmpInst>(inst);
   auto *cmp_ty = cmp->getOperand(0)->getType();
   const auto pred = cmp->getPredicate();
 
@@ -3596,7 +3674,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
-    const llvm::SwitchInst *switch_inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  const auto *switch_inst = llvm::cast<llvm::SwitchInst>(inst);
   ScratchReg scratch{this};
   AsmReg cmp_reg;
   bool width_is_32 = false;
@@ -3782,7 +3861,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
-    const llvm::InvokeInst *invoke) noexcept {
+    const llvm::Instruction *inst, const ValInfo &val_info, u64) noexcept {
+  const auto *invoke = llvm::cast<llvm::InvokeInst>(inst);
+
   // we need to spill here since the call might branch off
   // TODO: this will also spill the call arguments even if the call kills them
   // however, spillBeforeCall already does this anyways so probably something
@@ -3796,7 +3877,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
   // TODO: if the call needs stack space, this must be undone in the unwind
   // block! LLVM emits .cfi_escape 0x2e, <off>, we should do the same?
   // (Current workaround by treating invoke as dynamic alloca.)
-  if (!this->compile_call(invoke)) {
+  if (!this->compile_call(invoke, val_info, 0)) {
     return false;
   }
   const auto off_after_call = this->assembler.text_cur_off();
@@ -3969,7 +4050,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_landing_pad(
-    const llvm::LandingPadInst *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   auto res_ref = this->result_ref(inst);
   res_ref.part(0).set_value_reg(Derived::LANDING_PAD_RES_REGS[0]);
   res_ref.part(1).set_value_reg(Derived::LANDING_PAD_RES_REGS[1]);
@@ -3979,13 +4060,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_landing_pad(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_resume(
-    const llvm::ResumeInst *inst) noexcept {
+    const llvm::Instruction *inst, const ValInfo &val_info, u64) noexcept {
   IRValueRef arg = inst->getOperand(0);
 
   const auto sym = get_libfunc_sym(LibFunc::resume);
 
   derived()->create_helper_call({&arg, 1}, {}, sym);
-  return derived()->compile_unreachable(nullptr);
+  return derived()->compile_unreachable(nullptr, val_info, 0);
 }
 
 template <typename Adaptor, typename Derived, typename Config>
