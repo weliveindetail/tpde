@@ -122,6 +122,10 @@ struct CompilerBase {
         /// Whether the assignment is a single-part variable reference.
         bool variable_ref : 1;
 
+        /// Whether to delay the free when the reference count reaches zero.
+        /// (This is liveness.last_full, copied here for faster access).
+        bool delay_free : 1;
+
         // TODO: get the type of parts from Derived
         // note: the top bit of each part is reserved to indicate
         // whether there is another part after this
@@ -520,6 +524,8 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
     }
   }
 
+  const auto &liveness = analyzer.liveness_info(static_cast<u32>(local_idx));
+
   // if there is only one part, try to hand out a fixed assignment
   // if the value is used for longer than one block and there aren't too many
   // definitions in child loops this could interfere with
@@ -530,7 +536,6 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
   if (part_count == 1) {
     const auto &cur_loop =
         analyzer.loop_from_idx(analyzer.block_loop_idx(cur_block_idx));
-    const auto &liveness = analyzer.liveness_info(static_cast<u32>(local_idx));
     auto ap = AssignmentPartRef{assignment, 0};
 
     auto try_fixed = liveness.last > cur_block_idx &&
@@ -577,6 +582,8 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
 
   const auto size = max_part_size * part_count;
   const auto frame_off = allocate_stack_slot(size);
+  const auto last_full = liveness.last_full;
+  const auto ref_count = liveness.ref_count;
 
   assert(max_part_size <= 256);
   assignment->max_part_size = max_part_size;
@@ -584,10 +591,10 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
   assignment->pending_free = false;
 #endif
   assignment->variable_ref = false;
+  assignment->delay_free = last_full;
   assignment->size = size;
   assignment->frame_off = frame_off;
-  assignment->references_left =
-      analyzer.liveness_info(static_cast<u32>(local_idx)).ref_count;
+  assignment->references_left = ref_count;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

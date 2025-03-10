@@ -33,15 +33,30 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
                            .assignment = compiler->val_assignment(local_idx),
                            }
   }, compiler(compiler) {
-    const auto &liveness =
-        compiler->analyzer.liveness_info((u32)state.a.local_idx);
     assert(!state.a.assignment->pending_free && "access of free'd assignment");
+
+    // Extended liveness checks in debug builds.
+#ifndef NDEBUG
+    if (!variable_ref()) {
+      const auto &liveness =
+          compiler->analyzer.liveness_info((u32)state.a.local_idx);
+      assert(liveness.last >= compiler->cur_block_idx &&
+             "ref-counted value used outside of its live range");
+      assert(state.a.assignment->references_left != 0);
+      if (state.a.assignment->references_left == 1 && !liveness.last_full) {
+        assert(liveness.last == compiler->cur_block_idx &&
+               "liveness of non-last-full value must end at last use");
+      }
+    } else {
+      assert(state.a.assignment->references_left == 0 &&
+             "variable ref with non-zero ref-count");
+    }
+#endif
+
     if (variable_ref()) {
       state.a.mode = 0;
     } else if (state.a.assignment->references_left <= 1 &&
-               (liveness.last < compiler->cur_block_idx ||
-                (liveness.last == compiler->cur_block_idx &&
-                 !liveness.last_full))) {
+               !state.a.assignment->delay_free) {
       state.a.mode = 2;
     } else {
       state.a.mode = 1;
