@@ -87,21 +87,56 @@ struct LLVMCompilerBase : public LLVMCompiler,
   };
 
   struct IntBinaryOp {
-    enum {
-      add,
-      sub,
-      mul,
-      udiv,
-      sdiv,
-      urem,
-      srem,
-      land,
-      lor,
-      lxor,
-      shl,
-      shr,
-      ashr,
+  private:
+    static constexpr u32 index_mask = (1 << 4) - 1;
+    static constexpr u32 bit_symm = 1 << 4;
+    static constexpr u32 bit_signed = 1 << 5;
+    static constexpr u32 bit_ext_lhs = 1 << 6;
+    static constexpr u32 bit_ext_rhs = 1 << 7;
+    static constexpr u32 bit_div = 1 << 8;
+    static constexpr u32 bit_rem = 1 << 9;
+    static constexpr u32 bit_shift = 1 << 10;
+
+  public:
+    enum Value : u32 {
+      add = 0 | bit_symm,
+      sub = 1,
+      mul = 2 | bit_symm,
+      udiv = 3 | bit_ext_lhs | bit_ext_rhs | bit_div,
+      sdiv = 4 | bit_signed | bit_ext_lhs | bit_ext_rhs | bit_div,
+      urem = 5 | bit_ext_lhs | bit_ext_rhs | bit_rem,
+      srem = 6 | bit_signed | bit_ext_lhs | bit_ext_rhs | bit_rem,
+      land = 7 | bit_symm,
+      lor = 8 | bit_symm,
+      lxor = 9 | bit_symm,
+      shl = 10 | bit_shift,
+      shr = 11 | bit_ext_lhs | bit_shift,
+      ashr = 12 | bit_signed | bit_ext_lhs | bit_shift,
+      num_ops = 13
     };
+
+    Value op;
+
+    constexpr IntBinaryOp(Value op) noexcept : op(op) {}
+
+    /// Whether the operation is symmetric.
+    constexpr bool is_symmetric() const noexcept { return op & bit_symm; }
+    /// Whether the operation is signed and therefore needs sign-extension.
+    constexpr bool is_signed() const noexcept { return op & bit_signed; }
+    /// Whether the operation needs the first operand extended.
+    constexpr bool needs_lhs_ext() const noexcept { return op & bit_ext_lhs; }
+    /// Whether the operation needs the second operand extended.
+    constexpr bool needs_rhs_ext() const noexcept { return op & bit_ext_rhs; }
+    /// Whether the operation is a div
+    constexpr bool is_div() const noexcept { return op & bit_div; }
+    /// Whether the operation is a rem
+    constexpr bool is_rem() const noexcept { return op & bit_rem; }
+    /// Whether the operation is a shift
+    constexpr bool is_shift() const noexcept { return op & bit_shift; }
+
+    constexpr unsigned index() const noexcept { return op & index_mask; }
+
+    bool operator==(const IntBinaryOp &o) const noexcept { return op == o.op; }
   };
 
   struct FloatBinaryOp {
@@ -1593,226 +1628,65 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
-    const llvm::Instruction *inst, const ValInfo &info, u64 op) noexcept {
+    const llvm::Instruction *inst, const ValInfo &info, u64 op_val) noexcept {
   auto *inst_ty = inst->getType();
+  IntBinaryOp op = typename IntBinaryOp::Value(op_val);
 
-  if (inst_ty->isVectorTy()) {
+  if (inst_ty->isVectorTy()) [[unlikely]] {
     auto *scalar_ty = inst_ty->getScalarType();
     auto int_width = scalar_ty->getIntegerBitWidth();
 
     using EncodeFnTy = bool (Derived::*)(
         GenericValuePart &&, GenericValuePart &&, ScratchReg &);
-    EncodeFnTy encode_fn = nullptr;
-    LLVMBasicValType bvt = info.type;
-    switch (op) {
-    case IntBinaryOp::add:
-      switch (bvt) {
-        using enum LLVMBasicValType;
-      case v64:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_addv8u8; break;
-        case 16: encode_fn = &Derived::encode_addv4u16; break;
-        case 32: encode_fn = &Derived::encode_addv2u32; break;
-        default: return false;
-        }
-        break;
-      case v128:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_addv16u8; break;
-        case 16: encode_fn = &Derived::encode_addv8u16; break;
-        case 32: encode_fn = &Derived::encode_addv4u32; break;
-        case 64: encode_fn = &Derived::encode_addv2u64; break;
-        default: return false;
-        }
-        break;
-      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
-      }
-      break;
-    case IntBinaryOp::sub:
-      switch (bvt) {
-        using enum LLVMBasicValType;
-      case v64:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_subv8u8; break;
-        case 16: encode_fn = &Derived::encode_subv4u16; break;
-        case 32: encode_fn = &Derived::encode_subv2u32; break;
-        default: return false;
-        }
-        break;
-      case v128:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_subv16u8; break;
-        case 16: encode_fn = &Derived::encode_subv8u16; break;
-        case 32: encode_fn = &Derived::encode_subv4u32; break;
-        case 64: encode_fn = &Derived::encode_subv2u64; break;
-        default: return false;
-        }
-        break;
-      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
-      }
-      break;
-    case IntBinaryOp::mul:
-      switch (bvt) {
-        using enum LLVMBasicValType;
-      case v64:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_mulv8u8; break;
-        case 16: encode_fn = &Derived::encode_mulv4u16; break;
-        case 32: encode_fn = &Derived::encode_mulv2u32; break;
-        default: return false;
-        }
-        break;
-      case v128:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_mulv16u8; break;
-        case 16: encode_fn = &Derived::encode_mulv8u16; break;
-        case 32: encode_fn = &Derived::encode_mulv4u32; break;
-        case 64: encode_fn = &Derived::encode_mulv2u64; break;
-        default: return false;
-        }
-        break;
-      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
-      }
-      break;
-    case IntBinaryOp::land:
-      switch (bvt) {
-        using enum LLVMBasicValType;
-      case v64:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_andv8u8; break;
-        case 16: encode_fn = &Derived::encode_andv4u16; break;
-        case 32: encode_fn = &Derived::encode_andv2u32; break;
-        default: return false;
-        }
-        break;
-      case v128:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_andv16u8; break;
-        case 16: encode_fn = &Derived::encode_andv8u16; break;
-        case 32: encode_fn = &Derived::encode_andv4u32; break;
-        case 64: encode_fn = &Derived::encode_andv2u64; break;
-        default: return false;
-        }
-        break;
-      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
-      }
-      break;
-    case IntBinaryOp::lxor:
-      switch (bvt) {
-        using enum LLVMBasicValType;
-      case v64:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_xorv8u8; break;
-        case 16: encode_fn = &Derived::encode_xorv4u16; break;
-        case 32: encode_fn = &Derived::encode_xorv2u32; break;
-        default: return false;
-        }
-        break;
-      case v128:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_xorv16u8; break;
-        case 16: encode_fn = &Derived::encode_xorv8u16; break;
-        case 32: encode_fn = &Derived::encode_xorv4u32; break;
-        case 64: encode_fn = &Derived::encode_xorv2u64; break;
-        default: return false;
-        }
-        break;
-      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
-      }
-      break;
-    case IntBinaryOp::lor:
-      switch (bvt) {
-        using enum LLVMBasicValType;
-      case v64:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_orv8u8; break;
-        case 16: encode_fn = &Derived::encode_orv4u16; break;
-        case 32: encode_fn = &Derived::encode_orv2u32; break;
-        default: return false;
-        }
-        break;
-      case v128:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_orv16u8; break;
-        case 16: encode_fn = &Derived::encode_orv8u16; break;
-        case 32: encode_fn = &Derived::encode_orv4u32; break;
-        case 64: encode_fn = &Derived::encode_orv2u64; break;
-        default: return false;
-        }
-        break;
-      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
-      }
-      break;
-    case IntBinaryOp::shl:
-      switch (bvt) {
-        using enum LLVMBasicValType;
-      case v64:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_shlv8u8; break;
-        case 16: encode_fn = &Derived::encode_shlv4u16; break;
-        case 32: encode_fn = &Derived::encode_shlv2u32; break;
-        default: return false;
-        }
-        break;
-      case v128:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_shlv16u8; break;
-        case 16: encode_fn = &Derived::encode_shlv8u16; break;
-        case 32: encode_fn = &Derived::encode_shlv4u32; break;
-        case 64: encode_fn = &Derived::encode_shlv2u64; break;
-        default: return false;
-        }
-        break;
-      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
-      }
-      break;
-    case IntBinaryOp::shr:
-      switch (bvt) {
-        using enum LLVMBasicValType;
-      case v64:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_lshrv8u8; break;
-        case 16: encode_fn = &Derived::encode_lshrv4u16; break;
-        case 32: encode_fn = &Derived::encode_lshrv2u32; break;
-        default: return false;
-        }
-        break;
-      case v128:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_lshrv16u8; break;
-        case 16: encode_fn = &Derived::encode_lshrv8u16; break;
-        case 32: encode_fn = &Derived::encode_lshrv4u32; break;
-        case 64: encode_fn = &Derived::encode_lshrv2u64; break;
-        default: return false;
-        }
-        break;
-      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
-      }
-      break;
-    case IntBinaryOp::ashr:
-      switch (bvt) {
-        using enum LLVMBasicValType;
-      case v64:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_ashrv8i8; break;
-        case 16: encode_fn = &Derived::encode_ashrv4i16; break;
-        case 32: encode_fn = &Derived::encode_ashrv2i32; break;
-        default: return false;
-        }
-        break;
-      case v128:
-        switch (int_width) {
-        case 8: encode_fn = &Derived::encode_ashrv16i8; break;
-        case 16: encode_fn = &Derived::encode_ashrv8i16; break;
-        case 32: encode_fn = &Derived::encode_ashrv4i32; break;
-        case 64: encode_fn = &Derived::encode_ashrv2i64; break;
-        default: return false;
-        }
-        break;
-      default: TPDE_UNREACHABLE("invalid basic type for int vector binary op");
-      }
-      break;
+    // fns[op.index()][v64=0/v128=1][8=0/16=1/32=2/64=3]
+    static constexpr auto fns = []() constexpr {
+      std::array<EncodeFnTy[2][4], IntBinaryOp::num_ops> res{};
+      auto entry = [&res](IntBinaryOp op) { return res[op.index()]; };
+
+      // TODO: more consistent naming of encode functions
+#define FN_ENTRY(opname, fnbase, sign)                                         \
+  entry(opname)[0][0] = &Derived::encode_##fnbase##v8##sign##8;                \
+  entry(opname)[0][1] = &Derived::encode_##fnbase##v4##sign##16;               \
+  entry(opname)[0][2] = &Derived::encode_##fnbase##v2##sign##32;               \
+  entry(opname)[1][0] = &Derived::encode_##fnbase##v16##sign##8;               \
+  entry(opname)[1][1] = &Derived::encode_##fnbase##v8##sign##16;               \
+  entry(opname)[1][2] = &Derived::encode_##fnbase##v4##sign##32;               \
+  entry(opname)[1][3] = &Derived::encode_##fnbase##v2##sign##64;
+
+      FN_ENTRY(IntBinaryOp::add, add, u)
+      FN_ENTRY(IntBinaryOp::sub, sub, u)
+      FN_ENTRY(IntBinaryOp::mul, mul, u)
+      FN_ENTRY(IntBinaryOp::land, and, u)
+      FN_ENTRY(IntBinaryOp::lxor, xor, u)
+      FN_ENTRY(IntBinaryOp::lor, or, u)
+      FN_ENTRY(IntBinaryOp::shl, shl, u)
+      FN_ENTRY(IntBinaryOp::shr, lshr, u)
+      FN_ENTRY(IntBinaryOp::ashr, ashr, i)
+#undef FN_ENTRY
+
+      return res;
+    }();
+
+    unsigned width_idx;
+    switch (int_width) {
+    case 8: width_idx = 0; break;
+    case 16: width_idx = 1; break;
+    case 32: width_idx = 2; break;
+    case 64: width_idx = 3; break;
     default: return false;
+    }
+
+    unsigned ty_idx;
+    switch (info.type) {
+      using enum LLVMBasicValType;
+    case v64: ty_idx = 0; break;
+    case v128: ty_idx = 1; break;
+    default: return false;
+    }
+
+    EncodeFnTy encode_fn = fns[op.index()][ty_idx][width_idx];
+    if (!encode_fn) {
+      return false;
     }
 
     auto lhs = this->val_ref(inst->getOperand(0));
@@ -1839,15 +1713,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     auto res_low = res.part(0);
     auto res_high = res.part(1);
 
-    if (op == IntBinaryOp::udiv || op == IntBinaryOp::sdiv ||
-        op == IntBinaryOp::urem || op == IntBinaryOp::srem) {
+    if (op.is_div() || op.is_rem()) {
       LibFunc lf;
-      switch (op) {
-      case IntBinaryOp::udiv: lf = LibFunc::udivti3; break;
-      case IntBinaryOp::sdiv: lf = LibFunc::divti3; break;
-      case IntBinaryOp::urem: lf = LibFunc::umodti3; break;
-      case IntBinaryOp::srem: lf = LibFunc::modti3; break;
-      default: TPDE_UNREACHABLE("invalid div/rem operation");
+      if (op.is_div()) {
+        lf = op.is_signed() ? LibFunc::divti3 : LibFunc::udivti3;
+      } else {
+        lf = op.is_signed() ? LibFunc::modti3 : LibFunc::umodti3;
       }
 
       std::array<IRValueRef, 2> args{lhs_op, rhs_op};
@@ -1860,10 +1731,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     auto rhs = this->val_ref(rhs_op);
 
     // Use has_assignment as proxy for not being a constant.
-    if ((op == IntBinaryOp::add || op == IntBinaryOp::mul ||
-         op == IntBinaryOp::land || op == IntBinaryOp::lor ||
-         op == IntBinaryOp::lxor) &&
-        !lhs.has_assignment() && rhs.has_assignment()) {
+    if (op.is_symmetric() && !lhs.has_assignment() && rhs.has_assignment()) {
       // TODO(ts): this is a hack since the encoder can currently not do
       // commutable operations so we reorder immediates manually here
       std::swap(lhs, rhs);
@@ -1871,38 +1739,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
     ScratchReg scratch_low{derived()}, scratch_high{derived()};
 
-
-    std::array<bool (Derived::*)(GenericValuePart &&,
-                                 GenericValuePart &&,
-                                 GenericValuePart &&,
-                                 GenericValuePart &&,
-                                 ScratchReg &,
-                                 ScratchReg &),
-               10>
-        encode_ptrs = {
-            {
-             &Derived::encode_addi128,
-             &Derived::encode_subi128,
-             &Derived::encode_muli128,
-#if 0
-                 &Derived::encode_udivi128,
-                 &Derived::encode_sdivi128,
-                 &Derived::encode_uremi128,
-                 &Derived::encode_sremi128,
-#else
-             nullptr, nullptr,
-             nullptr, nullptr,
-#endif
-             &Derived::encode_landi128,
-             &Derived::encode_lori128,
-             &Derived::encode_lxori128,
-             }
-    };
-
-    switch (op) {
-    case IntBinaryOp::shl:
-    case IntBinaryOp::shr:
-    case IntBinaryOp::ashr: {
+    if (op.is_shift()) {
       ValuePartRef shift_amt = rhs.part(0);
       if (shift_amt.is_const()) {
         imm1 = shift_amt.state.c.data[0] & 0b111'1111; // amt
@@ -1957,39 +1794,56 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
                 scratch_high);
           }
         }
-        break;
-      }
-
-      if (op == IntBinaryOp::shl) {
-        derived()->encode_shli128(lhs.part(0),
-                                  lhs.part(1),
-                                  std::move(shift_amt),
-                                  scratch_low,
-                                  scratch_high);
-      } else if (op == IntBinaryOp::shr) {
-        derived()->encode_shri128(lhs.part(0),
-                                  lhs.part(1),
-                                  std::move(shift_amt),
-                                  scratch_low,
-                                  scratch_high);
       } else {
-        assert(op == IntBinaryOp::ashr);
-        derived()->encode_ashri128(lhs.part(0),
-                                   lhs.part(1),
-                                   std::move(shift_amt),
-                                   scratch_low,
-                                   scratch_high);
+        if (op == IntBinaryOp::shl) {
+          derived()->encode_shli128(lhs.part(0),
+                                    lhs.part(1),
+                                    std::move(shift_amt),
+                                    scratch_low,
+                                    scratch_high);
+        } else if (op == IntBinaryOp::shr) {
+          derived()->encode_shri128(lhs.part(0),
+                                    lhs.part(1),
+                                    std::move(shift_amt),
+                                    scratch_low,
+                                    scratch_high);
+        } else {
+          assert(op == IntBinaryOp::ashr);
+          derived()->encode_ashri128(lhs.part(0),
+                                     lhs.part(1),
+                                     std::move(shift_amt),
+                                     scratch_low,
+                                     scratch_high);
+        }
       }
-      break;
-    }
-    default:
-      (derived()->*(encode_ptrs[static_cast<u32>(op)]))(lhs.part(0),
-                                                        lhs.part(1),
-                                                        rhs.part(0),
-                                                        rhs.part(1),
-                                                        scratch_low,
-                                                        scratch_high);
-      break;
+    } else {
+      using EncodeFnTy = bool (Derived::*)(GenericValuePart &&,
+                                           GenericValuePart &&,
+                                           GenericValuePart &&,
+                                           GenericValuePart &&,
+                                           ScratchReg &,
+                                           ScratchReg &);
+      static const std::array<EncodeFnTy, 10> encode_ptrs = {
+          {
+           &Derived::encode_addi128,
+           &Derived::encode_subi128,
+           &Derived::encode_muli128,
+           nullptr, // division/remainder is a libcall
+              nullptr, // division/remainder is a libcall
+              nullptr, // division/remainder is a libcall
+              nullptr, // division/remainder is a libcall
+              &Derived::encode_landi128,
+           &Derived::encode_lori128,
+           &Derived::encode_lxori128,
+           }
+      };
+
+      (derived()->*(encode_ptrs[op.index()]))(lhs.part(0),
+                                              lhs.part(1),
+                                              rhs.part(0),
+                                              rhs.part(1),
+                                              scratch_low,
+                                              scratch_high);
     }
 
     this->set_value(res_low, scratch_low);
@@ -2002,7 +1856,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
   // encode functions for 32/64 bit operations
   using EncodeFnTy =
       bool (Derived::*)(GenericValuePart &&, GenericValuePart &&, ScratchReg &);
-  std::array<std::array<EncodeFnTy, 2>, 13> encode_ptrs{
+  static const std::array<std::array<EncodeFnTy, 2>, 13> encode_ptrs{
       {
        {&Derived::encode_addi32, &Derived::encode_addi64},
        {&Derived::encode_subi32, &Derived::encode_subi64},
@@ -2025,42 +1879,23 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
   GenericValuePart lhs_op = lhs.part(0);
   GenericValuePart rhs_op = rhs.part(0);
 
-  if ((op == IntBinaryOp::add || op == IntBinaryOp::mul ||
-       op == IntBinaryOp::land || op == IntBinaryOp::lor ||
-       op == IntBinaryOp::lxor) &&
-      lhs_op.is_imm() && !rhs_op.is_imm()) {
+  if (op.is_symmetric() && lhs_op.is_imm() && !rhs_op.is_imm()) {
     // TODO(ts): this is a hack since the encoder can currently not do
     // commutable operations so we reorder immediates manually here
     std::swap(lhs_op, rhs_op);
   }
 
   // TODO(ts): optimize div/rem by constant to a shift?
-  const auto lhs_const = lhs_op.is_imm();
-  const auto rhs_const = rhs_op.is_imm();
-  u64 lhs_imm;
+
+  // Pointers to value stored in ValuePartRef.
   u64 rhs_imm;
+  u64 lhs_imm;
 
   unsigned ext_width = tpde::util::align_up(int_width, 32);
   if (ext_width != int_width) {
-    bool ext_lhs = false, ext_rhs = false, sext = false;
-    switch (op) {
-    case IntBinaryOp::add: break;
-    case IntBinaryOp::sub: break;
-    case IntBinaryOp::mul: break;
-    case IntBinaryOp::udiv: ext_lhs = ext_rhs = true; break;
-    case IntBinaryOp::sdiv: ext_lhs = ext_rhs = sext = true; break;
-    case IntBinaryOp::urem: ext_lhs = ext_rhs = true; break;
-    case IntBinaryOp::srem: ext_lhs = ext_rhs = sext = true; break;
-    case IntBinaryOp::land: break;
-    case IntBinaryOp::lor: break;
-    case IntBinaryOp::lxor: break;
-    case IntBinaryOp::shl: break;
-    case IntBinaryOp::shr: ext_lhs = true; break;
-    case IntBinaryOp::ashr: ext_lhs = sext = true; break;
-    }
-
-    if (ext_lhs) {
-      if (!lhs_const) {
+    bool sext = op.is_signed();
+    if (op.needs_lhs_ext()) {
+      if (!lhs_op.is_imm()) {
         lhs_op =
             derived()->ext_int(std::move(lhs_op), sext, int_width, ext_width);
       } else if (sext) {
@@ -2068,8 +1903,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         lhs_op = ValuePartRef(this, &lhs_imm, 8, Config::GP_BANK);
       }
     }
-    if (ext_rhs) {
-      if (!rhs_const) {
+    if (op.needs_rhs_ext()) {
+      if (!rhs_op.is_imm()) {
         rhs_op =
             derived()->ext_int(std::move(rhs_op), sext, int_width, ext_width);
       } else if (sext) {
@@ -2083,7 +1918,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
   auto res_scratch = ScratchReg{derived()};
 
-  (derived()->*(encode_ptrs[static_cast<u32>(op)][ext_width / 32 - 1]))(
+  (derived()->*(encode_ptrs[op.index()][ext_width / 32 - 1]))(
       std::move(lhs_op), std::move(rhs_op), res_scratch);
 
   this->set_value(res, res_scratch);
