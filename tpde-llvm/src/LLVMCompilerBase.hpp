@@ -2731,7 +2731,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
       auto bank = this->adaptor->basic_ty_part_bank(bvt);
       auto size = this->adaptor->basic_ty_part_size(bvt);
       ValuePartRef const_ref{this, &const_elem, size, bank};
-      derived()->materialize_constant(const_ref, tmp);
+      const_ref.reload_into_specific_fixed(tmp.alloc(bank));
     } else {
       derived()->extract_element(src, mask[i] & (src_nelem - 1), bvt, tmp);
     }
@@ -4646,7 +4646,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
 
   // we OR' together the results from each test so initialize the result with
   // zero
-  derived()->materialize_constant(zero_ref, res_scratch.alloc_gp());
+  zero_ref.reload_into_specific_fixed(res_scratch.alloc_gp());
 
   AsmReg op_reg = op_ref.load_to_reg();
 

@@ -185,8 +185,9 @@ void LLVMCompilerArm64::move_val_to_ret_regs(llvm::Value *val) noexcept {
       reg = call_conv.ret_regs_vec()[fp_reg_idx++];
     }
 
+    // TODO: fix registers to ensure results are not clobbered by following part
     if (val_ref.is_const()) {
-      this->materialize_constant(val_ref, reg);
+      val_ref.reload_into_specific_fixed(reg);
       if (i == cnt - 1 && sext_width) {
         ext_int(reg, reg, /*sign=*/true, sext_width, 64);
       }

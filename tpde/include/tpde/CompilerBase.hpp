@@ -1169,10 +1169,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
       AsmReg reg{};
       ValuePartRef val_vpr = val_vr.part(i);
       if (val_vpr.is_const()) {
-        derived()->materialize_constant(
-            val_vpr, scratch.alloc_from_bank(val_vpr.bank()));
-        reg = scratch.cur_reg;
-        assert(reg.valid());
+        reg = scratch.alloc_from_bank(val_vpr.bank());
+        val_vpr.reload_into_specific_fixed(reg);
       } else if (val_vpr.assignment().register_valid() ||
                  val_vpr.assignment().fixed_assignment()) {
         reg = AsmReg{val_vpr.assignment().full_reg_id()};

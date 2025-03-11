@@ -802,6 +802,10 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef : ValuePart {
     return ValuePart::reload_into_specific(compiler, reg);
   }
 
+  AsmReg reload_into_specific_fixed(AsmReg reg, unsigned size = 0) noexcept {
+    return ValuePart::reload_into_specific_fixed(compiler, reg, size);
+  }
+
   AsmReg reload_into_specific_fixed(CompilerBase *compiler,
                                     AsmReg reg,
                                     unsigned size = 0) noexcept {

@@ -438,8 +438,6 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
   AsmReg gval_expr_as_reg(GenericValuePart &gv) noexcept;
 
-  void materialize_constant(ValuePartRef &val_ref, AsmReg dst) noexcept;
-  void materialize_constant(ValuePartRef &val_ref, ScratchReg &dst) noexcept;
   void materialize_constant(const u64 *data,
                             u32 bank,
                             u32 size,
@@ -1578,27 +1576,6 @@ AsmReg CompilerX64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
   }
   gv.state = std::move(scratch);
   return dst;
-}
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename> typename BaseTy,
-          typename Config>
-void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
-    ValuePartRef &val_ref, const AsmReg dst) noexcept {
-  assert(!val_ref.has_assignment());
-  const auto &data = val_ref.state.c;
-  materialize_constant(data.data, data.bank, data.size, dst);
-}
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename> typename BaseTy,
-          typename Config>
-void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
-    ValuePartRef &val_ref, ScratchReg &dst) noexcept {
-  assert(!val_ref.has_assignment());
-  materialize_constant(val_ref, dst.alloc(val_ref.state.c.bank));
 }
 
 template <IRAdaptor Adaptor,

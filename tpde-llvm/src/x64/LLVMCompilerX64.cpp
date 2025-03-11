@@ -179,8 +179,9 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
       reg = call_conv.ret_regs_vec()[xmm_reg_idx++];
     }
 
+    // TODO: fix registers to ensure results are not clobbered by following part
     if (val_ref.is_const()) {
-      this->materialize_constant(val_ref, reg);
+      val_ref.reload_into_specific_fixed(reg);
       if (i == cnt - 1 && sext_width) {
         ext_int(reg, reg, /*sign=*/true, sext_width, ext_width);
       }
@@ -729,7 +730,7 @@ void LLVMCompilerX64::switch_emit_cmp(ScratchReg &scratch,
     } else {
       const auto tmp = scratch.alloc_gp();
       auto const_ref = ValuePartRef{this, &case_value, 8, 0};
-      materialize_constant(const_ref, tmp);
+      const_ref.reload_into_specific_fixed(tmp);
       ASM(CMP64rr, cmp_reg, tmp);
     }
   }
@@ -767,11 +768,8 @@ bool LLVMCompilerX64::switch_emit_jump_table(Label default_label,
     if ((i64)((i32)low_bound) == (i64)low_bound) {
       ASM(SUB64ri, cmp_reg, low_bound);
     } else {
-      ScratchReg tmp_scratch{this};
-      const auto tmp = tmp_scratch.alloc_gp();
-      auto const_ref = ValuePartRef{this, &low_bound, 8, 0};
-      materialize_constant(const_ref, tmp);
-      ASM(SUB64rr, cmp_reg, tmp);
+      ValuePartRef const_ref{this, &low_bound, 8, 0};
+      ASM(SUB64rr, cmp_reg, const_ref.load_to_reg());
     }
   }
 
