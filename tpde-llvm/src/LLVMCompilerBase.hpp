@@ -285,6 +285,21 @@ struct LLVMCompilerBase : public LLVMCompiler,
     return ValueRef{this, local_idx};
   }
 
+  std::pair<ValueRef, ValuePartRef>
+      result_ref_single(const llvm::Value *v) noexcept {
+    assert(llvm::isa<llvm::Argument>(v));
+    // For byval arguments
+    return Base::result_ref_single(v);
+  }
+
+  /// Specialized for llvm::Instruction to avoid type check in val_local_idx.
+  std::pair<ValueRef, ValuePartRef>
+      result_ref_single(const llvm::Instruction *i) noexcept {
+    std::pair<ValueRef, ValuePartRef> res{result_ref(i), this};
+    res.second = res.first.part(0);
+    return res;
+  }
+
 private:
   static typename Assembler::SymBinding
       convert_linkage(const llvm::GlobalValue *gv) noexcept {
