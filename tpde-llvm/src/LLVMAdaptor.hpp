@@ -13,6 +13,7 @@
 #include <llvm/Support/raw_ostream.h>
 
 #include "base.hpp"
+#include "tpde/RegisterFile.hpp"
 #include "tpde/base.hpp"
 #include "tpde/util/SmallVector.hpp"
 #include "tpde/util/misc.hpp"
@@ -453,7 +454,7 @@ public:
       return LLVMAdaptor::basic_ty_part_size(type(n));
     }
 
-    u8 reg_bank(u32 n) const { return basic_ty_part_bank(type(n)); }
+    tpde::RegBank reg_bank(u32 n) const { return basic_ty_part_bank(type(n)); }
   };
 
   ValueParts val_parts(const IRValueRef value) {
@@ -552,7 +553,7 @@ public:
     }
   }
 
-  static unsigned basic_ty_part_bank(const LLVMBasicValType ty) noexcept {
+  static tpde::RegBank basic_ty_part_bank(const LLVMBasicValType ty) noexcept {
     switch (ty) {
       using enum LLVMBasicValType;
     case i1:
@@ -561,14 +562,14 @@ public:
     case i32:
     case i64:
     case i128:
-    case ptr: return 0;
+    case ptr: return tpde::RegBank{0};
     case f32:
     case f64:
     case v32:
     case v64:
     case v128:
     case v256:
-    case v512: return 1;
+    case v512: return tpde::RegBank{1};
     case none:
     case invalid:
     case complex:

@@ -56,7 +56,6 @@ struct EncodeCompiler {
     using GenericValuePart = typename CompilerA64::GenericValuePart;
     using Assembler    = typename CompilerA64::Assembler;
     using Label        = typename Assembler::Label;
-    using ValLocalIdx  = typename CompilerA64::ValLocalIdx;
     using SymRef       = typename Assembler::SymRef;
 
     std::optional<u64> encodeable_as_shiftimm(GenericValuePart &gv, unsigned size) const noexcept {
@@ -201,7 +200,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
                                u32             size) noexcept {
     AsmReg reg = derived()->gval_as_reg_reuse(gv, dst_scratch);
     if (!dst_scratch.has_reg()) {
-        dst_scratch.alloc(bank);
+        dst_scratch.alloc(RegBank(bank));
     }
     if (dst_scratch.cur_reg() != reg) {
         derived()->mov(dst_scratch.cur_reg(), reg, size);
@@ -224,7 +223,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
     }
 
     const auto bank = derived()->register_file.reg_bank(reg);
-    if (bank != 0) {
+    if (bank != Config::GP_BANK) {
         // TODO(ts): need to know the size
         TPDE_FATAL("fixed non-gp regs not supported");
     }

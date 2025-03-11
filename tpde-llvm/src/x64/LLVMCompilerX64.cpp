@@ -173,7 +173,7 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
     const auto call_conv = this->cur_calling_convention();
     AsmReg reg;
     // TODO: handle out-of-register case
-    if (val_ref.bank() == 0) {
+    if (val_ref.bank() == CompilerConfig::GP_BANK) {
       reg = call_conv.ret_regs_gp()[gp_reg_idx++];
     } else {
       reg = call_conv.ret_regs_vec()[xmm_reg_idx++];
@@ -620,7 +620,7 @@ bool LLVMCompilerX64::compile_icmp(const llvm::Instruction *inst,
         rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
       } else if (is_signed) {
         rhs_imm = tpde::util::sext(rhs_op.imm64(), int_width);
-        rhs_op = ValuePartRef{this, &rhs_imm, 8, 0};
+        rhs_op = ValuePartRef{this, &rhs_imm, 8, CompilerConfig::GP_BANK};
       }
     }
 
@@ -729,7 +729,8 @@ void LLVMCompilerX64::switch_emit_cmp(ScratchReg &scratch,
       ASM(CMP64ri, cmp_reg, case_value);
     } else {
       const auto tmp = scratch.alloc_gp();
-      auto const_ref = ValuePartRef{this, &case_value, 8, 0};
+      auto const_ref =
+          ValuePartRef{this, &case_value, 8, CompilerConfig::GP_BANK};
       const_ref.reload_into_specific_fixed(tmp);
       ASM(CMP64rr, cmp_reg, tmp);
     }
@@ -768,7 +769,7 @@ bool LLVMCompilerX64::switch_emit_jump_table(Label default_label,
     if ((i64)((i32)low_bound) == (i64)low_bound) {
       ASM(SUB64ri, cmp_reg, low_bound);
     } else {
-      ValuePartRef const_ref{this, &low_bound, 8, 0};
+      ValuePartRef const_ref{this, &low_bound, 8, CompilerConfig::GP_BANK};
       ASM(SUB64rr, cmp_reg, const_ref.load_to_reg());
     }
   }
@@ -840,7 +841,7 @@ bool LLVMCompilerX64::handle_intrin(const llvm::IntrinsicInst *inst) noexcept {
     const auto src_reg = src_ref.load_to_reg();
     const auto dst_reg = dst_ref.load_to_reg();
 
-    const auto tmp_reg = scratch.alloc(1);
+    const auto tmp_reg = scratch.alloc(CompilerConfig::FP_BANK);
     ASM(SSE_MOVDQUrm, tmp_reg, FE_MEM(src_reg, 0, FE_NOREG, 0));
     ASM(SSE_MOVDQUmr, FE_MEM(dst_reg, 0, FE_NOREG, 0), tmp_reg);
 

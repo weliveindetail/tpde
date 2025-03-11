@@ -73,7 +73,7 @@
 
 namespace tpde::a64 {
 
-struct AsmReg : AsmRegBase {
+struct AsmReg : Reg {
   enum REG : u8 {
     R0 = 0,
     R1,
@@ -144,17 +144,17 @@ struct AsmReg : AsmRegBase {
     V31
   };
 
-  constexpr explicit AsmReg() noexcept : AsmRegBase((u8)0xFF) {}
+  constexpr explicit AsmReg() noexcept : Reg((u8)0xFF) {}
 
-  constexpr AsmReg(const REG id) noexcept : AsmRegBase((u8)id) {}
+  constexpr AsmReg(const REG id) noexcept : Reg((u8)id) {}
 
-  constexpr AsmReg(const AsmRegBase base) noexcept : AsmRegBase(base) {}
+  constexpr AsmReg(const Reg base) noexcept : Reg(base) {}
 
-  constexpr explicit AsmReg(const u8 id) noexcept : AsmRegBase(id) {
+  constexpr explicit AsmReg(const u8 id) noexcept : Reg(id) {
     assert(id <= SP || (id >= V0 && id <= V31));
   }
 
-  constexpr explicit AsmReg(const u64 id) noexcept : AsmRegBase(id) {
+  constexpr explicit AsmReg(const u64 id) noexcept : Reg(id) {
     assert(id <= SP || (id >= V0 && id <= V31));
   }
 
@@ -202,8 +202,8 @@ struct PlatformConfig : CompilerConfigDefault {
   using Assembler = AssemblerElfA64;
   using AsmReg = tpde::a64::AsmReg;
 
-  static constexpr u8 GP_BANK = 0;
-  static constexpr u8 FP_BANK = 1;
+  static constexpr RegBank GP_BANK{0};
+  static constexpr RegBank FP_BANK{1};
   static constexpr bool FRAME_INDEXING_NEGATIVE = false;
   static constexpr u32 PLATFORM_POINTER_SIZE = 8;
   static constexpr u32 NUM_BANKS = 2;
@@ -514,18 +514,18 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   AsmReg gval_expr_as_reg(GenericValuePart &gv) noexcept;
 
   void materialize_constant(const u64 *data,
-                            u32 bank,
+                            RegBank bank,
                             u32 size,
                             AsmReg dst) noexcept;
   void materialize_constant(u64 const_u64,
-                            u32 bank,
+                            RegBank bank,
                             u32 size,
                             AsmReg dst) noexcept {
     assert(size <= sizeof(const_u64));
     materialize_constant(&const_u64, bank, size, dst);
   }
 
-  AsmReg select_fixed_assignment_reg(u32 bank, IRValueRef) noexcept;
+  AsmReg select_fixed_assignment_reg(RegBank bank, IRValueRef) noexcept;
 
   struct Jump {
     enum Kind : uint8_t {
@@ -744,10 +744,10 @@ void CallingConv::handle_func_args(
       auto part_ref = arg_ref.part(part_idx);
       auto ap = part_ref.assignment();
       unsigned size = ap.part_size();
-      unsigned bank = parts.reg_bank(part_idx);
+      RegBank bank = parts.reg_bank(part_idx);
       ScratchReg scratch{compiler};
 
-      if (bank == 0) {
+      if (bank == Config::GP_BANK) {
         if (scalar_reg_count < gp_regs.size()) {
           part_ref.set_value_reg(gp_regs[scalar_reg_count++]);
         } else {
@@ -775,6 +775,7 @@ void CallingConv::handle_func_args(
           frame_off += 8;
         }
       } else {
+        assert(bank == Config::FP_BANK);
         if (vec_reg_count < vec_regs.size()) {
           part_ref.set_value_reg(vec_regs[vec_reg_count++]);
         } else {
@@ -880,14 +881,14 @@ u32 CallingConv::calculate_call_stack_space(
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
       auto vpr = vr.part(part_idx);
 
-      if (vpr.bank() == 0) {
+      if (vpr.bank() == Config::GP_BANK) {
         if (gp_reg_count < gp_regs.size()) {
           ++gp_reg_count;
         } else {
           stack_space += 8;
         }
       } else {
-        assert(vpr.bank() == 1);
+        assert(vpr.bank() == Config::FP_BANK);
         if (vec_reg_count < vec_regs.size()) {
           ++vec_reg_count;
         } else {
@@ -999,7 +1000,7 @@ u32 CallingConv::handle_call_args(
       auto ref = vr.part(part_idx);
       ScratchReg scratch(compiler);
 
-      if (ref.bank() == 0) {
+      if (ref.bank() == Config::GP_BANK) {
         const auto ext_reg = [&](AsmReg reg) {
           if (arg.flag == CallArg::Flag::zext) {
             switch (ref.part_size()) {
@@ -1036,7 +1037,7 @@ u32 CallingConv::handle_call_args(
           stack_off += 8;
         }
       } else {
-        assert(ref.bank() == 1);
+        assert(ref.bank() == Config::FP_BANK);
         if (vec_reg_count < vec_regs.size()) {
           const AsmReg target_reg = vec_regs[vec_reg_count++];
           if (ref.is_in_reg(target_reg) && ref.can_salvage()) {
@@ -1089,11 +1090,11 @@ void CallingConv::fill_call_results(
 
   for (auto &ref : results) {
     AsmReg reg = AsmReg::make_invalid();
-    if (ref.bank() == 0) {
+    if (ref.bank() == Config::GP_BANK) {
       assert(gp_reg_count < gp_regs.size());
       reg = gp_regs[gp_reg_count++];
     } else {
-      assert(ref.bank() == 1);
+      assert(ref.bank() == Config::FP_BANK);
       assert(vec_reg_count < vec_regs.size());
       reg = vec_regs[vec_reg_count++];
     }
@@ -1186,7 +1187,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::
   {
     u32 reg_save_size = 0u;
     bool pending = false;
-    u32 last_bank = 0;
+    RegBank last_bank;
     for (const auto reg : call_conv.callee_saved_regs()) {
       const auto bank = this->register_file.reg_bank(reg);
       if (pending) {
@@ -1290,7 +1291,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
         const auto reg_bank = this->register_file.reg_bank(AsmReg{reg});
         const auto last_bank = this->register_file.reg_bank(last_reg);
         if (reg_bank == last_bank) {
-          if (reg_bank == 0) {
+          if (reg_bank == Config::GP_BANK) {
             prologue.push_back(
                 de64_STPx(last_reg, AsmReg{reg}, stack_reg, frame_off));
           } else {
@@ -1300,7 +1301,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
           frame_off += 16;
           last_reg = AsmReg::make_invalid();
         } else {
-          assert(last_bank == 0 && reg_bank == 1);
+          assert(last_bank == Config::GP_BANK && reg_bank == Config::FP_BANK);
           prologue.push_back(de64_STRxu(last_reg, stack_reg, frame_off));
           frame_off += 8;
           last_reg = AsmReg{reg};
@@ -1322,9 +1323,10 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     }
 
     if (last_reg.valid()) {
-      if (this->register_file.reg_bank(last_reg) == 0) {
+      if (this->register_file.reg_bank(last_reg) == Config::GP_BANK) {
         prologue.push_back(de64_STRxu(last_reg, stack_reg, frame_off));
       } else {
+        assert(this->register_file.reg_bank(last_reg) == Config::FP_BANK);
         prologue.push_back(de64_STRdu(last_reg, stack_reg, frame_off));
       }
     }
@@ -1400,7 +1402,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
         const auto reg_bank = this->register_file.reg_bank(AsmReg{reg});
         const auto last_bank = this->register_file.reg_bank(last_reg);
         if (reg_bank == last_bank) {
-          if (reg_bank == 0) {
+          if (reg_bank == Config::GP_BANK) {
             *write_ptr++ =
                 de64_LDPx(last_reg, AsmReg{reg}, stack_reg, frame_off);
           } else {
@@ -1410,7 +1412,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
           frame_off += 16;
           last_reg = AsmReg::make_invalid();
         } else {
-          assert(last_bank == 0 && reg_bank == 1);
+          assert(last_bank == Config::GP_BANK && reg_bank == Config::FP_BANK);
           *write_ptr++ = de64_LDRxu(last_reg, stack_reg, frame_off);
           frame_off += 8;
           last_reg = AsmReg{reg};
@@ -1422,7 +1424,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     }
 
     if (last_reg.valid()) {
-      if (this->register_file.reg_bank(last_reg) == 0) {
+      if (this->register_file.reg_bank(last_reg) == Config::GP_BANK) {
         *write_ptr++ = de64_LDRxu(last_reg, stack_reg, frame_off);
       } else {
         *write_ptr++ = de64_LDRdu(last_reg, stack_reg, frame_off);
@@ -1528,7 +1530,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_reg(
   ValuePartRef scratch{derived(), Config::GP_BANK};
   if (off >= 0x1000 * size) [[unlikely]] {
     // We cannot encode the offset in the store instruction.
-    auto tmp =
+    AsmReg tmp =
         this->register_file.find_first_free_excluding(Config::GP_BANK, 0);
     if (tmp.valid()) {
       scratch.alloc_specific(tmp);
@@ -1643,7 +1645,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::
   // per-default, variable references are only used by
   // allocas
   if (!ASMIF(ADDxi, dst, DA_GP(29), ap.assignment->frame_off)) {
-    materialize_constant(ap.assignment->frame_off, 0, 4, dst);
+    materialize_constant(ap.assignment->frame_off, Config::GP_BANK, 4, dst);
     ASM(ADDx_uxtw, dst, DA_GP(29), dst, 0);
   }
 }
@@ -1699,7 +1701,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
   ScratchReg scratch{derived()};
   if (!expr.has_base() && !expr.has_index()) {
     AsmReg dst = scratch.alloc_gp();
-    derived()->materialize_constant(expr.disp, 0, 8, dst);
+    derived()->materialize_constant(expr.disp, Config::GP_BANK, 8, dst);
     expr.disp = 0;
   } else if (!expr.has_base() && expr.has_index()) {
     AsmReg index_reg = expr.index_reg();
@@ -1715,7 +1717,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
     } else {
       ScratchReg scratch2{derived()};
       AsmReg tmp2 = scratch2.alloc_gp();
-      derived()->materialize_constant(expr.scale, 0, 8, tmp2);
+      derived()->materialize_constant(expr.scale, Config::GP_BANK, 8, tmp2);
       ASM(MULx, dst, index_reg, tmp2);
     }
   } else if (expr.has_base() && expr.has_index()) {
@@ -1735,7 +1737,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
     } else {
       ScratchReg scratch2{derived()};
       AsmReg tmp2 = scratch2.alloc_gp();
-      derived()->materialize_constant(expr.scale, 0, 8, tmp2);
+      derived()->materialize_constant(expr.scale, Config::GP_BANK, 8, tmp2);
       ASM(MULx, tmp2, index_reg, tmp2);
       ASM(ADDx, dst, base_reg, tmp2);
     }
@@ -1761,7 +1763,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
     if (!ASMIF(ADDxi, dst, dst, expr.disp)) {
       ScratchReg scratch2{derived()};
       AsmReg tmp2 = scratch2.alloc_gp();
-      derived()->materialize_constant(expr.disp, 0, 8, tmp2);
+      derived()->materialize_constant(expr.disp, Config::GP_BANK, 8, tmp2);
       ASM(ADDx, dst, dst, tmp2);
     }
   }
@@ -1775,9 +1777,9 @@ template <IRAdaptor Adaptor,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
-    const u64 *data, const u32 bank, const u32 size, AsmReg dst) noexcept {
+    const u64 *data, const RegBank bank, const u32 size, AsmReg dst) noexcept {
   const auto const_u64 = data[0];
-  if (bank == 0) {
+  if (bank == Config::GP_BANK) {
     assert(size <= 8);
     if (const_u64 == 0) {
       ASM(MOVZw, dst, 0);
@@ -1793,7 +1795,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     return;
   }
 
-  assert(bank == 1);
+  assert(bank == Config::FP_BANK);
   if (size == 4) {
     if (ASMIF(FMOVsi, dst, std::bit_cast<float>((u32)const_u64))) {
     } else if (ASMIF(MOVId, dst, static_cast<u32>(const_u64))) {
@@ -1865,13 +1867,10 @@ template <IRAdaptor Adaptor,
           typename Config>
 AsmReg
     CompilerA64<Adaptor, Derived, BaseTy, Config>::select_fixed_assignment_reg(
-        const u32 bank, IRValueRef) noexcept {
+        const RegBank bank, IRValueRef) noexcept {
   // TODO(ts): why is this in here?
-  assert(bank <= 1);
-  u64 reg_mask = (1ull << 32) - 1;
-  if (bank != 0) {
-    reg_mask = ~reg_mask;
-  }
+  assert(bank.id() <= Config::NUM_BANKS);
+  auto reg_mask = this->register_file.bank_regs(bank);
   reg_mask &= ~fixed_assignment_nonallocatable_mask;
 
   const auto find_possible_regs = [this,

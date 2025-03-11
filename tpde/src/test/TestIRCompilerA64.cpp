@@ -19,7 +19,6 @@ struct TestIRCompilerA64 : a64::CompilerA64<TestIRAdaptor, TestIRCompilerA64> {
   using IRValueRef = typename Base::IRValueRef;
   using IRFuncRef = typename Base::IRFuncRef;
   using ValuePartRef = typename Base::ValuePartRef;
-  using ValLocalIdx = typename Base::ValLocalIdx;
   using ScratchReg = typename Base::ScratchReg;
   using AsmReg = typename Base::AsmReg;
   using InstRange = typename Base::InstRange;
@@ -45,12 +44,14 @@ struct TestIRCompilerA64 : a64::CompilerA64<TestIRAdaptor, TestIRCompilerA64> {
   struct ValueParts {
     static u32 count() noexcept { return 1; }
     static u32 size_bytes(u32) noexcept { return 8; }
-    static u8 reg_bank(u32) noexcept { return 0; }
+    static RegBank reg_bank(u32) noexcept {
+      return a64::PlatformConfig::GP_BANK;
+    }
   };
 
   ValueParts val_parts(IRValueRef) { return ValueParts{}; }
 
-  AsmReg select_fixed_assignment_reg(const u32 bank,
+  AsmReg select_fixed_assignment_reg(const RegBank bank,
                                      const IRValueRef value) noexcept {
     if (no_fixed_assignments && !try_force_fixed_assignment(value)) {
       return AsmReg::make_invalid();

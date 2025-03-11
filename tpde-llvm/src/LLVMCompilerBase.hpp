@@ -45,7 +45,6 @@ struct LLVMCompilerBase : public LLVMCompiler,
   using ValueRef = typename Base::ValueRef;
   using AssignmentPartRef = typename Base::AssignmentPartRef;
   using GenericValuePart = typename Base::GenericValuePart;
-  using ValLocalIdx = typename Base::ValLocalIdx;
   using InstRange = typename Base::InstRange;
 
   using Assembler = typename Base::Assembler;
@@ -560,7 +559,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
       llvm::isa<llvm::ConstantPointerNull>(const_val) ||
       llvm::isa<llvm::ConstantAggregateZero>(const_val)) {
     u32 size = this->adaptor->basic_ty_part_size(ty);
-    u32 bank = this->adaptor->basic_ty_part_bank(ty);
+    tpde::RegBank bank = this->adaptor->basic_ty_part_bank(ty);
     static const std::array<u64, 8> zero{};
     assert(size <= zero.size() * sizeof(u64));
     return ValuePartRef(this, zero.data(), size, bank);
@@ -3149,8 +3148,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
     // Handle case of complex with two i64 as i128, this is extremely hacky...
     // TODO(ts): support full complex types using branches
     const auto parts = this->adaptor->val_parts(inst);
-    if (parts.count() != 2 || parts.reg_bank(0) != 0 ||
-        parts.reg_bank(1) != 0) {
+    if (parts.count() != 2 || parts.reg_bank(0) != Config::GP_BANK ||
+        parts.reg_bank(1) != Config::GP_BANK) {
       return false;
     }
   }

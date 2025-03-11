@@ -36,7 +36,7 @@ public:
   /// Allocate register in the specified bank, optionally excluding certain
   /// non-fixed registers. Spilling can be disabled for spill code to avoid
   /// recursion; if spilling is disabled, the allocation can fail.
-  AsmReg alloc(u8 bank) noexcept;
+  AsmReg alloc(RegBank bank) noexcept;
 
   void reset() noexcept;
 
@@ -93,7 +93,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ScratchReg::alloc(
-        u8 bank) noexcept {
+        RegBank bank) noexcept {
   auto &reg_file = compiler->register_file;
   if (!reg.invalid()) {
     assert(bank == reg_file.reg_bank(reg));

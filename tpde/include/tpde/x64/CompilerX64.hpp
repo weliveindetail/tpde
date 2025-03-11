@@ -38,7 +38,7 @@
 
 namespace tpde::x64 {
 
-struct AsmReg : AsmRegBase {
+struct AsmReg : Reg {
   enum REG : u8 {
     AX = 0,
     CX,
@@ -76,17 +76,17 @@ struct AsmReg : AsmRegBase {
     // TODO(ts): optional support for AVX registers with compiler flag
   };
 
-  constexpr explicit AsmReg() noexcept : AsmRegBase((u8)0xFF) {}
+  constexpr explicit AsmReg() noexcept : Reg((u8)0xFF) {}
 
-  constexpr AsmReg(const REG id) noexcept : AsmRegBase((u8)id) {}
+  constexpr AsmReg(const REG id) noexcept : Reg((u8)id) {}
 
-  constexpr AsmReg(const AsmRegBase base) noexcept : AsmRegBase(base) {}
+  constexpr AsmReg(const Reg base) noexcept : Reg(base) {}
 
-  constexpr explicit AsmReg(const u8 id) noexcept : AsmRegBase(id) {
+  constexpr explicit AsmReg(const u8 id) noexcept : Reg(id) {
     assert(id <= R15 || (id >= XMM0 && id <= XMM15));
   }
 
-  constexpr explicit AsmReg(const u64 id) noexcept : AsmRegBase(id) {
+  constexpr explicit AsmReg(const u64 id) noexcept : Reg(id) {
     assert(id <= R15 || (id >= XMM0 && id <= XMM15));
   }
 
@@ -128,8 +128,8 @@ struct PlatformConfig : CompilerConfigDefault {
   using Assembler = AssemblerElfX64;
   using AsmReg = tpde::x64::AsmReg;
 
-  static constexpr u8 GP_BANK = 0;
-  static constexpr u8 FP_BANK = 1;
+  static constexpr RegBank GP_BANK{0};
+  static constexpr RegBank FP_BANK{1};
   static constexpr bool FRAME_INDEXING_NEGATIVE = true;
   static constexpr u32 PLATFORM_POINTER_SIZE = 8;
   static constexpr u32 NUM_BANKS = 2;
@@ -439,11 +439,11 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   AsmReg gval_expr_as_reg(GenericValuePart &gv) noexcept;
 
   void materialize_constant(const u64 *data,
-                            u32 bank,
+                            RegBank bank,
                             u32 size,
                             AsmReg dst) noexcept;
 
-  AsmReg select_fixed_assignment_reg(u32 bank, IRValueRef) noexcept;
+  AsmReg select_fixed_assignment_reg(RegBank bank, IRValueRef) noexcept;
 
   enum class Jump {
     ja,
@@ -593,8 +593,9 @@ void CallingConv::handle_func_args(
     auto arg_ref = compiler->result_ref(arg);
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
       auto part_ref = arg_ref.part(part_idx);
+      RegBank bank = parts.reg_bank(part_idx);
 
-      if (parts.reg_bank(part_idx) == 0) {
+      if (bank == Config::GP_BANK) {
         if (!must_pass_stack && scalar_reg_count < gp_regs.size()) {
           part_ref.set_value_reg(gp_regs[scalar_reg_count++]);
         } else {
@@ -618,6 +619,7 @@ void CallingConv::handle_func_args(
           frame_off += 8;
         }
       } else {
+        assert(bank == Config::FP_BANK);
         if (!must_pass_stack && xmm_reg_count < xmm_regs.size()) {
           part_ref.set_value_reg(xmm_regs[xmm_reg_count++]);
         } else {
@@ -710,14 +712,14 @@ u32 CallingConv::calculate_call_stack_space(
     vr.disown();
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
       auto vpr = vr.part(part_idx);
-      if (vpr.bank() == 0) {
+      if (vpr.bank() == Config::GP_BANK) {
         if (!must_pass_stack && gp_reg_count < gp_regs.size()) {
           ++gp_reg_count;
         } else {
           stack_space += 8;
         }
       } else {
-        assert(vpr.bank() == 1);
+        assert(vpr.bank() == Config::FP_BANK);
         if (!must_pass_stack && xmm_reg_count < xmm_regs.size()) {
           ++xmm_reg_count;
         } else {
@@ -832,7 +834,7 @@ u32 CallingConv::handle_call_args(
       auto ref = vr.part(part_idx);
       ScratchReg scratch(compiler);
 
-      if (ref.bank() == 0) {
+      if (ref.bank() == Config::GP_BANK) {
         const auto ext_reg = [&](AsmReg reg) {
           if (arg.flag == CallArg::Flag::zext) {
             switch (ref.part_size()) {
@@ -869,7 +871,7 @@ u32 CallingConv::handle_call_args(
           stack_off += 8;
         }
       } else {
-        assert(ref.bank() == 1);
+        assert(ref.bank() == Config::FP_BANK);
         if (!must_pass_stack && xmm_reg_count < xmm_regs.size()) {
           const AsmReg target_reg = xmm_regs[xmm_reg_count++];
           if (ref.is_in_reg(target_reg) && ref.can_salvage()) {
@@ -931,11 +933,11 @@ void CallingConv::fill_call_results(
 
   for (auto &ref : results) {
     AsmReg reg = AsmReg::make_invalid();
-    if (ref.bank() == 0) {
+    if (ref.bank() == Config::GP_BANK) {
       assert(gp_reg_count < gp_regs.size());
       reg = gp_regs[gp_reg_count++];
     } else {
-      assert(ref.bank() == 1);
+      assert(ref.bank() == Config::FP_BANK);
       assert(xmm_reg_count < xmm_regs.size());
       reg = xmm_regs[xmm_reg_count++];
     }
@@ -1583,9 +1585,9 @@ template <IRAdaptor Adaptor,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
-    const u64 *data, const u32 bank, const u32 size, AsmReg dst) noexcept {
+    const u64 *data, const RegBank bank, const u32 size, AsmReg dst) noexcept {
   const auto const_u64 = data[0];
-  if (bank == 0) {
+  if (bank == Config::GP_BANK) {
     assert(size <= 8);
     if (const_u64 == 0) {
       // note: cannot use XOR here since this might be called in-between
@@ -1603,7 +1605,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     return;
   }
 
-  assert(bank == 1);
+  assert(bank == Config::FP_BANK);
   const auto high_u64 = size <= 8 ? 0 : data[1];
   if (const_u64 == 0 && (size <= 8 || (high_u64 == 0 && size <= 16))) {
     if (has_cpu_feats(CPU_AVX)) {
@@ -1672,12 +1674,9 @@ template <IRAdaptor Adaptor,
           typename Config>
 AsmReg
     CompilerX64<Adaptor, Derived, BaseTy, Config>::select_fixed_assignment_reg(
-        const u32 bank, IRValueRef) noexcept {
-  assert(bank <= 1);
-  u64 reg_mask = (1ull << 32) - 1;
-  if (bank != 0) {
-    reg_mask = ~reg_mask;
-  }
+        const RegBank bank, IRValueRef) noexcept {
+  assert(bank.id() <= Config::NUM_BANKS);
+  auto reg_mask = this->register_file.bank_regs(bank);
   reg_mask &= ~fixed_assignment_nonallocatable_mask;
 
   const auto find_possible_regs = [this,

@@ -16,6 +16,8 @@
 
 namespace tpde {
 
+struct RegBank;
+
 template <bool B>
 concept IsTrue = (B == true);
 
@@ -28,7 +30,7 @@ concept ValueParts = requires(T a) {
   { a.size_bytes(ARG(u32)) } -> std::convertible_to<u32>;
 
   /// Provides the bank for a value part
-  { a.reg_bank(ARG(u32)) } -> std::convertible_to<u8>;
+  { a.reg_bank(ARG(u32)) } -> std::convertible_to<RegBank>;
 };
 
 template <typename T>
@@ -76,7 +78,7 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
   } -> std::same_as<typename Config::AsmReg>;
 
   {
-    a.select_fixed_assignment_reg(ARG(u32), ARG(typename T::IRValueRef))
+    a.select_fixed_assignment_reg(ARG(RegBank), ARG(typename T::IRValueRef))
   } -> std::same_as<typename Config::AsmReg>;
 
 

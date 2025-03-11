@@ -179,7 +179,7 @@ void LLVMCompilerArm64::move_val_to_ret_regs(llvm::Value *val) noexcept {
     const auto call_conv = this->cur_calling_convention();
     AsmReg reg;
     // TODO: handle out-of-register case
-    if (val_ref.bank() == 0) {
+    if (val_ref.bank() == CompilerConfig::GP_BANK) {
       reg = call_conv.ret_regs_gp()[gp_reg_idx++];
     } else {
       reg = call_conv.ret_regs_vec()[fp_reg_idx++];
@@ -217,7 +217,8 @@ void LLVMCompilerArm64::load_address_of_var_reference(
     // per-default, variable references are only used by
     // allocas
     if (!ASMIF(ADDxi, dst, DA_GP(29), info.alloca_frame_off)) {
-      materialize_constant(info.alloca_frame_off, 0, 4, dst);
+      materialize_constant(
+          info.alloca_frame_off, CompilerConfig::GP_BANK, 4, dst);
       ASM(ADDx_uxtw, dst, DA_GP(29), dst, 0);
     }
   } else {
@@ -355,7 +356,7 @@ bool LLVMCompilerArm64::compile_alloca(const llvm::Instruction *inst,
     if (size_val >= 0x10'0000) {
       ScratchReg scratch{this};
       auto tmp = scratch.alloc_gp();
-      materialize_constant(size_val, 0, 8, tmp);
+      materialize_constant(size_val, CompilerConfig::GP_BANK, 8, tmp);
       ASM(SUBx_uxtx, DA_SP, DA_SP, tmp, 0);
     } else if (size_val > 0) {
       if (size_val >= 0x1000) {
@@ -396,7 +397,7 @@ bool LLVMCompilerArm64::compile_alloca(const llvm::Instruction *inst,
   } else {
     ScratchReg scratch{this};
     auto tmp = scratch.alloc_gp();
-    materialize_constant(elem_size, 0, 8, tmp);
+    materialize_constant(elem_size, CompilerConfig::GP_BANK, 8, tmp);
     ASM(MULx, res_reg, size_reg, tmp);
     ASM(SUBx_uxtx, res_reg, DA_SP, res_reg, 0);
   }
@@ -684,12 +685,14 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::Instruction *inst,
       ScratchReg rhs_tmp{this};
       if (int_width <= 32) {
         if (!ASMIF(CMPwi, lhs_reg, imm)) {
-          this->materialize_constant(imm, 0, 4, rhs_tmp.alloc_gp());
+          this->materialize_constant(
+              imm, CompilerConfig::GP_BANK, 4, rhs_tmp.alloc_gp());
           ASM(CMPw, lhs_reg, rhs_tmp.cur_reg());
         }
       } else {
         if (!ASMIF(CMPxi, lhs_reg, imm)) {
-          this->materialize_constant(imm, 0, 4, rhs_tmp.alloc_gp());
+          this->materialize_constant(
+              imm, CompilerConfig::GP_BANK, 4, rhs_tmp.alloc_gp());
           ASM(CMPx, lhs_reg, rhs_tmp.cur_reg());
         }
       }
@@ -782,13 +785,13 @@ void LLVMCompilerArm64::switch_emit_cmp(ScratchReg &scratch,
   if (width_is_32) {
     if (!ASMIF(CMPwi, cmp_reg, case_value)) {
       const auto tmp = scratch.alloc_gp();
-      materialize_constant(case_value, 0, 4, tmp);
+      materialize_constant(case_value, CompilerConfig::GP_BANK, 4, tmp);
       ASM(CMPw, cmp_reg, tmp);
     }
   } else {
     if (!ASMIF(CMPxi, cmp_reg, case_value)) {
       const auto tmp = scratch.alloc_gp();
-      materialize_constant(case_value, 0, 4, tmp);
+      materialize_constant(case_value, CompilerConfig::GP_BANK, 4, tmp);
       ASM(CMPx, cmp_reg, tmp);
     }
   }
@@ -899,9 +902,9 @@ bool LLVMCompilerArm64::handle_intrin(
 
     uint32_t gr_offs = 0 - ((8 - scalar_arg_count) * 8);
     uint32_t vr_offs = 0 - ((8 - vec_arg_count) * 16);
-    materialize_constant(gr_offs, 0, sizeof(uint32_t), tmp_reg);
+    materialize_constant(gr_offs, CompilerConfig::GP_BANK, 4, tmp_reg);
     ASM(STRwu, tmp_reg, list_reg, 24);
-    materialize_constant(vr_offs, 0, sizeof(uint32_t), tmp_reg);
+    materialize_constant(vr_offs, CompilerConfig::GP_BANK, 4, tmp_reg);
     ASM(STRwu, tmp_reg, list_reg, 28);
     return true;
   }
@@ -913,8 +916,8 @@ bool LLVMCompilerArm64::handle_intrin(
     const auto src_reg = src_ref.load_to_reg();
     const auto dst_reg = dst_ref.load_to_reg();
 
-    const auto tmp_reg1 = scratch1.alloc(1);
-    const auto tmp_reg2 = scratch2.alloc(1);
+    const auto tmp_reg1 = scratch1.alloc(CompilerConfig::FP_BANK);
+    const auto tmp_reg2 = scratch2.alloc(CompilerConfig::FP_BANK);
     ASM(LDPq, tmp_reg1, tmp_reg2, src_reg, 0);
     ASM(STPq, tmp_reg1, tmp_reg2, dst_reg, 0);
     return true;

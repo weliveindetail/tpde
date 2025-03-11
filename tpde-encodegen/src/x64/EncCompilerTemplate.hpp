@@ -57,7 +57,6 @@ struct EncodeCompiler {
     using GenericValuePart = typename CompilerX64::GenericValuePart;
     using Assembler    = typename CompilerX64::Assembler;
     using Label        = typename Assembler::Label;
-    using ValLocalIdx  = typename CompilerX64::ValLocalIdx;
     using SymRef       = typename Assembler::SymRef;
 
     [[nodiscard]] static std::optional<i32> encodeable_as_imm32_sext(GenericValuePart &gv) noexcept;
@@ -244,7 +243,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
                                u32             size) noexcept {
     AsmReg reg = derived()->gval_as_reg_reuse(gv, dst_scratch);
     if (!dst_scratch.has_reg()) {
-        dst_scratch.alloc(bank);
+        dst_scratch.alloc(RegBank(bank));
     }
     if (dst_scratch.cur_reg() != reg) {
         derived()->mov(dst_scratch.cur_reg(), reg, size);
@@ -267,7 +266,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
     }
 
     const auto bank = derived()->register_file.reg_bank(reg);
-    if (bank != 0) {
+    if (bank != Config::GP_BANK) {
         // TODO(ts): need to know the size
         TPDE_FATAL("fixed non-gp regs not supported");
     }
@@ -373,7 +372,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
     assignment.part       = backup_reg.part;
     reg_file.lock_counts[scratch.cur_reg().id()] = backup_reg.lock_count;
 
-    assert(reg_file.reg_bank(scratch.cur_reg()) == 0);
+    assert(reg_file.reg_bank(scratch.cur_reg()) == Config::GP_BANK);
     if (is_ret_reg) {
         // TODO(ts): allocate another scratch? Though at this point the scratch
         // regs have not been released yet so we might need to spill...

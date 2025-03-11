@@ -36,14 +36,14 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
     set_modified(true);
   }
 
-  [[nodiscard]] u8 bank() const noexcept {
-    return (assignment->parts[part] >> 5) & 0b111;
+  [[nodiscard]] RegBank bank() const noexcept {
+    return RegBank((assignment->parts[part] >> 5) & 0b111);
   }
 
-  void set_bank(const u8 bank) noexcept {
-    assert(bank <= 0b111);
+  void set_bank(const RegBank bank) noexcept {
+    assert(bank.id() <= 0b111);
     auto data = assignment->parts[part] & ~0b1110'0000;
-    data |= bank << 5;
+    data |= bank.id() << 5;
     assignment->parts[part] = data;
   }
 
@@ -52,7 +52,7 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
   }
 
   void set_full_reg_id(const u8 id) noexcept {
-    assert(bank() == ((id >> 5) & 0b111));
+    assert(bank().id() == ((id >> 5) & 0b111));
     assignment->parts[part] = (assignment->parts[part] & 0xFF00) | id;
   }
 

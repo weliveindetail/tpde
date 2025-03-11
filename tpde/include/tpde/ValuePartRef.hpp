@@ -15,7 +15,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePart {
     AsmReg reg = AsmReg::make_invalid();
     bool has_assignment = false;
     const u64 *data;
-    u32 bank;
+    RegBank bank;
     u32 size;
   };
 
@@ -23,7 +23,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePart {
     AsmReg reg = AsmReg::make_invalid(); // only valid if fixed/locked
     bool has_assignment = true;
     bool owned;
-    CompilerBase::ValLocalIdx local_idx;
+    ValLocalIdx local_idx;
     u32 part;
     ValueAssignment *assignment;
   };
@@ -33,11 +33,13 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePart {
     ValueData v;
   } state;
 
-  ValuePart(u32 bank = 0) noexcept
+  ValuePart() noexcept : state{ConstantData{.data = nullptr}} {}
+
+  ValuePart(RegBank bank) noexcept
       : state{
             ConstantData{.data = nullptr, .bank = bank}
   } {
-    assert(bank < Config::NUM_BANKS);
+    assert(bank.id() < Config::NUM_BANKS);
   }
 
   ValuePart(ValLocalIdx local_idx,
@@ -57,12 +59,12 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePart {
     assert(!owned || state.v.assignment->references_left == 1);
   }
 
-  ValuePart(const u64 *data, u32 size, u32 bank) noexcept
+  ValuePart(const u64 *data, u32 size, RegBank bank) noexcept
       : state{
             .c = ConstantData{.data = data, .bank = bank, .size = size}
   } {
     assert(data && "constant data must not be null");
-    assert(bank < Config::NUM_BANKS);
+    assert(bank.id() < Config::NUM_BANKS);
   }
 
   explicit ValuePart(const ValuePart &) = delete;
@@ -263,7 +265,7 @@ public:
     return state.v.part;
   }
 
-  u32 bank() const noexcept {
+  RegBank bank() const noexcept {
     return !has_assignment() ? state.c.bank : assignment().bank();
   }
 
@@ -288,7 +290,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     return state.c.reg;
   }
 
-  u32 bank;
+  RegBank bank;
   if (has_assignment()) {
     auto ap = assignment();
     if (ap.register_valid()) {

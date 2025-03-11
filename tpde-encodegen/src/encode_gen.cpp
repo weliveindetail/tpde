@@ -444,7 +444,7 @@ bool generate_inst(std::string &buf,
           state.fmt_line(buf,
                          8,
                          "AsmReg inst{}_op{} = "
-                         "scratch_{}.alloc({});\n",
+                         "scratch_{}.alloc(RegBank({}));\n",
                          inst_id,
                          op_idx,
                          state.target->reg_name_lower(reg_id),
@@ -569,7 +569,7 @@ bool generate_inst(std::string &buf,
         } else {
           std::format_to(std::back_inserter(buf),
                          "{:>{}}AsmReg inst{}_op{} = "
-                         "scratch_{}.alloc({});\n",
+                         "scratch_{}.alloc(RegBank({}));\n",
                          "",
                          8,
                          inst_id,
@@ -624,7 +624,7 @@ bool generate_inst(std::string &buf,
                        "        // def {} has not been allocated yet\n",
                        state.target->reg_name_lower(reg_id));
         std::format_to(std::back_inserter(buf),
-                       "        scratch_{}.alloc({});\n",
+                       "        scratch_{}.alloc(RegBank({}));\n",
                        state.target->reg_name_lower(reg_id),
                        state.target->reg_bank(reg_id));
       }
@@ -757,7 +757,7 @@ void GenerationState::handle_end_of_block(llvm::raw_ostream &os,
       auto bank = target->reg_bank(reg);
       auto asm_op_ref_it = asm_operand_refs.find(reg);
       if (asm_op_ref_it == asm_operand_refs.end()) {
-        os << "  scratch_" << name << ".alloc(" << bank << ");\n";
+        os << "  scratch_" << name << ".alloc(RegBank(" << bank << "));\n";
       } else {
         auto param = asm_op_ref_it->second;
         os << "  try_salvage_or_materialize(" << param << ", scratch_" << name

@@ -3,15 +3,18 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include "tpde/ValLocalIdx.hpp"
+#include "tpde/base.hpp"
+#include "tpde/util/misc.hpp"
+
 namespace tpde {
 
-struct AsmRegBase {
+struct Reg {
   u8 reg_id;
 
-  explicit constexpr AsmRegBase(const u8 id) noexcept : reg_id(id) {}
+  explicit constexpr Reg(const u8 id) noexcept : reg_id(id) {}
 
-  explicit constexpr AsmRegBase(const u64 id) noexcept
-      : reg_id(static_cast<u8>(id)) {
+  explicit constexpr Reg(const u64 id) noexcept : reg_id(static_cast<u8>(id)) {
     assert(id <= 255);
   }
 
@@ -21,24 +24,42 @@ struct AsmRegBase {
 
   constexpr bool valid() const noexcept { return reg_id != 0xFF; }
 
-  constexpr static AsmRegBase make_invalid() noexcept {
-    return AsmRegBase{(u8)0xFF};
-  }
+  constexpr static Reg make_invalid() noexcept { return Reg{(u8)0xFF}; }
 
-  constexpr bool operator==(const AsmRegBase &other) const noexcept {
+  constexpr bool operator==(const Reg &other) const noexcept {
     return reg_id == other.reg_id;
   }
 };
 
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
+struct RegBank {
+private:
+  u8 bank;
+
+public:
+  constexpr RegBank() noexcept : bank(u8(-1)) {}
+
+  constexpr explicit RegBank(u8 bank) noexcept : bank(bank) {}
+
+  constexpr u8 id() const noexcept { return bank; }
+
+  constexpr bool operator==(const RegBank &other) const noexcept {
+    return bank == other.bank;
+  }
+};
+
+template <unsigned NumBanks, unsigned RegsPerBank>
+class RegisterFile {
+public:
+  static constexpr unsigned NumRegs = NumBanks * RegsPerBank;
+
+  static_assert(RegsPerBank > 0 && (RegsPerBank & (RegsPerBank - 1)) == 0,
+                "RegsPerBank must be a power of two");
+  static_assert(NumRegs < Reg::make_invalid().id());
+  static_assert(NumRegs <= 64);
+
   // later add the possibility for more than 64 registers
   // for architectures that require it
-
-  using Reg = typename Config::AsmReg;
   using RegBitSet = u64;
-
-  static constexpr size_t MAX_ID = 63;
 
   /// Registers that are generally allocatable and not reserved.
   RegBitSet allocatable = 0;
@@ -49,16 +70,16 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
   /// Registers that were clobbered at some point. Used to track registers that
   /// need to be saved/restored.
   RegBitSet clobbered = 0;
-  std::array<u8, 2> clocks{};
+  std::array<u8, NumBanks> clocks{};
 
   struct Assignment {
     ValLocalIdx local_idx;
     u32 part;
   };
 
-  std::array<Assignment, 64> assignments;
+  std::array<Assignment, NumRegs> assignments;
 
-  std::array<u8, 64> lock_counts{};
+  std::array<u8, NumRegs> lock_counts{};
 
   void reset() noexcept {
     used = {};
@@ -69,24 +90,24 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
   }
 
   [[nodiscard]] bool is_used(const Reg reg) const noexcept {
-    assert(reg.id() < 64);
+    assert(reg.id() < NumRegs);
     return (used & 1ull << reg.id()) != 0;
   }
 
   [[nodiscard]] bool is_fixed(const Reg reg) const noexcept {
-    assert(reg.id() < 64);
+    assert(reg.id() < NumRegs);
     return (fixed & 1ull << reg.id()) != 0;
   }
 
   [[nodiscard]] bool is_clobbered(const Reg reg) const noexcept {
-    assert(reg.id() < 64);
+    assert(reg.id() < NumRegs);
     return (clobbered & 1ull << reg.id()) != 0;
   }
 
   void mark_used(const Reg reg,
                  const ValLocalIdx local_idx,
                  const u32 part) noexcept {
-    assert(reg.id() < 64);
+    assert(reg.id() < NumRegs);
     assert(!is_used(reg));
     assert(!is_fixed(reg));
     assert(lock_counts[reg.id()] == 0);
@@ -103,7 +124,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
   }
 
   void unmark_used(const Reg reg) noexcept {
-    assert(reg.id() < 64);
+    assert(reg.id() < NumRegs);
     assert(is_used(reg));
     assert(!is_fixed(reg));
     assert(lock_counts[reg.id()] == 0);
@@ -111,20 +132,20 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
   }
 
   void mark_fixed(const Reg reg) noexcept {
-    assert(reg.id() < 64);
+    assert(reg.id() < NumRegs);
     assert(is_used(reg));
     fixed |= (1ull << reg.id());
   }
 
   void unmark_fixed(const Reg reg) noexcept {
-    assert(reg.id() < 64);
+    assert(reg.id() < NumRegs);
     assert(is_used(reg));
     assert(is_fixed(reg));
     fixed &= ~(1ull << reg.id());
   }
 
   void inc_lock_count(const Reg reg) noexcept {
-    assert(reg.id() < 64);
+    assert(reg.id() < NumRegs);
     assert(is_used(reg));
     mark_fixed(reg);
     ++lock_counts[reg.id()];
@@ -132,7 +153,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
 
   /// Returns true if the last lock was released.
   bool dec_lock_count(const Reg reg) noexcept {
-    assert(reg.id() < 64);
+    assert(reg.id() < NumRegs);
     assert(is_used(reg));
     assert(lock_counts[reg.id()] > 0);
     if (--lock_counts[reg.id()] == 0) {
@@ -143,7 +164,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
   }
 
   void mark_clobbered(const Reg reg) noexcept {
-    assert(reg.id() < 64);
+    assert(reg.id() < NumRegs);
     clobbered |= (1ull << reg.id());
   }
 
@@ -166,7 +187,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
   }
 
   [[nodiscard]] Reg
-      find_first_free_excluding(const u8 bank,
+      find_first_free_excluding(const RegBank bank,
                                 const u64 exclusion_mask) const noexcept {
     // TODO(ts): implement preferred registers
     const RegBitSet free_bank = allocatable & ~used & bank_regs(bank);
@@ -178,7 +199,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
   }
 
   [[nodiscard]] Reg
-      find_first_nonfixed_excluding(const u8 bank,
+      find_first_nonfixed_excluding(const RegBank bank,
                                     const u64 exclusion_mask) const noexcept {
     // TODO(ts): implement preferred registers
     const RegBitSet allocatable_bank = allocatable & ~fixed & bank_regs(bank);
@@ -190,7 +211,7 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
   }
 
   [[nodiscard]] Reg
-      find_clocked_nonfixed_excluding(const u8 bank,
+      find_clocked_nonfixed_excluding(const RegBank bank,
                                       const u64 exclusion_mask) noexcept {
     const RegBitSet allocatable_bank = allocatable & ~fixed & bank_regs(bank);
     const RegBitSet selectable = allocatable_bank & ~exclusion_mask;
@@ -198,28 +219,29 @@ struct CompilerBase<Adaptor, Derived, Config>::RegisterFile {
       return Reg::make_invalid();
     }
 
-    auto clock = clocks[bank];
+    auto clock = clocks[bank.id()];
     const u64 reg_id = (selectable >> clock)
                            ? util::cnt_tz(selectable >> clock) + clock
                            : util::cnt_tz(selectable);
 
     // always move clock to after the found reg_id
     clock = reg_id + 1;
-    if (clock >= 32) {
+    if (clock >= RegsPerBank) {
       clock = 0;
     }
-    clocks[bank] = clock;
+    clocks[bank.id()] = clock;
 
     return Reg{static_cast<u8>(reg_id)};
   }
 
-  [[nodiscard]] static u8 reg_bank(const Reg reg) noexcept {
-    return (reg.id() >> 5);
+  [[nodiscard]] static RegBank reg_bank(const Reg reg) noexcept {
+    return RegBank(reg.id() / RegsPerBank);
   }
 
-  [[nodiscard]] static RegBitSet bank_regs(const u8 bank) noexcept {
-    assert(bank <= 1);
-    return 0xFFFF'FFFFull << (bank * 32);
+  [[nodiscard]] static RegBitSet bank_regs(const RegBank bank) noexcept {
+    assert(bank.id() <= 1);
+    return ((1ull << RegsPerBank) - 1) << (bank.id() * RegsPerBank);
   }
 };
+
 } // namespace tpde

@@ -9,6 +9,7 @@
 #include "Compiler.hpp"
 #include "CompilerConfig.hpp"
 #include "IRAdaptor.hpp"
+#include "tpde/RegisterFile.hpp"
 #include "tpde/util/AddressSanitizer.hpp"
 #include "tpde/util/misc.hpp"
 
@@ -42,6 +43,8 @@ struct CompilerBase {
   using Assembler = typename Config::Assembler;
   using AsmReg = typename Config::AsmReg;
 
+  using RegisterFile = RegisterFile<Config::NUM_BANKS, 32>;
+
   /// A default implementation for ValRefSpecial.
   // Note: Subclasses can override this, always used Derived::ValRefSpecial.
   struct ValRefSpecial {
@@ -71,8 +74,6 @@ struct CompilerBase {
 
   // Assignments
 
-  enum class ValLocalIdx : u32 {
-  };
   static constexpr ValLocalIdx INVALID_VAL_LOCAL_IDX =
       static_cast<ValLocalIdx>(~0u);
 
@@ -170,7 +171,6 @@ struct CompilerBase {
         delayed_free_lists;
   } assignments = {};
 
-  struct RegisterFile;
   RegisterFile register_file;
 
   Assembler assembler;
@@ -305,7 +305,6 @@ protected:
 
 #include "AssignmentPartRef.hpp"
 #include "GenericValuePart.hpp"
-#include "RegisterFile.hpp"
 #include "ScratchReg.hpp"
 #include "ValuePartRef.hpp"
 #include "ValueRef.hpp"
@@ -538,13 +537,14 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
         analyzer.loop_from_idx(analyzer.block_loop_idx(cur_block_idx));
     auto ap = AssignmentPartRef{assignment, 0};
 
-    auto try_fixed = liveness.last > cur_block_idx &&
-                     cur_loop.definitions_in_childs +
-                             assignments.cur_fixed_assignment_count[ap.bank()] <
-                         Derived::NUM_FIXED_ASSIGNMENTS[ap.bank()];
+    auto try_fixed =
+        liveness.last > cur_block_idx &&
+        cur_loop.definitions_in_childs +
+                assignments.cur_fixed_assignment_count[ap.bank().id()] <
+            Derived::NUM_FIXED_ASSIGNMENTS[ap.bank().id()];
     if (derived()->try_force_fixed_assignment(value)) {
-      try_fixed = assignments.cur_fixed_assignment_count[ap.bank()] <
-                  Derived::NUM_FIXED_ASSIGNMENTS[ap.bank()];
+      try_fixed = assignments.cur_fixed_assignment_count[ap.bank().id()] <
+                  Derived::NUM_FIXED_ASSIGNMENTS[ap.bank().id()];
     }
 
     if (try_fixed) {
@@ -575,7 +575,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
         register_file.mark_used(reg, local_idx, 0);
         register_file.inc_lock_count(reg); // fixed assignments always locked
         register_file.mark_clobbered(reg);
-        ++assignments.cur_fixed_assignment_count[ap.bank()];
+        ++assignments.cur_fixed_assignment_count[ap.bank().id()];
       }
     }
   }
@@ -620,7 +620,7 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
       register_file.unmark_used(reg);
       ap.set_fixed_assignment(false);
       ap.set_register_valid(false);
-      --assignments.cur_fixed_assignment_count[ap.bank()];
+      --assignments.cur_fixed_assignment_count[ap.bank().id()];
     } else if (ap.register_valid()) {
       const auto reg = AsmReg{ap.full_reg_id()};
       assert(!register_file.is_fixed(reg));
@@ -906,7 +906,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
       return spilled;
   }*/
 
-  u16 phi_ref_count[RegisterFile::MAX_ID + 1] = {};
+  u16 phi_ref_count[RegisterFile::NumRegs] = {};
   for (const IRBlockRef succ : adaptor->block_succs(cur_block_ref)) {
     for (const IRValueRef phi_val : adaptor->block_phis(succ)) {
       const auto phi_ref = adaptor->val_as_phi(phi_val);
@@ -1093,7 +1093,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
       cur_reg = AsmReg::make_invalid();
     }
 
-    AsmReg alloc_from_bank(u32 bank) {
+    AsmReg alloc_from_bank(RegBank bank) {
       if (cur_reg.valid() && self->register_file.reg_bank(cur_reg) == bank) {
         return cur_reg;
       }
