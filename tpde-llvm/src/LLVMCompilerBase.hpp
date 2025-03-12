@@ -3247,13 +3247,12 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   auto *gep = llvm::cast<llvm::GetElementPtrInst>(inst);
-  auto ptr = gep->getPointerOperand();
 
-  ValueRef ptr_ref = this->val_ref(ptr);
+  ValueRef ptr_ref = this->val_ref(gep->getPointerOperand());
   ValueRef idx_ref{this};
   auto resolved = ResolvedGEP{
       .base = ptr_ref.part(0),
-      .index = ScratchReg{derived()},
+      .index = std::nullopt,
       .scale = 0,
       .idx_size_bits = 0,
       .displacement = 0,
@@ -3261,104 +3260,97 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
   auto &data_layout = this->adaptor->mod->getDataLayout();
 
-  const auto handle_gep_indices = [this, &data_layout, &resolved, &idx_ref](
-                                      llvm::Type *source_ty,
-                                      const llvm::Use *idx_start,
-                                      const llvm::Use *idx_end) {
-    if (idx_start == idx_end) {
-      return;
-    }
+  // Next single-use val
+  const llvm::Instruction *next_val = nullptr;
+  do {
+    // Handle index
+    bool first_idx = true;
+    auto *cur_ty = gep->getSourceElementType();
+    for (const llvm::Use &idx : gep->indices()) {
+      const auto idx_width = idx->getType()->getIntegerBitWidth();
+      if (idx_width > 64) {
+        return false;
+      }
 
-    auto *cur_ty = source_ty;
-    for (auto it = idx_start; it != idx_end; ++it) {
-      if (auto *Const = llvm::dyn_cast<llvm::ConstantInt>(it->get())) {
-        i64 off_disp;
-        if (it == idx_start) {
+      if (auto *Const = llvm::dyn_cast<llvm::ConstantInt>(idx)) {
+        i64 off_disp = 0;
+        if (first_idx) {
           // array index
-          off_disp =
-              data_layout.getTypeAllocSize(cur_ty) * Const->getSExtValue();
+          if (i64 idx_val = Const->getSExtValue(); idx_val != 0) {
+            off_disp = data_layout.getTypeAllocSize(cur_ty) * idx_val;
+          }
+        } else if (auto *struct_ty = llvm::dyn_cast<llvm::StructType>(cur_ty)) {
+          u64 field_idx = Const->getZExtValue();
+          cur_ty = cur_ty->getStructElementType(field_idx);
+          if (field_idx != 0) {
+            auto *struct_layout = data_layout.getStructLayout(struct_ty);
+            off_disp = struct_layout->getElementOffset(field_idx);
+          }
         } else {
-          if (cur_ty->isStructTy()) {
-            auto *struct_layout = data_layout.getStructLayout(
-                llvm::cast<llvm::StructType>(cur_ty));
-            cur_ty = cur_ty->getStructElementType(Const->getZExtValue());
-            off_disp = struct_layout->getElementOffset(Const->getZExtValue());
-          } else {
-            assert(cur_ty->isArrayTy());
-            cur_ty = cur_ty->getArrayElementType();
-            off_disp =
-                data_layout.getTypeAllocSize(cur_ty) * Const->getSExtValue();
+          assert(cur_ty->isArrayTy());
+          cur_ty = cur_ty->getArrayElementType();
+          if (i64 idx_val = Const->getSExtValue(); idx_val != 0) {
+            off_disp = data_layout.getTypeAllocSize(cur_ty) * idx_val;
           }
         }
         resolved.displacement += off_disp;
-        continue;
+      } else {
+        // A non-constant GEP. This must either be an offset calculation (for
+        // index == 0) or an array traversal
+        if (!first_idx) {
+          cur_ty = cur_ty->getArrayElementType();
+        }
+
+        if (resolved.scale) {
+          // need to convert to simple base register
+          derived()->resolved_gep_to_base_reg(resolved);
+        }
+
+        idx_ref = this->val_ref(idx);
+        resolved.idx_size_bits = idx_width;
+        resolved.index = idx_ref.part(0);
+        resolved.scale = data_layout.getTypeAllocSize(cur_ty);
       }
 
-      // A non-constant GEP. This must either be an offset calculation (for
-      // index == 0) or an array traversal
-      assert(it == idx_start || cur_ty->isArrayTy());
-      if (it != idx_start) {
-        cur_ty = cur_ty->getArrayElementType();
-      }
-
-      if (resolved.scale) {
-        // need to convert to simple base register
-        derived()->resolved_gep_to_base_reg(resolved);
-      }
-
-      idx_ref = this->val_ref(it->get());
-      auto *idx_ty = it->get()->getType();
-      const auto idx_width = idx_ty->getIntegerBitWidth();
-      assert(idx_width > 0 && idx_width <= 64);
-
-      resolved.idx_size_bits = idx_width;
-      resolved.index = idx_ref.part(0);
-      resolved.scale = data_layout.getTypeAllocSize(cur_ty);
+      first_idx = false;
     }
-  };
 
-  handle_gep_indices(
-      gep->getSourceElementType(), gep->idx_begin(), gep->idx_end());
-
-  // fuse geps
-  // TODO: use llvm statistic or analyzer liveness stat?
-  const llvm::Instruction *final = gep;
-  while (gep->hasOneUse()) {
-    auto *next_val = gep->getNextNode();
-    auto *next_gep = llvm::dyn_cast<llvm::GetElementPtrInst>(next_val);
-    if (!next_gep || next_gep->getPointerOperand() != gep ||
-        gep->getResultElementType() != next_gep->getResultElementType()) {
+    if (!gep->hasOneUse()) {
       break;
     }
 
-    if (next_gep->hasIndices()) {
-      handle_gep_indices(next_gep->getSourceElementType(),
-                         next_gep->idx_begin(),
-                         next_gep->idx_end());
+    // Try to fuse next instruction
+    next_val = gep->getNextNode();
+    if (gep->use_begin()->getUser() != next_val) {
+      next_val = nullptr;
+      break;
     }
 
+    auto *next_gep = llvm::dyn_cast<llvm::GetElementPtrInst>(next_val);
+    if (!next_gep) {
+      break;
+    }
+
+    // GEP only takes a single pointer operand, so this must be the use.
+    assert(next_gep->getPointerOperand() == gep);
     this->adaptor->inst_set_fused(next_val, true);
-    final = next_val; // we set the result for nextInst
     gep = next_gep;
-  }
+  } while (true);
 
   GenericValuePart addr = this->resolved_gep_to_addr(resolved);
 
-  if (gep->hasOneUse()) {
-    auto *next_val = gep->getNextNode();
-    if (auto *store = llvm::dyn_cast<llvm::StoreInst>(next_val);
-        store && store->getPointerOperand() == gep) {
-      this->adaptor->inst_set_fused(next_val, true);
-      return compile_store_generic(store, std::move(addr));
-    }
-    if (auto *load = llvm::dyn_cast<llvm::LoadInst>(next_val);
-        load && load->getPointerOperand() == gep) {
-      this->adaptor->inst_set_fused(next_val, true);
-      return compile_load_generic(load, std::move(addr));
-    }
+  if (auto *store = llvm::dyn_cast_if_present<llvm::StoreInst>(next_val);
+      store && store->getPointerOperand() == gep) {
+    this->adaptor->inst_set_fused(next_val, true);
+    return compile_store_generic(store, std::move(addr));
+  }
+  if (auto *load = llvm::dyn_cast_if_present<llvm::LoadInst>(next_val)) {
+    assert(load->getPointerOperand() == gep);
+    this->adaptor->inst_set_fused(next_val, true);
+    return compile_load_generic(load, std::move(addr));
   }
 
-  auto [res_vr, res_ref] = this->result_ref_single(final);
+  auto [res_vr, res_ref] = this->result_ref_single(gep);
 
   AsmReg res_reg = derived()->gval_as_reg(addr);
   if (auto *op_reg = std::get_if<ScratchReg>(&addr.state)) {

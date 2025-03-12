@@ -705,7 +705,7 @@ void LLVMCompilerX64::resolved_gep_to_base_reg(ResolvedGEP &gep) noexcept {
     gep.base = std::move(result);
   }
 
-  gep.index = ScratchReg{this};
+  gep.index = std::nullopt;
   gep.displacement = 0;
   gep.idx_size_bits = 0;
   gep.scale = 0;
