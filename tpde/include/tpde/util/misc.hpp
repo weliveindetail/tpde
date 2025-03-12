@@ -54,22 +54,22 @@ T cnt_lz(T) {
 }
 
 template <>
-inline u8 cnt_lz<u8>(const u8 val) {
+constexpr u8 cnt_lz<u8>(const u8 val) {
   return __builtin_clz((u32)val) - 24;
 }
 
 template <>
-inline u16 cnt_lz<u16>(const u16 val) {
+constexpr u16 cnt_lz<u16>(const u16 val) {
   return __builtin_clz((u32)val) - 16;
 }
 
 template <>
-inline u32 cnt_lz<u32>(const u32 val) {
+constexpr u32 cnt_lz<u32>(const u32 val) {
   return __builtin_clz(val);
 }
 
 template <>
-inline u64 cnt_lz<u64>(const u64 val) {
+constexpr u64 cnt_lz<u64>(const u64 val) {
   return __builtin_clzll(val);
 }
 

@@ -1086,7 +1086,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
 
     variable_refs[cur_idx].alloca_frame_off = frame_off;
 
-    auto *assignment = this->allocate_assignment(1, true);
+    auto *assignment = this->allocate_assignment_slow(1, true);
     assignment->initialize(cur_idx++,
                            Config::PLATFORM_POINTER_SIZE,
                            0,
