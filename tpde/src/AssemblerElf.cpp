@@ -870,18 +870,19 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
         out.insert(out.end(),
                    reinterpret_cast<uint8_t *>(&*sec.relocs.begin()),
                    reinterpret_cast<uint8_t *>(&*sec.relocs.end()));
-      }
 
-      // patch relocations in output
-      std::span<Elf64_Rela> out_relocs{
-          reinterpret_cast<Elf64_Rela *>(&out[rela_sh_off]), sec.relocs.size()};
-      for (auto &reloc : out_relocs) {
-        if (u32 sym = ELF64_R_SYM(reloc.r_info); !sym_is_local(SymRef{sym})) {
-          auto ty = ELF64_R_TYPE(reloc.r_info);
-          auto fixed_sym = (sym & ~0x8000'0000u) + local_symbols.size();
-          reloc.r_info = ELF64_R_INFO(fixed_sym, ty);
+        // patch relocations in output
+        std::span<Elf64_Rela> out_relocs{
+            reinterpret_cast<Elf64_Rela *>(&out[rela_sh_off]), sec.relocs.size()};
+        for (auto &reloc : out_relocs) {
+          if (u32 sym = ELF64_R_SYM(reloc.r_info); !sym_is_local(SymRef{sym})) {
+            auto ty = ELF64_R_TYPE(reloc.r_info);
+            auto fixed_sym = (sym & ~0x8000'0000u) + local_symbols.size();
+            reloc.r_info = ELF64_R_INFO(fixed_sym, ty);
+          }
         }
       }
+
 
       auto *hdr = sec_hdr(i + 1);
       hdr->sh_name = sections[i + 1]->hdr.sh_name;
