@@ -119,6 +119,14 @@ struct Analyzer {
     return (adaptor->block_info2(block_ref) & 0b11) == 2;
   }
 
+  bool block_has_phis(BlockIndex idx) const noexcept {
+    return block_has_phis(block_ref(idx));
+  }
+
+  bool block_has_phis(IRBlockRef block_ref) const noexcept {
+    return (adaptor->block_info2(block_ref) & 0b1'0000) != 0;
+  }
+
   void print_rpo(std::ostream &os) const;
   void print_block_layout(std::ostream &os) const;
   void print_loops(std::ostream &os) const;
@@ -928,13 +936,16 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
   }
 
   for (u32 block_idx = 0; block_idx < block_layout.size(); ++block_idx) {
-    TPDE_LOG_TRACE("Analyzing block {} ('{}')",
-                   block_idx,
-                   adaptor->block_fmt_ref(block_layout[block_idx]));
+    IRBlockRef block = block_layout[block_idx];
+    TPDE_LOG_TRACE(
+        "Analyzing block {} ('{}')", block_idx, adaptor->block_fmt_ref(block));
     const auto block_loop_idx = block_loop_map[block_idx];
 
-    for (const IRValueRef phi : adaptor->block_phis(block_layout[block_idx])) {
+    bool has_phis = false;
+    for (const IRValueRef phi : adaptor->block_phis(block)) {
       TPDE_LOG_TRACE("Analyzing phi {}", adaptor->value_fmt_ref(phi));
+      has_phis = true;
+
       const auto phi_ref = adaptor->val_as_phi(phi);
       const u32 slot_count = phi_ref.incoming_count();
       for (u32 i = 0; i < slot_count; ++i) {
@@ -954,7 +965,11 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
       }
     }
 
-    for (const IRInstRef inst : adaptor->block_insts(block_layout[block_idx])) {
+    if (has_phis) {
+      adaptor->block_set_info2(block, adaptor->block_info2(block) | 0b1'0000);
+    }
+
+    for (const IRInstRef inst : adaptor->block_insts(block)) {
       TPDE_LOG_TRACE("Analyzing instruction {}", adaptor->inst_fmt_ref(inst));
       for (const IRValueRef res : adaptor->inst_results(inst)) {
         // mark the value as used in the current block

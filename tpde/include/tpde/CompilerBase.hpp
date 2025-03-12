@@ -304,9 +304,18 @@ public:
   /// registers which don't contain any values
   void release_regs_after_return() noexcept;
 
-  void move_to_phi_nodes(BlockIndex target) noexcept;
+  void move_to_phi_nodes(BlockIndex target) noexcept {
+    if (analyzer.block_has_phis(target)) {
+      move_to_phi_nodes_impl(target);
+    }
+  }
 
-  bool branch_needs_split(IRBlockRef target) noexcept;
+  void move_to_phi_nodes_impl(BlockIndex target) noexcept;
+
+  bool branch_needs_split(IRBlockRef target) noexcept {
+    // for now, if the target has PHI-nodes, we split
+    return analyzer.block_has_phis(target);
+  }
 
   BlockIndex next_block() const noexcept;
 
@@ -1019,7 +1028,7 @@ void CompilerBase<Adaptor, Derived, Config>::
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
+void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
     BlockIndex target) noexcept {
   // PHI-nodes are always moved to their stack-slot (unless they are fixed)
   //
@@ -1128,9 +1137,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
     nodes.push_back(NodeEntry{phi, 0});
   }
 
-  if (nodes.empty()) {
-    return;
-  }
+  // We check that the block has phi nodes before getting here.
+  assert(!nodes.empty() && "block marked has having phi nodes has none");
 
   ScratchWrapper scratch{this};
   const auto move_to_phi = [this, &scratch](IRValueRef phi,
@@ -1397,18 +1405,6 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes(
     }
     ready_indices.clear();
   }
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-bool CompilerBase<Adaptor, Derived, Config>::branch_needs_split(
-    IRBlockRef target) noexcept {
-  // for now, if the target has PHI-nodes, we split
-  for (auto phi : adaptor->block_phis(target)) {
-    (void)phi;
-    return true;
-  }
-
-  return false;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
