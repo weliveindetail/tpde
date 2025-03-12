@@ -1955,6 +1955,65 @@ define ptr @gep_stf_one_one_fuse_one_no_salvage(ptr %0) {
     ret ptr %4
 }
 
+define ptr @gep_fuse_diff_type_1(ptr %p, i64 %n) {
+; X64-LABEL: <gep_fuse_diff_type_1>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    lea rdi, [rdi + 0xc]
+; X64-NEXT:    lea rdi, [rdi + 8*rsi]
+; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <gep_fuse_diff_type_1>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x0, x0, #0xc
+; ARM64-NEXT:    add x0, x0, x1, lsl #3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+  %gep1 = getelementptr inbounds i8, ptr %p, i64 12
+  %gep2 = getelementptr inbounds [2 x i32], ptr %gep1, i64 %n
+  ret ptr %gep2
+}
+
+define ptr @gep_fuse_diff_type_2(ptr %p, i64 %n) {
+; X64-LABEL: <gep_fuse_diff_type_2>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    lea rdi, [rdi + 0xc]
+; X64-NEXT:    imul rax, rsi, 0xc
+; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <gep_fuse_diff_type_2>:
+; ARM64:         sub sp, sp, #0xc0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x0, x0, #0xc
+; ARM64-NEXT:    mov x2, #0xc // =12
+; ARM64-NEXT:    mul x2, x1, x2
+; ARM64-NEXT:    add x0, x0, x2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    ret
+  %gep1 = getelementptr inbounds i8, ptr %p, i64 12
+  %gep2 = getelementptr inbounds [3 x i32], ptr %gep1, i64 %n
+  ret ptr %gep2
+}
+
 
 
 define ptr @gep_ptr_varoff_fuse_zero(ptr %0, i64 %1) {
