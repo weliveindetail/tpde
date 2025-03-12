@@ -3374,6 +3374,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
 
   if (pred == llvm::CmpInst::FCMP_FALSE || pred == llvm::CmpInst::FCMP_TRUE) {
     u64 val = pred == llvm::CmpInst::FCMP_FALSE ? 0u : 1u;
+    (void)this->val_ref(cmp->getOperand(0)); // ref-count
+    (void)this->val_ref(cmp->getOperand(1)); // ref-count
     auto const_ref = ValuePartRef{this, &val, 1, Config::GP_BANK};
     this->result_ref(cmp).part(0).set_value(std::move(const_ref));
     return true;

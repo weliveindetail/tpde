@@ -134,7 +134,6 @@ private:
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValueRef::reset() noexcept {
   if (state.a.mode == 1 || state.a.mode == 2) {
-    bool owned = state.a.mode == 2;
     state.a.mode = 0;
 
     assert(!state.a.assignment->pending_free && "access of free'd assignment");
@@ -143,7 +142,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValueRef::reset() noexcept {
     assert(ref_count != 0);
     if (--ref_count == 0) {
       ValLocalIdx local_idx = state.a.local_idx;
-      if (owned) {
+      if (!state.a.assignment->delay_free) {
         compiler->free_assignment(local_idx);
       } else {
         // need to wait until release
