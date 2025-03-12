@@ -75,12 +75,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   reset();
 
   if (compiler->register_file.is_used(reg)) {
-    AssignmentPartRef part{
-        compiler->val_assignment(compiler->register_file.reg_local_idx(reg)),
-        compiler->register_file.reg_part(reg)};
-    part.spill_if_needed(compiler);
-    part.set_register_valid(false);
-    compiler->register_file.unmark_used(reg);
+    compiler->evict_reg(reg);
   }
 
   compiler->register_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
@@ -108,13 +103,7 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
     if (reg.invalid()) [[unlikely]] {
       TPDE_FATAL("ran out of registers for scratch registers");
     }
-
-    AssignmentPartRef part{
-        compiler->val_assignment(reg_file.reg_local_idx(reg)),
-        reg_file.reg_part(reg)};
-    part.spill_if_needed(compiler);
-    part.set_register_valid(false);
-    reg_file.unmark_used(reg);
+    compiler->evict_reg(reg);
   }
 
   reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);

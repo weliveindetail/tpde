@@ -2309,20 +2309,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_before_call(
   for (auto reg_id : util::BitSetIterator<>{this->register_file.used &
                                             ~calling_conv.callee_saved_mask() &
                                             ~except_mask}) {
-    auto reg = AsmReg{reg_id};
-    assert(!this->register_file.is_fixed(reg));
-    assert(this->register_file.reg_local_idx(reg) !=
-           Base::INVALID_VAL_LOCAL_IDX);
-
-    auto ap = AssignmentPartRef{
-        this->val_assignment(this->register_file.reg_local_idx(reg)),
-        this->register_file.reg_part(reg)};
-    assert(ap.register_valid());
-    assert(ap.full_reg_id() == reg_id);
-
-    ap.spill_if_needed(this);
-    this->register_file.unmark_used(reg);
-    ap.set_register_valid(false);
+    this->evict_reg(AsmReg{reg_id});
   }
 }
 
@@ -2393,10 +2380,8 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
     } else {
       reg = ref.load_to_reg();
       if (((1ull << reg.id()) & calling_conv.callee_saved_mask()) == 0) {
-        ref.spill();
         ref.unlock();
-        this->register_file.unmark_used(reg);
-        ref.assignment().set_register_valid(false);
+        this->evict(ref.assignment());
       }
     }
 

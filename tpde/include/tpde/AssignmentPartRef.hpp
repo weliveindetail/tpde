@@ -138,27 +138,6 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
   [[nodiscard]] u32 part_off() const noexcept {
     return assignment->max_part_size * part;
   }
-
-  void spill_if_needed(CompilerBase *compiler) noexcept;
 };
 
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef::spill_if_needed(
-    CompilerBase *compiler) noexcept {
-  assert(this->register_valid());
-
-  if (this->variable_ref()) {
-    // variable references don't need to be spilled
-    return;
-  }
-
-  if (!this->modified()) {
-    return;
-  }
-
-  compiler->derived()->spill_reg(
-      AsmReg{this->full_reg_id()}, this->frame_off(), this->part_size());
-
-  this->set_modified(false);
-}
 } // namespace tpde

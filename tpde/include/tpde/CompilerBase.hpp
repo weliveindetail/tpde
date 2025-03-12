@@ -294,6 +294,18 @@ public:
   /// ValuePartRef), store it in dst.
   AsmReg gval_as_reg_reuse(GenericValuePart &gv, ScratchReg &dst) noexcept;
 
+  /// Ensure the value is spilled in its stack slot (except variable refs).
+  void spill(AssignmentPartRef ap) noexcept;
+
+  /// Evict the value from its register, spilling if needed, and free register.
+  void evict(AssignmentPartRef ap) noexcept;
+
+  /// Evict the value from the register, spilling if needed, and free register.
+  void evict_reg(Reg reg) noexcept;
+
+  /// Free the register. Requires that the contained value is already spilled.
+  void free_reg(Reg reg) noexcept;
+
   // TODO(ts): switch to a branch_spill_before naming style?
   typename RegisterFile::RegBitSet spill_before_branch() noexcept;
   void release_spilled_regs(typename RegisterFile::RegBitSet) noexcept;
@@ -548,15 +560,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
 
       if (!reg.invalid()) {
         if (register_file.is_used(reg)) {
-          assert(!register_file.is_fixed(reg));
-          auto *spill_assignment =
-              val_assignment(register_file.reg_local_idx(reg));
-          auto spill_ap =
-              AssignmentPartRef{spill_assignment, register_file.reg_part(reg)};
-          assert(!spill_ap.fixed_assignment());
-          assert(spill_ap.variable_ref() || !spill_ap.modified());
-          spill_ap.set_register_valid(false);
-          register_file.unmark_used(reg);
+          free_reg(reg);
         }
 
         TPDE_LOG_TRACE("Assigning fixed assignment to reg {} for value {}",
@@ -831,6 +835,56 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::spill(
+    AssignmentPartRef ap) noexcept {
+  if (!ap.stack_valid() && !ap.variable_ref()) {
+    assert(ap.register_valid() && "cannot spill uninitialized assignment part");
+    derived()->spill_reg(
+        AsmReg{ap.full_reg_id()}, ap.frame_off(), ap.part_size());
+    ap.set_stack_valid();
+  }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::evict(
+    AssignmentPartRef ap) noexcept {
+  assert(ap.register_valid());
+  derived()->spill(ap);
+  ap.set_register_valid(false);
+  register_file.unmark_used(Reg{ap.full_reg_id()});
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::evict_reg(Reg reg) noexcept {
+  assert(!register_file.is_fixed(reg));
+  assert(register_file.reg_local_idx(reg) != INVALID_VAL_LOCAL_IDX);
+
+  ValLocalIdx local_idx = register_file.reg_local_idx(reg);
+  auto part = register_file.reg_part(reg);
+  AssignmentPartRef evict_part{val_assignment(local_idx), part};
+  assert(evict_part.register_valid());
+  assert(Reg{evict_part.full_reg_id()} == reg);
+  derived()->spill(evict_part);
+  evict_part.set_register_valid(false);
+  register_file.unmark_used(reg);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::free_reg(Reg reg) noexcept {
+  assert(!register_file.is_fixed(reg));
+  assert(register_file.reg_local_idx(reg) != INVALID_VAL_LOCAL_IDX);
+
+  ValLocalIdx local_idx = register_file.reg_local_idx(reg);
+  auto part = register_file.reg_part(reg);
+  AssignmentPartRef ap{val_assignment(local_idx), part};
+  assert(ap.register_valid());
+  assert(Reg{ap.full_reg_id()} == reg);
+  assert(!ap.modified() || ap.variable_ref());
+  ap.set_register_valid(false);
+  register_file.unmark_used(reg);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
     CompilerBase<Adaptor, Derived, Config>::spill_before_branch() noexcept {
   // since we do not explicitly keep track of register assignments per block,
@@ -949,7 +1003,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
     }
 
     if (!next_block_is_succ || next_block_has_multiple_incoming) {
-      ap.spill_if_needed(this);
+      spill(ap);
       return false;
     }
 
@@ -961,7 +1015,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
         continue;
       }
       if (block_idx >= liveness.first && block_idx <= liveness.last) {
-        ap.spill_if_needed(this);
+        spill(ap);
         return false;
       }
     }
@@ -1002,12 +1056,7 @@ void CompilerBase<Adaptor, Derived, Config>::release_spilled_regs(
       continue;
     }
 
-    auto local_idx = register_file.reg_local_idx(reg);
-    auto part = register_file.reg_part(reg);
-    assert(local_idx != INVALID_VAL_LOCAL_IDX);
-    auto ap = AssignmentPartRef{val_assignment(local_idx), part};
-    ap.set_register_valid(false);
-    register_file.unmark_used(reg);
+    free_reg(reg);
   }
 }
 
@@ -1016,14 +1065,7 @@ void CompilerBase<Adaptor, Derived, Config>::
     release_regs_after_return() noexcept {
   // we essentially have to free all non-fixed registers
   for (auto reg_id : register_file.used_nonfixed_regs()) {
-    auto reg = AsmReg{reg_id};
-    auto local_idx = register_file.reg_local_idx(reg);
-    auto part = register_file.reg_part(reg);
-    assert(local_idx != INVALID_VAL_LOCAL_IDX);
-    assert(!register_file.is_fixed(reg));
-    auto ap = AssignmentPartRef{val_assignment(local_idx), part};
-    ap.set_register_valid(false);
-    register_file.unmark_used(reg);
+    free_reg(Reg{reg_id});
   }
 }
 
@@ -1107,9 +1149,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
         AssignmentPartRef ap{self->val_assignment(local_idx), part};
         was_modified = ap.modified();
         // TODO(ts): this does not spill for variable refs
-        ap.spill_if_needed(self);
-        ap.set_register_valid(false);
-        reg_file.unmark_used(reg);
+        self->evict_reg(reg);
       }
 
       reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);

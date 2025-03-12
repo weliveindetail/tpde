@@ -2504,8 +2504,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::extract_element(
   auto vec_vr = this->val_ref(vec);
   vec_vr.disown();
   auto vec_ref = vec_vr.part(0);
-  vec_ref.spill();
-  vec_ref.unlock();
+  this->spill(vec_ref.assignment());
 
   GenericValuePart addr = derived()->val_spill_slot(vec_ref);
   auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
@@ -2531,11 +2530,9 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::insert_element(
     LLVMBasicValType ty,
     GenericValuePart el) noexcept {
   assert(vec_ref.has_assignment());
-  vec_ref.spill(this);
   vec_ref.unlock(this);
   if (vec_ref.assignment().register_valid()) {
-    vec_ref.assignment().set_register_valid(false);
-    this->register_file.unmark_used(AsmReg{vec_ref.assignment().full_reg_id()});
+    this->evict(vec_ref.assignment());
   }
 
   GenericValuePart addr = derived()->val_spill_slot(vec_ref);
@@ -2582,7 +2579,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_element(
   // TODO: deduplicate with code above somehow?
   // First, copy value into the spill slot.
   auto [_, vec_ref] = this->val_ref_single(src);
-  vec_ref.spill();
+  this->spill(vec_ref.assignment());
   vec_ref.unlock();
 
   // Second, create address. Mask index, out-of-bounds access are just poison.
@@ -2645,12 +2642,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
     return true;
   }
 
-  result.spill();
   result.unlock();
-  if (result.assignment().register_valid()) {
-    result.assignment().set_register_valid(false);
-    this->register_file.unmark_used(AsmReg{result.assignment().full_reg_id()});
-  }
+  // Evict, because we will overwrite the value in the stack slot.
+  this->evict(result.assignment());
 
   // Second, create address. Mask index, out-of-bounds access are just poison.
   ScratchReg idx_scratch{this};
@@ -3798,10 +3792,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
       if (!ap.fixed_assignment() && ap.register_valid()) {
         // this is the call result...
         assert(ap.modified());
-        ap.spill_if_needed(this);
+        this->evict_reg(AsmReg{ap.full_reg_id()});
         spilled |= 1ull << ap.full_reg_id();
-        this->register_file.unmark_used(AsmReg{ap.full_reg_id()});
-        ap.set_register_valid(false);
       }
       if (!ap.has_next_part()) {
         break;

@@ -100,13 +100,6 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePart {
     return AssignmentPartRef{state.v.assignment, state.v.part};
   }
 
-  /// Spill the value part to the stack frame
-  void spill(CompilerBase *compiler) noexcept {
-    if (auto ap = assignment(); ap.register_valid()) {
-      ap.spill_if_needed(compiler);
-    }
-  }
-
   /// If it is known that the value part has a register, this function can be
   /// used to quickly access it
   AsmReg cur_reg() noexcept {
@@ -310,19 +303,12 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   auto reg = reg_file.find_first_free_excluding(bank, exclusion_mask);
   // TODO(ts): need to grab this from the registerfile since the reg type
   // could be different
-  if (reg.invalid()) {
+  if (reg.invalid()) [[unlikely]] {
     reg = reg_file.find_clocked_nonfixed_excluding(bank, exclusion_mask);
-
     if (reg.invalid()) [[unlikely]] {
       TPDE_FATAL("ran out of registers for value part");
     }
-
-    AssignmentPartRef evict_part{
-        compiler->val_assignment(reg_file.reg_local_idx(reg)),
-        reg_file.reg_part(reg)};
-    evict_part.spill_if_needed(compiler);
-    evict_part.set_register_valid(false);
-    reg_file.unmark_used(reg);
+    compiler->evict_reg(reg);
   }
 
   reg_file.mark_clobbered(reg);
@@ -382,14 +368,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
   auto &reg_file = compiler->register_file;
   if (reg_file.is_used(reg)) {
-    assert(!reg_file.is_fixed(reg));
-
-    AssignmentPartRef evict_part{
-        compiler->val_assignment(reg_file.reg_local_idx(reg)),
-        reg_file.reg_part(reg)};
-    evict_part.spill_if_needed(compiler);
-    evict_part.set_register_valid(false);
-    reg_file.unmark_used(reg);
+    compiler->evict_reg(reg);
   }
 
   reg_file.mark_clobbered(reg);
@@ -467,23 +446,13 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   if (reg_file.is_used(reg) &&
       (reg_file.reg_local_idx(reg) != state.v.local_idx ||
        reg_file.reg_part(reg) != state.v.part)) {
-    assert(!reg_file.is_fixed(reg));
-    auto ap =
-        AssignmentPartRef{compiler->val_assignment(reg_file.reg_local_idx(reg)),
-                          reg_file.reg_part(reg)};
-    assert(!ap.fixed_assignment());
-    ap.spill_if_needed(compiler);
-    ap.set_register_valid(false);
-    reg_file.unmark_used(reg);
+    compiler->evict_reg(reg);
   }
 
   auto ap = assignment();
   if (ap.register_valid()) {
     if (ap.full_reg_id() == reg.id()) {
-      ap.spill_if_needed(compiler);
-      ap.set_register_valid(false);
-      assert(!reg_file.is_fixed(reg));
-      reg_file.unmark_used(reg);
+      compiler->evict_reg(reg);
       return reg;
     }
 
@@ -775,8 +744,6 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef : ValuePart {
     ValuePart::operator=(std::move(other));
     return *this;
   }
-
-  void spill() noexcept { ValuePart::spill(compiler); }
 
   AsmReg alloc_reg(u64 exclusion_mask = 0) noexcept {
     return ValuePart::alloc_reg(compiler, exclusion_mask);
