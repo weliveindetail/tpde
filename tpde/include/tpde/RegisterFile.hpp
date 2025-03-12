@@ -163,6 +163,15 @@ public:
     return false;
   }
 
+  /// Decrement lock count, and assert that the register is now unlocked
+  void dec_lock_count_must_zero(const Reg reg) noexcept {
+    assert(reg.id() < NumRegs);
+    assert(is_used(reg));
+    assert(lock_counts[reg.id()] == 1);
+    lock_counts[reg.id()] = 0;
+    unmark_fixed(reg);
+  }
+
   void mark_clobbered(const Reg reg) noexcept {
     assert(reg.id() < NumRegs);
     clobbered |= (1ull << reg.id());

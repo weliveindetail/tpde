@@ -609,28 +609,24 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
 
   // free registers
   u32 part_idx = 0;
-  while (true) {
+  bool has_next_part = true;
+  while (has_next_part) {
     auto ap = AssignmentPartRef{assignment, part_idx};
+    has_next_part = ap.has_next_part();
     if (ap.fixed_assignment()) {
       const auto reg = AsmReg{ap.full_reg_id()};
       assert(register_file.is_fixed(reg));
       assert(register_file.reg_local_idx(reg) == local_idx);
       assert(register_file.reg_part(reg) == part_idx);
-      register_file.dec_lock_count(reg); // release lock for fixed register
-      register_file.unmark_used(reg);
-      ap.set_fixed_assignment(false);
-      ap.set_register_valid(false);
       --assignments.cur_fixed_assignment_count[ap.bank().id()];
+      register_file.dec_lock_count_must_zero(reg); // release lock for fixed reg
+      register_file.unmark_used(reg);
     } else if (ap.register_valid()) {
       const auto reg = AsmReg{ap.full_reg_id()};
       assert(!register_file.is_fixed(reg));
       register_file.unmark_used(reg);
-      ap.set_register_valid(false);
     }
     ++part_idx;
-    if (!ap.has_next_part()) {
-      break;
-    }
   }
 
 #ifdef TPDE_ASSERTS
@@ -700,10 +696,10 @@ u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::free_stack_slot(
     u32 slot, u32 size) noexcept {
-  if (size == 0) {
+  if (size == 0) [[unlikely]] {
     assert(slot == 1 && "unexpected slot for zero-sized stack-slot?");
     // Do nothing.
-  } else if (size <= 16) {
+  } else if (size <= 16) [[likely]] {
     u32 free_list_idx = size == 1 ? 0 : 32 - util::cnt_lz<u32>(size - 1);
     stack.fixed_free_lists[free_list_idx].push_back(slot);
   } else {
