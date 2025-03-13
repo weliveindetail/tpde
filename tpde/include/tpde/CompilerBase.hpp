@@ -269,10 +269,10 @@ protected:
   /// Frees an assignment, its stack slot and registers
   void free_assignment(ValLocalIdx local_idx) noexcept;
 
+public:
   u32 allocate_stack_slot(u32 size) noexcept;
   void free_stack_slot(u32 slot, u32 size) noexcept;
 
-public:
   ValueRef val_ref(IRValueRef value) noexcept;
 
   std::pair<ValueRef, ValuePartRef> val_ref_single(IRValueRef value) noexcept;
@@ -293,6 +293,8 @@ public:
   /// (either a ScratchReg, possibly due to materialization, or a reusable
   /// ValuePartRef), store it in dst.
   AsmReg gval_as_reg_reuse(GenericValuePart &gv, ScratchReg &dst) noexcept;
+
+  void allocate_spill_slot(AssignmentPartRef ap) noexcept;
 
   /// Ensure the value is spilled in its stack slot (except variable refs).
   void spill(AssignmentPartRef ap) noexcept;
@@ -578,7 +580,6 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
   }
 
   const auto size = max_part_size * part_count;
-  const auto frame_off = allocate_stack_slot(size);
   const auto last_full = liveness.last_full;
   const auto ref_count = liveness.ref_count;
 
@@ -590,7 +591,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
   assignment->variable_ref = false;
   assignment->delay_free = last_full;
   assignment->size = size;
-  assignment->frame_off = frame_off;
+  assignment->frame_off = 0;
   assignment->references_left = ref_count;
 }
 
@@ -634,9 +635,8 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
 #endif
 
   // variable references do not have a stack slot
-  if (!is_var_ref) {
-    auto slot = assignment->frame_off;
-    free_stack_slot(slot, assignment->size);
+  if (!is_var_ref && assignment->frame_off != 0) {
+    free_stack_slot(assignment->frame_off, assignment->size);
   }
 
   deallocate_assignment(part_idx, local_idx);
@@ -840,10 +840,22 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::allocate_spill_slot(
+    AssignmentPartRef ap) noexcept {
+  assert(!ap.variable_ref() && "cannot allocate spill slot for variable ref");
+  if (ap.assignment->frame_off == 0) {
+    assert(!ap.stack_valid() && "stack-valid set without spill slot");
+    ap.assignment->frame_off = allocate_stack_slot(ap.assignment->size);
+    assert(ap.assignment->frame_off != 0);
+  }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::spill(
     AssignmentPartRef ap) noexcept {
   if (!ap.stack_valid() && !ap.variable_ref()) {
     assert(ap.register_valid() && "cannot spill uninitialized assignment part");
+    allocate_spill_slot(ap);
     derived()->spill_reg(
         AsmReg{ap.full_reg_id()}, ap.frame_off(), ap.part_size());
     ap.set_stack_valid();
@@ -1216,6 +1228,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       if (phi_ap.fixed_assignment()) {
         derived()->mov(AsmReg{phi_ap.full_reg_id()}, reg, phi_ap.part_size());
       } else {
+        allocate_spill_slot(phi_ap);
         derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
         phi_ap.set_stack_valid();
       }

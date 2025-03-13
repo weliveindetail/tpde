@@ -31,7 +31,7 @@ define i32 @load_basic_int() {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <load_basic_int>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -42,7 +42,7 @@ define i32 @load_basic_int() {
 ; ARM64-NEXT:    ldr w1, [x0]
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   %0 = load i32, ptr @basic_int
@@ -54,19 +54,19 @@ define i32 @load_basic_int_twice() {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    lea rax, <load_basic_int_twice+0x13>
 ; X64-NEXT:     R_X86_64_PC32 basic_int-0x4
 ; X64-NEXT:    mov ecx, dword ptr [rax]
 ; X64-NEXT:    mov edx, dword ptr [rax]
 ; X64-NEXT:    lea ecx, [rcx + rdx]
 ; X64-NEXT:    mov eax, ecx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <load_basic_int_twice>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -79,7 +79,7 @@ define i32 @load_basic_int_twice() {
 ; ARM64-NEXT:    add w2, w2, w1
 ; ARM64-NEXT:    mov w0, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %l0 = load i32, ptr @basic_int
   %l1 = load i32, ptr @basic_int
@@ -102,7 +102,7 @@ define i32 @load_global_int() {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <load_global_int>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -113,7 +113,7 @@ define i32 @load_global_int() {
 ; ARM64-NEXT:    ldr w1, [x0]
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %l = load i32, ptr @global_int
   ret i32 %l
@@ -134,7 +134,7 @@ define i32 @load_global_dso_local_int() {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <load_global_dso_local_int>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -145,7 +145,7 @@ define i32 @load_global_dso_local_int() {
 ; ARM64-NEXT:    ldr w1, [x0]
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %l = load i32, ptr @global_dso_local_int
   ret i32 %l
@@ -166,7 +166,7 @@ define ptr @load_func_ptr() {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <load_func_ptr>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -177,7 +177,7 @@ define ptr @load_func_ptr() {
 ; ARM64-NEXT:    ldr x1, [x0]
 ; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   %0 = load ptr, ptr @func_ptr
@@ -198,7 +198,7 @@ define void @store_global_ptr(ptr %0) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_global_ptr>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -208,7 +208,7 @@ define void @store_global_ptr(ptr %0) {
 ; ARM64-NEXT:     R_AARCH64_ADD_ABS_LO12_NC global_ptr
 ; ARM64-NEXT:    str x0, [x1]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store ptr %0, ptr @global_ptr

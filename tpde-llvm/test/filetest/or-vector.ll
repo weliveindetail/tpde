@@ -9,21 +9,21 @@ define <8 x i8> @or_v8i8(<8 x i8> %a, <8 x i8> %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    orps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <or_v8i8>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    orr v1.8b, v1.8b, v0.8b
 ; ARM64-NEXT:    mov v0.16b, v1.16b
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = or <8 x i8> %a, %b
   ret <8 x i8> %r
@@ -34,21 +34,21 @@ define <16 x i8> @or_v16i8(<16 x i8> %a, <16 x i8> %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    orps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <or_v16i8>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    orr v1.16b, v1.16b, v0.16b
 ; ARM64-NEXT:    mov v0.16b, v1.16b
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = or <16 x i8> %a, %b
   ret <16 x i8> %r
@@ -59,21 +59,21 @@ define <4 x i16> @or_v4i16(<4 x i16> %a, <4 x i16> %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    orps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <or_v4i16>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    orr v1.8b, v1.8b, v0.8b
 ; ARM64-NEXT:    mov v0.16b, v1.16b
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = or <4 x i16> %a, %b
   ret <4 x i16> %r
@@ -84,21 +84,21 @@ define <8 x i16> @or_v8i16(<8 x i16> %a, <8 x i16> %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    orps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <or_v8i16>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    orr v1.16b, v1.16b, v0.16b
 ; ARM64-NEXT:    mov v0.16b, v1.16b
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = or <8 x i16> %a, %b
   ret <8 x i16> %r
@@ -109,21 +109,21 @@ define <2 x i32> @or_v2i32(<2 x i32> %a, <2 x i32> %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    orps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <or_v2i32>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    orr v1.8b, v1.8b, v0.8b
 ; ARM64-NEXT:    mov v0.16b, v1.16b
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = or <2 x i32> %a, %b
   ret <2 x i32> %r
@@ -134,21 +134,21 @@ define <4 x i32> @or_v4i32(<4 x i32> %a, <4 x i32> %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    orps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <or_v4i32>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    orr v1.16b, v1.16b, v0.16b
 ; ARM64-NEXT:    mov v0.16b, v1.16b
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = or <4 x i32> %a, %b
   ret <4 x i32> %r
@@ -159,21 +159,21 @@ define <2 x i64> @or_v2i64(<2 x i64> %a, <2 x i64> %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    orps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <or_v2i64>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    orr v1.16b, v1.16b, v0.16b
 ; ARM64-NEXT:    mov v0.16b, v1.16b
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = or <2 x i64> %a, %b
   ret <2 x i64> %r

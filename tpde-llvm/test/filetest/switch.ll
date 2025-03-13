@@ -23,7 +23,7 @@ define i32 @empty_switch(i32 %0) {
 ; X64-NEXT:    29: 0f 1f 80 00 00 00 00 nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <empty_switch>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -31,7 +31,7 @@ define i32 @empty_switch(i32 %0) {
 ; ARM64-NEXT:    b 0x38 <empty_switch+0x18>
 ; ARM64-NEXT:    mov x0, #0xffffffff // =4294967295
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   switch i32 %0, label %default []
@@ -89,7 +89,7 @@ define i32 @basic_switch(i32 %0) {
 ; X64-NEXT:    c8: 0f 1f 84 00 00 00 00 00 nop dword ptr [rax + rax]
 ;
 ; ARM64-LABEL: <basic_switch>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -106,22 +106,22 @@ define i32 @basic_switch(i32 %0) {
 ; ARM64-NEXT:    b 0x134 <basic_switch+0xa4>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x1 // =1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x2 // =2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0xffffffff // =4294967295
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   switch i32 %0, label %default [ i32 0, label %eq0
@@ -289,7 +289,7 @@ define i32 @switch_table(i32 %0) {
 ; X64-NEXT:    1dd: 0f 1f 00 nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <switch_table>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -317,37 +317,37 @@ define i32 @switch_table(i32 %0) {
 ; ARM64-NEXT:    b 0x32c <switch_table+0x16c>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x1 // =1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x2 // =2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x4 // =4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x5 // =5
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x6 // =6
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0xffffffff // =4294967295
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   switch i32 %0, label %default [
@@ -457,7 +457,7 @@ define i32 @switch_table2(i32 %0) {
 ; X64-NEXT:    2ef: c3 ret
 ;
 ; ARM64-LABEL: <switch_table2>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -485,37 +485,37 @@ define i32 @switch_table2(i32 %0) {
 ; ARM64-NEXT:    b 0x52c <switch_table2+0x16c>
 ; ARM64-NEXT:    mov x0, #0x3 // =3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x4 // =4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x5 // =5
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x7 // =7
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x8 // =8
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x9 // =9
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0xffffffff // =4294967295
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   switch i32 %0, label %default [
@@ -617,7 +617,7 @@ define i32 @switch_binsearch(i32 %0) {
 ; X64-NEXT:    3dd: 0f 1f 00 nop dword ptr [rax]
 ;
 ; ARM64-LABEL: <switch_binsearch>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -642,32 +642,32 @@ define i32 @switch_binsearch(i32 %0) {
 ; ARM64-NEXT:    b 0x6ec <switch_binsearch+0x12c>
 ; ARM64-NEXT:    mov x0, #0x1 // =1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x2 // =2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x3 // =3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x64 // =100
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x65 // =101
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0xffffffff // =4294967295
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   switch i32 %0, label %default [
@@ -737,7 +737,7 @@ define i32 @switch_i32_noreuse(i32 %p) {
 ; X64-NEXT:    45e: 66 90 nop
 ;
 ; ARM64-LABEL: <switch_i32_noreuse>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str x19, [sp, #0x10]
@@ -754,19 +754,19 @@ define i32 @switch_i32_noreuse(i32 %p) {
 ; ARM64-NEXT:    mov x0, #0x1 // =1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x2 // =2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov w0, w19
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   switch i32 %p, label %default [
     i32 1, label %l1
@@ -824,7 +824,7 @@ define i64 @switch_i64_noreuse(i64 %p) {
 ; X64-NEXT:    4dd: c3 ret
 ;
 ; ARM64-LABEL: <switch_i64_noreuse>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str x19, [sp, #0x10]
@@ -841,19 +841,19 @@ define i64 @switch_i64_noreuse(i64 %p) {
 ; ARM64-NEXT:    mov x0, #0x1 // =1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, #0x2 // =2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
 ; ARM64-NEXT:    mov x0, x19
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   switch i64 %p, label %default [
     i64 1, label %l1

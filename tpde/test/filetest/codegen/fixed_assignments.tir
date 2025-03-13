@@ -79,7 +79,7 @@ entry:
   %c = add %a, %b
 
 ; COM: %c should be spilled since it does not have a fixed assignment
-; X64-NEXT: mov QWORD PTR [rbp-0x40],r10
+; X64-NEXT: mov QWORD PTR [rbp-0x30],r10
 ; X64-NEXT: cmp rsi,0x0
 ; X64-NEXT: je
   condbr %b, ^ret1, ^ret2
@@ -89,7 +89,7 @@ ret1:
 ; X64-NEXT: add rsp
   ret %c
 ret2:
-; X64: mov rax,QWORD PTR [rbp-0x40]
+; X64: mov rax,QWORD PTR [rbp-0x30]
 ; X64-NEXT: add rsp
   ret %c
 }

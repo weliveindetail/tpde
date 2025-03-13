@@ -18,14 +18,14 @@ define float @f32(float %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <f32>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x30 <f32+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 log10f
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call float @llvm.log10(float %a)
   ret float %r
@@ -36,23 +36,23 @@ define double @f64(double %a) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    call <L0>
 ; X64-NEXT:     R_X86_64_PLT32 log10-0x4
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <f64>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0xa0 <f64+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 log10
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call double @llvm.log10(double %a)
   ret double %r

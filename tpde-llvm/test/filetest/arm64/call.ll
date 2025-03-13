@@ -7,14 +7,14 @@ declare {float, float, float} @ret_3_float();
 
 define void @call_3_float() {
 ; ARM64-LABEL: <call_3_float>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    bl 0x30 <call_3_float+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 ret_3_float
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %c = call {float, float, float} @ret_3_float()
   ret void

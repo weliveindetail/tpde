@@ -15,20 +15,20 @@ define void @store_i8(ptr %a, i8 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov byte ptr [rdi], sil
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i8>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    strb w1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i8 %b, ptr %a
@@ -47,14 +47,14 @@ define void @store_i8_const(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i8_const>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0xd // =13
 ; ARM64-NEXT:    strb w1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i8 13, ptr %a
@@ -67,20 +67,20 @@ define void @store_i16(ptr %a, i16 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov word ptr [rdi], si
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i16>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    strh w1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i16 %b, ptr %a
@@ -99,14 +99,14 @@ define void @store_i16_const(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i16_const>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0x1337 // =4919
 ; ARM64-NEXT:    strh w1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i16 u0x1337, ptr %a
@@ -119,20 +119,20 @@ define void @store_i32(ptr %a, i32 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov dword ptr [rdi], esi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i32>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str w1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i32 %b, ptr %a
@@ -177,7 +177,7 @@ define void @store_i32_const(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i32_const>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -185,7 +185,7 @@ define void @store_i32_const(ptr %a) {
 ; ARM64-NEXT:    movk x1, #0x1337, lsl #16
 ; ARM64-NEXT:    str w1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i32 u0x13371337, ptr %a
@@ -198,20 +198,20 @@ define void @store_i64(ptr %a, i64 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov qword ptr [rdi], rsi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i64>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str x1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i64 %b, ptr %a
@@ -223,9 +223,9 @@ define void @store_i64_alloca(i64 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov qword ptr [rbp - 0x30], rdi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -256,7 +256,7 @@ define void @store_i64_const1(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i64_const1>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -264,7 +264,7 @@ define void @store_i64_const1(ptr %a) {
 ; ARM64-NEXT:    movk x1, #0x1337, lsl #16
 ; ARM64-NEXT:    str x1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i64 u0x13371337, ptr %a
@@ -284,7 +284,7 @@ define void @store_i64_const2(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i64_const2>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -292,7 +292,7 @@ define void @store_i64_const2(ptr %a) {
 ; ARM64-NEXT:    movk x1, #0xf337, lsl #16
 ; ARM64-NEXT:    str x1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i64 u0xF3371337, ptr %a
@@ -311,14 +311,14 @@ define void @store_i64_const3(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i64_const3>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #-0x2 // =-2
 ; ARM64-NEXT:    str x1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i64 -2, ptr %a
@@ -331,21 +331,21 @@ define void @store_i128(ptr %a, i128 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov qword ptr [rdi + 0x8], rdx
 ; X64-NEXT:    mov qword ptr [rdi], rsi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i128>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    stp x2, x3, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i128 %b, ptr %a
@@ -357,22 +357,22 @@ define void @store_i128_alloca(i128 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    mov qword ptr [rbp - 0x38], rsi
 ; X64-NEXT:    mov qword ptr [rbp - 0x40], rdi
-; X64-NEXT:    add rsp, 0x50
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i128_alloca>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    add x2, x29, #0xa0
 ; ARM64-NEXT:    stp x0, x1, [x2]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
 entry:
   %a = alloca i128
@@ -395,7 +395,7 @@ define void @store_i128_const1(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i128_const1>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -409,7 +409,7 @@ define void @store_i128_const1(ptr %a) {
 ; ARM64-NEXT:    movk x2, #0x1337, lsl #48
 ; ARM64-NEXT:    stp x1, x2, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i128 u0x13371337133713371337133713371337, ptr %a
@@ -431,7 +431,7 @@ define void @store_i128_const2(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i128_const2>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -441,7 +441,7 @@ define void @store_i128_const2(ptr %a) {
 ; ARM64-NEXT:    movk x2, #0xf337, lsl #16
 ; ARM64-NEXT:    stp x1, x2, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i128 u0xF337133700000000F3371337, ptr %a
@@ -461,7 +461,7 @@ define void @store_i128_const3(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i128_const3>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -469,7 +469,7 @@ define void @store_i128_const3(ptr %a) {
 ; ARM64-NEXT:    mov x2, #-0x1 // =-1
 ; ARM64-NEXT:    stp x1, x2, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i128 -2, ptr %a
@@ -482,20 +482,20 @@ define void @store_f32(ptr %a, float %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movss dword ptr [rdi], xmm0
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_f32>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str s0, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store float %b, ptr %a
@@ -542,14 +542,14 @@ define void @store_f32_const(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_f32_const>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    fmov s0, #1.00000000
 ; ARM64-NEXT:    str s0, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store float 1.0, ptr %a
@@ -569,14 +569,14 @@ define void @store_f32_const0(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_f32_const0>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    movi v0.8b, #0x0
 ; ARM64-NEXT:    str s0, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store float 0.0, ptr %a
@@ -588,20 +588,20 @@ define void @store_f64(ptr %a, double %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movsd qword ptr [rdi], xmm0
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_f64>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str d0, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store double %b, ptr %a
@@ -622,14 +622,14 @@ define void @store_f64_const(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_f64_const>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    fmov d0, #1.00000000
 ; ARM64-NEXT:    str d0, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store double 1.0, ptr %a
@@ -649,14 +649,14 @@ define void @store_f64_const0(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_f64_const0>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    movi v0.8b, #0x0
 ; ARM64-NEXT:    str d0, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store double 0.0, ptr %a
@@ -668,16 +668,16 @@ define void @store_i24(ptr %a, i24 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov word ptr [rdi], si
 ; X64-NEXT:    shr esi, 0x10
 ; X64-NEXT:    mov byte ptr [rdi + 0x2], sil
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i24>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -685,7 +685,7 @@ define void @store_i24(ptr %a, i24 %b) {
 ; ARM64-NEXT:    strh w1, [x0]
 ; ARM64-NEXT:    strb w2, [x0, #0x2]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i24 %b, ptr %a
@@ -737,7 +737,7 @@ define void @store_i24_const(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i24_const>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -747,7 +747,7 @@ define void @store_i24_const(ptr %a) {
 ; ARM64-NEXT:    strh w1, [x0]
 ; ARM64-NEXT:    strb w2, [x0, #0x2]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i24 u0x371337, ptr %a
@@ -760,16 +760,16 @@ define void @store_i40(ptr %a, i40 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov dword ptr [rdi], esi
 ; X64-NEXT:    shr rsi, 0x20
 ; X64-NEXT:    mov byte ptr [rdi + 0x4], sil
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i40>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -777,7 +777,7 @@ define void @store_i40(ptr %a, i40 %b) {
 ; ARM64-NEXT:    str w1, [x0]
 ; ARM64-NEXT:    strb w2, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i40 %b, ptr %a
@@ -799,7 +799,7 @@ define void @store_i40_const(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i40_const>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -810,7 +810,7 @@ define void @store_i40_const(ptr %a) {
 ; ARM64-NEXT:    str w1, [x0]
 ; ARM64-NEXT:    strb w2, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i40 u0x3713371337, ptr %a
@@ -823,16 +823,16 @@ define void @store_i48(ptr %a, i48 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov dword ptr [rdi], esi
 ; X64-NEXT:    shr rsi, 0x20
 ; X64-NEXT:    mov word ptr [rdi + 0x4], si
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i48>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -840,7 +840,7 @@ define void @store_i48(ptr %a, i48 %b) {
 ; ARM64-NEXT:    str w1, [x0]
 ; ARM64-NEXT:    strh w2, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i48 %b, ptr %a
@@ -852,11 +852,11 @@ define void @store_i48_alloca(i48 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov dword ptr [rbp - 0x30], edi
 ; X64-NEXT:    shr rdi, 0x20
 ; X64-NEXT:    mov word ptr [rbp - 0x2c], di
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -892,7 +892,7 @@ define void @store_i48_const(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i48_const>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -903,7 +903,7 @@ define void @store_i48_const(ptr %a) {
 ; ARM64-NEXT:    str w1, [x0]
 ; ARM64-NEXT:    strh w2, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i48 u0x133713371337, ptr %a
@@ -916,19 +916,19 @@ define void @store_i56(ptr %a, i56 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov dword ptr [rdi], esi
 ; X64-NEXT:    mov rax, rsi
 ; X64-NEXT:    shr rax, 0x30
 ; X64-NEXT:    mov byte ptr [rdi + 0x6], al
 ; X64-NEXT:    shr rsi, 0x20
 ; X64-NEXT:    mov word ptr [rdi + 0x4], si
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i56>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -938,7 +938,7 @@ define void @store_i56(ptr %a, i56 %b) {
 ; ARM64-NEXT:    strb w2, [x0, #0x6]
 ; ARM64-NEXT:    strh w3, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i56 %b, ptr %a
@@ -963,7 +963,7 @@ define void @store_i56_const(ptr %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_i56_const>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -977,7 +977,7 @@ define void @store_i56_const(ptr %a) {
 ; ARM64-NEXT:    strb w2, [x0, #0x6]
 ; ARM64-NEXT:    strh w3, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store i56 u0x37133713371337, ptr %a
@@ -990,20 +990,20 @@ define void @store_4f(ptr %a, <4 x float> %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movaps xmmword ptr [rdi], xmm0
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_4f>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str q0, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store <4 x float> %b, ptr %a
@@ -1035,22 +1035,22 @@ define void @store_struct_i8_i1(ptr %a, %struct.i8_i1 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov byte ptr [rdi], sil
 ; X64-NEXT:    mov byte ptr [rdi + 0x1], dl
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i8_i1>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    strb w1, [x0]
 ; ARM64-NEXT:    strb w2, [x0, #0x1]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.i8_i1 %b, ptr %a
@@ -1062,22 +1062,22 @@ define void @store_struct_i8_i8(ptr %a, %struct.i8_i8 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov byte ptr [rdi], sil
 ; X64-NEXT:    mov byte ptr [rdi + 0x1], dl
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i8_i8>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    strb w1, [x0]
 ; ARM64-NEXT:    strb w2, [x0, #0x1]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.i8_i8 %b, ptr %a
@@ -1089,22 +1089,22 @@ define void @store_struct_i8_i16(ptr %a, %struct.i8_i16 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov byte ptr [rdi], sil
 ; X64-NEXT:    mov word ptr [rdi + 0x2], dx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i8_i16>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    strb w1, [x0]
 ; ARM64-NEXT:    strh w2, [x0, #0x2]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.i8_i16 %b, ptr %a
@@ -1116,22 +1116,22 @@ define void @store_struct_i8_i32(ptr %a, %struct.i8_i32 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov byte ptr [rdi], sil
 ; X64-NEXT:    mov dword ptr [rdi + 0x4], edx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i8_i32>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    strb w1, [x0]
 ; ARM64-NEXT:    str w2, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.i8_i32 %b, ptr %a
@@ -1143,22 +1143,22 @@ define void @store_struct_i8_i64(ptr %a, %struct.i8_i64 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov byte ptr [rdi], sil
 ; X64-NEXT:    mov qword ptr [rdi + 0x8], rdx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i8_i64>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    strb w1, [x0]
 ; ARM64-NEXT:    str x2, [x0, #0x8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.i8_i64 %b, ptr %a
@@ -1171,22 +1171,22 @@ define void @store_struct_i1_i32(ptr %a, %struct.i1_i32 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov byte ptr [rdi], sil
 ; X64-NEXT:    mov dword ptr [rdi + 0x4], edx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i1_i32>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    strb w1, [x0]
 ; ARM64-NEXT:    str w2, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.i1_i32 %b, ptr %a
@@ -1198,22 +1198,22 @@ define void @store_struct_i16_i32(ptr %a, %struct.i16_i32 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov word ptr [rdi], si
 ; X64-NEXT:    mov dword ptr [rdi + 0x4], edx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i16_i32>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    strh w1, [x0]
 ; ARM64-NEXT:    str w2, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.i16_i32 %b, ptr %a
@@ -1225,22 +1225,22 @@ define void @store_struct_i32_i32(ptr %a, %struct.i32_i32 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov dword ptr [rdi], esi
 ; X64-NEXT:    mov dword ptr [rdi + 0x4], edx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i32_i32>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str w1, [x0]
 ; ARM64-NEXT:    str w2, [x0, #0x4]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.i32_i32 %b, ptr %a
@@ -1252,22 +1252,22 @@ define void @store_struct_i64_i32(ptr %a, %struct.i64_i32 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov qword ptr [rdi], rsi
 ; X64-NEXT:    mov dword ptr [rdi + 0x8], edx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i64_i32>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str x1, [x0]
 ; ARM64-NEXT:    str w2, [x0, #0x8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.i64_i32 %b, ptr %a
@@ -1279,22 +1279,22 @@ define void @store_struct_ptr_i32(ptr %a, %struct.ptr_i32 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov qword ptr [rdi], rsi
 ; X64-NEXT:    mov dword ptr [rdi + 0x8], edx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_ptr_i32>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str x1, [x0]
 ; ARM64-NEXT:    str w2, [x0, #0x8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.ptr_i32 %b, ptr %a
@@ -1306,22 +1306,22 @@ define void @store_struct_i32_ptr(ptr %a, %struct.i32_ptr %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov dword ptr [rdi], esi
 ; X64-NEXT:    mov qword ptr [rdi + 0x8], rdx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i32_ptr>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str w1, [x0]
 ; ARM64-NEXT:    str x2, [x0, #0x8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.i32_ptr %b, ptr %a
@@ -1333,22 +1333,22 @@ define void @store_struct_f32_ptr(ptr %a, %struct.f32_ptr %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movss dword ptr [rdi], xmm0
 ; X64-NEXT:    mov qword ptr [rdi + 0x8], rsi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_f32_ptr>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str s0, [x0]
 ; ARM64-NEXT:    str x1, [x0, #0x8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.f32_ptr %b, ptr %a
@@ -1360,19 +1360,19 @@ define void @store_struct_i128_i1(ptr %a) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov rax, qword ptr [rdi]
 ; X64-NEXT:    mov rcx, qword ptr [rdi + 0x8]
 ; X64-NEXT:    movzx edx, byte ptr [rdi + 0x10]
 ; X64-NEXT:    mov qword ptr [rdi], rax
 ; X64-NEXT:    mov qword ptr [rdi + 0x8], rcx
 ; X64-NEXT:    mov byte ptr [rdi + 0x10], dl
-; X64-NEXT:    add rsp, 0x50
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i128_i1>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -1383,7 +1383,7 @@ define void @store_struct_i128_i1(ptr %a) {
 ; ARM64-NEXT:    str x2, [x0, #0x8]
 ; ARM64-NEXT:    strb w3, [x0, #0x10]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   %b = load %struct.i128_i1, ptr %a
@@ -1411,7 +1411,7 @@ define void @store_struct_i32_i32_i32_i32_i32_i32(ptr %a, %struct.i32_i32_i32_i3
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_struct_i32_i32_i32_i32_i32_i32>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -1422,7 +1422,7 @@ define void @store_struct_i32_i32_i32_i32_i32_i32(ptr %a, %struct.i32_i32_i32_i3
 ; ARM64-NEXT:    str w5, [x0, #0x10]
 ; ARM64-NEXT:    str w6, [x0, #0x14]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
 entry:
   store %struct.i32_i32_i32_i32_i32_i32 %b, ptr %a
@@ -1444,7 +1444,7 @@ define void @store_packed(ptr %0) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_packed>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -1454,7 +1454,7 @@ define void @store_packed(ptr %0) {
 ; ARM64-NEXT:    add x2, x0, #0x2
 ; ARM64-NEXT:    str w1, [x2]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   store %struct_i16_i32_packed <{i16 1, i32 2}>, ptr %0
   ret void
@@ -1493,7 +1493,7 @@ define void @store_mult_const(ptr %p) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store_mult_const>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -1542,7 +1542,7 @@ define void @store_mult_const(ptr %p) {
 ; ARM64-NEXT:    mov w1, #0x0 // =0
 ; ARM64-NEXT:    str x1, [x0, #0x8]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   store { i64, i64 } zeroinitializer, ptr %p, align 8
   store { i64, i64 } zeroinitializer, ptr %p, align 8

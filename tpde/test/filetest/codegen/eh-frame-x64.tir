@@ -40,10 +40,10 @@ add1(%a, %b) {
 ; ASM-NEXT:  0: push    rbp
 ; ASM-NEXT:  1: mov     rbp, rsp
 ; ASM-NEXT:  4: nop     word ptr [rax + rax]
-; ASM-NEXT:  d: sub     rsp, 0x40
+; ASM-NEXT:  d: sub     rsp, 0x30
 ; ASM-NEXT: 14: add     rdi, rsi
 ; ASM-NEXT: 17: mov     rax, rdi
-; ASM-NEXT: 1a: add     rsp, 0x40
+; ASM-NEXT: 1a: add     rsp, 0x30
 ; ASM-NEXT: 1e: pop     rbp
 ; ASM-NEXT: 1f: ret
 entry:

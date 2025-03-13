@@ -9,16 +9,16 @@ define <2 x float> @fadd_v2f32_1(<2 x float> %0) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movabs rax, 0x3f8000003f800000
 ; X64-NEXT:    movq xmm1, rax
 ; X64-NEXT:    addps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v2f32_1>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -26,7 +26,7 @@ define <2 x float> @fadd_v2f32_1(<2 x float> %0) {
 ; ARM64-NEXT:    fmov d1, x0
 ; ARM64-NEXT:    fadd v0.2s, v0.2s, v1.2s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <2 x float> %0, <float 1.0, float 1.0>
   ret <2 x float> %r
@@ -37,20 +37,20 @@ define <2 x float> @fadd_v2f32_f32(<2 x float> %0, <2 x float> %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    addps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v2f32_f32>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    fadd v0.2s, v0.2s, v1.2s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <2 x float> %0, %1
   ret <2 x float> %r
@@ -61,7 +61,7 @@ define <2 x float> @fadd_v2f32_f32_spill(<2 x float> %0, <2 x float> %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    sub rsp, 0x40
 ; X64-NEXT:    movq qword ptr [rbp - 0x30], xmm0
 ; X64-NEXT:    movq qword ptr [rbp - 0x38], xmm1
 ; X64-NEXT:  <L0>:
@@ -71,12 +71,12 @@ define <2 x float> @fadd_v2f32_f32_spill(<2 x float> %0, <2 x float> %1) {
 ; X64-NEXT:    addps xmm1, xmmword ptr [rbp - 0x30]
 ; X64-NEXT:    movq xmm1, qword ptr [rbp - 0x38]
 ; X64-NEXT:    addps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x50
+; X64-NEXT:    add rsp, 0x40
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v2f32_f32_spill>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -89,7 +89,7 @@ define <2 x float> @fadd_v2f32_f32_spill(<2 x float> %0, <2 x float> %1) {
 ; ARM64-NEXT:    ldr d1, [x29, #0xa8]
 ; ARM64-NEXT:    fadd v0.2s, v0.2s, v1.2s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
   %c = call <2 x float> @fadd_v2f32_f32_spill(<2 x float> %0, <2 x float> %1)
   %a1 = fadd <2 x float> %c, %0
@@ -102,16 +102,16 @@ define <4 x float> @fadd_v4f32_1(<4 x float> %0) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movaps xmm1, xmmword ptr <fadd_v4f32_1+0x13>
 ; X64-NEXT:     R_X86_64_PC32 -0x4
 ; X64-NEXT:    addps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x50
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v4f32_1>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -121,7 +121,7 @@ define <4 x float> @fadd_v4f32_1(<4 x float> %0) {
 ; ARM64-NEXT:     R_AARCH64_LDST128_ABS_LO12_NC
 ; ARM64-NEXT:    fadd v0.4s, v0.4s, v1.4s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <4 x float> %0, <float 1.0, float 1.0, float 1.0, float 1.0>
   ret <4 x float> %r
@@ -132,20 +132,20 @@ define <4 x float> @fadd_v4f32_f32(<4 x float> %0, <4 x float> %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    addps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v4f32_f32>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    fadd v0.4s, v0.4s, v1.4s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <4 x float> %0, %1
   ret <4 x float> %r
@@ -156,16 +156,16 @@ define <2 x double> @fadd_v2f64_1(<2 x double> %0) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movaps xmm1, xmmword ptr <fadd_v2f64_1+0x13>
 ; X64-NEXT:     R_X86_64_PC32 -0x4
 ; X64-NEXT:    addpd xmm0, xmm1
-; X64-NEXT:    add rsp, 0x50
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v2f64_1>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -175,7 +175,7 @@ define <2 x double> @fadd_v2f64_1(<2 x double> %0) {
 ; ARM64-NEXT:     R_AARCH64_LDST128_ABS_LO12_NC
 ; ARM64-NEXT:    fadd v0.2d, v0.2d, v1.2d
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <2 x double> %0, <double 1.0, double 1.0>
   ret <2 x double> %r
@@ -186,20 +186,20 @@ define <2 x double> @fadd_v2f64_f64(<2 x double> %0, <2 x double> %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    addpd xmm0, xmm1
-; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v2f64_f64>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    fadd v0.2d, v0.2d, v1.2d
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <2 x double> %0, %1
   ret <2 x double> %r
@@ -210,18 +210,18 @@ define <2 x float> @fadd_v2f32_no_salvage_imm(<2 x float> %0) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movapd xmm1, xmm0
 ; X64-NEXT:    movabs rax, 0x3f8000003f800000
 ; X64-NEXT:    movq xmm2, rax
 ; X64-NEXT:    addps xmm1, xmm2
 ; X64-NEXT:    addps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v2f32_no_salvage_imm>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -230,7 +230,7 @@ define <2 x float> @fadd_v2f32_no_salvage_imm(<2 x float> %0) {
 ; ARM64-NEXT:    fadd v1.2s, v0.2s, v1.2s
 ; ARM64-NEXT:    fadd v0.2s, v0.2s, v1.2s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <2 x float> %0, <float 1.0, float 1.0>
   %s = fadd <2 x float> %0, %r
@@ -242,23 +242,23 @@ define <2 x float> @fadd_v2f32_no_salvage_reg(<2 x float> %0, <2 x float> %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movapd xmm2, xmm0
 ; X64-NEXT:    addps xmm2, xmm1
 ; X64-NEXT:    addps xmm0, xmm2
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v2f32_no_salvage_reg>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    fadd v1.2s, v0.2s, v1.2s
 ; ARM64-NEXT:    fadd v0.2s, v0.2s, v1.2s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <2 x float> %0, %1
   %s = fadd <2 x float> %0, %r
@@ -270,18 +270,18 @@ define <4 x float> @fadd_v4f32_no_salvage_imm(<4 x float> %0) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movapd xmm1, xmm0
 ; X64-NEXT:    movaps xmm2, xmmword ptr <fadd_v4f32_no_salvage_imm+0x17>
 ; X64-NEXT:     R_X86_64_PC32 -0x4
 ; X64-NEXT:    addps xmm1, xmm2
 ; X64-NEXT:    addps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v4f32_no_salvage_imm>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -292,7 +292,7 @@ define <4 x float> @fadd_v4f32_no_salvage_imm(<4 x float> %0) {
 ; ARM64-NEXT:    fadd v1.4s, v0.4s, v1.4s
 ; ARM64-NEXT:    fadd v0.4s, v0.4s, v1.4s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <4 x float> %0, <float 1.0, float 1.0, float 1.0, float 1.0>
   %s = fadd <4 x float> %0, %r
@@ -304,23 +304,23 @@ define <4 x float> @fadd_v4f32_no_salvage_reg(<4 x float> %0, <4 x float> %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movapd xmm2, xmm0
 ; X64-NEXT:    addps xmm2, xmm1
 ; X64-NEXT:    addps xmm0, xmm2
-; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v4f32_no_salvage_reg>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    fadd v1.4s, v0.4s, v1.4s
 ; ARM64-NEXT:    fadd v0.4s, v0.4s, v1.4s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <4 x float> %0, %1
   %s = fadd <4 x float> %0, %r
@@ -332,18 +332,18 @@ define <2 x double> @fadd_v2f64_no_salvage_imm(<2 x double> %0) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movapd xmm1, xmm0
 ; X64-NEXT:    movaps xmm2, xmmword ptr <fadd_v2f64_no_salvage_imm+0x17>
 ; X64-NEXT:     R_X86_64_PC32 -0x4
 ; X64-NEXT:    addpd xmm1, xmm2
 ; X64-NEXT:    addpd xmm0, xmm1
-; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v2f64_no_salvage_imm>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -354,7 +354,7 @@ define <2 x double> @fadd_v2f64_no_salvage_imm(<2 x double> %0) {
 ; ARM64-NEXT:    fadd v1.2d, v0.2d, v1.2d
 ; ARM64-NEXT:    fadd v0.2d, v0.2d, v1.2d
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <2 x double> %0, <double 1.0, double 1.0>
   %s = fadd <2 x double> %0, %r
@@ -366,23 +366,23 @@ define <2 x double> @fadd_v2f64_no_salvage_reg(<2 x double> %0, <2 x double> %1)
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x60
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movapd xmm2, xmm0
 ; X64-NEXT:    addpd xmm2, xmm1
 ; X64-NEXT:    addpd xmm0, xmm2
-; X64-NEXT:    add rsp, 0x60
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fadd_v2f64_no_salvage_reg>:
-; ARM64:         sub sp, sp, #0xd0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    fadd v1.2d, v0.2d, v1.2d
 ; ARM64-NEXT:    fadd v0.2d, v0.2d, v1.2d
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xd0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = fadd <2 x double> %0, %1
   %s = fadd <2 x double> %0, %r

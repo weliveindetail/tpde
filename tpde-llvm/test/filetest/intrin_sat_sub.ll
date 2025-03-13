@@ -23,7 +23,7 @@ define i8 @ssub_sat_i8(i8, i8) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <ssub_sat_i8>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -37,7 +37,7 @@ define i8 @ssub_sat_i8(i8, i8) {
 ; ARM64-NEXT:    csel w1, w2, w0, gt
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i8 @llvm.ssub.sat.i8(i8 %0, i8 %1)
   ret i8 %r
@@ -60,7 +60,7 @@ define i16 @ssub_sat_i16(i16, i16) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <ssub_sat_i16>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -74,7 +74,7 @@ define i16 @ssub_sat_i16(i16, i16) {
 ; ARM64-NEXT:    csel w1, w0, w2, gt
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i16 @llvm.ssub.sat.i16(i16 %0, i16 %1)
   ret i16 %r
@@ -85,19 +85,19 @@ define i32 @ssub_sat_i32(i32, i32) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    xor eax, eax
 ; X64-NEXT:    cmp edi, esi
 ; X64-NEXT:    setns al
 ; X64-NEXT:    add eax, 0x7fffffff
 ; X64-NEXT:    sub edi, esi
 ; X64-NEXT:    cmovno eax, edi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <ssub_sat_i32>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -107,7 +107,7 @@ define i32 @ssub_sat_i32(i32, i32) {
 ; ARM64-NEXT:    csel w2, w1, w0, vs
 ; ARM64-NEXT:    mov w0, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i32 @llvm.ssub.sat.i32(i32 %0, i32 %1)
   ret i32 %r
@@ -118,7 +118,7 @@ define i64 @ssub_sat_i64(i64, i64) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    xor eax, eax
 ; X64-NEXT:    cmp rdi, rsi
 ; X64-NEXT:    setns al
@@ -127,12 +127,12 @@ define i64 @ssub_sat_i64(i64, i64) {
 ; X64-NEXT:    sub rdi, rsi
 ; X64-NEXT:    cmovno rcx, rdi
 ; X64-NEXT:    mov rax, rcx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <ssub_sat_i64>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -142,7 +142,7 @@ define i64 @ssub_sat_i64(i64, i64) {
 ; ARM64-NEXT:    csel x2, x1, x0, vs
 ; ARM64-NEXT:    mov x0, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i64 @llvm.ssub.sat.i64(i64 %0, i64 %1)
   ret i64 %r
@@ -164,7 +164,7 @@ define i8 @usub_sat_i8(i8, i8) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <usub_sat_i8>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -173,7 +173,7 @@ define i8 @usub_sat_i8(i8, i8) {
 ; ARM64-NEXT:    csel w1, wzr, w0, lo
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i8 @llvm.usub.sat.i8(i8 %0, i8 %1)
   ret i8 %r
@@ -193,7 +193,7 @@ define i16 @usub_sat_i16(i16, i16) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <usub_sat_i16>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -202,7 +202,7 @@ define i16 @usub_sat_i16(i16, i16) {
 ; ARM64-NEXT:    csel w1, wzr, w0, lo
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i16 @llvm.usub.sat.i16(i16 %0, i16 %1)
   ret i16 %r
@@ -213,16 +213,16 @@ define i32 @usub_sat_i32(i32, i32) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    xor eax, eax
 ; X64-NEXT:    sub edi, esi
 ; X64-NEXT:    cmovae eax, edi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <usub_sat_i32>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -230,7 +230,7 @@ define i32 @usub_sat_i32(i32, i32) {
 ; ARM64-NEXT:    csel w1, wzr, w0, lo
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i32 @llvm.usub.sat.i32(i32 %0, i32 %1)
   ret i32 %r
@@ -241,16 +241,16 @@ define i64 @usub_sat_i64(i64, i64) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    xor eax, eax
 ; X64-NEXT:    sub rdi, rsi
 ; X64-NEXT:    cmovae rax, rdi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <usub_sat_i64>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -258,7 +258,7 @@ define i64 @usub_sat_i64(i64, i64) {
 ; ARM64-NEXT:    csel x1, xzr, x0, lo
 ; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i64 @llvm.usub.sat.i64(i64 %0, i64 %1)
   ret i64 %r

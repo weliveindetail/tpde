@@ -613,6 +613,7 @@ void CallingConv::handle_func_args(
             ScratchReg scratch{compiler};
             auto tmp_reg = scratch.alloc_gp();
             compiler->load_from_stack(tmp_reg, -frame_off, size);
+            compiler->allocate_spill_slot(ap);
             compiler->spill_reg(tmp_reg, ap.frame_off(), size);
             ap.set_stack_valid();
           }
@@ -640,6 +641,7 @@ void CallingConv::handle_func_args(
             ScratchReg scratch{compiler};
             auto tmp_reg = scratch.alloc(Config::FP_BANK);
             compiler->load_from_stack(tmp_reg, -frame_off, size);
+            compiler->allocate_spill_slot(ap);
             compiler->spill_reg(tmp_reg, ap.frame_off(), size);
             ap.set_stack_valid();
           }

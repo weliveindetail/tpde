@@ -21,7 +21,7 @@ define ptr @getaddr() {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <getaddr>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -36,7 +36,7 @@ define ptr @getaddr() {
 ; ARM64-NEXT:    mrs x1, TPIDR_EL0
 ; ARM64-NEXT:    add x0, x1, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %p = call ptr @llvm.threadlocal.address(ptr @t1)
   ret ptr %p
@@ -47,18 +47,18 @@ define i32 @load() {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    lea rdi, <load+0x15>
 ; X64-NEXT:     R_X86_64_TLSGD t1-0x4
 ; X64-NEXT:    call <L0>
 ; X64-NEXT:     R_X86_64_PLT32 __tls_get_addr-0x4
 ; X64-NEXT:    mov eax, dword ptr [rax]
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <load>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -74,7 +74,7 @@ define i32 @load() {
 ; ARM64-NEXT:    add x0, x1, x0
 ; ARM64-NEXT:    ldr w0, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %p = call ptr @llvm.threadlocal.address(ptr @t1)
   %l = load i32, ptr %p
@@ -86,7 +86,7 @@ define void @store(i32 %v) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov dword ptr [rbp - 0x2c], edi
 ; X64-NEXT:    lea rdi, <store+0x18>
 ; X64-NEXT:     R_X86_64_TLSGD t1-0x4
@@ -94,7 +94,7 @@ define void @store(i32 %v) {
 ; X64-NEXT:     R_X86_64_PLT32 __tls_get_addr-0x4
 ; X64-NEXT:    mov ecx, dword ptr [rbp - 0x2c]
 ; X64-NEXT:    mov dword ptr [rax], ecx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -130,7 +130,7 @@ define void @store3(i32, i32, i32 %v) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov dword ptr [rbp - 0x2c], edx
 ; X64-NEXT:    lea rdi, <store3+0x18>
 ; X64-NEXT:     R_X86_64_TLSGD t1-0x4
@@ -138,12 +138,12 @@ define void @store3(i32, i32, i32 %v) {
 ; X64-NEXT:     R_X86_64_PLT32 __tls_get_addr-0x4
 ; X64-NEXT:    mov ecx, dword ptr [rbp - 0x2c]
 ; X64-NEXT:    mov dword ptr [rax], ecx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <store3>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -159,7 +159,7 @@ define void @store3(i32, i32, i32 %v) {
 ; ARM64-NEXT:    add x0, x1, x0
 ; ARM64-NEXT:    str w2, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %p = call ptr @llvm.threadlocal.address(ptr @t1)
   store i32 %v, ptr %p

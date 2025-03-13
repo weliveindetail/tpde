@@ -33,14 +33,14 @@ define i8 @bitrev_i8(i8 %0) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <bitrev_i8>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsl w0, w0, #24
 ; ARM64-NEXT:    rbit w0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i8 @llvm.bitreverse.i8(i8 %0)
   ret i8 %res
@@ -75,14 +75,14 @@ define i16 @bitrev_i16(i16 %0) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <bitrev_i16>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsl w0, w0, #16
 ; ARM64-NEXT:    rbit w0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i16 @llvm.bitreverse.i16(i16 %0)
   ret i16 %res
@@ -117,14 +117,14 @@ define i23 @bitrev_i23(i23 %0) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <bitrev_i23>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsl w0, w0, #9
 ; ARM64-NEXT:    rbit w0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i23 @llvm.bitreverse.i23(i23 %0)
   ret i23 %res
@@ -158,13 +158,13 @@ define i32 @bitrev_i32(i32 %0) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <bitrev_i32>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    rbit w0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i32 @llvm.bitreverse.i32(i32 %0)
   ret i32 %res
@@ -175,7 +175,7 @@ define i37 @bitrev_i37(i37 %0) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    shl rdi, 0x1b
 ; X64-NEXT:    bswap rdi
 ; X64-NEXT:    mov rax, rdi
@@ -197,19 +197,19 @@ define i37 @bitrev_i37(i37 %0) {
 ; X64-NEXT:    shr rax
 ; X64-NEXT:    and rax, rcx
 ; X64-NEXT:    lea rax, [rax + 2*rdx]
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <bitrev_i37>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    lsl x0, x0, #27
 ; ARM64-NEXT:    rbit x0, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i37 @llvm.bitreverse.i37(i37 %0)
   ret i37 %res
@@ -220,7 +220,7 @@ define i64 @bitrev_i64(i64 %0) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    bswap rdi
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    shr rax, 0x4
@@ -241,18 +241,18 @@ define i64 @bitrev_i64(i64 %0) {
 ; X64-NEXT:    shr rax
 ; X64-NEXT:    and rax, rcx
 ; X64-NEXT:    lea rax, [rax + 2*rdx]
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <bitrev_i64>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    rbit x0, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i64 @llvm.bitreverse.i64(i64 %0)
   ret i64 %res

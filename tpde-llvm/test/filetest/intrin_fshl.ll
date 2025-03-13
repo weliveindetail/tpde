@@ -25,7 +25,7 @@ define i8 @fshl_i8_3(i8 %a, i8 %b) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i8_3>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -37,7 +37,7 @@ define i8 @fshl_i8_3(i8 %a, i8 %b) {
 ; ARM64-NEXT:    lsr w1, w1, w3
 ; ARM64-NEXT:    orr w0, w2, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i8 @llvm.fshl(i8 %a, i8 %b, i8 3)
   ret i8 %res
@@ -62,7 +62,7 @@ define i8 @fshl_i8_221(i8 %a, i8 %b) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i8_221>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -74,7 +74,7 @@ define i8 @fshl_i8_221(i8 %a, i8 %b) {
 ; ARM64-NEXT:    lsr w1, w1, w3
 ; ARM64-NEXT:    orr w0, w2, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i8 @llvm.fshl(i8 %a, i8 %b, i8 221)
   ret i8 %res
@@ -98,7 +98,7 @@ define i8 @fshl_i8_dyn(i8 %a, i8 %b, i8 %c) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i8_dyn>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -109,7 +109,7 @@ define i8 @fshl_i8_dyn(i8 %a, i8 %b, i8 %c) {
 ; ARM64-NEXT:    lsr w1, w1, w3
 ; ARM64-NEXT:    orr w0, w2, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i8 @llvm.fshl(i8 %a, i8 %b, i8 %c)
   ret i8 %res
@@ -128,7 +128,7 @@ define i8 @fshl_rotate_i8_3(i8 %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i8_3>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -141,7 +141,7 @@ define i8 @fshl_rotate_i8_3(i8 %a) {
 ; ARM64-NEXT:    lsr w2, w3, w2
 ; ARM64-NEXT:    orr w0, w1, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i8 @llvm.fshl(i8 %a, i8 %a, i8 3)
   ret i8 %res
@@ -160,7 +160,7 @@ define i8 @fshl_rotate_i8_221(i8 %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i8_221>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -173,7 +173,7 @@ define i8 @fshl_rotate_i8_221(i8 %a) {
 ; ARM64-NEXT:    lsr w2, w3, w2
 ; ARM64-NEXT:    orr w0, w1, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i8 @llvm.fshl(i8 %a, i8 %a, i8 221)
   ret i8 %res
@@ -193,7 +193,7 @@ define i8 @fshl_rotate_i8_dyn(i8 %a, i8 %c) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i8_dyn>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -205,7 +205,7 @@ define i8 @fshl_rotate_i8_dyn(i8 %a, i8 %c) {
 ; ARM64-NEXT:    lsr w2, w3, w2
 ; ARM64-NEXT:    orr w0, w1, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i8 @llvm.fshl(i8 %a, i8 %a, i8 %c)
   ret i8 %res
@@ -231,7 +231,7 @@ define i16 @fshl_i16_3(i16 %a, i16 %b) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i16_3>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -243,7 +243,7 @@ define i16 @fshl_i16_3(i16 %a, i16 %b) {
 ; ARM64-NEXT:    lsr w1, w1, w3
 ; ARM64-NEXT:    orr w0, w2, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i16 @llvm.fshl(i16 %a, i16 %b, i16 3)
   ret i16 %res
@@ -268,7 +268,7 @@ define i16 @fshl_i16_221(i16 %a, i16 %b) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i16_221>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -280,7 +280,7 @@ define i16 @fshl_i16_221(i16 %a, i16 %b) {
 ; ARM64-NEXT:    lsr w1, w1, w3
 ; ARM64-NEXT:    orr w0, w2, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i16 @llvm.fshl(i16 %a, i16 %b, i16 221)
   ret i16 %res
@@ -304,7 +304,7 @@ define i16 @fshl_i16_dyn(i16 %a, i16 %b, i16 %c) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i16_dyn>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -315,7 +315,7 @@ define i16 @fshl_i16_dyn(i16 %a, i16 %b, i16 %c) {
 ; ARM64-NEXT:    lsr w1, w1, w3
 ; ARM64-NEXT:    orr w0, w2, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i16 @llvm.fshl(i16 %a, i16 %b, i16 %c)
   ret i16 %res
@@ -334,7 +334,7 @@ define i16 @fshl_rotate_i16_3(i16 %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i16_3>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -347,7 +347,7 @@ define i16 @fshl_rotate_i16_3(i16 %a) {
 ; ARM64-NEXT:    lsr w2, w3, w2
 ; ARM64-NEXT:    orr w0, w1, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i16 @llvm.fshl(i16 %a, i16 %a, i16 3)
   ret i16 %res
@@ -366,7 +366,7 @@ define i16 @fshl_rotate_i16_221(i16 %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i16_221>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -379,7 +379,7 @@ define i16 @fshl_rotate_i16_221(i16 %a) {
 ; ARM64-NEXT:    lsr w2, w3, w2
 ; ARM64-NEXT:    orr w0, w1, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i16 @llvm.fshl(i16 %a, i16 %a, i16 221)
   ret i16 %res
@@ -399,7 +399,7 @@ define i16 @fshl_rotate_i16_dyn(i16 %a, i16 %c) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i16_dyn>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -411,7 +411,7 @@ define i16 @fshl_rotate_i16_dyn(i16 %a, i16 %c) {
 ; ARM64-NEXT:    lsr w2, w3, w2
 ; ARM64-NEXT:    orr w0, w1, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i16 @llvm.fshl(i16 %a, i16 %a, i16 %c)
   ret i16 %res
@@ -437,7 +437,7 @@ define i32 @fshl_i32_3(i32 %a, i32 %b) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i32_3>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -448,7 +448,7 @@ define i32 @fshl_i32_3(i32 %a, i32 %b) {
 ; ARM64-NEXT:    orr w3, w0, w1
 ; ARM64-NEXT:    mov w0, w3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i32 @llvm.fshl(i32 %a, i32 %b, i32 3)
   ret i32 %res
@@ -473,7 +473,7 @@ define i32 @fshl_i32_221(i32 %a, i32 %b) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i32_221>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -485,7 +485,7 @@ define i32 @fshl_i32_221(i32 %a, i32 %b) {
 ; ARM64-NEXT:    orr w2, w0, w1
 ; ARM64-NEXT:    mov w0, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i32 @llvm.fshl(i32 %a, i32 %b, i32 221)
   ret i32 %res
@@ -496,7 +496,7 @@ define i32 @fshl_i32_dyn(i32 %a, i32 %b, i32 %c) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov ecx, edx
 ; X64-NEXT:    shl edi, cl
 ; X64-NEXT:    shr esi
@@ -505,12 +505,12 @@ define i32 @fshl_i32_dyn(i32 %a, i32 %b, i32 %c) {
 ; X64-NEXT:    shr esi, cl
 ; X64-NEXT:    or esi, edi
 ; X64-NEXT:    mov eax, esi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i32_dyn>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -521,7 +521,7 @@ define i32 @fshl_i32_dyn(i32 %a, i32 %b, i32 %c) {
 ; ARM64-NEXT:    orr w2, w0, w1
 ; ARM64-NEXT:    mov w0, w2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i32 @llvm.fshl(i32 %a, i32 %b, i32 %c)
   ret i32 %res
@@ -540,7 +540,7 @@ define i32 @fshl_rotate_i32_3(i32 %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i32_3>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -548,7 +548,7 @@ define i32 @fshl_rotate_i32_3(i32 %a) {
 ; ARM64-NEXT:    neg w1, w1
 ; ARM64-NEXT:    ror w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i32 @llvm.fshl(i32 %a, i32 %a, i32 3)
   ret i32 %res
@@ -567,7 +567,7 @@ define i32 @fshl_rotate_i32_221(i32 %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i32_221>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -575,7 +575,7 @@ define i32 @fshl_rotate_i32_221(i32 %a) {
 ; ARM64-NEXT:    neg w1, w1
 ; ARM64-NEXT:    ror w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i32 @llvm.fshl(i32 %a, i32 %a, i32 221)
   ret i32 %res
@@ -595,14 +595,14 @@ define i32 @fshl_rotate_i32_dyn(i32 %a, i32 %c) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i32_dyn>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    neg w1, w1
 ; ARM64-NEXT:    ror w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i32 @llvm.fshl(i32 %a, i32 %a, i32 %c)
   ret i32 %res
@@ -614,7 +614,7 @@ define i64 @fshl_i64_3(i64 %a, i64 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    shl rdi, 0x3
 ; X64-NEXT:    shr rsi
 ; X64-NEXT:    mov rax, 0x3
@@ -623,12 +623,12 @@ define i64 @fshl_i64_3(i64 %a, i64 %b) {
 ; X64-NEXT:    shr rsi, cl
 ; X64-NEXT:    or rsi, rdi
 ; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i64_3>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -639,7 +639,7 @@ define i64 @fshl_i64_3(i64 %a, i64 %b) {
 ; ARM64-NEXT:    orr x3, x0, x1
 ; ARM64-NEXT:    mov x0, x3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i64 @llvm.fshl(i64 %a, i64 %b, i64 3)
   ret i64 %res
@@ -650,7 +650,7 @@ define i64 @fshl_i64_221(i64 %a, i64 %b) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    shl rdi, 0xdd
 ; X64-NEXT:    shr rsi
 ; X64-NEXT:    mov rax, 0xdd
@@ -659,12 +659,12 @@ define i64 @fshl_i64_221(i64 %a, i64 %b) {
 ; X64-NEXT:    shr rsi, cl
 ; X64-NEXT:    or rsi, rdi
 ; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i64_221>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -676,7 +676,7 @@ define i64 @fshl_i64_221(i64 %a, i64 %b) {
 ; ARM64-NEXT:    orr x2, x0, x1
 ; ARM64-NEXT:    mov x0, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i64 @llvm.fshl(i64 %a, i64 %b, i64 221)
   ret i64 %res
@@ -687,7 +687,7 @@ define i64 @fshl_i64_dyn(i64 %a, i64 %b, i64 %c) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov ecx, edx
 ; X64-NEXT:    shl rdi, cl
 ; X64-NEXT:    shr rsi
@@ -696,12 +696,12 @@ define i64 @fshl_i64_dyn(i64 %a, i64 %b, i64 %c) {
 ; X64-NEXT:    shr rsi, cl
 ; X64-NEXT:    or rsi, rdi
 ; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_i64_dyn>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -712,7 +712,7 @@ define i64 @fshl_i64_dyn(i64 %a, i64 %b, i64 %c) {
 ; ARM64-NEXT:    orr x2, x0, x1
 ; ARM64-NEXT:    mov x0, x2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i64 @llvm.fshl(i64 %a, i64 %b, i64 %c)
   ret i64 %res
@@ -731,7 +731,7 @@ define i64 @fshl_rotate_i64_3(i64 %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i64_3>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -739,7 +739,7 @@ define i64 @fshl_rotate_i64_3(i64 %a) {
 ; ARM64-NEXT:    neg w1, w1
 ; ARM64-NEXT:    ror x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i64 @llvm.fshl(i64 %a, i64 %a, i64 3)
   ret i64 %res
@@ -758,7 +758,7 @@ define i64 @fshl_rotate_i64_221(i64 %a) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i64_221>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -766,7 +766,7 @@ define i64 @fshl_rotate_i64_221(i64 %a) {
 ; ARM64-NEXT:    neg w1, w1
 ; ARM64-NEXT:    ror x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i64 @llvm.fshl(i64 %a, i64 %a, i64 221)
   ret i64 %res
@@ -777,23 +777,23 @@ define i64 @fshl_rotate_i64_dyn(i64 %a, i64 %c) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov ecx, esi
 ; X64-NEXT:    rol rdi, cl
 ; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <fshl_rotate_i64_dyn>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    neg w1, w1
 ; ARM64-NEXT:    ror x0, x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i64 @llvm.fshl(i64 %a, i64 %a, i64 %c)
   ret i64 %res

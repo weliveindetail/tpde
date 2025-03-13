@@ -9,7 +9,7 @@ define float @atomicrmw_fmax_float_seq_cst(ptr %p, float %a) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movss xmm1, dword ptr [rdi]
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    movaps xmm2, xmm0
@@ -26,12 +26,12 @@ define float @atomicrmw_fmax_float_seq_cst(ptr %p, float %a) {
 ; X64-NEXT:    movd xmm1, eax
 ; X64-NEXT:    jne <L0>
 ; X64-NEXT:    movaps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <atomicrmw_fmax_float_seq_cst>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -46,7 +46,7 @@ define float @atomicrmw_fmax_float_seq_cst(ptr %p, float %a) {
 ; ARM64-NEXT:    b.ne 0x34 <atomicrmw_fmax_float_seq_cst+0x14>
 ; ARM64-NEXT:    fmov s0, s1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = atomicrmw fmax ptr %p, float %a seq_cst
   ret float %r
@@ -57,7 +57,7 @@ define void @atomicrmw_fmax_float_seq_cst_nouse(ptr %p, float %a) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movss xmm1, dword ptr [rdi]
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    movaps xmm2, xmm0
@@ -74,12 +74,12 @@ define void @atomicrmw_fmax_float_seq_cst_nouse(ptr %p, float %a) {
 ; X64-NEXT:    movd xmm1, eax
 ; X64-NEXT:    jne <L0>
 ; X64-NEXT:    movaps xmm0, xmm1
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <atomicrmw_fmax_float_seq_cst_nouse>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -94,7 +94,7 @@ define void @atomicrmw_fmax_float_seq_cst_nouse(ptr %p, float %a) {
 ; ARM64-NEXT:    b.ne 0xc4 <atomicrmw_fmax_float_seq_cst_nouse+0x14>
 ; ARM64-NEXT:    fmov s0, s1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = atomicrmw fmax ptr %p, float %a seq_cst
   ret void
@@ -105,7 +105,7 @@ define double @atomicrmw_fmax_double_seq_cst(ptr %p, double %a) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movsd xmm1, qword ptr [rdi]
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    movapd xmm2, xmm0
@@ -122,12 +122,12 @@ define double @atomicrmw_fmax_double_seq_cst(ptr %p, double %a) {
 ; X64-NEXT:    movq xmm1, rax
 ; X64-NEXT:    jne <L0>
 ; X64-NEXT:    movapd xmm0, xmm1
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <atomicrmw_fmax_double_seq_cst>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -142,7 +142,7 @@ define double @atomicrmw_fmax_double_seq_cst(ptr %p, double %a) {
 ; ARM64-NEXT:    b.ne 0x154 <atomicrmw_fmax_double_seq_cst+0x14>
 ; ARM64-NEXT:    fmov d0, d1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = atomicrmw fmax ptr %p, double %a seq_cst
   ret double %r
@@ -153,7 +153,7 @@ define void @atomicrmw_fmax_double_seq_cst_nouse(ptr %p, double %a) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    movsd xmm1, qword ptr [rdi]
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    movapd xmm2, xmm0
@@ -170,12 +170,12 @@ define void @atomicrmw_fmax_double_seq_cst_nouse(ptr %p, double %a) {
 ; X64-NEXT:    movq xmm1, rax
 ; X64-NEXT:    jne <L0>
 ; X64-NEXT:    movapd xmm0, xmm1
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <atomicrmw_fmax_double_seq_cst_nouse>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -190,7 +190,7 @@ define void @atomicrmw_fmax_double_seq_cst_nouse(ptr %p, double %a) {
 ; ARM64-NEXT:    b.ne 0x1e4 <atomicrmw_fmax_double_seq_cst_nouse+0x14>
 ; ARM64-NEXT:    fmov d0, d1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = atomicrmw fmax ptr %p, double %a seq_cst
   ret void

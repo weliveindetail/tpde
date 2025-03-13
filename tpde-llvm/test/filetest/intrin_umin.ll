@@ -9,7 +9,7 @@ define i17 @umini17(i17 %0, i17 %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    shl edi, 0xf
 ; X64-NEXT:    sar edi, 0xf
 ; X64-NEXT:    shl esi, 0xf
@@ -17,12 +17,12 @@ define i17 @umini17(i17 %0, i17 %1) {
 ; X64-NEXT:    cmp edi, esi
 ; X64-NEXT:    cmovb esi, edi
 ; X64-NEXT:    mov eax, esi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <umini17>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -31,7 +31,7 @@ define i17 @umini17(i17 %0, i17 %1) {
 ; ARM64-NEXT:    cmp w0, w1
 ; ARM64-NEXT:    csel w0, w0, w1, lo
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i17 @llvm.umin.i17(i17 %0, i17 %1)
   ret i17 %res
@@ -42,23 +42,23 @@ define i32 @umini32(i32 %0, i32 %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp edi, esi
 ; X64-NEXT:    cmovb esi, edi
 ; X64-NEXT:    mov eax, esi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <umini32>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    cmp w0, w1
 ; ARM64-NEXT:    csel w0, w0, w1, lo
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i32 @llvm.umin.i32(i32 %0, i32 %1)
   ret i32 %res
@@ -69,7 +69,7 @@ define i37 @umini37(i37 %0, i37 %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    shl rdi, 0x1b
 ; X64-NEXT:    sar rdi, 0x1b
 ; X64-NEXT:    shl rsi, 0x1b
@@ -77,12 +77,12 @@ define i37 @umini37(i37 %0, i37 %1) {
 ; X64-NEXT:    cmp rdi, rsi
 ; X64-NEXT:    cmovb rsi, rdi
 ; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <umini37>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -91,7 +91,7 @@ define i37 @umini37(i37 %0, i37 %1) {
 ; ARM64-NEXT:    cmp x0, x1
 ; ARM64-NEXT:    csel x0, x0, x1, lo
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i37 @llvm.umin.i37(i37 %0, i37 %1)
   ret i37 %res
@@ -102,23 +102,23 @@ define i64 @umini64(i64 %0, i64 %1) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp rdi, rsi
 ; X64-NEXT:    cmovb rsi, rdi
 ; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <umini64>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    cmp x0, x1
 ; ARM64-NEXT:    csel x0, x0, x1, lo
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %res = call i64 @llvm.umin.i64(i64 %0, i64 %1)
   ret i64 %res

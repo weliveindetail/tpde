@@ -769,6 +769,7 @@ void CallingConv::handle_func_args(
             ap.set_modified(true);
           } else {
             // TODO(ts): do we need to spill here?
+            compiler->allocate_spill_slot(ap);
             compiler->spill_reg(dst, ap.frame_off(), size);
             ap.set_stack_valid();
           }
@@ -796,6 +797,7 @@ void CallingConv::handle_func_args(
           if (ap.fixed_assignment()) {
             ap.set_modified(true);
           } else {
+            compiler->allocate_spill_slot(ap);
             compiler->spill_reg(dst, ap.frame_off(), size);
             ap.set_stack_valid();
           }

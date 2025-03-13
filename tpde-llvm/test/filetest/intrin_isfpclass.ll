@@ -25,7 +25,7 @@ define i1 @is_ninf_float(float %p) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <is_ninf_float>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -36,7 +36,7 @@ define i1 @is_ninf_float(float %p) {
 ; ARM64-NEXT:    cset w1, eq
 ; ARM64-NEXT:    orr w0, w1, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i1 @llvm.is.fpclass.f32(float %p, i32 4)
   ret i1 %r
@@ -47,7 +47,7 @@ define i1 @is_ninf_double(double %p) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov eax, 0x0
 ; X64-NEXT:    movsd xmm1, qword ptr <is_ninf_double+0x19>
 ; X64-NEXT:     R_X86_64_PC32 -0x4
@@ -55,12 +55,12 @@ define i1 @is_ninf_double(double %p) {
 ; X64-NEXT:    setae cl
 ; X64-NEXT:    or cl, al
 ; X64-NEXT:    mov eax, ecx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <is_ninf_double>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -71,7 +71,7 @@ define i1 @is_ninf_double(double %p) {
 ; ARM64-NEXT:    cset w1, eq
 ; ARM64-NEXT:    orr w0, w1, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i1 @llvm.is.fpclass.f64(double %p, i32 4)
   ret i1 %r
@@ -94,7 +94,7 @@ define i1 @is_nzero_float(float %p) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <is_nzero_float>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -105,7 +105,7 @@ define i1 @is_nzero_float(float %p) {
 ; ARM64-NEXT:    cset w2, eq
 ; ARM64-NEXT:    orr w0, w2, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i1 @llvm.is.fpclass.f32(float %p, i32 32)
   ret i1 %r
@@ -116,19 +116,19 @@ define i1 @is_nzero_double(double %p) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov eax, 0x0
 ; X64-NEXT:    movq rcx, xmm0
 ; X64-NEXT:    neg rcx
 ; X64-NEXT:    seto cl
 ; X64-NEXT:    or cl, al
 ; X64-NEXT:    mov eax, ecx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <is_nzero_double>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -139,7 +139,7 @@ define i1 @is_nzero_double(double %p) {
 ; ARM64-NEXT:    cset w2, eq
 ; ARM64-NEXT:    orr w0, w2, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i1 @llvm.is.fpclass.f64(double %p, i32 32)
   ret i1 %r
@@ -162,7 +162,7 @@ define i1 @is_pzero_float(float %p) {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <is_pzero_float>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -172,7 +172,7 @@ define i1 @is_pzero_float(float %p) {
 ; ARM64-NEXT:    cset w1, eq
 ; ARM64-NEXT:    orr w0, w1, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i1 @llvm.is.fpclass.f32(float %p, i32 64)
   ret i1 %r
@@ -183,19 +183,19 @@ define i1 @is_pzero_double(double %p) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov eax, 0x0
 ; X64-NEXT:    movq rcx, xmm0
 ; X64-NEXT:    test rcx, rcx
 ; X64-NEXT:    sete cl
 ; X64-NEXT:    or cl, al
 ; X64-NEXT:    mov eax, ecx
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <is_pzero_double>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -205,7 +205,7 @@ define i1 @is_pzero_double(double %p) {
 ; ARM64-NEXT:    cset w1, eq
 ; ARM64-NEXT:    orr w0, w1, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   %r = call i1 @llvm.is.fpclass.f64(double %p, i32 64)
   ret i1 %r

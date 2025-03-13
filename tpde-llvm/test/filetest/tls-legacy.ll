@@ -22,7 +22,7 @@ define void @legacy_store() {
 ; X64-NEXT:    ret
 ;
 ; ARM64-LABEL: <legacy_store>:
-; ARM64:         sub sp, sp, #0xb0
+; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -39,7 +39,7 @@ define void @legacy_store() {
 ; ARM64-NEXT:    mov w1, #0x0 // =0
 ; ARM64-NEXT:    str w1, [x0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   store i32 0, ptr @t1
   ret void
@@ -51,7 +51,7 @@ define void @legacy_use() {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    lea rdi, <legacy_use+0x15>
 ; X64-NEXT:     R_X86_64_TLSGD t1-0x4
 ; X64-NEXT:    call <L0>
@@ -67,7 +67,7 @@ define void @legacy_use() {
 ; X64-NEXT:  <L2>:
 ; X64-NEXT:    call <L2>
 ; X64-NEXT:     R_X86_64_PLT32 call_target-0x4
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;

@@ -2715,6 +2715,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_shuffle_vector(
   res_ref.alloc_reg();
   // But, as the value is uninitialized, the stack slot is also valid. This
   // avoids spilling an unitialized register in insert_element.
+  this->allocate_spill_slot(res_ref.assignment());
   res_ref.assignment().set_stack_valid();
 
   ScratchReg tmp{this};
