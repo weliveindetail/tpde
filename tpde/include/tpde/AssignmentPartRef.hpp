@@ -128,6 +128,7 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
   }
 
   [[nodiscard]] u32 frame_off() const noexcept {
+    assert(!variable_ref());
     if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
       return assignment->frame_off - assignment->max_part_size * part;
     } else {
