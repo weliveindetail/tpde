@@ -795,16 +795,18 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
 
   // .symtab
   {
+    const size_t local_cnt = local_symbols.size();
+    const size_t global_cnt = global_symbols.size();
     const auto size =
         sizeof(Elf64_Sym) * (local_symbols.size() + global_symbols.size());
     const auto sh_off = out.size();
     out.insert(out.end(),
-               reinterpret_cast<uint8_t *>(&*local_symbols.begin()),
-               reinterpret_cast<uint8_t *>(&*local_symbols.end()));
+               reinterpret_cast<uint8_t *>(local_symbols.data()),
+               reinterpret_cast<uint8_t *>(local_symbols.data() + local_cnt));
     // global symbols need to come after the local symbols
     out.insert(out.end(),
-               reinterpret_cast<uint8_t *>(&*global_symbols.begin()),
-               reinterpret_cast<uint8_t *>(&*global_symbols.end()));
+               reinterpret_cast<uint8_t *>(global_symbols.data()),
+               reinterpret_cast<uint8_t *>(global_symbols.data() + global_cnt));
 
     auto *hdr = sec_hdr(sec_idx(".symtab"));
     hdr->sh_name = sec_off(".symtab");
@@ -823,8 +825,8 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
     const auto pad = size - strtab.size();
     const auto sh_off = out.size();
     out.insert(out.end(),
-               reinterpret_cast<uint8_t *>(&*strtab.begin()),
-               reinterpret_cast<uint8_t *>(&*strtab.end()));
+               reinterpret_cast<uint8_t *>(strtab.data()),
+               reinterpret_cast<uint8_t *>(strtab.data() + strtab.size()));
     out.resize(out.size() + pad);
 
     auto *hdr = sec_hdr(sec_idx(".strtab"));
@@ -866,14 +868,14 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
 
     if (i + 1 < sections.size() && sections[i + 1]->hdr.sh_type == SHT_RELA) {
       const auto rela_sh_off = out.size();
-      if (!sec.relocs.empty()) {
+      if (size_t count = sec.relocs.size()) {
         out.insert(out.end(),
-                   reinterpret_cast<uint8_t *>(&*sec.relocs.begin()),
-                   reinterpret_cast<uint8_t *>(&*sec.relocs.end()));
+                   reinterpret_cast<uint8_t *>(sec.relocs.data()),
+                   reinterpret_cast<uint8_t *>(sec.relocs.data() + count));
 
         // patch relocations in output
         std::span<Elf64_Rela> out_relocs{
-            reinterpret_cast<Elf64_Rela *>(&out[rela_sh_off]), sec.relocs.size()};
+            reinterpret_cast<Elf64_Rela *>(&out[rela_sh_off]), count};
         for (auto &reloc : out_relocs) {
           if (u32 sym = ELF64_R_SYM(reloc.r_info); !sym_is_local(SymRef{sym})) {
             auto ty = ELF64_R_TYPE(reloc.r_info);
