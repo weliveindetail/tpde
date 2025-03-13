@@ -536,8 +536,6 @@ template <typename Adaptor,
 void CallingConv::handle_func_args(
     CompilerX64<Adaptor, Derived, BaseTy, Config> *compiler) const noexcept {
   using IRValueRef = typename Adaptor::IRValueRef;
-  using ScratchReg =
-      typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ScratchReg;
 
   u32 scalar_reg_count = 0, xmm_reg_count = 0;
   i32 frame_off = 16;
@@ -554,6 +552,8 @@ void CallingConv::handle_func_args(
 
   u32 arg_idx = 0;
   for (const IRValueRef arg : compiler->adaptor->cur_args()) {
+    auto arg_ref = compiler->result_ref(arg);
+
     if (compiler->adaptor->cur_arg_is_byval(arg_idx)) {
       const u32 size = compiler->adaptor->cur_arg_byval_size(arg_idx);
       const u32 align = compiler->adaptor->cur_arg_byval_align(arg_idx);
@@ -563,10 +563,8 @@ void CallingConv::handle_func_args(
         frame_off = util::align_up(frame_off, 16);
       }
 
-      // need to use a ScratchReg here since otherwise the ValuePartRef
-      // could allocate one of the argument registers
-      auto [_, arg_ref] = compiler->result_ref_single(arg);
-      const auto res_reg = arg_ref.alloc_reg(arg_regs_mask());
+      auto arg_part = arg_ref.part(0);
+      const auto res_reg = arg_part.alloc_reg(arg_regs_mask());
       ASMC(compiler, LEA64rm, res_reg, FE_MEM(FE_BP, 0, FE_NOREG, frame_off));
 
       frame_off += util::align_up(size, 8);
@@ -574,8 +572,7 @@ void CallingConv::handle_func_args(
       continue;
     }
 
-    const auto parts = compiler->derived()->val_parts(arg);
-    const u32 part_count = parts.count();
+    const u32 part_count = arg_ref.assignment()->part_count;
     auto must_pass_stack = false;
     if (compiler->derived()->arg_is_int128(arg)) {
       if (scalar_reg_count + 1 >= gp_regs.size()) {
@@ -590,33 +587,20 @@ void CallingConv::handle_func_args(
       }
     }
 
-    auto arg_ref = compiler->result_ref(arg);
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
       auto part_ref = arg_ref.part(part_idx);
-      RegBank bank = parts.reg_bank(part_idx);
+      RegBank bank = part_ref.bank();
+      unsigned size = part_ref.part_size();
 
       if (bank == Config::GP_BANK) {
         if (!must_pass_stack && scalar_reg_count < gp_regs.size()) {
           part_ref.set_value_reg(gp_regs[scalar_reg_count++]);
         } else {
-          const auto size = parts.size_bytes(part_idx);
           //  TODO(ts): maybe allow negative frame offsets for value
           //  assignments so we can simply reference this?
           //  but this probably doesn't work with multi-part values
           //  since the offsets are different
-          auto ap = part_ref.assignment();
-          if (ap.fixed_assignment()) {
-            compiler->load_from_stack(
-                AsmReg{ap.full_reg_id()}, -frame_off, size);
-            ap.set_modified(true);
-          } else {
-            ScratchReg scratch{compiler};
-            auto tmp_reg = scratch.alloc_gp();
-            compiler->load_from_stack(tmp_reg, -frame_off, size);
-            compiler->allocate_spill_slot(ap);
-            compiler->spill_reg(tmp_reg, ap.frame_off(), size);
-            ap.set_stack_valid();
-          }
+          compiler->load_from_stack(part_ref.alloc_reg(), -frame_off, size);
           frame_off += 8;
         }
       } else {
@@ -624,32 +608,11 @@ void CallingConv::handle_func_args(
         if (!must_pass_stack && xmm_reg_count < xmm_regs.size()) {
           part_ref.set_value_reg(xmm_regs[xmm_reg_count++]);
         } else {
-          auto ap = part_ref.assignment();
-          auto size = ap.part_size();
           assert(size <= 16);
-          if (size == 16) {
-            // TODO(ts): I'm correct that 16 byte vector regs get
-            // aligned?
-            frame_off = util::align_up(frame_off, 16);
-          }
-
-          if (ap.fixed_assignment()) {
-            compiler->load_from_stack(
-                AsmReg{ap.full_reg_id()}, -frame_off, size);
-            ap.set_modified(true);
-          } else {
-            ScratchReg scratch{compiler};
-            auto tmp_reg = scratch.alloc(Config::FP_BANK);
-            compiler->load_from_stack(tmp_reg, -frame_off, size);
-            compiler->allocate_spill_slot(ap);
-            compiler->spill_reg(tmp_reg, ap.frame_off(), size);
-            ap.set_stack_valid();
-          }
-
-          frame_off += 8;
-          if (size > 8) {
-            frame_off += 8;
-          }
+          uint64_t aligned_size = size <= 8 ? 8 : 16;
+          frame_off = util::align_up(frame_off, aligned_size);
+          compiler->load_from_stack(part_ref.alloc_reg(), -frame_off, size);
+          frame_off += aligned_size;
         }
       }
     }

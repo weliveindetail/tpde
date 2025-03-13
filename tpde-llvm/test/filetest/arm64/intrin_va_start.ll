@@ -10,7 +10,7 @@ declare void @llvm.va_start.p0(ptr) #2
 
 define void @f(i64 %0, i64 %1, i64 %2, i64 %3, i64 %4, i64 %5, i64 %6, i64 %7, i64 %8, ...) {
 ; ARM64-LABEL: <f>:
-; ARM64:         sub sp, sp, #0x1a0
+; ARM64:         sub sp, sp, #0x190
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
@@ -22,9 +22,8 @@ define void @f(i64 %0, i64 %1, i64 %2, i64 %3, i64 %4, i64 %5, i64 %6, i64 %7, i
 ; ARM64-NEXT:    stp q2, q3, [sp, #0x100]
 ; ARM64-NEXT:    stp q4, q5, [sp, #0x120]
 ; ARM64-NEXT:    stp q6, q7, [sp, #0x140]
-; ARM64-NEXT:    add x8, sp, #0x1a0
+; ARM64-NEXT:    add x8, sp, #0x190
 ; ARM64-NEXT:    ldr x0, [x8]
-; ARM64-NEXT:    str x0, [x29, #0x190]
 ; ARM64-NEXT:    add x8, x8, #0x8
 ; ARM64-NEXT:    str x8, [x29, #0x160]
 ; ARM64-NEXT:    add x0, x29, #0x170
@@ -39,7 +38,7 @@ define void @f(i64 %0, i64 %1, i64 %2, i64 %3, i64 %4, i64 %5, i64 %6, i64 %7, i
 ; ARM64-NEXT:    mov x1, #0xffffff80 // =4294967168
 ; ARM64-NEXT:    str w1, [x0, #0x1c]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0x1a0
+; ARM64-NEXT:    add sp, sp, #0x190
 ; ARM64-NEXT:    ret
   %10 = alloca %struct.__va_list, align 8
   call void @llvm.va_start.p0(ptr nonnull %10)

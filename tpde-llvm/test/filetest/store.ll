@@ -1396,17 +1396,15 @@ define void @store_struct_i32_i32_i32_i32_i32_i32(ptr %a, %struct.i32_i32_i32_i3
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x50
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    mov eax, dword ptr [rbp + 0x10]
-; X64-NEXT:    mov dword ptr [rbp - 0x3c], eax
 ; X64-NEXT:    mov dword ptr [rdi], esi
 ; X64-NEXT:    mov dword ptr [rdi + 0x4], edx
 ; X64-NEXT:    mov dword ptr [rdi + 0x8], ecx
 ; X64-NEXT:    mov dword ptr [rdi + 0xc], r8d
 ; X64-NEXT:    mov dword ptr [rdi + 0x10], r9d
-; X64-NEXT:    mov eax, dword ptr [rbp - 0x3c]
 ; X64-NEXT:    mov dword ptr [rdi + 0x14], eax
-; X64-NEXT:    add rsp, 0x50
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;

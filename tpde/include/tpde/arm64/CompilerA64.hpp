@@ -653,8 +653,6 @@ template <typename Adaptor,
 void CallingConv::handle_func_args(
     CompilerA64<Adaptor, Derived, BaseTy, Config> *compiler) const noexcept {
   using IRValueRef = typename Adaptor::IRValueRef;
-  using ScratchReg =
-      typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ScratchReg;
   using ValuePartRef =
       typename CompilerA64<Adaptor, Derived, BaseTy, Config>::ValuePartRef;
 
@@ -686,6 +684,8 @@ void CallingConv::handle_func_args(
 
   u32 arg_idx = 0;
   for (const IRValueRef arg : compiler->adaptor->cur_args()) {
+    auto arg_ref = compiler->result_ref(arg);
+
     if (compiler->adaptor->cur_arg_is_byval(arg_idx)) {
       const u32 size = compiler->adaptor->cur_arg_byval_size(arg_idx);
       const u32 align = compiler->adaptor->cur_arg_byval_align(arg_idx);
@@ -697,11 +697,8 @@ void CallingConv::handle_func_args(
 
       const auto stack_reg = stack_off_reg();
 
-      // need to use a ScratchReg here since otherwise the ValuePartRef
-      // could allocate one of the argument registers
-      auto [_, arg_ref] = compiler->result_ref_single(arg);
-      // TODO: multiple arguments?
-      const auto res_reg = arg_ref.alloc_reg(arg_regs_mask());
+      ValuePartRef arg_part = arg_ref.part(0);
+      const auto res_reg = arg_part.alloc_reg(arg_regs_mask());
       ASMC(compiler, ADDxi, res_reg, stack_reg, frame_off);
 
       frame_off += util::align_up(size, 8);
@@ -709,12 +706,11 @@ void CallingConv::handle_func_args(
       continue;
     }
 
-    const auto parts = compiler->derived()->val_parts(arg);
-    const u32 part_count = parts.count();
+    const u32 part_count = arg_ref.assignment()->part_count;
     if (compiler->adaptor->cur_arg_is_sret(arg_idx)) {
       if (auto target_reg = sret_reg(); target_reg) {
         assert(part_count == 1 && "sret must be single-part");
-        compiler->result_ref(arg).part(0).set_value_reg(*target_reg);
+        arg_ref.part(0).set_value_reg(*target_reg);
         ++arg_idx;
         continue;
       }
@@ -739,13 +735,10 @@ void CallingConv::handle_func_args(
       }
     }
 
-    auto arg_ref = compiler->result_ref(arg);
     for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
       auto part_ref = arg_ref.part(part_idx);
-      auto ap = part_ref.assignment();
-      unsigned size = ap.part_size();
-      RegBank bank = parts.reg_bank(part_idx);
-      ScratchReg scratch{compiler};
+      RegBank bank = part_ref.bank();
+      unsigned size = part_ref.part_size();
 
       if (bank == Config::GP_BANK) {
         if (scalar_reg_count < gp_regs.size()) {
@@ -753,8 +746,7 @@ void CallingConv::handle_func_args(
         } else {
           const auto stack_reg = stack_off_reg();
 
-          AsmReg dst = ap.fixed_assignment() ? AsmReg{ap.full_reg_id()}
-                                             : scratch.alloc(bank);
+          AsmReg dst = part_ref.alloc_reg();
           if (size <= 1) {
             ASMC(compiler, LDRBu, dst, stack_reg, frame_off);
           } else if (size <= 2) {
@@ -764,14 +756,6 @@ void CallingConv::handle_func_args(
           } else {
             assert(size <= 8 && "gp arg size > 8");
             ASMC(compiler, LDRxu, dst, stack_reg, frame_off);
-          }
-          if (ap.fixed_assignment()) {
-            ap.set_modified(true);
-          } else {
-            // TODO(ts): do we need to spill here?
-            compiler->allocate_spill_slot(ap);
-            compiler->spill_reg(dst, ap.frame_off(), size);
-            ap.set_stack_valid();
           }
           frame_off += 8;
         }
@@ -784,8 +768,7 @@ void CallingConv::handle_func_args(
           uint64_t word_size = size <= 8 ? 8 : 16;
           frame_off = util::align_up(frame_off, word_size);
 
-          AsmReg dst = ap.fixed_assignment() ? AsmReg{ap.full_reg_id()}
-                                             : scratch.alloc(bank);
+          AsmReg dst = part_ref.alloc_reg();
           if (size <= 4) {
             ASMC(compiler, LDRsu, dst, stack_reg, frame_off);
           } else if (size <= 8) {
@@ -794,14 +777,6 @@ void CallingConv::handle_func_args(
             assert(size <= 16);
             ASMC(compiler, LDRqu, dst, stack_reg, frame_off);
           }
-          if (ap.fixed_assignment()) {
-            ap.set_modified(true);
-          } else {
-            compiler->allocate_spill_slot(ap);
-            compiler->spill_reg(dst, ap.frame_off(), size);
-            ap.set_stack_valid();
-          }
-
           frame_off += word_size;
         }
       }
