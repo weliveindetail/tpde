@@ -310,7 +310,10 @@ void LLVMCompilerArm64::insert_element(ValuePart &vec_ref,
                                        unsigned idx,
                                        LLVMBasicValType ty,
                                        GenericValuePart el) noexcept {
-  AsmReg vec_reg = vec_ref.load_to_reg(this);
+  if (!vec_ref.has_reg()) {
+    vec_ref.load_to_reg(this);
+  }
+  AsmReg vec_reg = vec_ref.cur_reg();
   AsmReg src_reg = this->gval_as_reg(el);
   switch (ty) {
     using enum LLVMBasicValType;

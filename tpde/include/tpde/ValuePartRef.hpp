@@ -165,15 +165,16 @@ public:
 
   /// Allocate and lock a specific register for the value part, spilling the
   /// register if it is currently used (must not be fixed), *without* reloading
-  /// or copying the value into the new register. An existing register is
-  /// discarded. Value part must not be a fixed assignment.
+  /// or copying the value into the new register. The value must not be locked.
+  /// An existing assignment register is discarded. Value part must not be a
+  /// fixed assignment.
   void alloc_specific(CompilerBase *compiler, AsmReg reg) noexcept {
     alloc_specific_impl(compiler, reg, false);
   }
 
   /// Allocate, fill, and lock a register for the value part, reloading from
-  /// the stack or materializing the constant if necessary. Does nothing if a
-  /// register is already allocated.
+  /// the stack or materializing the constant if necessary. Requires that the
+  /// value is currently unlocked (i.e., has_reg() is false).
   AsmReg load_to_reg(CompilerBase *compiler) noexcept {
     return alloc_reg_impl(compiler, 0, /*reload=*/true);
   }
@@ -214,7 +215,10 @@ public:
   ValuePart into_temporary(CompilerBase *compiler) && noexcept {
     ValuePart res{bank()};
     res.set_value(compiler, std::move(*this));
-    res.load_to_reg(compiler);
+    if (!res.has_reg()) [[unlikely]] {
+      assert(res.is_const());
+      res.load_to_reg(compiler);
+    }
     return res;
   }
 
@@ -276,12 +280,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
         CompilerBase *compiler,
         u64 exclusion_mask,
         const bool reload) noexcept {
-  if (state.c.reg.valid()) {
-    // TODO: implement this if needed
-    assert((exclusion_mask & (1ull << state.c.reg.id())) == 0 &&
-           "moving temporary registers in alloc_reg is unsupported");
-    return state.c.reg;
-  }
+  assert(!state.c.reg.valid());
 
   RegBank bank;
   if (has_assignment()) {
@@ -352,6 +351,8 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePart::alloc_specific_impl(
         CompilerBase *compiler, AsmReg reg, const bool reload) noexcept {
+  assert(!state.c.reg.valid());
+
   if (has_assignment()) {
     auto ap = assignment();
     assert(!ap.fixed_assignment());
@@ -360,10 +361,6 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
       lock(compiler);
       return AsmReg{ap.full_reg_id()};
     }
-
-    unlock(compiler);
-  } else if (state.c.reg == reg) {
-    return state.c.reg;
   }
 
   auto &reg_file = compiler->register_file;

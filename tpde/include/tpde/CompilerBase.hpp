@@ -805,7 +805,11 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     return std::get<ScratchReg>(gv.state).cur_reg();
   }
   if (std::holds_alternative<ValuePartRef>(gv.state)) {
-    return std::get<ValuePartRef>(gv.state).load_to_reg();
+    auto &vpr = std::get<ValuePartRef>(gv.state);
+    if (vpr.has_reg()) {
+      return vpr.cur_reg();
+    }
+    return vpr.load_to_reg();
   }
   if (auto *expr = std::get_if<typename GenericValuePart::Expr>(&gv.state)) {
     if (expr->has_base() && !expr->has_index() && expr->disp == 0) {
