@@ -554,10 +554,8 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     auto *assignment = this->val_assignment(local_idx);
     if (!assignment) {
       assignment = this->allocate_assignment(1);
-      assignment->initialize(u32(local_idx),
-                             Config::PLATFORM_POINTER_SIZE,
-                             0,
-                             Config::PLATFORM_POINTER_SIZE);
+      assignment->initialize(
+          u32(local_idx), 1, 0, Config::PLATFORM_POINTER_SIZE);
       assignment->variable_ref = true;
       this->assignments.value_ptrs[u32(local_idx)] = assignment;
 
@@ -1087,10 +1085,7 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::
     variable_refs[cur_idx].alloca_frame_off = frame_off;
 
     auto *assignment = this->allocate_assignment_slow(1, true);
-    assignment->initialize(cur_idx++,
-                           Config::PLATFORM_POINTER_SIZE,
-                           0,
-                           Config::PLATFORM_POINTER_SIZE);
+    assignment->initialize(cur_idx++, 1, 0, Config::PLATFORM_POINTER_SIZE);
     assignment->variable_ref = true;
     this->assignments.value_ptrs[this->adaptor->val_local_idx(v)] = assignment;
 
@@ -3776,8 +3771,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
         ++num_phi_reads;
       }
     }
-
-    auto ap = AssignmentPartRef{a, 0};
     // no need to spill if only the phi-nodes in the (normal) successor read
     // the value
     if (a->references_left <= num_phi_reads &&
@@ -3789,17 +3782,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
 
     // spill
     // no need to spill fixed assignments
-    while (true) {
+    for (u32 idx = 0; idx < a->part_count; idx++) {
+      AssignmentPartRef ap{a, idx};
       if (!ap.fixed_assignment() && ap.register_valid()) {
         // this is the call result...
         assert(ap.modified());
         this->evict_reg(AsmReg{ap.full_reg_id()});
         spilled |= 1ull << ap.full_reg_id();
       }
-      if (!ap.has_next_part()) {
-        break;
-      }
-      ++ap.part;
     }
   };
   check_res_spill();

@@ -103,7 +103,7 @@ struct CompilerBase {
       u32 var_ref_custom_idx;
     };
 
-    u32 size;
+    u32 part_count;
 
     // we want tight packing and with this construct we get a base size of
     // 16 bytes for values with only one part (the majority)
@@ -130,8 +130,6 @@ struct CompilerBase {
         bool delay_free : 1;
 
         // TODO: get the type of parts from Derived
-        // note: the top bit of each part is reserved to indicate
-        // whether there is another part after this
         union {
           u16 first_part;
           u16 parts[GNU_ZERO];
@@ -140,9 +138,14 @@ struct CompilerBase {
     };
 
     void initialize(u32 frame_off,
-                    u32 size,
+                    u32 part_count,
                     u32 ref_count,
                     u16 max_part_size) noexcept;
+
+    u32 size() const noexcept {
+      assert(!variable_ref && "variable-ref has no allocation size");
+      return part_count * max_part_size;
+    }
   };
 
 #undef GNU_ZERO
@@ -358,9 +361,9 @@ namespace tpde {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValueAssignment::initialize(
-    u32 frame_off, u32 size, u32 ref_count, u16 max_part_size) noexcept {
+    u32 frame_off, u32 part_count, u32 ref_count, u16 max_part_size) noexcept {
   this->frame_off = frame_off;
-  this->size = size;
+  this->part_count = part_count;
   this->references_left = ref_count;
   this->max_part_size = max_part_size;
 }
@@ -524,10 +527,6 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
     assert(size > 0);
     max_part_size = std::max(max_part_size, size);
     ap.set_part_size(size);
-
-    if (part_idx != part_count - 1) {
-      ap.set_has_next_part(true);
-    }
   }
 
   const auto &liveness = analyzer.liveness_info(static_cast<u32>(local_idx));
@@ -579,7 +578,6 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
     }
   }
 
-  const auto size = max_part_size * part_count;
   const auto last_full = liveness.last_full;
   const auto ref_count = liveness.ref_count;
 
@@ -590,7 +588,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
 #endif
   assignment->variable_ref = false;
   assignment->delay_free = last_full;
-  assignment->size = size;
+  assignment->part_count = part_count;
   assignment->frame_off = 0;
   assignment->references_left = ref_count;
 }
@@ -604,14 +602,12 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
   ValueAssignment *assignment =
       assignments.value_ptrs[static_cast<u32>(local_idx)];
   const auto is_var_ref = assignment->variable_ref;
+  const u32 part_count = assignment->part_count;
 
   // free registers
-  u32 part_idx = 0;
-  bool has_next_part = true;
-  while (has_next_part) {
+  for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
     auto ap = AssignmentPartRef{assignment, part_idx};
-    has_next_part = ap.has_next_part();
-    if (ap.fixed_assignment()) {
+    if (ap.fixed_assignment()) [[unlikely]] {
       const auto reg = AsmReg{ap.full_reg_id()};
       assert(register_file.is_fixed(reg));
       assert(register_file.reg_local_idx(reg) == local_idx);
@@ -624,7 +620,6 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
       assert(!register_file.is_fixed(reg));
       register_file.unmark_used(reg);
     }
-    ++part_idx;
   }
 
 #ifdef TPDE_ASSERTS
@@ -636,10 +631,10 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
 
   // variable references do not have a stack slot
   if (!is_var_ref && assignment->frame_off != 0) {
-    free_stack_slot(assignment->frame_off, assignment->size);
+    free_stack_slot(assignment->frame_off, assignment->size());
   }
 
-  deallocate_assignment(part_idx, local_idx);
+  deallocate_assignment(part_count, local_idx);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -845,7 +840,7 @@ void CompilerBase<Adaptor, Derived, Config>::allocate_spill_slot(
   assert(!ap.variable_ref() && "cannot allocate spill slot for variable ref");
   if (ap.assignment->frame_off == 0) {
     assert(!ap.stack_valid() && "stack-valid set without spill slot");
-    ap.assignment->frame_off = allocate_stack_slot(ap.assignment->size);
+    ap.assignment->frame_off = allocate_stack_slot(ap.assignment->size());
     assert(ap.assignment->frame_off != 0);
   }
 }
@@ -1369,8 +1364,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
         // use a stack slot to store the temporaries
         auto *assignment = val_assignment(
             static_cast<ValLocalIdx>(adaptor->val_local_idx(phi_val)));
-        cur_tmp_slot = allocate_stack_slot(assignment->size);
-        cur_tmp_slot_size = assignment->size;
+        cur_tmp_slot_size = assignment->size();
+        cur_tmp_slot = allocate_stack_slot(cur_tmp_slot_size);
 
         for (u32 i = 0; i < cur_tmp_part_count; ++i) {
           auto ap = AssignmentPartRef{assignment, i};
@@ -1530,7 +1525,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
       const auto frame_off = allocate_stack_slot(size);
 
       assignment->initialize(frame_off,
-                             size,
+                             1,
                              analyzer.liveness_info(local_idx).ref_count,
                              Config::PLATFORM_POINTER_SIZE);
       assignment->variable_ref = true;

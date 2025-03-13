@@ -12,10 +12,9 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
 
   // note for how parts are structured:
   // |15|14|13|12|11|10|09|08|07|06|05|04|03|02|01|00|
-  // |NP|   PS   |RV|  |IM|FA|  bank  |    reg_id    |
+  // |  |   PS   |RV|  |IM|FA|  bank  |    reg_id    |
   //                         |      full_reg_id      |
   //
-  // NP: Is there a part following this one
   // PS: 1 << PS = part size (TODO(ts): maybe swap with NP so that it can be
   //     extracted easier?)
   // RV: Register Valid
@@ -113,18 +112,6 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
     auto data = assignment->parts[part] & ~(0b111 << 12);
     data |= (shift << 12);
     assignment->parts[part] = data;
-  }
-
-  [[nodiscard]] bool has_next_part() const noexcept {
-    return (assignment->parts[part] & (1u << 15)) != 0;
-  }
-
-  void set_has_next_part(const bool val) noexcept {
-    if (val) {
-      assignment->parts[part] |= (1u << 15);
-    } else {
-      assignment->parts[part] &= ~(1u << 15);
-    }
   }
 
   [[nodiscard]] u32 frame_off() const noexcept {
