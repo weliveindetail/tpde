@@ -1428,7 +1428,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
   const auto *load = llvm::cast<llvm::LoadInst>(inst);
   auto [_, ptr_ref] = this->val_ref_single(load->getPointerOperand());
   if (ptr_ref.has_assignment() && ptr_ref.assignment().variable_ref()) {
-    const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
+    const auto ref_idx = ptr_ref.assignment().assignment->var_ref_custom_idx;
     if (this->variable_refs[ref_idx].alloca) {
       GenericValuePart addr = derived()->create_addr_for_alloca(ref_idx);
       return compile_load_generic(load, std::move(addr));
@@ -1625,7 +1625,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
   const auto *store = llvm::cast<llvm::StoreInst>(inst);
   auto [_, ptr_ref] = this->val_ref_single(store->getPointerOperand());
   if (ptr_ref.has_assignment() && ptr_ref.assignment().variable_ref()) {
-    const auto ref_idx = ptr_ref.state.v.assignment->var_ref_custom_idx;
+    const auto ref_idx = ptr_ref.assignment().assignment->var_ref_custom_idx;
     if (this->variable_refs[ref_idx].alloca) {
       GenericValuePart addr = derived()->create_addr_for_alloca(ref_idx);
       return compile_store_generic(store, std::move(addr));
@@ -1751,7 +1751,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     if (op.is_shift()) {
       ValuePartRef shift_amt = rhs.part(0);
       if (shift_amt.is_const()) {
-        imm1 = shift_amt.state.c.data[0] & 0b111'1111; // amt
+        imm1 = shift_amt.const_data()[0] & 0b111'1111; // amt
         if (imm1 < 64) {
           imm2 = (64 - imm1) & 0b11'1111; // iamt
           if (op == IntBinaryOp::shl) {

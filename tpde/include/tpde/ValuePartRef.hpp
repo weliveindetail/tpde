@@ -10,7 +10,8 @@
 namespace tpde {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-struct CompilerBase<Adaptor, Derived, Config>::ValuePart {
+class CompilerBase<Adaptor, Derived, Config>::ValuePart {
+private:
   struct ConstantData {
     AsmReg reg = AsmReg::make_invalid();
     bool has_assignment = false;
@@ -33,6 +34,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePart {
     ValueData v;
   } state;
 
+public:
   ValuePart() noexcept : state{ConstantData{.data = nullptr}} {}
 
   ValuePart(RegBank bank) noexcept
@@ -268,6 +270,11 @@ public:
 
   u32 part_size() const noexcept {
     return !has_assignment() ? state.c.size : assignment().part_size();
+  }
+
+  std::span<const u64> const_data() const noexcept {
+    assert(is_const());
+    return {state.c.data, (state.c.size + 7) / 8};
   }
 
   /// Reset the reference to the value part

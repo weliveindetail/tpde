@@ -311,7 +311,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                 if (ap.register_valid()) {
                     assert(AsmReg{ap.full_reg_id()} != reg);
                 }
-            } else if (op_ref.state.c.reg == reg) {
+            } else if (op_ref.has_reg() && op_ref.cur_reg() == reg) {
                 assert(0 && "not implemented");
             }
             continue;

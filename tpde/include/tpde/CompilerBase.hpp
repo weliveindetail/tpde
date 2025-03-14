@@ -191,7 +191,7 @@ struct CompilerBase {
 
   struct ScratchReg;
   struct AssignmentPartRef;
-  struct ValuePart;
+  class ValuePart;
   struct ValuePartRef;
   struct ValueRef;
   struct GenericValuePart;

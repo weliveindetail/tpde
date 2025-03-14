@@ -113,12 +113,12 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
 
   u32 imm_size() const noexcept {
     assert(is_imm());
-    return val_ref().state.c.size;
+    return val_ref().part_size();
   }
 
   [[nodiscard]] u64 imm64() const noexcept {
-    assert(is_imm() && val_ref().state.c.size <= 8);
-    return val_ref().state.c.data[0];
+    assert(imm_size() <= 8);
+    return val_ref().const_data()[0];
   }
 
   [[nodiscard]] const ValuePartRef &val_ref() const noexcept {
