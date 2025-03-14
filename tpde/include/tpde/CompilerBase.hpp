@@ -567,7 +567,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
         TPDE_LOG_TRACE("Assigning fixed assignment to reg {} for value {}",
                        reg.id(),
                        static_cast<u32>(local_idx));
-        ap.set_full_reg_id(reg.id());
+        ap.set_reg(reg);
         ap.set_register_valid(true);
         ap.set_fixed_assignment(true);
         register_file.mark_used(reg, local_idx, 0);
@@ -608,7 +608,7 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
   for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
     auto ap = AssignmentPartRef{assignment, part_idx};
     if (ap.fixed_assignment()) [[unlikely]] {
-      const auto reg = AsmReg{ap.full_reg_id()};
+      const auto reg = ap.get_reg();
       assert(register_file.is_fixed(reg));
       assert(register_file.reg_local_idx(reg) == local_idx);
       assert(register_file.reg_part(reg) == part_idx);
@@ -616,7 +616,7 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
       register_file.dec_lock_count_must_zero(reg); // release lock for fixed reg
       register_file.unmark_used(reg);
     } else if (ap.register_valid()) {
-      const auto reg = AsmReg{ap.full_reg_id()};
+      const auto reg = ap.get_reg();
       assert(!register_file.is_fixed(reg));
       register_file.unmark_used(reg);
     }
@@ -756,7 +756,7 @@ void CompilerBase<Adaptor, Derived, Config>::set_value(
   auto reg = scratch.cur_reg();
 
   if (ap.fixed_assignment()) {
-    auto cur_reg = AsmReg{ap.full_reg_id()};
+    auto cur_reg = ap.get_reg();
     assert(register_file.is_used(cur_reg));
     assert(register_file.is_fixed(cur_reg));
     assert(register_file.reg_local_idx(cur_reg) == val_ref.local_idx());
@@ -771,7 +771,7 @@ void CompilerBase<Adaptor, Derived, Config>::set_value(
   }
 
   if (ap.register_valid()) {
-    auto cur_reg = AsmReg{ap.full_reg_id()};
+    auto cur_reg = ap.get_reg();
     if (cur_reg.id() == reg.id()) {
       ap.set_modified(true);
       return;
@@ -788,7 +788,7 @@ void CompilerBase<Adaptor, Derived, Config>::set_value(
   scratch.force_set_reg(AsmReg::make_invalid());
   register_file.unmark_fixed(reg);
   register_file.update_reg_assignment(reg, val_ref.local_idx(), val_ref.part());
-  ap.set_full_reg_id(reg.id());
+  ap.set_reg(reg);
   ap.set_register_valid(true);
   ap.set_modified(true);
 }
@@ -851,8 +851,7 @@ void CompilerBase<Adaptor, Derived, Config>::spill(
   if (!ap.stack_valid() && !ap.variable_ref()) {
     assert(ap.register_valid() && "cannot spill uninitialized assignment part");
     allocate_spill_slot(ap);
-    derived()->spill_reg(
-        AsmReg{ap.full_reg_id()}, ap.frame_off(), ap.part_size());
+    derived()->spill_reg(ap.get_reg(), ap.frame_off(), ap.part_size());
     ap.set_stack_valid();
   }
 }
@@ -863,7 +862,7 @@ void CompilerBase<Adaptor, Derived, Config>::evict(
   assert(ap.register_valid());
   derived()->spill(ap);
   ap.set_register_valid(false);
-  register_file.unmark_used(Reg{ap.full_reg_id()});
+  register_file.unmark_used(ap.get_reg());
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -875,7 +874,7 @@ void CompilerBase<Adaptor, Derived, Config>::evict_reg(Reg reg) noexcept {
   auto part = register_file.reg_part(reg);
   AssignmentPartRef evict_part{val_assignment(local_idx), part};
   assert(evict_part.register_valid());
-  assert(Reg{evict_part.full_reg_id()} == reg);
+  assert(evict_part.get_reg() == reg);
   derived()->spill(evict_part);
   evict_part.set_register_valid(false);
   register_file.unmark_used(reg);
@@ -890,7 +889,7 @@ void CompilerBase<Adaptor, Derived, Config>::free_reg(Reg reg) noexcept {
   auto part = register_file.reg_part(reg);
   AssignmentPartRef ap{val_assignment(local_idx), part};
   assert(ap.register_valid());
-  assert(Reg{ap.full_reg_id()} == reg);
+  assert(ap.get_reg() == reg);
   assert(!ap.modified() || ap.variable_ref());
   ap.set_register_valid(false);
   register_file.unmark_used(reg);
@@ -979,7 +978,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
       for (u32 i = 0; i < part_count; ++i) {
         auto ap = AssignmentPartRef{assignment, i};
         if (ap.register_valid()) {
-          ++phi_ref_count[ap.full_reg_id()];
+          ++phi_ref_count[ap.get_reg().id()];
         }
       }
     }
@@ -1126,7 +1125,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
             self->derived()->load_from_stack(
                 cur_reg, ap.frame_off(), ap.part_size());
           }
-          ap.set_full_reg_id(cur_reg.id());
+          ap.set_reg(cur_reg);
           ap.set_register_valid(true);
           ap.set_modified(was_modified);
           self->register_file.mark_used(cur_reg, local_idx, part);
@@ -1213,7 +1212,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
         val_vpr.reload_into_specific_fixed(reg);
       } else if (val_vpr.assignment().register_valid() ||
                  val_vpr.assignment().fixed_assignment()) {
-        reg = AsmReg{val_vpr.assignment().full_reg_id()};
+        reg = val_vpr.assignment().get_reg();
       } else {
         reg = val_vpr.reload_into_specific_fixed(
             this, scratch.alloc_from_bank(parts.reg_bank(i)));
@@ -1221,7 +1220,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
 
       AssignmentPartRef phi_ap{phi_vr.assignment(), i};
       if (phi_ap.fixed_assignment()) {
-        derived()->mov(AsmReg{phi_ap.full_reg_id()}, reg, phi_ap.part_size());
+        derived()->mov(phi_ap.get_reg(), reg, phi_ap.part_size());
       } else {
         allocate_spill_slot(phi_ap);
         derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
@@ -1229,7 +1228,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       }
 
       if (phi_ap.register_valid() && !phi_ap.fixed_assignment()) {
-        auto cur_reg = AsmReg{phi_ap.full_reg_id()};
+        auto cur_reg = phi_ap.get_reg();
         assert(!register_file.is_fixed(cur_reg));
         register_file.unmark_used(cur_reg);
         phi_ap.set_register_valid(false);
@@ -1312,8 +1311,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       AssignmentPartRef ap{phi_vr.assignment(), 0};
       assert(!tmp_reg1.cur_reg.invalid());
       if (ap.fixed_assignment()) {
-        derived()->mov(
-            AsmReg{ap.full_reg_id()}, tmp_reg1.cur_reg, ap.part_size());
+        derived()->mov(ap.get_reg(), tmp_reg1.cur_reg, ap.part_size());
       } else {
         derived()->spill_reg(tmp_reg1.cur_reg, ap.frame_off(), ap.part_size());
       }
@@ -1378,7 +1376,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
           }
 
           if (ap.register_valid()) {
-            auto reg = AsmReg{ap.full_reg_id()};
+            auto reg = ap.get_reg();
             derived()->spill_reg(reg, slot_off, ap.part_size());
           } else {
             auto reg = tmp_reg1.alloc_from_bank(ap.bank());

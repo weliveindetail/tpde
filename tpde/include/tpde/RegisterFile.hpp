@@ -12,8 +12,6 @@ namespace tpde {
 struct Reg {
   u8 reg_id;
 
-  explicit constexpr Reg(const u8 id) noexcept : reg_id(id) {}
-
   explicit constexpr Reg(const u64 id) noexcept : reg_id(static_cast<u8>(id)) {
     assert(id <= 255);
   }

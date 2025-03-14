@@ -1937,7 +1937,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
   } else if (std::holds_alternative<ValuePartRef>(target)) {
     auto &ref = std::get<ValuePartRef>(target);
     if (ref.assignment().register_valid()) {
-      except_mask = (1ull << ref.assignment().full_reg_id());
+      except_mask = (1ull << ref.assignment().get_reg().id());
     }
   }
   for (const auto &reg : arg_regs) {

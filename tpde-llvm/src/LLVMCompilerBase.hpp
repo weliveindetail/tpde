@@ -3787,8 +3787,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
       if (!ap.fixed_assignment() && ap.register_valid()) {
         // this is the call result...
         assert(ap.modified());
-        this->evict_reg(AsmReg{ap.full_reg_id()});
-        spilled |= 1ull << ap.full_reg_id();
+        this->evict_reg(ap.get_reg());
+        spilled |= 1ull << ap.get_reg().id();
       }
     }
   };

@@ -46,13 +46,13 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
     assignment->parts[part] = data;
   }
 
-  [[nodiscard]] u8 full_reg_id() const noexcept {
-    return assignment->parts[part] & 0xFF;
+  [[nodiscard]] Reg get_reg() const noexcept {
+    return Reg(assignment->parts[part] & 0xFF);
   }
 
-  void set_full_reg_id(const u8 id) noexcept {
-    assert(bank().id() == ((id >> 5) & 0b111));
-    assignment->parts[part] = (assignment->parts[part] & 0xFF00) | id;
+  void set_reg(Reg reg) noexcept {
+    assert(bank().id() == ((reg.id() >> 5) & 0b111));
+    assignment->parts[part] = (assignment->parts[part] & 0xFF00) | reg.id();
   }
 
   [[nodiscard]] bool modified() const noexcept {

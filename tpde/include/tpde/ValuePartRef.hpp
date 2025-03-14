@@ -115,7 +115,7 @@ public:
       return false;
     }
     auto ap = assignment();
-    return ap.register_valid() && AsmReg{ap.full_reg_id()} == reg;
+    return ap.register_valid() && ap.get_reg() == reg;
   }
 
   bool has_reg() const noexcept { return state.v.reg.valid(); }
@@ -321,7 +321,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   if (has_assignment()) {
     reg_file.mark_used(reg, state.v.local_idx, state.v.part);
     auto ap = assignment();
-    ap.set_full_reg_id(reg.id());
+    ap.set_reg(reg);
     ap.set_register_valid(true);
 
     // We must lock the value here, otherwise, load_from_stack could evict the
@@ -364,9 +364,9 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     auto ap = assignment();
     assert(!ap.fixed_assignment());
 
-    if (ap.register_valid() && ap.full_reg_id() == reg.id()) {
+    if (ap.register_valid() && ap.get_reg() == reg) {
       lock(compiler);
-      return AsmReg{ap.full_reg_id()};
+      return ap.get_reg();
     }
   }
 
@@ -381,10 +381,10 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     auto ap = assignment();
     auto old_reg = AsmReg::make_invalid();
     if (ap.register_valid()) {
-      old_reg = AsmReg{ap.full_reg_id()};
+      old_reg = ap.get_reg();
     }
 
-    ap.set_full_reg_id(reg.id());
+    ap.set_reg(reg);
     ap.set_register_valid(true);
 
     // We must lock the value here, otherwise, load_from_stack could evict the
@@ -455,12 +455,12 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
   auto ap = assignment();
   if (ap.register_valid()) {
-    if (ap.full_reg_id() == reg.id()) {
+    if (ap.get_reg() == reg) {
       compiler->evict_reg(reg);
       return reg;
     }
 
-    compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()}, ap.part_size());
+    compiler->derived()->mov(reg, ap.get_reg(), ap.part_size());
   } else {
     assert(!ap.fixed_assignment());
     if (ap.variable_ref()) {
@@ -499,9 +499,9 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
   auto ap = assignment();
   if (ap.register_valid()) {
-    assert(ap.full_reg_id() != reg.id());
+    assert(ap.get_reg() != reg);
 
-    compiler->derived()->mov(reg, AsmReg{ap.full_reg_id()}, ap.part_size());
+    compiler->derived()->mov(reg, ap.get_reg(), ap.part_size());
   } else {
     assert(!ap.fixed_assignment());
     if (ap.variable_ref()) {
@@ -527,10 +527,8 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::lock(
   auto ap = assignment();
   assert(ap.register_valid());
 
-  const auto reg = AsmReg{ap.full_reg_id()};
-  compiler->register_file.mark_fixed(reg);
+  const auto reg = ap.get_reg();
   compiler->register_file.inc_lock_count(reg);
-
   state.v.reg = reg;
 }
 
@@ -597,14 +595,14 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value(
   if (ap.register_valid()) {
     // If we currently have a register, drop it
     unlock(compiler);
-    AsmReg cur_reg{ap.full_reg_id()};
+    auto cur_reg = ap.get_reg();
     assert(!reg_file.is_fixed(cur_reg));
     reg_file.unmark_used(cur_reg);
   }
 
   AsmReg new_reg = other.salvage_keep_used(compiler);
   reg_file.update_reg_assignment(new_reg, local_idx(), part());
-  ap.set_full_reg_id(new_reg.id());
+  ap.set_reg(new_reg);
   ap.set_register_valid(true);
   ap.set_modified(true);
 }
@@ -633,7 +631,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value_reg(
 
   if (ap.fixed_assignment()) {
     // For fixed assignments, copy the value into the fixed register.
-    auto cur_reg = AsmReg{ap.full_reg_id()};
+    auto cur_reg = ap.get_reg();
     assert(reg_file.is_used(cur_reg));
     assert(reg_file.is_fixed(cur_reg));
     assert(reg_file.reg_local_idx(cur_reg) == local_idx());
@@ -651,7 +649,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value_reg(
 
   reg_file.mark_used(value_reg, local_idx(), part());
   reg_file.mark_clobbered(value_reg);
-  ap.set_full_reg_id(value_reg.id());
+  ap.set_reg(value_reg);
   ap.set_register_valid(true);
   ap.set_modified(true);
 }
@@ -680,7 +678,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
   auto ap = assignment();
   assert(ap.register_valid());
-  auto cur_reg = AsmReg{ap.full_reg_id()};
+  auto cur_reg = ap.get_reg();
 
   unlock(compiler);
   assert(ap.fixed_assignment() || !compiler->register_file.is_fixed(cur_reg));

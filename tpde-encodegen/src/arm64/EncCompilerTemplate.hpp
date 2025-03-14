@@ -266,7 +266,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                 assert(!op_ref.has_reg());
                 const auto ap = op_ref.assignment();
                 if (ap.register_valid()) {
-                    assert(AsmReg{ap.full_reg_id()} != reg);
+                    assert(ap.get_reg() != reg);
                 }
             }
             continue;
