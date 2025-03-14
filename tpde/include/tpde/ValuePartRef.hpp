@@ -520,10 +520,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePart::lock(
     CompilerBase *compiler) noexcept {
   assert(has_assignment());
-  if (state.v.reg.valid()) {
-    return;
-  }
-
+  assert(!has_reg());
   auto ap = assignment();
   assert(ap.register_valid());
 
