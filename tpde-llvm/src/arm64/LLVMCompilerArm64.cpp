@@ -534,8 +534,8 @@ bool LLVMCompilerArm64::compile_call_inner(
   }
 
   if (!call->getType()->isVoidTy()) {
-    const auto res_part_count = this->adaptor->val_part_count(call);
     res = this->result_ref(call);
+    const auto res_part_count = res.assignment()->part_count;
     for (u32 part_idx = 0; part_idx < res_part_count; ++part_idx) {
       results.push_back(res.part(part_idx));
     }

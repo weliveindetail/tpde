@@ -3056,12 +3056,9 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_freeze(
     const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   // essentially a no-op
-  auto *src_val = inst->getOperand(0);
-
-  const auto part_count = this->adaptor->val_part_count(src_val);
-
-  auto src_ref = this->val_ref(src_val);
+  auto src_ref = this->val_ref(inst->getOperand(0));
   auto res_ref = this->result_ref(inst);
+  const auto part_count = res_ref.assignment()->part_count;
   for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
     res_ref.part(part_idx).set_value(src_ref.part(part_idx));
   }

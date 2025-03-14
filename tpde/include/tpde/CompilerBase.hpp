@@ -974,7 +974,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
       if (!assignment) {
         continue;
       }
-      u32 part_count = derived()->val_parts(inc_val).count();
+      u32 part_count = assignment->part_count;
       for (u32 i = 0; i < part_count; ++i) {
         auto ap = AssignmentPartRef{assignment, i};
         if (ap.register_valid()) {
@@ -1197,14 +1197,12 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
     // TODO(ts): if phi==incoming_val, we should be able to elide the move
     // even if the phi is in a fixed register, no?
 
-    const auto parts = derived()->val_parts(incoming_val);
-    u32 part_count = parts.count();
-    assert(part_count > 0);
     auto phi_vr = derived()->result_ref(phi);
     auto val_vr = derived()->val_ref(incoming_val);
+    u32 part_count = phi_vr.assignment()->part_count;
     for (u32 i = 0; i < part_count; ++i) {
-      // TODO(ts): just have this outside the loop and change the part
-      // index? :P
+      AssignmentPartRef phi_ap{phi_vr.assignment(), i};
+
       AsmReg reg{};
       ValuePartRef val_vpr = val_vr.part(i);
       if (val_vpr.is_const()) {
@@ -1215,10 +1213,9 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
         reg = val_vpr.assignment().get_reg();
       } else {
         reg = val_vpr.reload_into_specific_fixed(
-            this, scratch.alloc_from_bank(parts.reg_bank(i)));
+            this, scratch.alloc_from_bank(phi_ap.bank()));
       }
 
-      AssignmentPartRef phi_ap{phi_vr.assignment(), i};
       if (phi_ap.fixed_assignment()) {
         derived()->mov(phi_ap.get_reg(), reg, phi_ap.part_size());
       } else {
@@ -1355,13 +1352,13 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       assert(cur_tmp_val == Adaptor::INVALID_VALUE_REF);
 
       auto phi_val = nodes[cur_idx].val;
-      cur_tmp_part_count = derived()->val_parts(phi_val).count();
+      auto *assignment = val_assignment(
+          static_cast<ValLocalIdx>(adaptor->val_local_idx(phi_val)));
+      cur_tmp_part_count = assignment->part_count;
       cur_tmp_val = phi_val;
 
       if (cur_tmp_part_count > 2) {
         // use a stack slot to store the temporaries
-        auto *assignment = val_assignment(
-            static_cast<ValLocalIdx>(adaptor->val_local_idx(phi_val)));
         cur_tmp_slot_size = assignment->size();
         cur_tmp_slot = allocate_stack_slot(cur_tmp_slot_size);
 
