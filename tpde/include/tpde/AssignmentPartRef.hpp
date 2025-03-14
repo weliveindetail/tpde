@@ -114,15 +114,11 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
     assignment->parts[part] = data;
   }
 
-  [[nodiscard]] u32 frame_off() const noexcept {
+  [[nodiscard]] i32 frame_off() const noexcept {
     assert(!variable_ref());
     assert(assignment->frame_off != 0 &&
            "attempt to access uninitialized stack slot");
-    if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
-      return assignment->frame_off - assignment->max_part_size * part;
-    } else {
-      return assignment->frame_off + assignment->max_part_size * part;
-    }
+    return assignment->frame_off + part_off();
   }
 
   [[nodiscard]] u32 part_off() const noexcept {

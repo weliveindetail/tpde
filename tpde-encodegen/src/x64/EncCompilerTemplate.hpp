@@ -170,7 +170,7 @@ std::optional<FeMem> EncodeCompiler<Adaptor, Derived, BaseTy, Config>::
         return std::nullopt;
     if (ap.frame_off() & (align - 1))
         return std::nullopt;
-    return FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(ap.frame_off()));
+    return FE_MEM(FE_BP, 0, FE_NOREG, ap.frame_off());
 }
 
 template <typename Adaptor,

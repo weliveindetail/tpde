@@ -82,7 +82,7 @@ struct LLVMCompilerBase : public LLVMCompiler,
   struct VarRefInfo {
     IRValueRef val;
     bool alloca;
-    u32 alloca_frame_off;
+    i32 alloca_frame_off;
   };
 
   struct IntBinaryOp {

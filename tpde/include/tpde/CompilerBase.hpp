@@ -66,10 +66,10 @@ struct CompilerBase {
     /// Free-Lists for 1/2/4/8/16 sized allocations
     // TODO(ts): make the allocations for 4/8 different from the others
     // since they are probably the one's most used?
-    util::SmallVector<u32, 16> fixed_free_lists[5] = {};
+    util::SmallVector<i32, 16> fixed_free_lists[5] = {};
     /// Free-Lists for all other sizes
     // TODO(ts): think about which data structure we want here
-    std::unordered_map<u32, std::vector<u32>> dynamic_free_lists{};
+    std::unordered_map<u32, std::vector<i32>> dynamic_free_lists{};
   } stack = {};
 
   typename Analyzer<Adaptor>::BlockIndex cur_block_idx;
@@ -96,7 +96,8 @@ struct CompilerBase {
   // compile-time
   struct ValueAssignment {
     union {
-      u32 frame_off;
+      /// Offset from the frame pointer.
+      i32 frame_off;
       /// For variable-references, frame_off is unused so it can be used
       /// to store an index into a custom structure in case there is
       /// special handling for variable references
@@ -273,7 +274,7 @@ protected:
   void free_assignment(ValLocalIdx local_idx) noexcept;
 
 public:
-  u32 allocate_stack_slot(u32 size) noexcept;
+  i32 allocate_stack_slot(u32 size) noexcept;
   void free_stack_slot(u32 slot, u32 size) noexcept;
 
   ValueRef val_ref(IRValueRef value) noexcept;
@@ -638,7 +639,7 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
+i32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
     u32 size) noexcept {
   unsigned align_bits = 4;
   if (size == 0) {
@@ -668,9 +669,9 @@ u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
   // Align frame_size to align_bits
   for (u32 list_idx = util::cnt_tz(stack.frame_size); list_idx < align_bits;
        list_idx = util::cnt_tz(stack.frame_size)) {
-    u32 slot = stack.frame_size;
+    i32 slot = stack.frame_size;
     if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
-      slot += 1ull << list_idx;
+      slot = -(slot + (1ull << list_idx));
     }
     stack.fixed_free_lists[list_idx].push_back(slot);
     stack.frame_size += 1ull << list_idx;
@@ -681,7 +682,7 @@ u32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
   stack.frame_size += size;
 
   if constexpr (Config::FRAME_INDEXING_NEGATIVE) {
-    slot += size;
+    slot = -(slot + size);
   }
   return slot;
 }
@@ -1294,7 +1295,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
 
   u32 handled_count = 0;
   u32 cur_tmp_part_count = 0;
-  u32 cur_tmp_slot = 0;
+  i32 cur_tmp_slot = 0;
   u32 cur_tmp_slot_size = 0;
   IRValueRef cur_tmp_val = Adaptor::INVALID_VALUE_REF;
   ScratchWrapper tmp_reg1{this}, tmp_reg2{this};
@@ -1328,13 +1329,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       AssignmentPartRef phi_ap{phi_vr.assignment(), i};
       assert(!phi_ap.fixed_assignment());
 
-      auto slot_off = cur_tmp_slot;
-      if (Config::FRAME_INDEXING_NEGATIVE) {
-        slot_off -= phi_ap.part_off();
-      } else {
-        slot_off += phi_ap.part_off();
-      }
-
+      auto slot_off = cur_tmp_slot + phi_ap.part_off();
       auto reg = tmp_reg1.alloc_from_bank(phi_ap.bank());
       derived()->load_from_stack(reg, slot_off, phi_ap.part_size());
       derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
@@ -1365,12 +1360,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
         for (u32 i = 0; i < cur_tmp_part_count; ++i) {
           auto ap = AssignmentPartRef{assignment, i};
           assert(!ap.fixed_assignment());
-          auto slot_off = cur_tmp_slot;
-          if (Config::FRAME_INDEXING_NEGATIVE) {
-            slot_off -= ap.part_off();
-          } else {
-            slot_off += ap.part_off();
-          }
+          auto slot_off = cur_tmp_slot + ap.part_off();
 
           if (ap.register_valid()) {
             auto reg = ap.get_reg();

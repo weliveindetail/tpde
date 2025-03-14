@@ -207,10 +207,8 @@ void LLVMCompilerX64::load_address_of_var_reference(
   const auto &info = variable_refs[ap.assignment->var_ref_custom_idx];
   if (info.alloca) {
     // default handling from CompilerX64
-    assert(static_cast<i32>(info.alloca_frame_off) >= 0);
-    ASM(LEA64rm,
-        dst,
-        FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(info.alloca_frame_off)));
+    assert(info.alloca_frame_off <= 0);
+    ASM(LEA64rm, dst, FE_MEM(FE_BP, 0, FE_NOREG, info.alloca_frame_off));
   } else {
     auto *global = llvm::cast<llvm::GlobalValue>(info.val);
     const auto sym = global_sym(global);
@@ -715,7 +713,7 @@ LLVMCompilerX64::GenericValuePart
     LLVMCompilerX64::create_addr_for_alloca(u32 ref_idx) noexcept {
   const auto &info = this->variable_refs[ref_idx];
   assert(info.alloca);
-  return GenericValuePart::Expr{AsmReg::BP, -(i32)info.alloca_frame_off};
+  return GenericValuePart::Expr{AsmReg::BP, info.alloca_frame_off};
 }
 
 void LLVMCompilerX64::switch_emit_cmp(ScratchReg &scratch,

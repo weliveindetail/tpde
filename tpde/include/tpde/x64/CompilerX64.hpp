@@ -419,7 +419,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   void gen_func_epilog() noexcept;
 
   void
-      spill_reg(const AsmReg reg, const u32 frame_off, const u32 size) noexcept;
+      spill_reg(const AsmReg reg, const i32 frame_off, const u32 size) noexcept;
 
   void load_from_stack(AsmReg dst,
                        i32 frame_off,
@@ -433,7 +433,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   GenericValuePart val_spill_slot(ValuePart &val_ref) noexcept {
     const auto ap = val_ref.assignment();
     assert(ap.stack_valid() && !ap.variable_ref());
-    return typename GenericValuePart::Expr(AsmReg::BP, -i64(ap.frame_off()));
+    return typename GenericValuePart::Expr(AsmReg::BP, ap.frame_off());
   }
 
   AsmReg gval_expr_as_reg(GenericValuePart &gv) noexcept;
@@ -600,7 +600,7 @@ void CallingConv::handle_func_args(
           //  assignments so we can simply reference this?
           //  but this probably doesn't work with multi-part values
           //  since the offsets are different
-          compiler->load_from_stack(part_ref.alloc_reg(), -frame_off, size);
+          compiler->load_from_stack(part_ref.alloc_reg(), frame_off, size);
           frame_off += 8;
         }
       } else {
@@ -611,7 +611,7 @@ void CallingConv::handle_func_args(
           assert(size <= 16);
           uint64_t aligned_size = size <= 8 ? 8 : 16;
           frame_off = util::align_up(frame_off, aligned_size);
-          compiler->load_from_stack(part_ref.alloc_reg(), -frame_off, size);
+          compiler->load_from_stack(part_ref.alloc_reg(), frame_off, size);
           frame_off += aligned_size;
         }
       }
@@ -1292,10 +1292,10 @@ template <IRAdaptor Adaptor,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::spill_reg(
-    const AsmReg reg, const u32 frame_off, const u32 size) noexcept {
+    const AsmReg reg, const i32 frame_off, const u32 size) noexcept {
   this->assembler.text_ensure_space(16);
-  assert(-static_cast<i32>(frame_off) < 0);
-  const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(frame_off));
+  assert(frame_off < 0);
+  const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, frame_off);
   if (reg.id() <= AsmReg::R15) {
     switch (size) {
     case 1: ASMNC(MOV8mr, mem, reg); break;
@@ -1325,8 +1325,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
     const u32 size,
     const bool sign_extend) noexcept {
   this->assembler.text_ensure_space(16);
-  // assert(-static_cast<i32>(frame_off) < 0);
-  const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(frame_off));
+  const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, frame_off);
 
   if (dst.id() <= AsmReg::R15) {
     if (!sign_extend) {
@@ -1367,12 +1366,10 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::
     load_address_of_var_reference(const AsmReg dst,
                                   const AssignmentPartRef ap) noexcept {
   static_assert(Config::DEFAULT_VAR_REF_HANDLING);
-  assert(-static_cast<i32>(ap.assignment->frame_off) < 0);
-  // per-default, variable references are only used by
-  // allocas
-  ASM(LEA64rm,
-      dst,
-      FE_MEM(FE_BP, 0, FE_NOREG, -static_cast<i32>(ap.assignment->frame_off)));
+  // frame_off is zero for zero-sized allocations.
+  assert(ap.assignment->frame_off <= 0);
+  // per-default, variable references are only used by allocas
+  ASM(LEA64rm, dst, FE_MEM(FE_BP, 0, FE_NOREG, ap.assignment->frame_off));
 }
 
 template <IRAdaptor Adaptor,
@@ -1980,8 +1977,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     } else {
       auto ap = ref.assignment();
       if (!ap.register_valid() && !ap.variable_ref()) {
-        assert(static_cast<i32>(-ap.frame_off()) < 0);
-        ASM(CALLm, FE_MEM(FE_BP, 0, FE_NOREG, (i32)-ap.frame_off()));
+        assert(ap.frame_off() < 0);
+        ASM(CALLm, FE_MEM(FE_BP, 0, FE_NOREG, ap.frame_off()));
       } else {
         AsmReg reg = ref.load_to_reg();
         if (((1ull << reg.id()) & calling_conv.callee_saved_mask()) == 0) {
