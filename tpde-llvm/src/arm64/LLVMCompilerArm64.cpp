@@ -360,22 +360,21 @@ bool LLVMCompilerArm64::compile_alloca(const llvm::Instruction *inst,
       ScratchReg scratch{this};
       auto tmp = scratch.alloc_gp();
       materialize_constant(size_val, CompilerConfig::GP_BANK, 8, tmp);
-      ASM(SUBx_uxtx, DA_SP, DA_SP, tmp, 0);
-    } else if (size_val > 0) {
-      if (size_val >= 0x1000) {
-        ASM(SUBxi, DA_SP, DA_SP, size_val & 0xff'f000);
-      }
-      ASM(SUBxi, DA_SP, DA_SP, size_val & 0xfff);
+      ASM(SUBx_uxtx, res_reg, DA_SP, tmp, 0);
+    } else if (size_val >= 0x1000) {
+      ASM(SUBxi, res_reg, DA_SP, size_val & 0xff'f000);
+      ASM(SUBxi, res_reg, res_reg, size_val & 0xfff);
+    } else {
+      ASM(SUBxi, res_reg, DA_SP, size_val & 0xfff);
     }
 
-    if (auto align = alloca->getAlign().value(); align >= 16) {
-      // TODO(ae): we could avoid one move here
-      align = ~(align - 1);
-      ASM(MOV_SPx, res_reg, DA_SP);
-      ASM(ANDxi, DA_SP, res_reg, align);
+    if (u64 align = alloca->getAlign().value(); align >= 16) {
+      ASM(ANDxi, res_reg, res_reg, ~(align - 1));
     }
 
-    ASM(MOV_SPx, res_reg, DA_SP);
+    if (size_val > 0) {
+      ASM(MOV_SPx, DA_SP, res_reg);
+    }
 
     res_ref.set_modified();
     return true;
