@@ -3951,6 +3951,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       this->val_ref_single(arg);
     }
     return true;
+  case llvm::Intrinsic::expect: {
+    // Just copy the first operand.
+    (void)this->val_ref(inst->getOperand(1));
+    auto src_ref = this->val_ref(inst->getOperand(0));
+    auto res_ref = this->result_ref(inst);
+    const auto part_count = res_ref.assignment()->part_count;
+    for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
+      res_ref.part(part_idx).set_value(src_ref.part(part_idx));
+    }
+    return true;
+  }
   case llvm::Intrinsic::memcpy: {
     const auto dst = inst->getOperand(0);
     const auto src = inst->getOperand(1);
