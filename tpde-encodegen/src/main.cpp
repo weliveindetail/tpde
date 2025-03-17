@@ -8,7 +8,6 @@
 #include <iostream>
 
 #include <llvm/AsmParser/Parser.h>
-#include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/CodeGen/MachineFunction.h>
 #include <llvm/CodeGen/MachineModuleInfo.h>
 #include <llvm/CodeGen/TargetPassConfig.h>
@@ -16,6 +15,7 @@
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/IRReader/IRReader.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/MemoryBuffer.h>
@@ -75,72 +75,17 @@ int main(const int argc, char *argv[]) {
     llvm::cl::ParseCommandLineOptions(opts.size(), opts.data());
   }
 
-  auto context = std::make_unique<llvm::LLVMContext>();
+  llvm::LLVMContext context;
   auto modules = std::vector<std::unique_ptr<llvm::Module>>{};
+  llvm::SMDiagnostic diag{};
 
-  // open and parse a bitcode file into an llvm-module
-  const auto parse_mod =
-      [&modules, &context](std::unique_ptr<llvm::MemoryBuffer> &&bitcode_buf) {
-        auto mod = std::unique_ptr<llvm::Module>{};
-        if (input_is_bitcode) {
-          if (auto E = llvm::parseBitcodeFile(*bitcode_buf, *context)
-                           .moveInto(mod)) {
-            std::cerr << std::format("Failed to parse bitcode: '{}'\n",
-                                     llvm::toString(std::move(E)));
-            return 1;
-          }
-        } else {
-          auto diag = llvm::SMDiagnostic{};
-          mod = llvm::parseAssembly(*bitcode_buf, diag, *context);
-          if (!mod) {
-            std::string buf;
-            llvm::raw_string_ostream os{buf};
-
-            diag.print(nullptr, os);
-            std::cerr << "Failed to parse IR:\n";
-            std::cerr << buf << '\n';
-            return 1;
-          }
-
-          {
-            std::string buf;
-            llvm::raw_string_ostream os{buf};
-            if (llvm::verifyModule(*mod, &os)) {
-              std::cerr << "Invalid LLVM module supplied:\n" << buf << '\n';
-              return 1;
-            }
-          }
-        }
-        modules.push_back(std::move(mod));
-        return 0;
-      };
-
-  std::unique_ptr<llvm::MemoryBuffer> bitcode_buf;
-  if (!input_filename.empty()) {
-    for (auto &file : input_filename) {
-      auto bitcode = llvm::MemoryBuffer::getFile(file);
-      if (!bitcode) {
-        std::cerr << std::format("Failed to read bitcode file: '{}'\n",
-                                 bitcode.getError().message());
-        return 1;
-      }
-
-      bitcode_buf.swap(bitcode.get());
-      const auto res = parse_mod(std::move(bitcode_buf));
-      if (res) {
-        return res;
-      }
-    }
-  } else {
-    auto bitcode = llvm::MemoryBuffer::getSTDIN();
-    if (!bitcode) {
-      std::cerr << std::format("Failed to read bitcode file: '{}'\n",
-                               bitcode.getError().message());
+  for (auto &file : input_filename) {
+    auto mod = llvm::parseIRFile(file, diag, context);
+    if (!mod) {
+      diag.print(argv[0], llvm::errs());
       return 1;
     }
-
-    bitcode_buf.swap(bitcode.get());
-    parse_mod(std::move(bitcode_buf));
+    modules.push_back(std::move(mod));
   }
 
   // TODO verify these options

@@ -634,6 +634,15 @@ void EncodingTargetX64::get_inst_candidates(
   handle_rm("MAXSDrr", "MAXSDrm", 2, "SSE_MAXSDrr", "SSE_MAXSDrm");
   handle_rm("MAXPSrr", "MAXPSrm", 2, "SSE_MAXPSrr", "SSE_MAXPSrm", 16);
   handle_rm("MAXPDrr", "MAXPDrm", 2, "SSE_MAXPDrr", "SSE_MAXPDrm", 16);
+  // commutive variants of MIN/MAX
+  handle_rm("MINCSSrr", "MINCSSrm", 2, "SSE_MINSSrr", "SSE_MINSSrm");
+  handle_rm("MINCSDrr", "MINCSDrm", 2, "SSE_MINSDrr", "SSE_MINSDrm");
+  handle_rm("MINCPSrr", "MINCPSrm", 2, "SSE_MINPSrr", "SSE_MINPSrm", 16);
+  handle_rm("MINCPDrr", "MINCPDrm", 2, "SSE_MINPDrr", "SSE_MINPDrm", 16);
+  handle_rm("MAXCSSrr", "MAXCSSrm", 2, "SSE_MAXSSrr", "SSE_MAXSSrm");
+  handle_rm("MAXCSDrr", "MAXCSDrm", 2, "SSE_MAXSDrr", "SSE_MAXSDrm");
+  handle_rm("MAXCPSrr", "MAXCPSrm", 2, "SSE_MAXPSrr", "SSE_MAXPSrm", 16);
+  handle_rm("MAXCPDrr", "MAXCPDrm", 2, "SSE_MAXPDrr", "SSE_MAXPDrm", 16);
   handle_rm("CMPSSrri", "CMPSSrmi", 2, "SSE_CMPSSrri", "SSE_CMPSSrmi");
   handle_rm("CMPSDrri", "CMPSDrmi", 2, "SSE_CMPSDrri", "SSE_CMPSDrmi");
   handle_rm("CMPPSrri", "CMPPSrmi", 2, "SSE_CMPPSrri", "SSE_CMPPSrmi", 16);

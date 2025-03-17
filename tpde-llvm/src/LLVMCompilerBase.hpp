@@ -430,7 +430,7 @@ public:
                            u64) noexcept;
   bool compile_resume(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   SymRef lookup_type_info_sym(IRValueRef value) noexcept;
-  bool compile_intrin(const llvm::IntrinsicInst *) noexcept;
+  bool compile_intrin(const llvm::IntrinsicInst *, const ValInfo &) noexcept;
   bool compile_is_fpclass(const llvm::IntrinsicInst *) noexcept;
   bool compile_overflow_intrin(const llvm::IntrinsicInst *,
                                OverflowOp) noexcept;
@@ -1187,8 +1187,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
     res[llvm::Instruction::Trunc] = {&Derived::compile_int_trunc, 0};
     res[llvm::Instruction::ZExt] = {&Derived::compile_int_ext, /*sign=*/false};
     res[llvm::Instruction::SExt] = {&Derived::compile_int_ext, /*sign=*/true};
-    res[llvm::Instruction::FPToUI] = {&Derived::compile_float_to_int, /*sign=*/false};
-    res[llvm::Instruction::FPToSI] = {&Derived::compile_float_to_int, /*sign=*/true};
+    res[llvm::Instruction::FPToUI] = {&Derived::compile_float_to_int, /*flags=!sign,!sat*/0};
+    res[llvm::Instruction::FPToSI] = {&Derived::compile_float_to_int, /*flags=sign,!sat*/1};
     res[llvm::Instruction::UIToFP] = {&Derived::compile_int_to_float, /*sign=*/false};
     res[llvm::Instruction::SIToFP] = {&Derived::compile_int_to_float, /*sign=*/true};
     res[llvm::Instruction::FPTrunc] = {&Derived::compile_float_ext_trunc, 0};
@@ -2124,7 +2124,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
-    const llvm::Instruction *inst, const ValInfo &, u64 sign) noexcept {
+    const llvm::Instruction *inst, const ValInfo &, u64 flags) noexcept {
+  bool sign = flags & 0b01;
+  bool saturate = flags & 0b10;
+
   const llvm::Value *src_val = inst->getOperand(0);
   auto *src_ty = src_val->getType();
   const auto bit_width = inst->getType()->getIntegerBitWidth();
@@ -2134,6 +2137,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
   }
 
   if (src_ty->isFP128Ty()) {
+    if (saturate) {
+      return false;
+    }
+
     LibFunc lf = sign ? LibFunc::fixtfdi : LibFunc::fixunstfdi;
     SymRef sym = get_libfunc_sym(lf);
 
@@ -2149,37 +2156,40 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
 
   const auto src_double = src_ty->isDoubleTy();
 
+  using EncodeFnTy = bool (Derived::*)(GenericValuePart &&, ScratchReg &);
+  static constexpr auto fns = []() {
+    // fns[is_double][dst64][sign][sat]
+    std::array<EncodeFnTy[2][2][2], 2> fns{};
+    fns[0][0][0][0] = &Derived::encode_f32tou32;
+    fns[0][0][0][1] = &Derived::encode_f32tou32_sat;
+    fns[0][0][1][0] = &Derived::encode_f32toi32;
+    fns[0][0][1][1] = &Derived::encode_f32toi32_sat;
+    fns[0][1][0][0] = &Derived::encode_f32tou64;
+    fns[0][1][0][1] = &Derived::encode_f32tou64_sat;
+    fns[0][1][1][0] = &Derived::encode_f32toi64;
+    fns[0][1][1][1] = &Derived::encode_f32toi64_sat;
+    fns[1][0][0][0] = &Derived::encode_f64tou32;
+    fns[1][0][0][1] = &Derived::encode_f64tou32_sat;
+    fns[1][0][1][0] = &Derived::encode_f64toi32;
+    fns[1][0][1][1] = &Derived::encode_f64toi32_sat;
+    fns[1][1][0][0] = &Derived::encode_f64tou64;
+    fns[1][1][0][1] = &Derived::encode_f64tou64_sat;
+    fns[1][1][1][0] = &Derived::encode_f64toi64;
+    fns[1][1][1][1] = &Derived::encode_f64toi64_sat;
+    return fns;
+  }();
+  EncodeFnTy fn = fns[src_double][bit_width > 32][sign][saturate];
+
+  if (saturate && bit_width % 32 != 0) {
+    // TODO: clamp result to smaller integer bounds
+    return false;
+  }
+
   auto src_ref = this->val_ref(src_val);
   auto [res_vr, res_ref] = this->result_ref_single(inst);
   auto res_scratch = ScratchReg{derived()};
-  if (sign) {
-    if (src_double) {
-      if (bit_width > 32) {
-        derived()->encode_f64toi64(src_ref.part(0), res_scratch);
-      } else {
-        derived()->encode_f64toi32(src_ref.part(0), res_scratch);
-      }
-    } else {
-      if (bit_width > 32) {
-        derived()->encode_f32toi64(src_ref.part(0), res_scratch);
-      } else {
-        derived()->encode_f32toi32(src_ref.part(0), res_scratch);
-      }
-    }
-  } else {
-    if (src_double) {
-      if (bit_width > 32) {
-        derived()->encode_f64tou64(src_ref.part(0), res_scratch);
-      } else {
-        derived()->encode_f64tou32(src_ref.part(0), res_scratch);
-      }
-    } else {
-      if (bit_width > 32) {
-        derived()->encode_f32tou64(src_ref.part(0), res_scratch);
-      } else {
-        derived()->encode_f32tou32(src_ref.part(0), res_scratch);
-      }
-    }
+  if (!(derived()->*fn)(src_ref.part(0), res_scratch)) {
+    return false;
   }
 
   this->set_value(res_ref, res_scratch);
@@ -3068,7 +3078,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_freeze(
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
-    const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+    const llvm::Instruction *inst, const ValInfo &info, u64) noexcept {
   const auto *call = llvm::cast<llvm::CallBase>(inst);
 
   // For indirect calls, target_ref must outlive call_target.
@@ -3079,7 +3089,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
 
   if (auto *fn = call->getCalledFunction(); fn) {
     if (fn->isIntrinsic()) {
-      return compile_intrin(llvm::cast<llvm::IntrinsicInst>(call));
+      return compile_intrin(llvm::cast<llvm::IntrinsicInst>(call), info);
     }
 
     // this is a direct call
@@ -3917,7 +3927,7 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
 
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
-    const llvm::IntrinsicInst *inst) noexcept {
+    const llvm::IntrinsicInst *inst, const ValInfo &info) noexcept {
   const auto intrin_id = inst->getIntrinsicID();
 
   switch (intrin_id) {
@@ -4254,6 +4264,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     return compile_saturating_intrin(inst, OverflowOp::usub);
   case llvm::Intrinsic::ssub_sat:
     return compile_saturating_intrin(inst, OverflowOp::ssub);
+  case llvm::Intrinsic::fptoui_sat:
+    return compile_float_to_int(inst, info, /*flags=!sign|sat*/ 0b10);
+  case llvm::Intrinsic::fptosi_sat:
+    return compile_float_to_int(inst, info, /*flags=sign|sat*/ 0b11);
   case llvm::Intrinsic::fshl:
   case llvm::Intrinsic::fshr: {
     if (!inst->getType()->isIntegerTy()) {
