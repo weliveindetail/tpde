@@ -892,6 +892,7 @@ bool LLVMCompilerX64::handle_intrin(const llvm::IntrinsicInst *inst) noexcept {
   }
   case llvm::Intrinsic::trap: ASM(UD2); return true;
   case llvm::Intrinsic::debugtrap: ASM(INT3); return true;
+  case llvm::Intrinsic::x86_sse2_pause: ASM(PAUSE); return true;
   default: return false;
   }
 }
