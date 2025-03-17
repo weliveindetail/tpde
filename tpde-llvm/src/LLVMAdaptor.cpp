@@ -15,6 +15,7 @@
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/ReplaceConstant.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TimeProfiler.h>
 #include <llvm/Support/raw_ostream.h>
@@ -249,24 +250,40 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
       if (gv->isThreadLocal()) [[unlikely]] {
         // Rewrite all accesses to thread-local variables to go through the
         // intrinsic llvm.threadlocal.address; other accesses are unsupported.
-        for (llvm::Use &use : llvm::make_early_inc_range(gv->uses())) {
-          auto *intrin = llvm::dyn_cast<llvm::IntrinsicInst>(use.getUser());
-          if (intrin && intrin->getIntrinsicID() ==
-                            llvm::Intrinsic::threadlocal_address) {
-            continue;
-          }
+        auto handle_thread_local_uses = [](llvm::GlobalValue *gv) -> bool {
+          for (llvm::Use &use : llvm::make_early_inc_range(gv->uses())) {
+            llvm::User *user = use.getUser();
+            auto *intrin = llvm::dyn_cast<llvm::IntrinsicInst>(user);
+            if (intrin && intrin->getIntrinsicID() ==
+                              llvm::Intrinsic::threadlocal_address) {
+              continue;
+            }
 
-          auto *instr = llvm::dyn_cast<llvm::Instruction>(use.getUser());
-          if (!instr) [[unlikely]] {
-            std::string user;
-            llvm::raw_string_ostream(user) << *use.getUser();
-            TPDE_LOG_ERR("thread-local global with unsupported use: {}", user);
+            auto *instr = llvm::dyn_cast<llvm::Instruction>(user);
+            if (!instr) [[unlikely]] {
+              return false;
+            }
+
+            llvm::IRBuilder<> irb(instr);
+            use.set(irb.CreateThreadLocalAddress(use.get()));
+          }
+          return true;
+        };
+
+        // We do two passes. The first pass handle the common case, which is
+        // that all users are instructions. For ConstantExpr users (e.g., GEP),
+        // we do a second pass after expanding these (which is expensive).
+        if (!handle_thread_local_uses(gv)) {
+          llvm::convertUsersOfConstantsToInstructions(gv);
+          if (!handle_thread_local_uses(gv)) {
+            TPDE_LOG_ERR("thread-local global with unsupported uses");
+            for (llvm::Use &use : gv->uses()) {
+              std::string user;
+              llvm::raw_string_ostream(user) << *use.getUser();
+              TPDE_LOG_INFO("use: {}", user);
+            }
             func_unsupported = true;
-            break;
           }
-
-          llvm::IRBuilder<> irb(instr);
-          use.set(irb.CreateThreadLocalAddress(gv));
         }
       }
     };
