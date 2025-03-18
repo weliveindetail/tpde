@@ -384,6 +384,13 @@ void LLVMAdaptor::reset() noexcept {
   block_succ_ranges.clear();
 }
 
+void LLVMAdaptor::report_unsupported_type(llvm::Type *type) noexcept {
+  std::string type_name;
+  llvm::raw_string_ostream(type_name) << *type;
+  TPDE_LOG_ERR("unsupported type: {}", type_name);
+  func_unsupported = true;
+}
+
 namespace {
 
 /// Returns (num, element-type), with num > 0 and a valid type, or (0, invalid).
@@ -524,6 +531,9 @@ std::pair<unsigned, unsigned>
                   len * sizeof(LLVMComplexPart));
     }
     if (nelem > 0) {
+      if (nelem * len > LLVMComplexPart::MaxLength) {
+        report_unsupported_type(type);
+      }
       complex_part_types[start].part.nest_inc++;
       complex_part_types[start + nelem * len - 1].part.nest_dec++;
     }
@@ -554,20 +564,20 @@ std::pair<unsigned, unsigned>
     unsigned old_size = size;
     size = tpde::util::align_up(size, align);
     if (size > 0) {
+      if (end - start + 1 > LLVMComplexPart::MaxLength) {
+        report_unsupported_type(type);
+      }
       complex_part_types[start].part.nest_inc++;
       complex_part_types[end].part.nest_dec++;
       complex_part_types[end].part.pad_after += size - old_size;
     }
     return std::make_pair(size, align);
   }
-  default: {
-    std::string type_name;
-    llvm::raw_string_ostream(type_name) << *type;
-    TPDE_LOG_ERR("unsupported type: {}", type_name);
-    func_unsupported = true;
-    return std::make_pair(0, 1);
+  default: break;
   }
-  }
+
+  report_unsupported_type(type);
+  return std::make_pair(0, 1);
 }
 
 [[nodiscard]] std::pair<LLVMBasicValType, u32>
@@ -586,7 +596,7 @@ std::pair<unsigned, unsigned>
   // TODO: store size/alignment?
   complex_types_append(type);
   unsigned len = complex_part_types.size() - (start + 1);
-  complex_part_types[start].num_parts = len;
+  complex_part_types[start].desc.num_parts = len;
 
   return std::make_pair(LLVMBasicValType::complex, start);
 }

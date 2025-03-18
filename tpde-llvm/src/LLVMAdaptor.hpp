@@ -71,6 +71,8 @@ enum class LLVMBasicValType : u8 {
 };
 
 union LLVMComplexPart {
+  static constexpr u16 MaxLength = UINT16_MAX;
+
   struct {
     /// Type of the part.
     LLVMBasicValType type;
@@ -87,8 +89,10 @@ union LLVMComplexPart {
     u8 nest_dec : 4;
   } part;
 
-  /// Number of parts following.
-  u32 num_parts;
+  struct {
+    /// Number of parts following.
+    u16 num_parts;
+  } desc;
 
   LLVMComplexPart() : part{.type = LLVMBasicValType::invalid} {}
 
@@ -443,7 +447,7 @@ public:
       if (bvt != LLVMBasicValType::complex) {
         return LLVMAdaptor::basic_ty_part_count(bvt);
       }
-      return complex->num_parts;
+      return complex->desc.num_parts;
     }
 
     LLVMBasicValType type(u32 n) const {
@@ -625,6 +629,8 @@ private:
     default: TPDE_UNREACHABLE("invalid basic type");
     }
   }
+
+  [[gnu::cold]] void report_unsupported_type(llvm::Type *type) noexcept;
 
   /// Append basic types of specified type to complex_part_types. Returns the
   /// allocation size in bytes and the alignment.

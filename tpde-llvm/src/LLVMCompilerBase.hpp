@@ -1364,7 +1364,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
     auto ty_idx = this->adaptor->val_info(load).complex_part_tys_idx;
     const LLVMComplexPart *part_descs =
         &this->adaptor->complex_part_types[ty_idx + 1];
-    unsigned part_count = part_descs[-1].num_parts;
+    unsigned part_count = part_descs[-1].desc.num_parts;
 
     // TODO: fuse expr; not easy, because we lose the GVP
     AsmReg ptr_reg = this->gval_as_reg(ptr_op);
@@ -1561,7 +1561,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
   case complex: {
     const LLVMComplexPart *part_descs =
         &this->adaptor->complex_part_types[ty_idx + 1];
-    unsigned part_count = part_descs[-1].num_parts;
+    unsigned part_count = part_descs[-1].desc.num_parts;
 
     // TODO: fuse expr; not easy, because we lose the GVP
     AsmReg ptr_reg = this->gval_as_reg(ptr_op);
