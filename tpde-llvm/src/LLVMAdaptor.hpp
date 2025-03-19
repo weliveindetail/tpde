@@ -92,6 +92,10 @@ union LLVMComplexPart {
   struct {
     /// Number of parts following.
     u16 num_parts;
+
+    /// Indicates that our type layout is incompatible with LLVM's layout.
+    /// Example: we scalarize <1 x i8>, but LLVM-AArch64 widens to <8 x i8>.
+    bool incompatible_layout : 1;
   } desc;
 
   LLVMComplexPart() : part{.type = LLVMBasicValType::invalid} {}
@@ -630,11 +634,31 @@ private:
     }
   }
 
+public:
+  void check_type_compatibility(llvm::Type *type) noexcept {
+    const auto [bvt, complex_part_idx] = lower_type(type);
+    check_type_compatibility(type, bvt, complex_part_idx);
+  }
+
+  void check_type_compatibility(llvm::Type *type,
+                                LLVMBasicValType bvt,
+                                u32 ty_idx) noexcept {
+    if (bvt == LLVMBasicValType::complex &&
+        complex_part_types[ty_idx].desc.incompatible_layout) [[unlikely]] {
+      report_incompatible_type(type);
+    }
+  }
+
+private:
+  [[gnu::cold]] void report_incompatible_type(llvm::Type *type) noexcept;
+
   [[gnu::cold]] void report_unsupported_type(llvm::Type *type) noexcept;
 
-  /// Append basic types of specified type to complex_part_types. Returns the
-  /// allocation size in bytes and the alignment.
-  std::pair<unsigned, unsigned> complex_types_append(llvm::Type *type) noexcept;
+  /// Append basic types of specified type to complex_part_types. desc_idx is
+  /// the index in complex_part_types containing the descriptor of the
+  /// outermost type. Returns the allocation size in bytes and the alignment.
+  std::pair<unsigned, unsigned> complex_types_append(llvm::Type *type,
+                                                     size_t desc_idx) noexcept;
 
 public:
   std::pair<LLVMBasicValType, u32> lower_type(llvm::Type *type) noexcept;

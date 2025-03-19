@@ -311,7 +311,13 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     const auto [ty, complex_part_idx] = lower_type(arg->getType());
     values.push_back(ValInfo{
         .type = ty, .fused = false, .complex_part_tys_idx = complex_part_idx});
+
+    // Check that all parameter types are layout-compatible to LLVM.
+    check_type_compatibility(arg->getType(), ty, complex_part_idx);
   }
+
+  // Check that the return type is layout-compatible to LLVM.
+  check_type_compatibility(function->getReturnType());
 
   for (llvm::BasicBlock &block : *function) {
     std::optional<llvm::BasicBlock::iterator> last_phi;
@@ -382,6 +388,13 @@ void LLVMAdaptor::reset() noexcept {
   blocks.clear();
   block_succ_indices.clear();
   block_succ_ranges.clear();
+}
+
+void LLVMAdaptor::report_incompatible_type(llvm::Type *type) noexcept {
+  std::string type_name;
+  llvm::raw_string_ostream(type_name) << *type;
+  TPDE_LOG_ERR("type with incompatible layout at function/call: {}", type_name);
+  func_unsupported = true;
 }
 
 void LLVMAdaptor::report_unsupported_type(llvm::Type *type) noexcept {
@@ -504,7 +517,8 @@ namespace {
 } // end anonymous namespace
 
 std::pair<unsigned, unsigned>
-    LLVMAdaptor::complex_types_append(llvm::Type *type) noexcept {
+    LLVMAdaptor::complex_types_append(llvm::Type *type,
+                                      size_t desc_idx) noexcept {
   if (auto [num, ty] = llvm_ty_to_basic_ty_simple(type);
       ty != LLVMBasicValType::invalid) {
     unsigned size = basic_ty_part_size(ty);
@@ -520,7 +534,8 @@ std::pair<unsigned, unsigned>
   size_t start = complex_part_types.size();
   switch (type->getTypeID()) {
   case llvm::Type::ArrayTyID: {
-    auto [sz, algn] = complex_types_append(type->getArrayElementType());
+    auto [sz, algn] =
+        complex_types_append(type->getArrayElementType(), desc_idx);
     size_t len = complex_part_types.size() - start;
 
     unsigned nelem = type->getArrayNumElements();
@@ -545,7 +560,7 @@ std::pair<unsigned, unsigned>
     bool packed = llvm::cast<llvm::StructType>(type)->isPacked();
     for (auto *el : llvm::cast<llvm::StructType>(type)->elements()) {
       unsigned prev = complex_part_types.size() - 1;
-      auto [el_size, el_align] = complex_types_append(el);
+      auto [el_size, el_align] = complex_types_append(el, desc_idx);
       assert(el_size % el_align == 0 && "size must be multiple of alignment");
       if (packed) {
         el_align = 1;
@@ -591,7 +606,7 @@ std::pair<LLVMBasicValType, u32>
   unsigned start = complex_part_types.size();
   complex_part_types.push_back(LLVMComplexPart{}); // length
   // TODO: store size/alignment?
-  complex_types_append(type);
+  complex_types_append(type, start);
   unsigned len = complex_part_types.size() - (start + 1);
   complex_part_types[start].desc.num_parts = len;
 
