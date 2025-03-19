@@ -463,7 +463,7 @@ public:
 
   ValueParts val_parts(const IRValueRef value) {
     if (llvm::isa<llvm::Constant>(value)) {
-      auto [ty, ty_idx] = val_basic_type_uncached(value, false);
+      auto [ty, ty_idx] = lower_type(value->getType());
       if (ty == LLVMBasicValType::complex) {
         return ValueParts{ty, &complex_part_types[ty_idx]};
       }
@@ -637,9 +637,7 @@ private:
   std::pair<unsigned, unsigned> complex_types_append(llvm::Type *type) noexcept;
 
 public:
-  [[nodiscard]] std::pair<LLVMBasicValType, u32>
-      val_basic_type_uncached(const llvm::Value *val,
-                              const bool const_or_global) noexcept;
+  std::pair<LLVMBasicValType, u32> lower_type(llvm::Type *type) noexcept;
 
   /// Map insertvalue/extractvalue indices to parts. Returns (first part,
   /// last part (inclusive)).

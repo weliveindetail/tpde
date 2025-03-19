@@ -208,7 +208,7 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
   assert(!value_lookup.contains(inst));
   value_lookup.insert_or_assign(inst, val_idx);
 #endif
-  auto [ty, complex_part_idx] = val_basic_type_uncached(inst, false);
+  auto [ty, complex_part_idx] = lower_type(inst->getType());
   values.push_back(ValInfo{
       .type = ty, .fused = fused, .complex_part_tys_idx = complex_part_idx});
   return nullptr;
@@ -308,7 +308,7 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
   const size_t arg_count = function->arg_size();
   for (size_t i = 0; i < arg_count; ++i) {
     llvm::Argument *arg = function->getArg(i);
-    const auto [ty, complex_part_idx] = val_basic_type_uncached(arg, false);
+    const auto [ty, complex_part_idx] = lower_type(arg->getType());
     values.push_back(ValInfo{
         .type = ty, .fused = false, .complex_part_tys_idx = complex_part_idx});
   }
@@ -580,12 +580,9 @@ std::pair<unsigned, unsigned>
   return std::make_pair(0, 1);
 }
 
-[[nodiscard]] std::pair<LLVMBasicValType, u32>
-    LLVMAdaptor::val_basic_type_uncached(const llvm::Value *val,
-                                         const bool const_or_global) noexcept {
-  (void)const_or_global;
+std::pair<LLVMBasicValType, u32>
+    LLVMAdaptor::lower_type(llvm::Type *type) noexcept {
   // TODO: Cache this?
-  auto *type = val->getType();
   if (auto [num, ty] = llvm_ty_to_basic_ty_simple(type); num > 0) [[likely]] {
     assert(num == 1 || ty == LLVMBasicValType::i128);
     return std::make_pair(ty, ~0u);

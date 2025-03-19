@@ -498,7 +498,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
         IRValueRef val, u32 part) noexcept {
   auto *const_val = llvm::cast<llvm::Constant>(val);
 
-  auto [ty, ty_idx] = this->adaptor->val_basic_type_uncached(val, true);
+  auto [ty, ty_idx] = this->adaptor->lower_type(val->getType());
   unsigned sub_part = part;
 
   if (const_val && ty == LLVMBasicValType::complex) {
@@ -1501,7 +1501,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
   }
 
   // TODO: don't recompute this, this is currently computed for every val part
-  auto [ty, ty_idx] = this->adaptor->val_basic_type_uncached(op_val, true);
+  auto [ty, ty_idx] = this->adaptor->lower_type(op_val->getType());
 
   switch (ty) {
     using enum LLVMBasicValType;
@@ -1572,7 +1572,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
       auto part_addr =
           typename GenericValuePart::Expr{ptr_reg, static_cast<tpde::i32>(off)};
       // Note: val_ref might call val_ref_special, which calls val_parts, which
-      // calls val_basic_type_uncached, which will invalidate part_descs.
+      // calls lower_type, which will invalidate part_descs.
       // TODO: don't recompute value parts for every constant part
       const LLVMComplexPart *part_descs =
           &this->adaptor->complex_part_types[ty_idx + 1];
@@ -2630,7 +2630,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
   auto [val_ref, val] = this->val_ref_single(ins);
 
   auto [res_vr, result] = this->result_ref_single(inst);
-  auto [bvt, _] = this->adaptor->val_basic_type_uncached(ins, false);
+  auto [bvt, _] = this->adaptor->lower_type(ins->getType());
   assert(bvt != LLVMBasicValType::complex);
 
   // We do the dynamic insert in the spill slot of result.
