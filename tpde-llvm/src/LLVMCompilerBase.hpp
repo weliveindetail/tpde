@@ -498,10 +498,10 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
         IRValueRef val, u32 part) noexcept {
   auto *const_val = llvm::cast<llvm::Constant>(val);
 
-  auto [ty, ty_idx] = this->adaptor->lower_type(val->getType());
+  auto [ty, ty_idx] = this->adaptor->lower_type(const_val->getType());
   unsigned sub_part = part;
 
-  if (const_val && ty == LLVMBasicValType::complex) {
+  if (ty == LLVMBasicValType::complex) {
     LLVMComplexPart *part_descs =
         &this->adaptor->complex_part_types[ty_idx + 1];
 
@@ -534,11 +534,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
       if (!agg) {
         break;
       }
-      const_val = llvm::dyn_cast<llvm::Constant>(agg->getOperand(idx));
-    }
-    if (!const_val) {
-      // TODO: when can this happen?
-      return {};
+      const_val = llvm::cast<llvm::Constant>(agg->getOperand(idx));
     }
 
     ty = part_descs[part].part.type;
