@@ -288,6 +288,9 @@ public:
       result_ref_single(IRValueRef value) noexcept;
 
   void set_value(ValuePartRef &val_ref, ScratchReg &scratch) noexcept;
+  void set_value(ValuePartRef &&val_ref, ScratchReg &scratch) noexcept {
+    set_value(val_ref, scratch);
+  }
 
   /// Get generic value part into a single register, evaluating expressions
   /// and materializing immediates as required.
