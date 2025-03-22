@@ -342,7 +342,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
   } else {
     reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
     reg_file.mark_fixed(reg);
-    state.v.reg = reg;
+    state.c.reg = reg;
 
     if (reload) {
       assert(is_const() && "cannot reload temporary value");
@@ -691,16 +691,16 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePart::reset(
     CompilerBase *compiler) noexcept {
+  AsmReg reg = state.c.reg;
+  if (!reg.valid()) {
+    return;
+  }
+
 #ifndef NDEBUG
   // In debug builds, touch assignment to catch cases where the assignment was
   // already free'ed.
   assert(!has_assignment() || assignment().modified() || true);
 #endif
-
-  AsmReg reg = state.c.reg;
-  if (!reg.valid()) {
-    return;
-  }
 
   if (!has_assignment()) {
     compiler->register_file.unmark_fixed(reg);
