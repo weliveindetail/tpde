@@ -124,7 +124,6 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
   /// Reset the reference to the value part
   void reset() noexcept;
 
-private:
   bool variable_ref() const noexcept {
     assert(has_assignment());
     return state.a.assignment->variable_ref;
