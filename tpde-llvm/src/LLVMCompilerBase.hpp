@@ -278,7 +278,7 @@ struct LLVMCompilerBase : public LLVMCompiler,
   /// Specialized for llvm::Instruction to avoid type check in val_local_idx.
   ValueRef result_ref(const llvm::Instruction *i) noexcept {
     const auto local_idx =
-        static_cast<ValLocalIdx>(this->adaptor->inst_lookup_idx(i));
+        static_cast<tpde::ValLocalIdx>(this->adaptor->inst_lookup_idx(i));
     if (this->val_assignment(local_idx) == nullptr) {
       this->init_assignment(i, local_idx);
     }
@@ -550,7 +550,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
   if (llvm::isa<llvm::GlobalValue>(const_val)) {
     assert(ty == LLVMBasicValType::ptr && sub_part == 0);
     auto local_idx =
-        static_cast<ValLocalIdx>(this->adaptor->val_local_idx(const_val));
+        static_cast<tpde::ValLocalIdx>(this->adaptor->val_local_idx(const_val));
     auto *assignment = this->val_assignment(local_idx);
     if (!assignment) {
       assignment = this->allocate_assignment(1);
