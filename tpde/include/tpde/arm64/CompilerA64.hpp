@@ -504,8 +504,21 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
 
   void generate_raw_jump(Jump jmp, Assembler::Label target) noexcept;
 
-  void generate_raw_set(Jump jmp, AsmReg dst) noexcept;
-  void generate_raw_mask(Jump jmp, AsmReg dst) noexcept;
+  /// Convert jump condition to disarms Da64Cond.
+  /// \warning Cbz,Cbnz,Tbz and Tbnz are not supported
+  Da64Cond jump_to_cond(Jump jmp) noexcept;
+  /// Set dst to 1 if cc is true, otherwise set it to zero
+  void generate_raw_set(Jump cc, AsmReg dst) noexcept;
+  /// Set all bits of dst to 1 if cc is true, otherwise set dst to zero
+  void generate_raw_mask(Jump cc, AsmReg dst) noexcept;
+
+  /// Moves true_select into dst if cc is true,
+  /// otherwise move false_select into dst
+  void generate_raw_select(Jump cc,
+                           AsmReg dst,
+                           AsmReg true_select,
+                           AsmReg false_select,
+                           bool is_64) noexcept;
 
   void generate_raw_intext(
       AsmReg dst, AsmReg src, bool sign, u32 from, u32 to) noexcept;
@@ -1765,31 +1778,29 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
     ASMNC(B, -static_cast<ptrdiff_t>(off + 4) / 4);
   }
 }
-
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename> class BaseTy,
           typename Config>
-void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_set(
-    Jump jmp, AsmReg dst) noexcept {
-  this->text_writer.ensure_space(4);
+Da64Cond CompilerA64<Adaptor, Derived, BaseTy, Config>::jump_to_cond(
+    Jump jmp) noexcept {
   switch (jmp.kind) {
-  case Jump::Jeq: ASMNC(CSETw, dst, DA_EQ); break;
-  case Jump::Jne: ASMNC(CSETw, dst, DA_NE); break;
-  case Jump::Jcs: ASMNC(CSETw, dst, DA_CS); break;
-  case Jump::Jcc: ASMNC(CSETw, dst, DA_CC); break;
-  case Jump::Jmi: ASMNC(CSETw, dst, DA_MI); break;
-  case Jump::Jpl: ASMNC(CSETw, dst, DA_PL); break;
-  case Jump::Jvs: ASMNC(CSETw, dst, DA_VS); break;
-  case Jump::Jvc: ASMNC(CSETw, dst, DA_VC); break;
-  case Jump::Jhi: ASMNC(CSETw, dst, DA_HI); break;
-  case Jump::Jls: ASMNC(CSETw, dst, DA_LS); break;
-  case Jump::Jge: ASMNC(CSETw, dst, DA_GE); break;
-  case Jump::Jlt: ASMNC(CSETw, dst, DA_LT); break;
-  case Jump::Jgt: ASMNC(CSETw, dst, DA_GT); break;
-  case Jump::Jle: ASMNC(CSETw, dst, DA_LE); break;
-  case Jump::jmp: ASMNC(CSETw, dst, DA_AL); break;
-  default: TPDE_UNREACHABLE("invalid condition for set/mask");
+  case Jump::Jeq: return DA_EQ;
+  case Jump::Jne: return DA_NE;
+  case Jump::Jcs: return DA_CS;
+  case Jump::Jcc: return DA_CC;
+  case Jump::Jmi: return DA_MI;
+  case Jump::Jpl: return DA_PL;
+  case Jump::Jvs: return DA_VS;
+  case Jump::Jvc: return DA_VC;
+  case Jump::Jhi: return DA_HI;
+  case Jump::Jls: return DA_LS;
+  case Jump::Jge: return DA_GE;
+  case Jump::Jlt: return DA_LT;
+  case Jump::Jgt: return DA_GT;
+  case Jump::Jle: return DA_LE;
+  case Jump::jmp: return DA_AL;
+  default: TPDE_UNREACHABLE("invalid jump kind for conversion to Da64Cond");
   }
 }
 
@@ -1797,26 +1808,35 @@ template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename> class BaseTy,
           typename Config>
+void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_set(
+    Jump cc, AsmReg dst) noexcept {
+  ASM(CSETw, dst, jump_to_cond(cc));
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> class BaseTy,
+          typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_mask(
-    Jump jmp, AsmReg dst) noexcept {
+    Jump cc, AsmReg dst) noexcept {
+  ASM(CSETMx, dst, jump_to_cond(cc));
+}
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> class BaseTy,
+          typename Config>
+void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_select(
+    Jump cc,
+    AsmReg dst,
+    AsmReg true_select,
+    AsmReg false_select,
+    bool is_64) noexcept {
   this->text_writer.ensure_space(4);
-  switch (jmp.kind) {
-  case Jump::Jeq: ASMNC(CSETMx, dst, DA_EQ); break;
-  case Jump::Jne: ASMNC(CSETMx, dst, DA_NE); break;
-  case Jump::Jcs: ASMNC(CSETMx, dst, DA_CS); break;
-  case Jump::Jcc: ASMNC(CSETMx, dst, DA_CC); break;
-  case Jump::Jmi: ASMNC(CSETMx, dst, DA_MI); break;
-  case Jump::Jpl: ASMNC(CSETMx, dst, DA_PL); break;
-  case Jump::Jvs: ASMNC(CSETMx, dst, DA_VS); break;
-  case Jump::Jvc: ASMNC(CSETMx, dst, DA_VC); break;
-  case Jump::Jhi: ASMNC(CSETMx, dst, DA_HI); break;
-  case Jump::Jls: ASMNC(CSETMx, dst, DA_LS); break;
-  case Jump::Jge: ASMNC(CSETMx, dst, DA_GE); break;
-  case Jump::Jlt: ASMNC(CSETMx, dst, DA_LT); break;
-  case Jump::Jgt: ASMNC(CSETMx, dst, DA_GT); break;
-  case Jump::Jle: ASMNC(CSETMx, dst, DA_LE); break;
-  case Jump::jmp: ASMNC(CSETMx, dst, DA_AL); break;
-  default: TPDE_UNREACHABLE("invalid condition for set/mask");
+  Da64Cond cond = jump_to_cond(cc);
+  if (is_64) {
+    ASMNC(CSELx, dst, true_select, false_select, cond);
+  } else {
+    ASMNC(CSELw, dst, true_select, false_select, cond);
   }
 }
 

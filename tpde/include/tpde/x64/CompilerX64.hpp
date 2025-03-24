@@ -462,8 +462,12 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
   void generate_raw_jump(Jump jmp, Assembler::Label target) noexcept;
 
-  void generate_raw_set(Jump jmp, AsmReg dst) noexcept;
-  void generate_raw_mask(Jump jmp, AsmReg dst) noexcept;
+  /// Set dst to 1 if cc is true, otherwise set it to zero
+  void generate_raw_set(Jump cc, AsmReg dst) noexcept;
+  /// Set all bits of dst to 1 if cc is true, otherwise set it to zero
+  void generate_raw_mask(Jump cc, AsmReg dst) noexcept;
+  /// Move src into dst if cc is true, otherwise do nothing
+  void generate_raw_cmov(Jump cc, AsmReg dst, AsmReg src, bool is_64) noexcept;
 
   void generate_raw_intext(
       AsmReg dst, AsmReg src, bool sign, u32 from, u32 to) noexcept;
@@ -1439,9 +1443,9 @@ template <IRAdaptor Adaptor,
           template <typename, typename, typename> class BaseTy,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_set(
-    Jump jmp, AsmReg dst) noexcept {
+    Jump cc, AsmReg dst) noexcept {
   ASM(MOV32ri, dst, 0);
-  switch (jmp) {
+  switch (cc) {
   case Jump::ja: ASM(SETA8r, dst); break;
   case Jump::jae: ASM(SETNC8r, dst); break;
   case Jump::jb: ASM(SETC8r, dst); break;
@@ -1467,10 +1471,59 @@ template <IRAdaptor Adaptor,
           template <typename, typename, typename> class BaseTy,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_mask(
-    Jump jmp, AsmReg dst) noexcept {
+    Jump cc, AsmReg dst) noexcept {
   // TODO: use sbb dst,dst/adc dest,-1 for carry flag
-  generate_raw_set(jmp, dst);
+  generate_raw_set(cc, dst);
   ASM(NEG64r, dst);
+}
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> class BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_cmov(
+    Jump cc, AsmReg dst, AsmReg src, bool is_64) noexcept {
+  this->text_writer.ensure_space(16);
+  if (is_64) {
+    switch (cc) {
+    case Jump::ja: ASMNC(CMOVA64rr, dst, src); break;
+    case Jump::jae: ASMNC(CMOVNC64rr, dst, src); break;
+    case Jump::jb: ASMNC(CMOVC64rr, dst, src); break;
+    case Jump::jbe: ASMNC(CMOVBE64rr, dst, src); break;
+    case Jump::je: ASMNC(CMOVZ64rr, dst, src); break;
+    case Jump::jg: ASMNC(CMOVG64rr, dst, src); break;
+    case Jump::jge: ASMNC(CMOVGE64rr, dst, src); break;
+    case Jump::jl: ASMNC(CMOVL64rr, dst, src); break;
+    case Jump::jle: ASMNC(CMOVLE64rr, dst, src); break;
+    case Jump::jmp: ASMNC(MOV64rr, dst, src); break;
+    case Jump::jne: ASMNC(CMOVNZ64rr, dst, src); break;
+    case Jump::jno: ASMNC(CMOVNO64rr, dst, src); break;
+    case Jump::jo: ASMNC(CMOVO64rr, dst, src); break;
+    case Jump::js: ASMNC(CMOVS64rr, dst, src); break;
+    case Jump::jns: ASMNC(CMOVNS64rr, dst, src); break;
+    case Jump::jp: ASMNC(CMOVP64rr, dst, src); break;
+    case Jump::jnp: ASMNC(CMOVNP64rr, dst, src); break;
+    }
+  } else {
+    switch (cc) {
+    case Jump::ja: ASMNC(CMOVA32rr, dst, src); break;
+    case Jump::jae: ASMNC(CMOVNC32rr, dst, src); break;
+    case Jump::jb: ASMNC(CMOVC32rr, dst, src); break;
+    case Jump::jbe: ASMNC(CMOVBE32rr, dst, src); break;
+    case Jump::je: ASMNC(CMOVZ32rr, dst, src); break;
+    case Jump::jg: ASMNC(CMOVG32rr, dst, src); break;
+    case Jump::jge: ASMNC(CMOVGE32rr, dst, src); break;
+    case Jump::jl: ASMNC(CMOVL32rr, dst, src); break;
+    case Jump::jle: ASMNC(CMOVLE32rr, dst, src); break;
+    case Jump::jmp: ASMNC(MOV32rr, dst, src); break;
+    case Jump::jne: ASMNC(CMOVNZ32rr, dst, src); break;
+    case Jump::jno: ASMNC(CMOVNO32rr, dst, src); break;
+    case Jump::jo: ASMNC(CMOVO32rr, dst, src); break;
+    case Jump::js: ASMNC(CMOVS32rr, dst, src); break;
+    case Jump::jns: ASMNC(CMOVNS32rr, dst, src); break;
+    case Jump::jp: ASMNC(CMOVP32rr, dst, src); break;
+    case Jump::jnp: ASMNC(CMOVNP32rr, dst, src); break;
+    }
+  }
 }
 
 template <IRAdaptor Adaptor,

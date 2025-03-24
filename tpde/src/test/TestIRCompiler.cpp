@@ -17,6 +17,7 @@ bool TestIRCompilerX64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
     using enum TestIR::Value::Op;
   case add: return compile_add(inst_idx);
   case sub: return compile_sub(inst_idx);
+  case condselect: return compile_condselect(inst_idx);
   case terminate:
   case ret: {
     RetBuilder rb{*derived(), *cur_cc_assigner()};
@@ -143,6 +144,56 @@ bool TestIRCompilerX64::compile_sub(IRInstRef inst_idx) noexcept {
   this->result_ref(static_cast<IRValueRef>(inst_idx))
       .part(0)
       .set_value(std::move(result));
+  return true;
+}
+bool TestIRCompilerX64::compile_condselect(IRInstRef inst_idx) noexcept {
+  const TestIR::Value &value = ir()->values[static_cast<u32>(inst_idx)];
+
+  const auto lhs_comp_idx =
+      static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx]);
+  const auto rhs_comp_idx =
+      static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx + 1]);
+  const auto lhs_idx =
+      static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx + 2]);
+  const auto rhs_idx =
+      static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx + 3]);
+
+  {
+    auto [lhs_vr, lhs] = this->val_ref_single(lhs_comp_idx);
+    auto [rhs_vr, rhs] = this->val_ref_single(rhs_comp_idx);
+
+    ASM(CMP64rr, lhs.load_to_reg(), rhs.load_to_reg());
+  }
+
+  auto [lhs_vr, lhs] = this->val_ref_single(lhs_idx);
+  auto [rhs_vr, rhs] = this->val_ref_single(rhs_idx);
+  auto [res_vr, res] =
+      this->result_ref_single(static_cast<IRValueRef>(inst_idx));
+
+  auto res_tmp = std::move(lhs).into_temporary();
+  auto rhs_reg = rhs.load_to_reg();
+
+  Jump cc;
+  switch (static_cast<TestIR::Value::Cond>(
+      ir()->value_operands[value.op_begin_idx + 4])) {
+    using enum TestIR::Value::Cond;
+  case eq: cc = Jump::je; break;
+  case neq: cc = Jump::jne; break;
+  case uge: cc = Jump::jae; break;
+  case ugt: cc = Jump::ja; break;
+  case ule: cc = Jump::jbe; break;
+  case ult: cc = Jump::jb; break;
+  case sge: cc = Jump::jge; break;
+  case sgt: cc = Jump::jg; break;
+  case sle: cc = Jump::jle; break;
+  case slt: cc = Jump::jl; break;
+  default: return false;
+  }
+  cc = invert_jump(cc);
+
+  generate_raw_cmov(cc, res_tmp.cur_reg(), rhs_reg, true);
+
+  res.set_value(std::move(res_tmp));
   return true;
 }
 } // namespace tpde::test

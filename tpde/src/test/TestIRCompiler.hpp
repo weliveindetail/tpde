@@ -81,5 +81,6 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
 
   bool compile_add(IRInstRef) noexcept;
   bool compile_sub(IRInstRef) noexcept;
+  bool compile_condselect(IRInstRef) noexcept;
 };
 } // namespace tpde::test

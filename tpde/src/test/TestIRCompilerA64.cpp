@@ -86,6 +86,7 @@ struct TestIRCompilerA64 : a64::CompilerA64<TestIRAdaptor, TestIRCompilerA64> {
 
   bool compile_add(IRInstRef) noexcept;
   bool compile_sub(IRInstRef) noexcept;
+  bool compile_condselect(IRInstRef) noexcept;
 };
 
 bool TestIRCompilerA64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
@@ -98,6 +99,7 @@ bool TestIRCompilerA64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
     using enum TestIR::Value::Op;
   case add: return compile_add(inst_idx);
   case sub: return compile_sub(inst_idx);
+  case condselect: return compile_condselect(inst_idx);
   case terminate:
   case ret: {
     RetBuilder rb{*derived(), *cur_cc_assigner()};
@@ -237,6 +239,57 @@ bool TestIRCompilerA64::compile_sub(IRInstRef inst_idx) noexcept {
   AsmReg rhs_reg = rhs.load_to_reg();
   AsmReg res_reg = res.alloc_try_reuse(lhs);
   ASM(SUBx, res_reg, lhs_reg, rhs_reg);
+  res.set_modified();
+  return true;
+}
+bool TestIRCompilerA64::compile_condselect(IRInstRef inst_idx) noexcept {
+  const TestIR::Value &value = ir()->values[static_cast<u32>(inst_idx)];
+
+  const auto lhs_comp_idx =
+      static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx]);
+  const auto rhs_comp_idx =
+      static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx + 1]);
+  const auto lhs_idx =
+      static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx + 2]);
+  const auto rhs_idx =
+      static_cast<IRValueRef>(ir()->value_operands[value.op_begin_idx + 3]);
+
+  {
+    auto [lhs_vr, lhs] = this->val_ref_single(lhs_comp_idx);
+    auto [rhs_vr, rhs] = this->val_ref_single(rhs_comp_idx);
+
+    ASM(CMPx, lhs.load_to_reg(), rhs.load_to_reg());
+  }
+
+  auto [lhs_vr, lhs] = this->val_ref_single(lhs_idx);
+  auto [rhs_vr, rhs] = this->val_ref_single(rhs_idx);
+  auto [res_vr, res] =
+      this->result_ref_single(static_cast<IRValueRef>(inst_idx));
+
+  auto lhs_reg = lhs.load_to_reg();
+  auto rhs_reg = rhs.load_to_reg();
+
+  auto res_reg = res.alloc_try_reuse(lhs);
+
+  Jump cc;
+  switch (static_cast<TestIR::Value::Cond>(
+      ir()->value_operands[value.op_begin_idx + 4])) {
+    using enum TestIR::Value::Cond;
+  case eq: cc = Jump::Jeq; break;
+  case neq: cc = Jump::Jne; break;
+  case uge: cc = Jump::Jcs; break;
+  case ugt: cc = Jump::Jhi; break;
+  case ule: cc = Jump::Jls; break;
+  case ult: cc = Jump::Jcc; break;
+  case sge: cc = Jump::Jge; break;
+  case sgt: cc = Jump::Jgt; break;
+  case sle: cc = Jump::Jle; break;
+  case slt: cc = Jump::Jlt; break;
+  default: return false;
+  }
+
+  generate_raw_select(cc, res_reg, lhs_reg, rhs_reg, true);
+
   res.set_modified();
   return true;
 }

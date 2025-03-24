@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <functional>
 #include <unordered_map>
+#include <variant>
 
 #include "Analyzer.hpp"
 #include "Compiler.hpp"

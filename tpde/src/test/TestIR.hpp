@@ -26,6 +26,7 @@ struct TestIR {
       any,
       add,
       sub,
+      condselect,
       alloca,
       terminate,
       ret,
@@ -35,6 +36,19 @@ struct TestIR {
       jump,
       call,
       zerofill,
+    };
+
+    enum class Cond : u8 {
+      eq,
+      neq,
+      uge,
+      ugt,
+      ule,
+      ult,
+      sge,
+      sgt,
+      sle,
+      slt,
     };
 
     struct OpInfo {
@@ -47,20 +61,21 @@ struct TestIR {
     };
 
     inline static constexpr OpInfo OP_INFOS[] = {
-        // name       term   def    ops succ imm
-        {   "<none>", false, false,   0,   0, 0},
-        {      "any", false,  true, ~0u,   0, 0},
-        {      "add", false,  true,   2,   0, 0},
-        {      "sub", false,  true,   2,   0, 0},
-        {   "alloca", false,  true,   0,   0, 2},
-        {"terminate",  true, false,   0,   0, 0},
-        {      "ret",  true, false,   1,   0, 0},
-        {       "br",  true, false,   0,   1, 0},
-        {   "condbr",  true, false,   1,   2, 0},
-        {      "tbz",  true, false,   1,   2, 1},
-        {     "jump",  true, false,   0, ~0u, 0},
-        {     "call", false,  true, ~0u,   0, 0},
-        { "zerofill", false,  true,   0,   0, 1},
+        // name                term              def          ops succ imm
+        {    "<none>", false, false,   0,   0, 0},
+        {       "any", false,  true, ~0u,   0, 0},
+        {       "add", false,  true,   2,   0, 0},
+        {       "sub", false,  true,   2,   0, 0},
+        {"condselect", false,  true,   4,   0, 1},
+        {    "alloca", false,  true,   0,   0, 2},
+        { "terminate",  true, false,   0,   0, 0},
+        {       "ret",  true, false,   1,   0, 0},
+        {        "br",  true, false,   0,   1, 0},
+        {    "condbr",  true, false,   1,   2, 0},
+        {       "tbz",  true, false,   1,   2, 1},
+        {      "jump",  true, false,   0, ~0u, 0},
+        {      "call", false,  true, ~0u,   0, 0},
+        {  "zerofill", false,  true,   0,   0, 1},
     };
 
     std::string name;

@@ -1,0 +1,171 @@
+; SPDX-FileCopyrightText: 2025 Contributors to TPDE <https://tpde.org>
+;
+; SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+; RUN: rm -rf %t
+; RUN: mkdir %t
+
+; RUN: %tpde_test %s --no-fixed-assignments -o %t/out.o
+; RUN: objdump -Mintel-syntax --no-addresses --no-show-raw-insn --disassemble %t/out.o | FileCheck %s -check-prefixes=X64,CHECK --enable-var-scope --dump-input always
+; RUN: %tpde_test %s --no-fixed-assignments --arch=a64 -o %t/out.o
+; RUN: llvm-objdump --no-addresses --no-show-raw-insn --disassemble %t/out.o | FileCheck %s -check-prefixes=A64,CHECK --enable-var-scope --dump-input always
+
+; CHECK-LABEL: eq
+eq(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: cmp rdi,rsi
+; X64-NEXT: cmovne rdi,rsi
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+
+; A64: mov x29, sp
+; A64: cmp x0, x1
+; A64: csel x0, x0, x1, eq
+  %res = condselect %a, %b, %a, %b, 0
+  ret %res
+}
+
+; CHECK-LABEL: neq
+neq(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: cmp rdi,rsi
+; X64-NEXT: cmove rdi,rsi
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+
+; A64: mov x29, sp
+; A64: cmp x0, x1
+; A64: csel x0, x0, x1, ne
+  %res = condselect %a, %b, %a, %b, 1
+  ret %res
+}
+
+; CHECK-LABEL: uge
+uge(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: cmp rdi,rsi
+; X64-NEXT: cmovb rdi,rsi
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+
+; A64: mov x29, sp
+; A64: cmp x0, x1
+; A64: csel x0, x0, x1, hs
+  %res = condselect %a, %b, %a, %b, 2
+  ret %res
+}
+
+; CHECK-LABEL: ugt
+ugt(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: cmp rdi,rsi
+; X64-NEXT: cmovbe rdi,rsi
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+
+; A64: mov x29, sp
+; A64: cmp x0, x1
+; A64: csel x0, x0, x1, hi
+  %res = condselect %a, %b, %a, %b, 3
+  ret %res
+}
+
+; CHECK-LABEL: ule
+ule(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: cmp rdi,rsi
+; X64-NEXT: cmova rdi,rsi
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+
+; A64: mov x29, sp
+; A64: cmp x0, x1
+; A64: csel x0, x0, x1, ls
+  %res = condselect %a, %b, %a, %b, 4
+  ret %res
+}
+
+; CHECK-LABEL: ult
+ult(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: cmp rdi,rsi
+; X64-NEXT: cmovae rdi,rsi
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+
+; A64: mov x29, sp
+; A64: cmp x0, x1
+; A64: csel x0, x0, x1, lo
+  %res = condselect %a, %b, %a, %b, 5
+  ret %res
+}
+
+; CHECK-LABEL: sge
+sge(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: cmp rdi,rsi
+; X64-NEXT: cmovl rdi,rsi
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+
+; A64: mov x29, sp
+; A64: cmp x0, x1
+; A64: csel x0, x0, x1, ge
+  %res = condselect %a, %b, %a, %b, 6
+  ret %res
+}
+
+; CHECK-LABEL: sgt
+sgt(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: cmp rdi,rsi
+; X64-NEXT: cmovle rdi,rsi
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+
+; A64: mov x29, sp
+; A64: cmp x0, x1
+; A64: csel x0, x0, x1, gt
+  %res = condselect %a, %b, %a, %b, 7
+  ret %res
+}
+
+; CHECK-LABEL: sle
+sle(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: cmp rdi,rsi
+; X64-NEXT: cmovg rdi,rsi
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+
+; A64: mov x29, sp
+; A64: cmp x0, x1
+; A64: csel x0, x0, x1, le
+  %res = condselect %a, %b, %a, %b, 8
+  ret %res
+}
+
+; CHECK-LABEL: slt
+slt(%a, %b) {
+entry:
+; X64: sub rsp
+; X64-NEXT: cmp rdi,rsi
+; X64-NEXT: cmovge rdi,rsi
+; X64-NEXT: mov rax,rdi
+; X64-NEXT: add rsp
+
+; A64: mov x29, sp
+; A64: cmp x0, x1
+; A64: csel x0, x0, x1, lt
+  %res = condselect %a, %b, %a, %b, 9
+  ret %res
+}
