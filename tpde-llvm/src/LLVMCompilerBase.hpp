@@ -43,7 +43,6 @@ struct LLVMCompilerBase : public LLVMCompiler,
   using ValuePartRef = typename Base::ValuePartRef;
   using ValuePart = typename Base::ValuePart;
   using ValueRef = typename Base::ValueRef;
-  using AssignmentPartRef = typename Base::AssignmentPartRef;
   using GenericValuePart = typename Base::GenericValuePart;
   using InstRange = typename Base::InstRange;
 
@@ -1406,7 +1405,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
   const auto *load = llvm::cast<llvm::LoadInst>(inst);
   auto [_, ptr_ref] = this->val_ref_single(load->getPointerOperand());
   if (ptr_ref.has_assignment() && ptr_ref.assignment().variable_ref()) {
-    const auto ref_idx = ptr_ref.assignment().assignment->var_ref_custom_idx;
+    const auto ref_idx = ptr_ref.assignment().variable_ref_data();
     if (this->variable_refs[ref_idx].alloca) {
       GenericValuePart addr = derived()->create_addr_for_alloca(ref_idx);
       return compile_load_generic(load, std::move(addr));
@@ -1603,7 +1602,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
   const auto *store = llvm::cast<llvm::StoreInst>(inst);
   auto [_, ptr_ref] = this->val_ref_single(store->getPointerOperand());
   if (ptr_ref.has_assignment() && ptr_ref.assignment().variable_ref()) {
-    const auto ref_idx = ptr_ref.assignment().assignment->var_ref_custom_idx;
+    const auto ref_idx = ptr_ref.assignment().variable_ref_data();
     if (this->variable_refs[ref_idx].alloca) {
       GenericValuePart addr = derived()->create_addr_for_alloca(ref_idx);
       return compile_store_generic(store, std::move(addr));
@@ -3783,7 +3782,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
     // spill
     // no need to spill fixed assignments
     for (u32 idx = 0; idx < a->part_count; idx++) {
-      AssignmentPartRef ap{a, idx};
+      tpde::AssignmentPartRef ap{a, idx};
       if (!ap.fixed_assignment() && ap.register_valid()) {
         // this is the call result...
         assert(ap.modified());

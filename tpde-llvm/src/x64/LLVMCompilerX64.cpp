@@ -74,7 +74,8 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
 
   void move_val_to_ret_regs(llvm::Value *) noexcept;
 
-  void load_address_of_var_reference(AsmReg dst, AssignmentPartRef ap) noexcept;
+  void load_address_of_var_reference(AsmReg dst,
+                                     tpde::AssignmentPartRef ap) noexcept;
 
   void ext_int(
       AsmReg dst, AsmReg src, bool sign, unsigned from, unsigned to) noexcept;
@@ -203,8 +204,8 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
 }
 
 void LLVMCompilerX64::load_address_of_var_reference(
-    AsmReg dst, AssignmentPartRef ap) noexcept {
-  const auto &info = variable_refs[ap.assignment->var_ref_custom_idx];
+    AsmReg dst, tpde::AssignmentPartRef ap) noexcept {
+  const auto &info = variable_refs[ap.variable_ref_data()];
   if (info.alloca) {
     // default handling from CompilerX64
     assert(info.alloca_frame_off <= 0);

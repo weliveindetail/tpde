@@ -425,7 +425,6 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   using IRBlockRef = typename Base::IRBlockRef;
   using IRFuncRef = typename Base::IRFuncRef;
 
-  using AssignmentPartRef = typename Base::AssignmentPartRef;
   using ScratchReg = typename Base::ScratchReg;
   using ValuePartRef = typename Base::ValuePartRef;
   using ValuePart = typename Base::ValuePart;
@@ -1618,11 +1617,12 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::
     load_address_of_var_reference(const AsmReg dst,
                                   const AssignmentPartRef ap) noexcept {
   static_assert(Config::DEFAULT_VAR_REF_HANDLING);
-  assert(-static_cast<i32>(ap.assignment->frame_off) < 0);
+  auto frame_off = static_cast<i32>(ap.variable_ref_data());
+  assert(-frame_off < 0);
   // per-default, variable references are only used by
   // allocas
-  if (!ASMIF(ADDxi, dst, DA_GP(29), ap.assignment->frame_off)) {
-    materialize_constant(ap.assignment->frame_off, Config::GP_BANK, 4, dst);
+  if (!ASMIF(ADDxi, dst, DA_GP(29), frame_off)) {
+    materialize_constant(frame_off, Config::GP_BANK, 4, dst);
     ASM(ADDx_uxtw, dst, DA_GP(29), dst, 0);
   }
 }

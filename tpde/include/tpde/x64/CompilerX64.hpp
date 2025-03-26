@@ -322,7 +322,6 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   using IRBlockRef = typename Base::IRBlockRef;
   using IRFuncRef = typename Base::IRFuncRef;
 
-  using AssignmentPartRef = typename Base::AssignmentPartRef;
   using ScratchReg = typename Base::ScratchReg;
   using ValuePartRef = typename Base::ValuePartRef;
   using ValuePart = typename Base::ValuePart;
@@ -1367,9 +1366,10 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::
                                   const AssignmentPartRef ap) noexcept {
   static_assert(Config::DEFAULT_VAR_REF_HANDLING);
   // frame_off is zero for zero-sized allocations.
-  assert(ap.assignment->frame_off <= 0);
+  auto frame_off = static_cast<i32>(ap.variable_ref_data());
+  assert(frame_off <= 0);
   // per-default, variable references are only used by allocas
-  ASM(LEA64rm, dst, FE_MEM(FE_BP, 0, FE_NOREG, ap.assignment->frame_off));
+  ASM(LEA64rm, dst, FE_MEM(FE_BP, 0, FE_NOREG, frame_off));
 }
 
 template <IRAdaptor Adaptor,

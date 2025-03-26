@@ -3,14 +3,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include "tpde/RegisterFile.hpp"
 #include "tpde/ValueAssignment.hpp"
+
+#include <cstdint>
 
 namespace tpde {
 
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
-  ValueAssignment *assignment;
-  u32 part;
+class AssignmentPartRef {
+  ValueAssignment *va;
+  uint32_t part;
 
   // note for how parts are structured:
   // |15|14|13|12|11|10|09|08|07|06|05|04|03|02|01|00|
@@ -29,102 +31,108 @@ struct CompilerBase<Adaptor, Derived, Config>::AssignmentPartRef {
   //  - !RV + !IM: register invalid, value stored only in stack slot
   //  -  RV + !IM: register identical to value in stack slot
 
-  AssignmentPartRef(ValueAssignment *assignment, const u32 part)
-      : assignment(assignment), part(part) {}
+public:
+  AssignmentPartRef(ValueAssignment *va, const uint32_t part)
+      : va(va), part(part) {}
 
   void reset() noexcept {
-    assignment->parts[part] = 0;
+    va->parts[part] = 0;
     set_modified(true);
   }
 
+  ValueAssignment *assignment() noexcept { return va; }
+
   [[nodiscard]] RegBank bank() const noexcept {
-    return RegBank((assignment->parts[part] >> 5) & 0b111);
+    return RegBank((va->parts[part] >> 5) & 0b111);
   }
 
   void set_bank(const RegBank bank) noexcept {
     assert(bank.id() <= 0b111);
-    auto data = assignment->parts[part] & ~0b1110'0000;
+    auto data = va->parts[part] & ~0b1110'0000;
     data |= bank.id() << 5;
-    assignment->parts[part] = data;
+    va->parts[part] = data;
   }
 
   [[nodiscard]] Reg get_reg() const noexcept {
-    return Reg(assignment->parts[part] & 0xFF);
+    return Reg(va->parts[part] & 0xFF);
   }
 
   void set_reg(Reg reg) noexcept {
     assert(bank().id() == ((reg.id() >> 5) & 0b111));
-    assignment->parts[part] = (assignment->parts[part] & 0xFF00) | reg.id();
+    va->parts[part] = (va->parts[part] & 0xFF00) | reg.id();
   }
 
   [[nodiscard]] bool modified() const noexcept {
-    return (assignment->parts[part] & (1u << 9)) != 0;
+    return (va->parts[part] & (1u << 9)) != 0;
   }
 
   void set_modified(const bool val) noexcept {
     if (val) {
-      assignment->parts[part] |= (1u << 9);
+      va->parts[part] |= (1u << 9);
     } else {
-      assignment->parts[part] &= ~(1u << 9);
+      va->parts[part] &= ~(1u << 9);
     }
   }
 
   [[nodiscard]] bool fixed_assignment() const noexcept {
-    return (assignment->parts[part] & (1u << 8)) != 0;
+    return (va->parts[part] & (1u << 8)) != 0;
   }
 
   void set_fixed_assignment(const bool val) noexcept {
     if (val) {
-      assignment->parts[part] |= (1u << 8);
+      va->parts[part] |= (1u << 8);
     } else {
-      assignment->parts[part] &= ~(1u << 8);
+      va->parts[part] &= ~(1u << 8);
     }
   }
 
-  [[nodiscard]] bool variable_ref() const noexcept {
-    return assignment->variable_ref;
-  }
+  [[nodiscard]] bool variable_ref() const noexcept { return va->variable_ref; }
 
   [[nodiscard]] bool register_valid() const noexcept {
-    return (assignment->parts[part] & (1u << 11)) != 0;
+    return (va->parts[part] & (1u << 11)) != 0;
   }
 
   void set_register_valid(const bool val) noexcept {
     if (val) {
-      assignment->parts[part] |= (1u << 11);
+      va->parts[part] |= (1u << 11);
     } else {
-      assignment->parts[part] &= ~(1u << 11);
+      va->parts[part] &= ~(1u << 11);
     }
   }
 
   [[nodiscard]] bool stack_valid() const noexcept {
-    return (assignment->parts[part] & (1u << 9)) == 0;
+    return (va->parts[part] & (1u << 9)) == 0;
   }
 
   void set_stack_valid() noexcept { set_modified(false); }
 
-  [[nodiscard]] u32 part_size() const noexcept {
-    return 1u << ((assignment->parts[part] >> 12) & 0b111);
+  [[nodiscard]] uint32_t part_size() const noexcept {
+    return 1u << ((va->parts[part] >> 12) & 0b111);
   }
 
-  void set_part_size(const u32 part_size) noexcept {
+  void set_part_size(const uint32_t part_size) noexcept {
     assert((part_size & (part_size - 1)) == 0);
-    const u32 shift = util::cnt_tz(part_size);
+    const uint32_t shift = util::cnt_tz(part_size);
     assert(shift <= 0b111);
-    auto data = assignment->parts[part] & ~(0b111 << 12);
+    auto data = va->parts[part] & ~(0b111 << 12);
     data |= (shift << 12);
-    assignment->parts[part] = data;
+    va->parts[part] = data;
   }
 
-  [[nodiscard]] i32 frame_off() const noexcept {
+  [[nodiscard]] int32_t frame_off() const noexcept {
     assert(!variable_ref());
-    assert(assignment->frame_off != 0 &&
-           "attempt to access uninitialized stack slot");
-    return assignment->frame_off + part_off();
+    assert(va->frame_off != 0 && "attempt to access uninitialized stack slot");
+    return va->frame_off + part_off();
   }
 
-  [[nodiscard]] u32 part_off() const noexcept {
-    return assignment->max_part_size * part;
+  [[nodiscard]] uint32_t variable_ref_data() const noexcept {
+    assert(variable_ref());
+    assert(part == 0);
+    return va->var_ref_custom_idx;
+  }
+
+  [[nodiscard]] uint32_t part_off() const noexcept {
+    return va->max_part_size * part;
   }
 };
 

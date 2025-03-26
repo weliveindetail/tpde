@@ -9,6 +9,7 @@
 #include "Compiler.hpp"
 #include "CompilerConfig.hpp"
 #include "IRAdaptor.hpp"
+#include "tpde/AssignmentPartRef.hpp"
 #include "tpde/RegisterFile.hpp"
 #include "tpde/ValLocalIdx.hpp"
 #include "tpde/ValueAssignment.hpp"
@@ -103,7 +104,6 @@ struct CompilerBase {
 
 
   struct ScratchReg;
-  struct AssignmentPartRef;
   class ValuePart;
   struct ValuePartRef;
   struct ValueRef;
@@ -247,7 +247,6 @@ protected:
 };
 } // namespace tpde
 
-#include "AssignmentPartRef.hpp"
 #include "GenericValuePart.hpp"
 #include "ScratchReg.hpp"
 #include "ValuePartRef.hpp"
@@ -683,10 +682,10 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::allocate_spill_slot(
     AssignmentPartRef ap) noexcept {
   assert(!ap.variable_ref() && "cannot allocate spill slot for variable ref");
-  if (ap.assignment->frame_off == 0) {
+  if (ap.assignment()->frame_off == 0) {
     assert(!ap.stack_valid() && "stack-valid set without spill slot");
-    ap.assignment->frame_off = allocate_stack_slot(ap.assignment->size());
-    assert(ap.assignment->frame_off != 0);
+    ap.assignment()->frame_off = allocate_stack_slot(ap.assignment()->size());
+    assert(ap.assignment()->frame_off != 0);
   }
 }
 

@@ -7,6 +7,8 @@
 #include "tpde/base.hpp"
 #include "tpde/util/misc.hpp"
 
+#include <array>
+
 namespace tpde {
 
 struct Reg {

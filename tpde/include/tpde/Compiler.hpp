@@ -16,6 +16,7 @@
 
 namespace tpde {
 
+class AssignmentPartRef;
 struct RegBank;
 
 template <bool B>
@@ -64,7 +65,7 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
   // (dst_reg, ap_ref)
   {
     a.load_address_of_var_reference(ARG(typename Config::AsmReg),
-                                    ARG(typename T::AssignmentPartRef))
+                                    ARG(AssignmentPartRef))
   };
 
   // (dst_reg, src_reg, size)
