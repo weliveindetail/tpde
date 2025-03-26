@@ -587,12 +587,12 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     switch (ty) {
       using enum LLVMBasicValType;
     case i1:
-    case i8: return ValuePartRef(this, data, 1, Config::GP_BANK);
-    case i16: return ValuePartRef(this, data, 2, Config::GP_BANK);
-    case i32: return ValuePartRef(this, data, 4, Config::GP_BANK);
+    case i8: return ValuePartRef(this, data[0], 1, Config::GP_BANK);
+    case i16: return ValuePartRef(this, data[0], 2, Config::GP_BANK);
+    case i32: return ValuePartRef(this, data[0], 4, Config::GP_BANK);
     case i64:
-    case ptr: return ValuePartRef(this, data, 8, Config::GP_BANK);
-    case i128: return ValuePartRef(this, data + sub_part, 8, Config::GP_BANK);
+    case ptr: return ValuePartRef(this, data[0], 8, Config::GP_BANK);
+    case i128: return ValuePartRef(this, data[sub_part], 8, Config::GP_BANK);
     default: TPDE_FATAL("illegal integer constant");
     }
   }
@@ -1735,16 +1735,16 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
             derived()->encode_shli128_lt64(
                 lhs.part(0),
                 lhs.part(1),
-                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
-                ValuePartRef(this, &imm2, 1, Config::GP_BANK),
+                ValuePartRef(this, imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, imm2, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           } else if (op == IntBinaryOp::shr) {
             derived()->encode_shri128_lt64(
                 lhs.part(0),
                 lhs.part(1),
-                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
-                ValuePartRef(this, &imm2, 1, Config::GP_BANK),
+                ValuePartRef(this, imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, imm2, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           } else {
@@ -1752,8 +1752,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
             derived()->encode_ashri128_lt64(
                 lhs.part(0),
                 lhs.part(1),
-                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
-                ValuePartRef(this, &imm2, 1, Config::GP_BANK),
+                ValuePartRef(this, imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, imm2, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           }
@@ -1762,20 +1762,20 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
           if (op == IntBinaryOp::shl) {
             derived()->encode_shli128_ge64(
                 lhs.part(0),
-                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, imm1, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           } else if (op == IntBinaryOp::shr) {
             derived()->encode_shri128_ge64(
                 lhs.part(1),
-                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, imm1, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           } else {
             assert(op == IntBinaryOp::ashr);
             derived()->encode_ashri128_ge64(
                 lhs.part(1),
-                ValuePartRef(this, &imm1, 1, Config::GP_BANK),
+                ValuePartRef(this, imm1, 1, Config::GP_BANK),
                 scratch_low,
                 scratch_high);
           }
@@ -1873,10 +1873,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
   // TODO(ts): optimize div/rem by constant to a shift?
 
-  // Pointers to value stored in ValuePartRef.
-  u64 rhs_imm;
-  u64 lhs_imm;
-
   unsigned ext_width = tpde::util::align_up(int_width, 32);
   if (ext_width != int_width) {
     bool sext = op.is_signed();
@@ -1885,8 +1881,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         lhs_op =
             derived()->ext_int(std::move(lhs_op), sext, int_width, ext_width);
       } else if (sext) {
-        lhs_imm = tpde::util::sext(lhs_op.imm64(), int_width);
-        lhs_op = ValuePartRef(this, &lhs_imm, 8, Config::GP_BANK);
+        u64 lhs_imm = tpde::util::sext(lhs_op.imm64(), int_width);
+        lhs_op = ValuePartRef(this, lhs_imm, 8, Config::GP_BANK);
       }
     }
     if (op.needs_rhs_ext()) {
@@ -1894,8 +1890,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
         rhs_op =
             derived()->ext_int(std::move(rhs_op), sext, int_width, ext_width);
       } else if (sext) {
-        rhs_imm = tpde::util::sext(rhs_op.imm64(), int_width);
-        rhs_op = ValuePartRef(this, &rhs_imm, 8, Config::GP_BANK);
+        u64 rhs_imm = tpde::util::sext(rhs_op.imm64(), int_width);
+        rhs_op = ValuePartRef(this, rhs_imm, 8, Config::GP_BANK);
       }
     }
   }
@@ -2574,7 +2570,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_extract_element(
   auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
   u64 mask = nelem - 1;
   derived()->encode_landi64(this->val_ref(index).part(0),
-                            ValuePartRef{this, &mask, 8, Config::GP_BANK},
+                            ValuePartRef{this, mask, 8, Config::GP_BANK},
                             idx_scratch);
   assert(expr.scale == 0);
   expr.scale = this->adaptor->basic_ty_part_size(bvt);
@@ -2638,7 +2634,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_insert_element(
   auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
   u64 mask = nelem - 1;
   derived()->encode_landi64(this->val_ref(index).part(0),
-                            ValuePartRef{this, &mask, 8, Config::GP_BANK},
+                            ValuePartRef{this, mask, 8, Config::GP_BANK},
                             idx_scratch);
   assert(expr.scale == 0);
   expr.scale = val.part_size();
@@ -3365,7 +3361,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
     u64 val = pred == llvm::CmpInst::FCMP_FALSE ? 0u : 1u;
     (void)this->val_ref(cmp->getOperand(0)); // ref-count
     (void)this->val_ref(cmp->getOperand(1)); // ref-count
-    auto const_ref = ValuePartRef{this, &val, 1, Config::GP_BANK};
+    auto const_ref = ValuePartRef{this, val, 1, Config::GP_BANK};
     this->result_ref(cmp).part(0).set_value(std::move(const_ref));
     return true;
   }
@@ -3530,7 +3526,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       } else {
         u64 mask = (1ull << width) - 1;
         derived()->encode_landi32(std::move(arg_ref),
-                                  ValuePartRef{this, &mask, 4, Config::GP_BANK},
+                                  ValuePartRef{this, mask, 4, Config::GP_BANK},
                                   scratch);
       }
       cmp_reg = scratch.cur_reg();
@@ -3549,7 +3545,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
     } else if (width < 64) {
       u64 mask = (1ull << width) - 1;
       derived()->encode_landi64(std::move(arg_ref),
-                                ValuePartRef{this, &mask, 8, Config::GP_BANK},
+                                ValuePartRef{this, mask, 8, Config::GP_BANK},
                                 scratch);
       cmp_reg = scratch.cur_reg();
     } else {
@@ -4569,7 +4565,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     const auto type_info_sym = lookup_type_info_sym(type);
     const u64 idx = this->assembler.except_type_idx_for_sym(type_info_sym);
 
-    auto const_ref = ValuePartRef{this, &idx, 4, Config::GP_BANK};
+    auto const_ref = ValuePartRef{this, idx, 4, Config::GP_BANK};
     this->result_ref(inst).part(0).set_value(std::move(const_ref));
     return true;
   }
@@ -4580,8 +4576,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
 
     // ref-count the argument
     this->val_ref(inst->getOperand(0)).part(0);
-    static const u64 zero = 0;
-    auto const_ref = ValuePartRef{this, &zero, 1, Config::GP_BANK};
+    auto const_ref = ValuePartRef{this, 0, 1, Config::GP_BANK};
     this->result_ref(inst).part(0).set_value(std::move(const_ref));
     return true;
   }
@@ -4627,8 +4622,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
   auto [res_vr, res_ref] = this->result_ref_single(inst);
   auto [op_vr, op_ref] = this->val_ref_single(op);
 
-  u64 zero = 0;
-  auto zero_ref = ValuePartRef{this, &zero, 4, Config::GP_BANK};
+  auto zero_ref = ValuePartRef{this, 0, 4, Config::GP_BANK};
 
   // handle common case
 #define TEST(cond, name)                                                       \

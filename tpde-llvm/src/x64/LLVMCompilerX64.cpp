@@ -610,7 +610,6 @@ bool LLVMCompilerX64::compile_icmp(const llvm::Instruction *inst,
       std::swap(lhs_op, rhs_op);
       jump = swap_jump(jump);
     }
-    u64 rhs_imm;
 
     if (int_width != 32 && int_width != 64) {
       unsigned ext_bits = tpde::util::align_up(int_width, 32);
@@ -618,8 +617,8 @@ bool LLVMCompilerX64::compile_icmp(const llvm::Instruction *inst,
       if (!rhs_op.is_imm()) {
         rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
       } else if (is_signed) {
-        rhs_imm = tpde::util::sext(rhs_op.imm64(), int_width);
-        rhs_op = ValuePartRef{this, &rhs_imm, 8, CompilerConfig::GP_BANK};
+        u64 rhs_imm = tpde::util::sext(rhs_op.imm64(), int_width);
+        rhs_op = ValuePartRef{this, rhs_imm, 8, CompilerConfig::GP_BANK};
       }
     }
 
@@ -729,7 +728,7 @@ void LLVMCompilerX64::switch_emit_cmp(ScratchReg &scratch,
     } else {
       const auto tmp = scratch.alloc_gp();
       auto const_ref =
-          ValuePartRef{this, &case_value, 8, CompilerConfig::GP_BANK};
+          ValuePartRef{this, case_value, 8, CompilerConfig::GP_BANK};
       const_ref.reload_into_specific_fixed(tmp);
       ASM(CMP64rr, cmp_reg, tmp);
     }
