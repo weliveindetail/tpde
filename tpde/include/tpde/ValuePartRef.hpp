@@ -17,7 +17,12 @@ private:
   struct ConstantData {
     AsmReg reg = AsmReg::make_invalid();
     bool has_assignment = false;
-    const u64 *data;
+    bool is_const : 1;
+    bool const_inline : 1;
+    union {
+      const u64 *data;
+      u64 inline_data;
+    };
     RegBank bank;
     u32 size;
   };
@@ -37,11 +42,11 @@ private:
   } state;
 
 public:
-  ValuePart() noexcept : state{ConstantData{.data = nullptr}} {}
+  ValuePart() noexcept : state{ConstantData{.is_const = false}} {}
 
   ValuePart(RegBank bank) noexcept
       : state{
-            ConstantData{.data = nullptr, .bank = bank}
+            ConstantData{.is_const = false, .bank = bank}
   } {
     assert(bank.id() < Config::NUM_BANKS);
   }
@@ -65,9 +70,25 @@ public:
 
   ValuePart(const u64 *data, u32 size, RegBank bank) noexcept
       : state{
-            .c = ConstantData{.data = data, .bank = bank, .size = size}
+            .c = ConstantData{.is_const = true,
+                              .const_inline = false,
+                              .data = data,
+                              .bank = bank,
+                              .size = size}
   } {
     assert(data && "constant data must not be null");
+    assert(bank.id() < Config::NUM_BANKS);
+  }
+
+  ValuePart(const u64 val, u32 size, RegBank bank) noexcept
+      : state{
+            .c = ConstantData{.is_const = true,
+                              .const_inline = true,
+                              .inline_data = val,
+                              .bank = bank,
+                              .size = size}
+  } {
+    assert(size <= sizeof(val));
     assert(bank.id() < Config::NUM_BANKS);
   }
 
@@ -96,7 +117,7 @@ public:
   bool has_assignment() const noexcept { return state.v.has_assignment; }
 
   bool is_const() const noexcept {
-    return !state.c.has_assignment && state.c.data;
+    return !state.c.has_assignment && state.c.is_const;
   }
 
   [[nodiscard]] AssignmentPartRef assignment() const noexcept {
@@ -276,6 +297,9 @@ public:
 
   std::span<const u64> const_data() const noexcept {
     assert(is_const());
+    if (state.c.const_inline) {
+      return {&state.c.inline_data, 1};
+    }
     return {state.c.data, (state.c.size + 7) / 8};
   }
 
@@ -349,7 +373,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     if (reload) {
       assert(is_const() && "cannot reload temporary value");
       compiler->derived()->materialize_constant(
-          state.c.data, state.c.bank, state.c.size, reg);
+          const_data().data(), state.c.bank, state.c.size, reg);
     }
   }
 
@@ -420,7 +444,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
       } else {
         assert(is_const() && "cannot reload temporary value");
         compiler->derived()->materialize_constant(
-            state.c.data, state.c.bank, state.c.size, reg);
+            const_data().data(), state.c.bank, state.c.size, reg);
       }
     }
 
@@ -441,7 +465,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     tmp.alloc_specific(reg);
 
     compiler->derived()->materialize_constant(
-        state.c.data, state.c.bank, state.c.size, reg);
+        const_data().data(), state.c.bank, state.c.size, reg);
     return reg;
   }
 
@@ -485,7 +509,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
                                    unsigned size) noexcept {
   if (is_const()) {
     compiler->derived()->materialize_constant(
-        state.c.data, state.c.bank, state.c.size, reg);
+        const_data().data(), state.c.bank, state.c.size, reg);
     return reg;
   }
   if (!has_assignment()) {
