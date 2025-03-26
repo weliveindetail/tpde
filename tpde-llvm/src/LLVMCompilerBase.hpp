@@ -3206,7 +3206,8 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
         } else {
           dst_reg = scratch.alloc_gp();
         }
-        derived()->ext_int(dst_reg, src_reg, true, idx_size_bits, 64);
+        derived()->generate_raw_intext(
+            dst_reg, src_reg, /*sign=*/true, idx_size_bits, 64);
         addr.index = std::move(scratch);
       } else {
         assert(idx_size_bits == 64);

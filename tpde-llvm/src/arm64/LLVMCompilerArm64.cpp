@@ -77,8 +77,6 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
   void load_address_of_var_reference(AsmReg dst,
                                      tpde::AssignmentPartRef ap) noexcept;
 
-  void ext_int(
-      AsmReg dst, AsmReg src, bool sign, unsigned from, unsigned to) noexcept;
   ScratchReg ext_int(GenericValuePart op,
                      bool sign,
                      unsigned from,
@@ -190,7 +188,7 @@ void LLVMCompilerArm64::move_val_to_ret_regs(llvm::Value *val) noexcept {
     if (val_ref.is_const()) {
       val_ref.reload_into_specific_fixed(reg);
       if (i == cnt - 1 && sext_width) {
-        ext_int(reg, reg, /*sign=*/true, sext_width, 64);
+        generate_raw_intext(reg, reg, /*sign=*/true, sext_width, 64);
       }
     } else {
       if (val_ref.assignment().fixed_assignment()) {
@@ -200,9 +198,9 @@ void LLVMCompilerArm64::move_val_to_ret_regs(llvm::Value *val) noexcept {
       }
       if (i == cnt - 1) {
         if (sext_width) {
-          ext_int(reg, reg, /*sign=*/true, sext_width, 64);
+          generate_raw_intext(reg, reg, /*sign=*/true, sext_width, 64);
         } else if (zext_width) {
-          ext_int(reg, reg, /*sign=*/false, zext_width, 64);
+          generate_raw_intext(reg, reg, /*sign=*/false, zext_width, 64);
         }
       }
     }
@@ -253,32 +251,13 @@ void LLVMCompilerArm64::load_address_of_var_reference(
   }
 }
 
-void LLVMCompilerArm64::ext_int(
-    AsmReg dst, AsmReg src, bool sign, unsigned from, unsigned to) noexcept {
-  assert(from < to && to <= 64);
-  (void)to;
-  if (sign) {
-    if (to <= 32) {
-      ASM(SBFXw, dst, src, 0, from);
-    } else {
-      ASM(SBFXx, dst, src, 0, from);
-    }
-  } else {
-    if (to <= 32) {
-      ASM(UBFXw, dst, src, 0, from);
-    } else {
-      ASM(UBFXx, dst, src, 0, from);
-    }
-  }
-}
-
 LLVMCompilerArm64::ScratchReg LLVMCompilerArm64::ext_int(GenericValuePart op,
                                                          bool sign,
                                                          unsigned from,
                                                          unsigned to) noexcept {
   ScratchReg scratch{this};
   AsmReg src = gval_as_reg_reuse(op, scratch);
-  ext_int(scratch.alloc_gp(), src, sign, from, to);
+  generate_raw_intext(scratch.alloc_gp(), src, sign, from, to);
   return scratch;
 }
 

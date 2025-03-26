@@ -477,6 +477,9 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   void generate_raw_set(Jump jmp, AsmReg dst) noexcept;
   void generate_raw_mask(Jump jmp, AsmReg dst) noexcept;
 
+  void generate_raw_intext(
+      AsmReg dst, AsmReg src, bool sign, u32 from, u32 to) noexcept;
+
   void spill_before_call(CallingConv calling_conv, u64 except_mask = 0);
 
   struct CallArg {
@@ -1888,6 +1891,60 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_mask(
   // TODO: use sbb dst,dst/adc dest,-1 for carry flag
   generate_raw_set(jmp, dst);
   ASM(NEG64r, dst);
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> class BaseTy,
+          typename Config>
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_intext(
+    AsmReg dst, AsmReg src, bool sign, u32 from, u32 to) noexcept {
+  assert(from < to && to <= 64);
+  if (!sign) {
+    switch (from) {
+    case 8: ASM(MOVZXr32r8, dst, src); break;
+    case 16: ASM(MOVZXr32r16, dst, src); break;
+    case 32: ASM(MOV32rr, dst, src); break;
+    default:
+      if (from < 32) {
+        if (dst != src) {
+          ASM(MOV32rr, dst, src);
+        }
+        ASM(AND32ri, dst, (uint32_t{1} << from) - 1);
+      } else if (dst != src) {
+        ASM(MOV64ri, dst, (uint64_t{1} << from) - 1);
+        ASM(AND64rr, dst, src);
+      } else {
+        ScratchReg tmp{this};
+        AsmReg tmp_reg = tmp.alloc_gp();
+        ASM(MOV64ri, tmp_reg, (uint64_t{1} << from) - 1);
+        ASM(AND64rr, dst, tmp_reg);
+      }
+    }
+  } else if (to <= 32) {
+    switch (from) {
+    case 8: ASM(MOVSXr32r8, dst, src); break;
+    case 16: ASM(MOVSXr32r16, dst, src); break;
+    default:
+      if (dst != src) {
+        ASM(MOV32rr, dst, src);
+      }
+      ASM(SHL32ri, dst, 32 - from);
+      ASM(SAR32ri, dst, 32 - from);
+    }
+  } else {
+    switch (from) {
+    case 8: ASM(MOVSXr64r8, dst, src); break;
+    case 16: ASM(MOVSXr64r16, dst, src); break;
+    case 32: ASM(MOVSXr64r32, dst, src); break;
+    default:
+      if (dst != src) {
+        ASM(MOV64rr, dst, src);
+      }
+      ASM(SHL64ri, dst, 64 - from);
+      ASM(SAR64ri, dst, 64 - from);
+    }
+  }
 }
 
 template <IRAdaptor Adaptor,

@@ -77,8 +77,6 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
   void load_address_of_var_reference(AsmReg dst,
                                      tpde::AssignmentPartRef ap) noexcept;
 
-  void ext_int(
-      AsmReg dst, AsmReg src, bool sign, unsigned from, unsigned to) noexcept;
   ScratchReg ext_int(GenericValuePart op,
                      bool sign,
                      unsigned from,
@@ -184,7 +182,7 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
     if (val_ref.is_const()) {
       val_ref.reload_into_specific_fixed(reg);
       if (i == cnt - 1 && sext_width) {
-        ext_int(reg, reg, /*sign=*/true, sext_width, ext_width);
+        generate_raw_intext(reg, reg, /*sign=*/true, sext_width, ext_width);
       }
     } else {
       if (val_ref.assignment().fixed_assignment()) {
@@ -194,9 +192,9 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
       }
       if (i == cnt - 1) {
         if (sext_width) {
-          ext_int(reg, reg, /*sign=*/true, sext_width, ext_width);
+          generate_raw_intext(reg, reg, /*sign=*/true, sext_width, ext_width);
         } else if (zext_width) {
-          ext_int(reg, reg, /*sign=*/false, zext_width, ext_width);
+          generate_raw_intext(reg, reg, /*sign=*/false, zext_width, ext_width);
         }
       }
     }
@@ -245,63 +243,13 @@ void LLVMCompilerX64::load_address_of_var_reference(
   }
 }
 
-void LLVMCompilerX64::ext_int(
-    AsmReg dst, AsmReg src, bool sign, unsigned from, unsigned to) noexcept {
-  assert(from < to && to <= 64);
-  if (!sign) {
-    switch (from) {
-    case 8: ASM(MOVZXr32r8, dst, src); break;
-    case 16: ASM(MOVZXr32r16, dst, src); break;
-    case 32: ASM(MOV32rr, dst, src); break;
-    default:
-      if (from < 32) {
-        if (dst != src) {
-          ASM(MOV32rr, dst, src);
-        }
-        ASM(AND32ri, dst, (uint32_t{1} << from) - 1);
-      } else if (dst != src) {
-        ASM(MOV64ri, dst, (uint64_t{1} << from) - 1);
-        ASM(AND64rr, dst, src);
-      } else {
-        ScratchReg tmp{this};
-        AsmReg tmp_reg = tmp.alloc_gp();
-        ASM(MOV64ri, tmp_reg, (uint64_t{1} << from) - 1);
-        ASM(AND64rr, dst, tmp_reg);
-      }
-    }
-  } else if (to <= 32) {
-    switch (from) {
-    case 8: ASM(MOVSXr32r8, dst, src); break;
-    case 16: ASM(MOVSXr32r16, dst, src); break;
-    default:
-      if (dst != src) {
-        ASM(MOV32rr, dst, src);
-      }
-      ASM(SHL32ri, dst, 32 - from);
-      ASM(SAR32ri, dst, 32 - from);
-    }
-  } else {
-    switch (from) {
-    case 8: ASM(MOVSXr64r8, dst, src); break;
-    case 16: ASM(MOVSXr64r16, dst, src); break;
-    case 32: ASM(MOVSXr64r32, dst, src); break;
-    default:
-      if (dst != src) {
-        ASM(MOV64rr, dst, src);
-      }
-      ASM(SHL64ri, dst, 64 - from);
-      ASM(SAR64ri, dst, 64 - from);
-    }
-  }
-}
-
 LLVMCompilerX64::ScratchReg LLVMCompilerX64::ext_int(GenericValuePart op,
                                                      bool sign,
                                                      unsigned from,
                                                      unsigned to) noexcept {
   ScratchReg scratch{this};
   AsmReg src = gval_as_reg_reuse(op, scratch);
-  ext_int(scratch.alloc_gp(), src, sign, from, to);
+  generate_raw_intext(scratch.alloc_gp(), src, sign, from, to);
   return scratch;
 }
 

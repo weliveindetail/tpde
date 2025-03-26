@@ -593,6 +593,9 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   void generate_raw_set(Jump jmp, AsmReg dst) noexcept;
   void generate_raw_mask(Jump jmp, AsmReg dst) noexcept;
 
+  void generate_raw_intext(
+      AsmReg dst, AsmReg src, bool sign, u32 from, u32 to) noexcept;
+
   void spill_before_call(CallingConv calling_conv, u64 except_mask = 0);
 
   struct CallArg {
@@ -2272,6 +2275,29 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_mask(
   case Jump::Jle: ASMNC(CSETMx, dst, DA_LE); break;
   case Jump::jmp: ASMNC(CSETMx, dst, DA_AL); break;
   default: TPDE_UNREACHABLE("invalid condition for set/mask");
+  }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> class BaseTy,
+          typename Config>
+void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_intext(
+    AsmReg dst, AsmReg src, bool sign, u32 from, u32 to) noexcept {
+  assert(from < to && to <= 64);
+  (void)to;
+  if (sign) {
+    if (to <= 32) {
+      ASM(SBFXw, dst, src, 0, from);
+    } else {
+      ASM(SBFXx, dst, src, 0, from);
+    }
+  } else {
+    if (to <= 32) {
+      ASM(UBFXw, dst, src, 0, from);
+    } else {
+      ASM(UBFXx, dst, src, 0, from);
+    }
   }
 }
 
