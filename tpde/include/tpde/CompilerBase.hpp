@@ -13,8 +13,6 @@
 #include "tpde/ValLocalIdx.hpp"
 #include "tpde/ValueAssignment.hpp"
 #include "tpde/base.hpp"
-#include "tpde/util/AddressSanitizer.hpp"
-#include "tpde/util/BumpAllocator.hpp"
 #include "tpde/util/misc.hpp"
 
 namespace tpde {
@@ -81,25 +79,10 @@ struct CompilerBase {
   static constexpr ValLocalIdx INVALID_VAL_LOCAL_IDX =
       static_cast<ValLocalIdx>(~0u);
 
-  static constexpr size_t ASSIGNMENT_BUF_SIZE = 16 * 1024;
-
   // TODO(ts): think about different ways to store this that are maybe more
   // compact?
-  struct AssignmentStorage {
-    // Free list 0 holds VASize = sizeof(ValueAssignment).
-    // Free list 1 holds VASize rounded to the next larger power of two.
-    // Free list 2 holds twice as much as free list 1. Etc.
-    static constexpr u32 NumFreeLists = 2;
-    static constexpr u32 PartSize = sizeof(ValueAssignment::first_part);
-    static constexpr u32 FirstPartOff = offsetof(ValueAssignment, parts);
-    static constexpr u32 NumPartsIncluded =
-        (sizeof(ValueAssignment) - FirstPartOff) / PartSize;
-
-    /// Allocator for small assignments that get stored in free lists. Larger
-    /// assignments are allocated directly on the heap.
-    util::BumpAllocator<ASSIGNMENT_BUF_SIZE> alloc;
-    /// Free lists for small ValueAssignments
-    std::array<ValueAssignment *, NumFreeLists> fixed_free_lists{};
+  struct {
+    AssignmentAllocator allocator;
 
     std::array<u32, Config::NUM_BANKS> cur_fixed_assignment_count = {};
     util::SmallVector<ValueAssignment *, Analyzer<Adaptor>::SMALL_VALUE_NUM>
@@ -170,34 +153,6 @@ struct CompilerBase {
   /// not affect the next compilation
   void reset();
 
-private:
-  struct AssignmentAllocInfo {
-    u32 size;
-    u32 alloc_size;
-    u32 free_list_idx;
-
-    AssignmentAllocInfo(u32 part_count) noexcept;
-  };
-
-  ValueAssignment *allocate_assignment(u32 part_count) noexcept {
-    if (part_count <= AssignmentStorage::NumPartsIncluded) [[likely]] {
-      if (auto *res = assignments.fixed_free_lists[0]) {
-        util::unpoison_memory_region(res, sizeof(ValueAssignment));
-        assignments.fixed_free_lists[0] = res->next_free_list_entry;
-        return res;
-      }
-      return new (assignments.alloc) ValueAssignment;
-    }
-    return allocate_assignment_slow(part_count);
-  }
-
-  ValueAssignment *
-      allocate_assignment_slow(u32 part_count,
-                               bool skip_free_list = false) noexcept;
-  /// Puts an assignment back into the free list
-  void deallocate_assignment(u32 part_count, ValLocalIdx local_idx) noexcept;
-
-public:
   void init_assignment(IRValueRef value, ValLocalIdx local_idx) noexcept;
 
   /// Frees an assignment, its stack slot and registers
@@ -362,79 +317,14 @@ void CompilerBase<Adaptor, Derived, Config>::reset() {
   }
   stack.dynamic_free_lists.clear();
 
+  assignments.allocator.reset();
   assignments.value_ptrs.clear();
   assignments.cur_fixed_assignment_count = {};
-  assignments.fixed_free_lists = {};
   assignments.delayed_free_lists.clear();
 
   assembler.reset();
   func_syms.clear();
   block_labels.clear();
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-CompilerBase<Adaptor, Derived, Config>::AssignmentAllocInfo::
-    AssignmentAllocInfo(const u32 part_count) noexcept {
-  constexpr u32 VASize = sizeof(ValueAssignment);
-  constexpr u32 PartSize = AssignmentStorage::PartSize;
-
-  size = VASize;
-  alloc_size = VASize;
-  free_list_idx = 0;
-  if (part_count > AssignmentStorage::NumPartsIncluded) {
-    size += (part_count - AssignmentStorage::NumPartsIncluded) * PartSize;
-    // Round size to next power of two.
-    static_assert((VASize & (VASize - 1)) == 0,
-                  "non-power-of-two ValueAssignment size untested");
-    constexpr u32 clz_off = util::cnt_lz<u32>(VASize >> 1);
-    free_list_idx = clz_off - util::cnt_lz<u32>(size - 1);
-    alloc_size = u32{1} << (32 - clz_off + free_list_idx);
-  }
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-ValueAssignment *
-    CompilerBase<Adaptor, Derived, Config>::allocate_assignment_slow(
-        const u32 part_count, bool skip_free_list) noexcept {
-  AssignmentAllocInfo aai(part_count);
-
-  if (aai.free_list_idx >= assignments.fixed_free_lists.size()) [[unlikely]] {
-    auto *alloc = new std::byte[aai.size];
-    return new (reinterpret_cast<ValueAssignment *>(alloc)) ValueAssignment{};
-  }
-
-  if (!skip_free_list) {
-    auto &free_list = assignments.fixed_free_lists[aai.free_list_idx];
-    if (auto *assignment = free_list) {
-      util::unpoison_memory_region(assignment, aai.size);
-      free_list = assignment->next_free_list_entry;
-      return assignment;
-    }
-  }
-
-  assert(aai.alloc_size < ASSIGNMENT_BUF_SIZE);
-  auto *buf =
-      assignments.alloc.allocate(aai.alloc_size, alignof(ValueAssignment));
-  return new (reinterpret_cast<ValueAssignment *>(buf)) ValueAssignment{};
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::deallocate_assignment(
-    u32 part_count, ValLocalIdx local_idx) noexcept {
-  AssignmentAllocInfo aai(part_count);
-
-  ValueAssignment *assignment = val_assignment(local_idx);
-  assignments.value_ptrs[static_cast<u32>(local_idx)] = nullptr;
-
-  if (aai.free_list_idx < assignments.fixed_free_lists.size()) [[likely]] {
-    assignment->next_free_list_entry =
-        assignments.fixed_free_lists[aai.free_list_idx];
-    assignments.fixed_free_lists[aai.free_list_idx] = assignment;
-    util::poison_memory_region(assignment, aai.size);
-  } else {
-    assignment->~ValueAssignment();
-    delete[] reinterpret_cast<std::byte *>(assignment);
-  }
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -447,7 +337,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
   const auto parts = derived()->val_parts(value);
   const u32 part_count = parts.count();
   assert(part_count > 0);
-  auto *assignment = allocate_assignment(part_count);
+  auto *assignment = assignments.allocator.allocate(part_count);
   assignments.value_ptrs[static_cast<u32>(local_idx)] = assignment;
 
   u32 max_part_size = 0;
@@ -533,6 +423,7 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
 
   ValueAssignment *assignment =
       assignments.value_ptrs[static_cast<u32>(local_idx)];
+  assignments.value_ptrs[static_cast<u32>(local_idx)] = nullptr;
   const auto is_var_ref = assignment->variable_ref;
   const u32 part_count = assignment->part_count;
 
@@ -566,7 +457,7 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
     free_stack_slot(assignment->frame_off, assignment->size());
   }
 
-  deallocate_assignment(part_count, local_idx);
+  assignments.allocator.deallocate(assignment);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -576,7 +467,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_variable_ref(
                  static_cast<u32>(local_idx));
 
   assert(val_assignment(local_idx) == nullptr);
-  auto *assignment = allocate_assignment_slow(1, true);
+  auto *assignment = assignments.allocator.allocate_slow(1, true);
   assignments.value_ptrs[static_cast<u32>(local_idx)] = assignment;
 
   assignment->max_part_size = Config::PLATFORM_POINTER_SIZE;
@@ -1426,8 +1317,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   assignments.value_ptrs.clear();
   assignments.value_ptrs.resize(analyzer.liveness.size());
 
-  assignments.alloc.reset();
-  assignments.fixed_free_lists = {};
+  assignments.allocator.reset();
   assignments.delayed_free_lists.clear();
   assignments.delayed_free_lists.resize(analyzer.block_layout.size(),
                                         INVALID_VAL_LOCAL_IDX);

@@ -3,8 +3,12 @@
 
 #include "tpde/ValLocalIdx.hpp"
 #include "tpde/base.hpp"
+#include "tpde/util/AddressSanitizer.hpp"
+#include "tpde/util/BumpAllocator.hpp"
 
+#include <array>
 #include <cassert>
+#include <cstddef>
 
 namespace tpde {
 
@@ -77,5 +81,62 @@ struct ValueAssignment {
 
 #undef GNU_ZERO
 #pragma GCC diagnostic pop
+
+class AssignmentAllocator {
+private:
+  // Free list 0 holds VASize = sizeof(ValueAssignment).
+  // Free list 1 holds VASize rounded to the next larger power of two.
+  // Free list 2 holds twice as much as free list 1. Etc.
+  static constexpr size_t SlabSize = 16 * 1024;
+
+  static constexpr u32 NumFreeLists = 2;
+  static constexpr u32 FirstPartOff = offsetof(ValueAssignment, parts);
+
+public:
+  static constexpr u32 NumPartsIncluded =
+      (sizeof(ValueAssignment) - FirstPartOff) / sizeof(ValueAssignment::Part);
+
+private:
+  /// Allocator for small assignments that get stored in free lists. Larger
+  /// assignments are allocated directly on the heap.
+  util::BumpAllocator<SlabSize> alloc;
+  /// Free lists for small ValueAssignments
+  std::array<ValueAssignment *, NumFreeLists> fixed_free_lists{};
+
+public:
+  AssignmentAllocator() noexcept = default;
+
+  ValueAssignment *allocate(u32 part_count) noexcept {
+    if (part_count > NumPartsIncluded) [[unlikely]] {
+      return allocate_slow(part_count);
+    }
+    if (auto *res = fixed_free_lists[0]) {
+      util::unpoison_memory_region(res, sizeof(ValueAssignment));
+      fixed_free_lists[0] = res->next_free_list_entry;
+      return res;
+    }
+    return new (alloc) ValueAssignment;
+  }
+
+  ValueAssignment *allocate_slow(u32 part_count,
+                                 bool skip_free_list = false) noexcept;
+
+  void deallocate(ValueAssignment *assignment) noexcept {
+    if (assignment->part_count > NumPartsIncluded) [[unlikely]] {
+      deallocate_slow(assignment);
+      return;
+    }
+    assignment->next_free_list_entry = fixed_free_lists[0];
+    fixed_free_lists[0] = assignment;
+    util::poison_memory_region(assignment, sizeof(ValueAssignment));
+  }
+
+  void deallocate_slow(ValueAssignment *) noexcept;
+
+  void reset() noexcept {
+    alloc.reset();
+    fixed_free_lists = {};
+  }
+};
 
 } // namespace tpde

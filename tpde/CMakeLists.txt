@@ -42,6 +42,7 @@ target_sources(tpde PRIVATE
     src/AssemblerElf.cpp
     src/base.cpp
     src/ElfMapper.cpp
+    src/ValueAssignment.cpp
 
     PUBLIC
     FILE_SET HEADERS
