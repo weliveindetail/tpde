@@ -10,6 +10,7 @@
 #include "CompilerConfig.hpp"
 #include "IRAdaptor.hpp"
 #include "tpde/RegisterFile.hpp"
+#include "tpde/ValLocalIdx.hpp"
 #include "tpde/base.hpp"
 #include "tpde/util/AddressSanitizer.hpp"
 #include "tpde/util/BumpAllocator.hpp"
@@ -241,7 +242,7 @@ struct CompilerBase {
   /// not affect the next compilation
   void reset();
 
-protected:
+private:
   struct AssignmentAllocInfo {
     u32 size;
     u32 alloc_size;
@@ -268,12 +269,20 @@ protected:
   /// Puts an assignment back into the free list
   void deallocate_assignment(u32 part_count, ValLocalIdx local_idx) noexcept;
 
+public:
   void init_assignment(IRValueRef value, ValLocalIdx local_idx) noexcept;
 
   /// Frees an assignment, its stack slot and registers
   void free_assignment(ValLocalIdx local_idx) noexcept;
 
-public:
+  /// Init a variable-ref assignment
+  void init_variable_ref(ValLocalIdx local_idx, u32 var_ref_data) noexcept;
+  /// Init a variable-ref assignment
+  void init_variable_ref(IRValueRef value, u32 var_ref_data) noexcept {
+    auto local_idx = static_cast<ValLocalIdx>(adaptor->val_local_idx(value));
+    init_variable_ref(local_idx, var_ref_data);
+  }
+
   i32 allocate_stack_slot(u32 size) noexcept;
   void free_stack_slot(u32 slot, u32 size) noexcept;
 
@@ -639,6 +648,26 @@ void CompilerBase<Adaptor, Derived, Config>::free_assignment(
   }
 
   deallocate_assignment(part_count, local_idx);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::init_variable_ref(
+    ValLocalIdx local_idx, u32 var_ref_data) noexcept {
+  TPDE_LOG_TRACE("Initializing variable-ref assignment for value {}",
+                 static_cast<u32>(local_idx));
+
+  assert(val_assignment(local_idx) == nullptr);
+  auto *assignment = allocate_assignment_slow(1, true);
+  assignments.value_ptrs[static_cast<u32>(local_idx)] = assignment;
+
+  assignment->initialize(0, 1, 0, Config::PLATFORM_POINTER_SIZE);
+  assignment->variable_ref = true;
+  assignment->var_ref_custom_idx = var_ref_data;
+
+  AssignmentPartRef ap{assignment, 0};
+  ap.reset();
+  ap.set_bank(Config::GP_BANK);
+  ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -1508,21 +1537,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
 
       auto size = adaptor->val_alloca_size(alloca);
       size = util::align_up(size, adaptor->val_alloca_align(alloca));
-
-      auto *assignment = allocate_assignment_slow(1, true);
       const auto frame_off = allocate_stack_slot(size);
-
-      assignment->initialize(frame_off,
-                             1,
-                             analyzer.liveness_info(local_idx).ref_count,
-                             Config::PLATFORM_POINTER_SIZE);
-      assignment->variable_ref = true;
-      assignments.value_ptrs[local_idx] = assignment;
-
-      auto ap = AssignmentPartRef{assignment, 0};
-      ap.reset();
-      ap.set_bank(Config::GP_BANK);
-      ap.set_part_size(Config::PLATFORM_POINTER_SIZE);
+      init_variable_ref(static_cast<ValLocalIdx>(local_idx), frame_off);
     }
   } else {
     derived()->setup_var_ref_assignments();
