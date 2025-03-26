@@ -10,10 +10,8 @@ define i17 @umini17(i17 %0, i17 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    shl edi, 0xf
-; X64-NEXT:    sar edi, 0xf
-; X64-NEXT:    shl esi, 0xf
-; X64-NEXT:    sar esi, 0xf
+; X64-NEXT:    and edi, 0x1ffff
+; X64-NEXT:    and esi, 0x1ffff
 ; X64-NEXT:    cmp edi, esi
 ; X64-NEXT:    cmovb esi, edi
 ; X64-NEXT:    mov eax, esi
@@ -26,8 +24,8 @@ define i17 @umini17(i17 %0, i17 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sbfx w0, w0, #0, #17
-; ARM64-NEXT:    sbfx w1, w1, #0, #17
+; ARM64-NEXT:    ubfx w0, w0, #0, #17
+; ARM64-NEXT:    ubfx w1, w1, #0, #17
 ; ARM64-NEXT:    cmp w0, w1
 ; ARM64-NEXT:    csel w0, w0, w1, lo
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -70,10 +68,10 @@ define i37 @umini37(i37 %0, i37 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    shl rdi, 0x1b
-; X64-NEXT:    sar rdi, 0x1b
-; X64-NEXT:    shl rsi, 0x1b
-; X64-NEXT:    sar rsi, 0x1b
+; X64-NEXT:    movabs rax, 0x1fffffffff
+; X64-NEXT:    and rdi, rax
+; X64-NEXT:    movabs rax, 0x1fffffffff
+; X64-NEXT:    and rsi, rax
 ; X64-NEXT:    cmp rdi, rsi
 ; X64-NEXT:    cmovb rsi, rdi
 ; X64-NEXT:    mov rax, rsi
@@ -86,8 +84,8 @@ define i37 @umini37(i37 %0, i37 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sbfx x0, x0, #0, #37
-; ARM64-NEXT:    sbfx x1, x1, #0, #37
+; ARM64-NEXT:    ubfx x0, x0, #0, #37
+; ARM64-NEXT:    ubfx x1, x1, #0, #37
 ; ARM64-NEXT:    cmp x0, x1
 ; ARM64-NEXT:    csel x0, x0, x1, lo
 ; ARM64-NEXT:    ldp x29, x30, [sp]

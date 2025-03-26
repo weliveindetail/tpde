@@ -77,11 +77,6 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
   void load_address_of_var_reference(AsmReg dst,
                                      tpde::AssignmentPartRef ap) noexcept;
 
-  ScratchReg ext_int(GenericValuePart op,
-                     bool sign,
-                     unsigned from,
-                     unsigned to) noexcept;
-
   bool compile_unreachable(const llvm::Instruction *,
                            const ValInfo &,
                            u64) noexcept;
@@ -241,16 +236,6 @@ void LLVMCompilerX64::load_address_of_var_reference(
           sym, R_X86_64_PC32, this->assembler.text_cur_off() - 4, -4);
     }
   }
-}
-
-LLVMCompilerX64::ScratchReg LLVMCompilerX64::ext_int(GenericValuePart op,
-                                                     bool sign,
-                                                     unsigned from,
-                                                     unsigned to) noexcept {
-  ScratchReg scratch{this};
-  AsmReg src = gval_as_reg_reuse(op, scratch);
-  generate_raw_intext(scratch.alloc_gp(), src, sign, from, to);
-  return scratch;
 }
 
 bool LLVMCompilerX64::compile_unreachable(const llvm::Instruction *,
@@ -551,49 +536,39 @@ bool LLVMCompilerX64::compile_icmp(const llvm::Instruction *inst,
       ASM(SBB64rr, lhs_high_tmp, rhs_reg_hi);
     }
   } else {
-    GenericValuePart lhs_op = lhs.part(0);
-    GenericValuePart rhs_op = rhs.part(0);
+    ValuePartRef lhs_op = lhs.part(0);
+    ValuePartRef rhs_op = rhs.part(0);
 
-    if (lhs_op.is_imm() && !rhs_op.is_imm()) {
+    if (lhs_op.is_const() && !rhs_op.is_const()) {
       std::swap(lhs_op, rhs_op);
       jump = swap_jump(jump);
     }
 
     if (int_width != 32 && int_width != 64) {
       unsigned ext_bits = tpde::util::align_up(int_width, 32);
-      lhs_op = ext_int(std::move(lhs_op), is_signed, int_width, ext_bits);
-      if (!rhs_op.is_imm()) {
-        rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
-      } else if (is_signed) {
-        u64 rhs_imm = tpde::util::sext(rhs_op.imm64(), int_width);
-        rhs_op = ValuePartRef{this, rhs_imm, 8, CompilerConfig::GP_BANK};
-      }
+      lhs_op = std::move(lhs_op).into_extended(is_signed, int_width, ext_bits);
+      rhs_op = std::move(rhs_op).into_extended(is_signed, int_width, ext_bits);
     }
 
-    AsmReg lhs_reg;
-    if (fuse_br) {
-      lhs_reg = gval_as_reg(lhs_op);
-    } else {
-      lhs_reg = gval_as_reg_reuse(lhs_op, res_scratch);
-    }
+    AsmReg lhs_reg = lhs_op.has_reg() ? lhs_op.cur_reg() : lhs_op.load_to_reg();
     if (int_width <= 32) {
-      if (rhs_op.is_imm()) {
-        ASM(CMP32ri, lhs_reg, i32(rhs_op.imm64()));
+      if (rhs_op.is_const()) {
+        ASM(CMP32ri, lhs_reg, i32(rhs_op.const_data()[0]));
       } else {
-        const auto rhs_reg = gval_as_reg(rhs_op);
+        AsmReg rhs_reg =
+            rhs_op.has_reg() ? rhs_op.cur_reg() : rhs_op.load_to_reg();
         ASM(CMP32rr, lhs_reg, rhs_reg);
       }
     } else {
-      if (rhs_op.is_imm() && i32(rhs_op.imm64()) == i64(rhs_op.imm64())) {
-        ASM(CMP64ri, lhs_reg, rhs_op.imm64());
+      if (rhs_op.is_const() &&
+          i32(rhs_op.const_data()[0]) == i64(rhs_op.const_data()[0])) {
+        ASM(CMP64ri, lhs_reg, rhs_op.const_data()[0]);
       } else {
-        const auto rhs_reg = gval_as_reg(rhs_op);
+        AsmReg rhs_reg =
+            rhs_op.has_reg() ? rhs_op.cur_reg() : rhs_op.load_to_reg();
         ASM(CMP64rr, lhs_reg, rhs_reg);
       }
     }
-
-    lhs_op.reset();
-    rhs_op.reset();
   }
 
   if (fuse_br) {

@@ -247,6 +247,32 @@ public:
     return res;
   }
 
+  /// Extend integer value, reuse existing register if possible. Constants are
+  /// extended without allocating a register.
+  ValuePart into_extended(CompilerBase *compiler,
+                          bool sign,
+                          u32 from,
+                          u32 to) && noexcept {
+    assert(from < to && "invalid integer extension sizes");
+    if (is_const() && to <= 64) {
+      u64 val = const_data()[0];
+      u64 extended = sign ? util::sext(val, from) : util::zext(val, from);
+      return ValuePart{extended, (to + 7) / 8, state.c.bank};
+    }
+    ValuePart res{bank()};
+    Reg src_reg = Reg::make_invalid();
+    if (can_salvage()) {
+      res.set_value(compiler, std::move(*this));
+      src_reg = res.cur_reg();
+    } else {
+      src_reg = load_to_reg(compiler);
+      res.alloc_reg(compiler);
+    }
+    compiler->derived()->generate_raw_intext(
+        res.cur_reg(), src_reg, sign, from, to);
+    return res;
+  }
+
   void lock(CompilerBase *compiler) noexcept;
   void unlock(CompilerBase *compiler) noexcept;
 
@@ -810,6 +836,12 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef : ValuePart {
     return ValuePartRef{
         compiler,
         std::move(*static_cast<ValuePart *>(this)).into_temporary(compiler)};
+  }
+
+  ValuePartRef into_extended(bool sign, u32 from, u32 to) && noexcept {
+    return ValuePartRef{compiler,
+                        std::move(*static_cast<ValuePart *>(this))
+                            .into_extended(compiler, sign, from, to)};
   }
 
   void lock() noexcept { ValuePart::lock(compiler); }

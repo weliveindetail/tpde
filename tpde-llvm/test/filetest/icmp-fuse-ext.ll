@@ -11,9 +11,8 @@ define i8 @icmp_fuse_zext8(i32, i32) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp edi, esi
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setl dil
-; X64-NEXT:    mov eax, edi
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -40,9 +39,8 @@ define i32 @icmp_fuse_zext32(i32, i32) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp edi, esi
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setl dil
-; X64-NEXT:    mov eax, edi
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -69,9 +67,8 @@ define i64 @icmp_fuse_zexti64(i32, i32) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp edi, esi
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setl dil
-; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -96,16 +93,14 @@ define i128 @icmp_fuse_zexti128(i32, i32) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp edi, esi
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setl dil
-; X64-NEXT:    and edi, 0x1
 ; X64-NEXT:    mov eax, 0x0
-; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    mov rdx, qword ptr [rbp - 0x38]
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    setl al
+; X64-NEXT:    and eax, 0x1
+; X64-NEXT:    mov ecx, 0x0
+; X64-NEXT:    mov rdx, rcx
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -133,10 +128,9 @@ define i8 @icmp_fuse_sext8(i32, i32) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp edi, esi
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setl dil
-; X64-NEXT:    neg rdi
-; X64-NEXT:    mov eax, edi
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
+; X64-NEXT:    neg rax
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -163,10 +157,9 @@ define i32 @icmp_fuse_sext32(i32, i32) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp edi, esi
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setl dil
-; X64-NEXT:    neg rdi
-; X64-NEXT:    mov eax, edi
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
+; X64-NEXT:    neg rax
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -193,10 +186,9 @@ define i37 @icmp_fuse_sext37(i32, i32) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp edi, esi
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setl dil
-; X64-NEXT:    neg rdi
-; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
+; X64-NEXT:    neg rax
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -223,10 +215,9 @@ define i64 @icmp_fuse_sexti64(i32, i32) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp edi, esi
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setl dil
-; X64-NEXT:    neg rdi
-; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
+; X64-NEXT:    neg rax
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -251,18 +242,16 @@ define i128 @icmp_fuse_sexti128(i32, i32) {
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp edi, esi
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setl dil
-; X64-NEXT:    shl rdi, 0x3f
-; X64-NEXT:    sar rdi, 0x3f
-; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
+; X64-NEXT:    shl rax, 0x3f
 ; X64-NEXT:    sar rax, 0x3f
-; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
-; X64-NEXT:    mov rax, rdi
-; X64-NEXT:    mov rdx, qword ptr [rbp - 0x38]
-; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    mov rcx, rax
+; X64-NEXT:    sar rcx, 0x3f
+; X64-NEXT:    mov rdx, rcx
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -290,13 +279,14 @@ define i64 @icmp_ext_nofuse(i32, i32) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    cmp edi, esi
-; X64-NEXT:    mov edi, 0x0
-; X64-NEXT:    setl dil
-; X64-NEXT:    mov eax, edi
-; X64-NEXT:    and eax, 0x1
-; X64-NEXT:    shl rdi, 0x3f
-; X64-NEXT:    sar rdi, 0x3f
-; X64-NEXT:    xor rax, rdi
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
+; X64-NEXT:    mov ecx, eax
+; X64-NEXT:    and ecx, 0x1
+; X64-NEXT:    shl rax, 0x3f
+; X64-NEXT:    sar rax, 0x3f
+; X64-NEXT:    xor rcx, rax
+; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret

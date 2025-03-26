@@ -122,8 +122,8 @@ define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
 ; X64-NEXT:    shl eax, 0x0
 ; X64-NEXT:    mov ebx, eax
 ; X64-NEXT:    cmp r13d, 0x0
-; X64-NEXT:    mov r13d, 0x0
-; X64-NEXT:    setl r13b
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    setl al
 ; X64-NEXT:    mov edi, 0x0
 ; X64-NEXT:    mov esi, 0x0
 ; X64-NEXT:  <L0>:
@@ -179,7 +179,7 @@ define void @invoke_landingpad_phi() personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    lsr w0, w0, #0
 ; ARM64-NEXT:    mov w19, w0
 ; ARM64-NEXT:    cmp w21, #0x0
-; ARM64-NEXT:    cset w21, lt
+; ARM64-NEXT:    cset w0, lt
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    mov w1, #0x0 // =0
 ; ARM64-NEXT:    bl 0x14c <invoke_landingpad_phi+0x8c>

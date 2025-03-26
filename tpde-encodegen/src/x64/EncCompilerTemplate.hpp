@@ -312,7 +312,10 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                     assert(ap.get_reg() != reg);
                 }
             } else if (op_ref.has_reg() && op_ref.cur_reg() == reg) {
-                assert(0 && "not implemented");
+                scratch.alloc_specific(op_ref.salvage());
+                op_ref.alloc_reg();
+                ASMD(MOV64rr, op_ref.cur_reg(), reg);
+                return;
             }
             continue;
         }

@@ -15,7 +15,7 @@ define i8 @sdiv_i8_1(i8 %0) {
 ; X64-NEXT:    movsx edi, dil
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
-; X64-NEXT:    mov rcx, 0x1
+; X64-NEXT:    mov ecx, 0x1
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -46,7 +46,7 @@ define i8 @sdiv_i8_-1(i8 %0) {
 ; X64-NEXT:    movsx edi, dil
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
-; X64-NEXT:    mov rcx, -0x1
+; X64-NEXT:    mov ecx, 0xffffffff
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -77,7 +77,7 @@ define i8 @sdiv_i8_28(i8 %0) {
 ; X64-NEXT:    movsx edi, dil
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
-; X64-NEXT:    mov rcx, 0x1c
+; X64-NEXT:    mov ecx, 0x1c
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -139,7 +139,7 @@ define i8 @sdiv_i8_32(i8 %0) {
 ; X64-NEXT:    movsx edi, dil
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
-; X64-NEXT:    mov rcx, 0x20
+; X64-NEXT:    mov ecx, 0x20
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -170,7 +170,7 @@ define i16 @sdiv_i16_1(i16 %0) {
 ; X64-NEXT:    movsx edi, di
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
-; X64-NEXT:    mov rcx, 0x1
+; X64-NEXT:    mov ecx, 0x1
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -201,7 +201,7 @@ define i16 @sdiv_i16_-1(i16 %0) {
 ; X64-NEXT:    movsx edi, di
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
-; X64-NEXT:    mov rcx, -0x1
+; X64-NEXT:    mov ecx, 0xffffffff
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -232,7 +232,7 @@ define i16 @sdiv_i16_28(i16 %0) {
 ; X64-NEXT:    movsx edi, di
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
-; X64-NEXT:    mov rcx, 0x1c
+; X64-NEXT:    mov ecx, 0x1c
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -263,7 +263,7 @@ define i16 @sdiv_i16_32(i16 %0) {
 ; X64-NEXT:    movsx edi, di
 ; X64-NEXT:    mov eax, edi
 ; X64-NEXT:    cdq
-; X64-NEXT:    mov rcx, 0x20
+; X64-NEXT:    mov ecx, 0x20
 ; X64-NEXT:    idiv ecx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp

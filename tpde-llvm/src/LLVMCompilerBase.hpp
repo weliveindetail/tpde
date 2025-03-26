@@ -1862,10 +1862,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
 
   auto lhs = this->val_ref(inst->getOperand(0));
   auto rhs = this->val_ref(inst->getOperand(1));
-  GenericValuePart lhs_op = lhs.part(0);
-  GenericValuePart rhs_op = rhs.part(0);
+  ValuePartRef lhs_op = lhs.part(0);
+  ValuePartRef rhs_op = rhs.part(0);
 
-  if (op.is_symmetric() && lhs_op.is_imm() && !rhs_op.is_imm()) {
+  if (op.is_symmetric() && lhs_op.is_const() && !rhs_op.is_const()) {
     // TODO(ts): this is a hack since the encoder can currently not do
     // commutable operations so we reorder immediates manually here
     std::swap(lhs_op, rhs_op);
@@ -1877,22 +1877,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
   if (ext_width != int_width) {
     bool sext = op.is_signed();
     if (op.needs_lhs_ext()) {
-      if (!lhs_op.is_imm()) {
-        lhs_op =
-            derived()->ext_int(std::move(lhs_op), sext, int_width, ext_width);
-      } else if (sext) {
-        u64 lhs_imm = tpde::util::sext(lhs_op.imm64(), int_width);
-        lhs_op = ValuePartRef(this, lhs_imm, 8, Config::GP_BANK);
-      }
+      lhs_op = std::move(lhs_op).into_extended(sext, int_width, ext_width);
     }
     if (op.needs_rhs_ext()) {
-      if (!rhs_op.is_imm()) {
-        rhs_op =
-            derived()->ext_int(std::move(rhs_op), sext, int_width, ext_width);
-      } else if (sext) {
-        u64 rhs_imm = tpde::util::sext(rhs_op.imm64(), int_width);
-        rhs_op = ValuePartRef(this, rhs_imm, 8, Config::GP_BANK);
-      }
+      rhs_op = std::move(rhs_op).into_extended(sext, int_width, ext_width);
     }
   }
 
@@ -2210,13 +2198,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
   const auto dst_double = dst_ty->isDoubleTy();
 
   ValueRef src_ref = this->val_ref(src_val);
-  GenericValuePart src_op = src_ref.part(0);
+  ValuePartRef src_op = src_ref.part(0);
   auto [res_vr, res_ref] = this->result_ref_single(inst);
   auto res_scratch = ScratchReg{derived()};
 
   if (bit_width != 32 && bit_width != 64) {
     unsigned ext = tpde::util::align_up(bit_width, 32);
-    src_op = derived()->ext_int(std::move(src_op), sign, bit_width, ext);
+    src_op = std::move(src_op).into_extended(sign, bit_width, ext);
   }
 
   if (sign) {
@@ -2314,49 +2302,30 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
 
   auto src_ref = this->val_ref(src_val);
 
-  ScratchReg res_scratch{derived()};
+  ValuePartRef low = src_ref.part(0);
   if (src_width < 64) {
     unsigned ext_width = dst_width <= 64 ? dst_width : 64;
-    res_scratch =
-        derived()->ext_int(src_ref.part(0), sign, src_width, ext_width);
-  } else {
-    if (src_width != 64) {
-      return false;
-    }
-    ValuePartRef src_vpr = src_ref.part(0);
-    if (src_vpr.can_salvage()) {
-      if (!src_vpr.assignment().register_valid()) {
-        src_vpr.load_to_reg();
-      }
-      res_scratch.alloc_specific(src_vpr.salvage());
-    } else {
-      auto src = src_vpr.load_to_reg();
-      derived()->mov(res_scratch.alloc_gp(), src, 8);
-    }
+    low = std::move(low).into_extended(sign, src_width, ext_width);
+  } else if (src_width > 64) {
+    return false;
   }
 
   auto res = this->result_ref(inst);
-  auto res_ref = res.part(0);
 
   if (dst_width == 128) {
-    if (src_width > 64) {
-      return false;
-    }
     auto res_ref_high = res.part(1);
-    ScratchReg scratch_high{derived()};
 
     if (sign) {
-      derived()->encode_fill_with_sign64(res_scratch.cur_reg(), scratch_high);
+      ScratchReg scratch_high{derived()};
+      AsmReg low_reg = low.has_reg() ? low.cur_reg() : low.load_to_reg();
+      derived()->encode_fill_with_sign64(low_reg, scratch_high);
+      this->set_value(res_ref_high, scratch_high);
     } else {
-      u64 zero = 0;
-      derived()->materialize_constant(
-          &zero, Config::GP_BANK, 8, scratch_high.alloc_gp());
+      res_ref_high.set_value(ValuePart{u64{0}, 8, res_ref_high.bank()});
     }
-
-    this->set_value(res_ref_high, scratch_high);
   }
 
-  this->set_value(res_ref, res_scratch);
+  res.part(0).set_value(std::move(low));
   return true;
 }
 
@@ -2392,8 +2361,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_ptr(
     res_ref.set_value(src_ref.part(0));
     return true;
   } else if (bit_width < 64) {
-    auto res = derived()->ext_int(src_ref.part(0), false, bit_width, 64);
-    this->set_value(res_ref, res);
+    // zero-extend
+    res_ref.set_value(src_ref.part(0).into_extended(false, bit_width, 64));
     return true;
   }
 
@@ -4167,10 +4136,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     }
 
     ValueRef val_ref = this->val_ref(val);
-    GenericValuePart op = val_ref.part(0);
+    ValuePartRef op = val_ref.part(0);
     if (width != 32 && width != 64) {
       unsigned dst_width = tpde::util::align_up(width, 32);
-      op = derived()->ext_int(std::move(op), true, width, dst_width);
+      op = std::move(op).into_extended(/*sign=*/true, width, dst_width);
     }
 
     ScratchReg res{derived()};
@@ -4196,14 +4165,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       return false;
     }
 
+    bool sign = intrin_id == llvm::Intrinsic::smin ||
+                intrin_id == llvm::Intrinsic::smax;
+
     ValueRef lhs_ref = this->val_ref(inst->getOperand(0));
     ValueRef rhs_ref = this->val_ref(inst->getOperand(1));
-    GenericValuePart lhs = lhs_ref.part(0);
-    GenericValuePart rhs = rhs_ref.part(0);
+    ValuePartRef lhs = lhs_ref.part(0);
+    ValuePartRef rhs = rhs_ref.part(0);
     if (width != 32 && width != 64) {
       unsigned dst_width = tpde::util::align_up(width, 32);
-      lhs = derived()->ext_int(std::move(lhs), true, width, dst_width);
-      rhs = derived()->ext_int(std::move(rhs), true, width, dst_width);
+      lhs = std::move(lhs).into_extended(sign, width, dst_width);
+      rhs = std::move(rhs).into_extended(sign, width, dst_width);
     }
 
     ScratchReg res{derived()};
@@ -4389,10 +4361,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     }
 
     ValueRef val_ref = this->val_ref(val);
-    GenericValuePart op = val_ref.part(0);
+    ValuePartRef op = val_ref.part(0);
     if (width % 32) {
       unsigned tgt_width = tpde::util::align_up(width, 32);
-      op = derived()->ext_int(std::move(op), false, width, tgt_width);
+      op = std::move(op).into_extended(/*sign=*/false, width, tgt_width);
     }
 
     ScratchReg res{derived()};

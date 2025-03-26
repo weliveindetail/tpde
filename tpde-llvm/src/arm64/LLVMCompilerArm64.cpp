@@ -77,11 +77,6 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
   void load_address_of_var_reference(AsmReg dst,
                                      tpde::AssignmentPartRef ap) noexcept;
 
-  ScratchReg ext_int(GenericValuePart op,
-                     bool sign,
-                     unsigned from,
-                     unsigned to) noexcept;
-
   void extract_element(IRValueRef vec,
                        unsigned idx,
                        LLVMBasicValType ty,
@@ -249,16 +244,6 @@ void LLVMCompilerArm64::load_address_of_var_reference(
       ASMNC(ADDxi, dst, dst, 0);
     }
   }
-}
-
-LLVMCompilerArm64::ScratchReg LLVMCompilerArm64::ext_int(GenericValuePart op,
-                                                         bool sign,
-                                                         unsigned from,
-                                                         unsigned to) noexcept {
-  ScratchReg scratch{this};
-  AsmReg src = gval_as_reg_reuse(op, scratch);
-  generate_raw_intext(scratch.alloc_gp(), src, sign, from, to);
-  return scratch;
 }
 
 void LLVMCompilerArm64::extract_element(IRValueRef vec,
@@ -613,27 +598,24 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::Instruction *inst,
       ASM(SBCSx, DA_ZR, lhs_reg_hi, rhs_reg_hi);
     }
   } else {
-    GenericValuePart lhs_op = lhs.part(0);
-    GenericValuePart rhs_op = rhs.part(0);
+    ValuePartRef lhs_op = lhs.part(0);
+    ValuePartRef rhs_op = rhs.part(0);
 
-    if (lhs_op.is_imm() && !rhs_op.is_imm()) {
+    if (lhs_op.is_const() && !rhs_op.is_const()) {
       std::swap(lhs_op, rhs_op);
       jump = swap_jump(jump).kind;
     }
 
     if (int_width != 32 && int_width != 64) {
       unsigned ext_bits = tpde::util::align_up(int_width, 32);
-      lhs_op = ext_int(std::move(lhs_op), is_signed, int_width, ext_bits);
-
-      if (!rhs_op.is_imm()) {
-        rhs_op = ext_int(std::move(rhs_op), is_signed, int_width, ext_bits);
-      }
+      lhs_op = std::move(lhs_op).into_extended(is_signed, int_width, ext_bits);
+      rhs_op = std::move(rhs_op).into_extended(is_signed, int_width, ext_bits);
     }
 
-    AsmReg lhs_reg = gval_as_reg_reuse(lhs_op, res_scratch);
+    AsmReg lhs_reg = lhs_op.has_reg() ? lhs_op.cur_reg() : lhs_op.load_to_reg();
 
-    if (rhs_op.is_imm()) {
-      u64 imm = rhs_op.imm64();
+    if (rhs_op.is_const()) {
+      u64 imm = rhs_op.const_data()[0];
       if (imm == 0 && fuse_br && (jump == Jump::Jeq || jump == Jump::Jne)) {
         // Generate CBZ/CBNZ if possible. However, lhs_reg might be the register
         // corresponding to a PHI node, which gets modified before the branch.
@@ -641,7 +623,7 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::Instruction *inst,
         // register. This case is not easy to detect here, though. Therefore,
         // for now we always copy the value into a register that we own.
         // TODO: copy only when lhs_reg belongs to an overwritten PHI node.
-        if (!res_scratch.has_reg()) {
+        if (!lhs_op.can_salvage()) {
           AsmReg src_reg = lhs_reg;
           lhs_reg = res_scratch.alloc_gp();
           this->mov(lhs_reg, src_reg, int_width <= 32 ? 4 : 8);
@@ -656,12 +638,6 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::Instruction *inst,
         generate_conditional_branch(cbz, true_block, false_block);
         this->adaptor->inst_set_fused(fuse_br, true);
         return true;
-      }
-
-      if (is_signed && int_width != 64 && int_width != 32) {
-        u64 mask = (1ull << int_width) - 1;
-        u64 shift = 64 - int_width;
-        imm = ((i64)((imm & mask) << shift)) >> shift;
       }
 
       ScratchReg rhs_tmp{this};
@@ -679,16 +655,14 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::Instruction *inst,
         }
       }
     } else {
-      const auto rhs_reg = gval_as_reg(rhs_op);
+      AsmReg rhs_reg =
+          rhs_op.has_reg() ? rhs_op.cur_reg() : rhs_op.load_to_reg();
       if (int_width <= 32) {
         ASM(CMPw, lhs_reg, rhs_reg);
       } else {
         ASM(CMPx, lhs_reg, rhs_reg);
       }
     }
-
-    lhs_op.reset();
-    rhs_op.reset();
   }
 
   if (fuse_br) {
