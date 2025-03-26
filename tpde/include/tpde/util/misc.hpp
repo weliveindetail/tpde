@@ -29,22 +29,22 @@ T cnt_tz(T) {
 }
 
 template <>
-inline u8 cnt_tz<u8>(const u8 val) {
+constexpr inline u8 cnt_tz<u8>(const u8 val) {
   return __builtin_ctz(val);
 }
 
 template <>
-inline u16 cnt_tz<u16>(const u16 val) {
+constexpr inline u16 cnt_tz<u16>(const u16 val) {
   return __builtin_ctz(val);
 }
 
 template <>
-inline u32 cnt_tz<u32>(const u32 val) {
+constexpr inline u32 cnt_tz<u32>(const u32 val) {
   return __builtin_ctz(val);
 }
 
 template <>
-inline u64 cnt_tz<u64>(const u64 val) {
+constexpr inline u64 cnt_tz<u64>(const u64 val) {
   return __builtin_ctzll(val);
 }
 

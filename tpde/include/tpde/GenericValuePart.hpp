@@ -75,15 +75,6 @@ struct CompilerBase<Adaptor, Derived, Config>::GenericValuePart {
     return *this;
   }
 
-  // reg can't be overwritten
-  GenericValuePart(AsmReg reg) noexcept : state{Expr(reg)} {}
-
-  // no salvaging
-  GenericValuePart(const ScratchReg &reg) noexcept {
-    assert(reg.has_reg());
-    state = Expr(reg.cur_reg());
-  }
-
   // salvaging
   GenericValuePart(ScratchReg &&reg) noexcept {
     assert(reg.has_reg());

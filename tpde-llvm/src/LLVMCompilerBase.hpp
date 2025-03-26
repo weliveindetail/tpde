@@ -2317,8 +2317,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_ext(
 
     if (sign) {
       ScratchReg scratch_high{derived()};
-      AsmReg low_reg = low.has_reg() ? low.cur_reg() : low.load_to_reg();
-      derived()->encode_fill_with_sign64(low_reg, scratch_high);
+      if (!low.has_reg()) {
+        low.load_to_reg();
+      }
+      derived()->encode_fill_with_sign64(low.get_unowned_ref(), scratch_high);
       this->set_value(res_ref_high, scratch_high);
     } else {
       res_ref_high.set_value(ValuePart{u64{0}, 8, res_ref_high.bank()});
@@ -4620,33 +4622,30 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_is_fpclass(
   // zero
   zero_ref.reload_into_specific_fixed(res_scratch.alloc_gp());
 
-  AsmReg op_reg = op_ref.load_to_reg();
+  op_ref.load_to_reg();
 
-#define TEST(cond, name)                                                       \
-  if (test & cond) {                                                           \
-    if (is_double) {                                                           \
-      /* note that the std::move(res_scratch) here creates a new               \
-       * ScratchReg that manages the register inside the                       \
-       * GenericValuePart and res_scratch becomes invalid by the time          \
-       * the encode function is entered */                                     \
-      derived()->encode_is_fpclass_##name##_double(                            \
-          std::move(res_scratch), op_reg, res_scratch);                        \
-    } else {                                                                   \
-      derived()->encode_is_fpclass_##name##_float(                             \
-          std::move(res_scratch), op_reg, res_scratch);                        \
-    }                                                                          \
-  }
-  TEST(SIGNALING_NAN, snan)
-  TEST(QUIET_NAN, qnan)
-  TEST(NEG_INF, ninf)
-  TEST(NEG_NORM, nnorm)
-  TEST(NEG_SUBNORM, nsnorm)
-  TEST(NEG_ZERO, nzero)
-  TEST(POS_ZERO, pzero)
-  TEST(POS_SUBNORM, psnorm)
-  TEST(POS_NORM, pnorm)
-  TEST(POS_INF, pinf)
+  using EncodeFnTy =
+      bool (Derived::*)(GenericValuePart &&, GenericValuePart &&, ScratchReg &);
+  static constexpr auto encode_fns = []() {
+    return std::array<EncodeFnTy[2], 10>{{
+#define TEST(name)                                                             \
+  {&Derived::encode_is_fpclass_##name##_float,                                 \
+   &Derived::encode_is_fpclass_##name##_double},
+        TEST(snan) TEST(qnan) TEST(ninf) TEST(nnorm) TEST(nsnorm) TEST(nzero)
+            TEST(pzero) TEST(psnorm) TEST(pnorm) TEST(pinf)
 #undef TEST
+    }};
+  }();
+
+  for (unsigned i = 0; i < encode_fns.size(); i++) {
+    if (test & (1 << i)) {
+      // note that the std::move(res_scratch) here creates a new ScratchReg that
+      // manages the register inside the GenericValuePart and res_scratch
+      // becomes invalid by the time the encode function is entered
+      (derived()->*encode_fns[i][is_double])(
+          std::move(res_scratch), op_ref.get_unowned_ref(), res_scratch);
+    }
+  }
 
   this->set_value(res_ref, res_scratch);
   return true;

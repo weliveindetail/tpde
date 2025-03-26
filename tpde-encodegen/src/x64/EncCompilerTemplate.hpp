@@ -320,7 +320,7 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                 } else {
                     // unowned temporary: use backup
                     alloc_backup();
-                    *op_ptr = backup_reg.scratch.cur_reg();
+                    *op_ptr = typename GenericValuePart::Expr(backup_reg.scratch.cur_reg());
                 }
                 return;
             }

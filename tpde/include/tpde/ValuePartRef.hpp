@@ -237,6 +237,15 @@ public:
                                     AsmReg reg,
                                     unsigned size = 0) noexcept;
 
+  /// For a locked value, get an unonwed ValuePart referring to the register.
+  ValuePart get_unowned() noexcept {
+    assert(has_reg());
+    ValuePart res{bank()};
+    res.state.c =
+        ConstantData{.reg = cur_reg(), .owned = false, .is_const = false};
+    return res;
+  }
+
   /// Move into a temporary register, reuse an existing register if possible.
   ValuePart into_temporary(CompilerBase *compiler) && noexcept {
     // TODO: implement this. This needs size information to copy the value.
@@ -837,6 +846,10 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef : ValuePart {
                                     AsmReg reg,
                                     unsigned size = 0) noexcept {
     return ValuePart::reload_into_specific_fixed(compiler, reg, size);
+  }
+
+  ValuePartRef get_unowned_ref() noexcept {
+    return ValuePartRef{compiler, ValuePart::get_unowned()};
   }
 
   ValuePartRef into_temporary() && noexcept {
