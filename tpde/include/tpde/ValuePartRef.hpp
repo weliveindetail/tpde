@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include "tpde/ValueAssignment.hpp"
+
 #include <array>
 #include <cstring>
 #include <span>

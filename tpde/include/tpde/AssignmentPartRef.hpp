@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include "tpde/ValueAssignment.hpp"
+
 namespace tpde {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

@@ -11,6 +11,7 @@
 #include "IRAdaptor.hpp"
 #include "tpde/RegisterFile.hpp"
 #include "tpde/ValLocalIdx.hpp"
+#include "tpde/ValueAssignment.hpp"
 #include "tpde/base.hpp"
 #include "tpde/util/AddressSanitizer.hpp"
 #include "tpde/util/BumpAllocator.hpp"
@@ -79,79 +80,6 @@ struct CompilerBase {
 
   static constexpr ValLocalIdx INVALID_VAL_LOCAL_IDX =
       static_cast<ValLocalIdx>(~0u);
-
-// disable Wpedantic here since these are compiler extensions
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-
-// GCC < 15 does not support the flexible array member in the union
-// see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53548
-#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ < 15
-  #define GNU_ZERO 0
-#else
-  #define GNU_ZERO
-#endif
-
-  // TODO(ts): add option to use fixed size assignments if there is no need
-  // for arbitrarily many parts since that comes with a 1-3% cost in
-  // compile-time
-  struct ValueAssignment {
-    union {
-      /// Offset from the frame pointer.
-      i32 frame_off;
-      /// For variable-references, frame_off is unused so it can be used
-      /// to store an index into a custom structure in case there is
-      /// special handling for variable references
-      u32 var_ref_custom_idx;
-    };
-
-    u32 part_count;
-
-    // we want tight packing and with this construct we get a base size of
-    // 16 bytes for values with only one part (the majority)
-    union {
-      ValueAssignment *next_free_list_entry;
-
-      struct {
-        union {
-          ValLocalIdx next_delayed_free_entry;
-          u32 references_left;
-        };
-        u8 max_part_size;
-
-        /// Whether the assignment is in a delayed free list and the reference
-        /// count is therefore invalid (zero). Set/used in debug builds only to
-        /// catch use-after-frees.
-        bool pending_free : 1;
-
-        /// Whether the assignment is a single-part variable reference.
-        bool variable_ref : 1;
-
-        /// Whether to delay the free when the reference count reaches zero.
-        /// (This is liveness.last_full, copied here for faster access).
-        bool delay_free : 1;
-
-        // TODO: get the type of parts from Derived
-        union {
-          u16 first_part;
-          u16 parts[GNU_ZERO];
-        };
-      };
-    };
-
-    void initialize(u32 frame_off,
-                    u32 part_count,
-                    u32 ref_count,
-                    u16 max_part_size) noexcept;
-
-    u32 size() const noexcept {
-      assert(!variable_ref && "variable-ref has no allocation size");
-      return part_count * max_part_size;
-    }
-  };
-
-#undef GNU_ZERO
-#pragma GCC diagnostic pop
 
   static constexpr size_t ASSIGNMENT_BUF_SIZE = 16 * 1024;
 
@@ -373,15 +301,6 @@ protected:
 namespace tpde {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-void CompilerBase<Adaptor, Derived, Config>::ValueAssignment::initialize(
-    u32 frame_off, u32 part_count, u32 ref_count, u16 max_part_size) noexcept {
-  this->frame_off = frame_off;
-  this->part_count = part_count;
-  this->references_left = ref_count;
-  this->max_part_size = max_part_size;
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile() {
   // create function symbols
 
@@ -474,7 +393,7 @@ CompilerBase<Adaptor, Derived, Config>::AssignmentAllocInfo::
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::ValueAssignment *
+ValueAssignment *
     CompilerBase<Adaptor, Derived, Config>::allocate_assignment_slow(
         const u32 part_count, bool skip_free_list) noexcept {
   AssignmentAllocInfo aai(part_count);
@@ -660,9 +579,11 @@ void CompilerBase<Adaptor, Derived, Config>::init_variable_ref(
   auto *assignment = allocate_assignment_slow(1, true);
   assignments.value_ptrs[static_cast<u32>(local_idx)] = assignment;
 
-  assignment->initialize(0, 1, 0, Config::PLATFORM_POINTER_SIZE);
+  assignment->max_part_size = Config::PLATFORM_POINTER_SIZE;
   assignment->variable_ref = true;
+  assignment->part_count = 1;
   assignment->var_ref_custom_idx = var_ref_data;
+  assignment->references_left = 0;
 
   AssignmentPartRef ap{assignment, 0};
   ap.reset();
