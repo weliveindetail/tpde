@@ -784,7 +784,7 @@ void GenerationState::handle_return(llvm::raw_ostream &os,
       assert(reg.isPhysical());
       const auto reg_id = target->reg_id_from_mc_reg(reg);
       if (this->num_ret_regs == -1) {
-		used_regs.insert(reg_id);
+        used_regs.insert(reg_id);
         ret_regs.push_back(reg_id);
       } else {
         if (return_regs.size() <= num_ret_regs ||
