@@ -17,6 +17,7 @@ private:
   struct ConstantData {
     AsmReg reg = AsmReg::make_invalid();
     bool has_assignment = false;
+    bool owned;
     bool is_const : 1;
     bool const_inline : 1;
     union {
@@ -238,6 +239,9 @@ public:
 
   /// Move into a temporary register, reuse an existing register if possible.
   ValuePart into_temporary(CompilerBase *compiler) && noexcept {
+    // TODO: implement this. This needs size information to copy the value.
+    assert((has_assignment() || state.c.owned) &&
+           "into_temporary from unowned ValuePart not implemented");
     ValuePart res{bank()};
     res.set_value(compiler, std::move(*this));
     if (!res.has_reg()) [[unlikely]] {
@@ -265,7 +269,7 @@ public:
       res.set_value(compiler, std::move(*this));
       src_reg = res.cur_reg();
     } else {
-      src_reg = load_to_reg(compiler);
+      src_reg = has_reg() ? cur_reg() : load_to_reg(compiler);
       res.alloc_reg(compiler);
     }
     compiler->derived()->generate_raw_intext(
@@ -289,7 +293,13 @@ public:
   /// currently locked register.
   void set_value_reg(CompilerBase *compiler, AsmReg reg) noexcept;
 
-  bool can_salvage(u32 ref_adjust = 1) const noexcept;
+  bool can_salvage() const noexcept {
+    if (!has_assignment()) {
+      return state.c.owned && state.c.reg.valid();
+    }
+
+    return state.v.owned && assignment().register_valid();
+  }
 
 private:
   AsmReg salvage_keep_used(CompilerBase *compiler) noexcept;
@@ -395,6 +405,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
     reg_file.mark_fixed(reg);
     state.c.reg = reg;
+    state.c.owned = true;
 
     if (reload) {
       assert(is_const() && "cannot reload temporary value");
@@ -475,6 +486,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     }
 
     state.c.reg = reg;
+    state.c.owned = true;
   }
 
   return reg;
@@ -599,16 +611,6 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value(
   auto &reg_file = compiler->register_file;
   if (!has_assignment()) {
     assert(!is_const()); // probably don't want to allow mutating constants
-    // This is a temporary, which might currently have a register. We want to
-    // have a temporary register that holds the value at the end.
-    if (!other.has_assignment()) {
-      // When other is a temporary/constant, just take the value and drop our
-      // own register (if we have any).
-      reset(compiler);
-      *this = std::move(other);
-      return;
-    }
-
     if (!other.can_salvage()) {
       // We cannot take the register of other, so copy the value
       AsmReg cur_reg = alloc_reg(compiler);
@@ -617,10 +619,22 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value(
       return;
     }
 
+    // This is a temporary, which might currently have a register. We want to
+    // have a temporary register that holds the value at the end.
+    if (!other.has_assignment()) {
+      assert(other.state.c.owned && "can_salvage true for unowned value??");
+      // When other is a temporary/constant, just take the value and drop our
+      // own register (if we have any).
+      reset(compiler);
+      *this = std::move(other);
+      return;
+    }
+
     // We can take the register of other.
     reset(compiler);
 
     state.c.reg = other.salvage_keep_used(compiler);
+    state.c.owned = true;
     reg_file.mark_fixed(state.c.reg);
     reg_file.update_reg_assignment(state.c.reg, INVALID_VAL_LOCAL_IDX, 0);
     return;
@@ -669,6 +683,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value_reg(
   if (!has_assignment()) {
     assert(!is_const() && "cannot mutate constant ValuePartRef");
     state.c.reg = value_reg;
+    state.c.owned = true;
     reg_file.mark_used(state.c.reg, INVALID_VAL_LOCAL_IDX, 0);
     reg_file.mark_fixed(state.c.reg);
     return;
@@ -701,16 +716,6 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value_reg(
   ap.set_reg(value_reg);
   ap.set_register_valid(true);
   ap.set_modified(true);
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-bool CompilerBase<Adaptor, Derived, Config>::ValuePart::can_salvage(
-    const u32) const noexcept {
-  if (!has_assignment()) {
-    return state.c.reg.valid();
-  }
-
-  return state.v.owned && assignment().register_valid();
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -755,8 +760,10 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::reset(
 #endif
 
   if (!has_assignment()) {
-    compiler->register_file.unmark_fixed(reg);
-    compiler->register_file.unmark_used(reg);
+    if (state.c.owned) {
+      compiler->register_file.unmark_fixed(reg);
+      compiler->register_file.unmark_used(reg);
+    }
   } else {
     bool reg_unlocked = compiler->register_file.dec_lock_count(reg);
     if (reg_unlocked && state.v.owned) {

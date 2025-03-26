@@ -312,9 +312,16 @@ void EncodeCompiler<Adaptor, Derived, BaseTy, Config>::scratch_alloc_specific(
                     assert(ap.get_reg() != reg);
                 }
             } else if (op_ref.has_reg() && op_ref.cur_reg() == reg) {
-                scratch.alloc_specific(op_ref.salvage());
-                op_ref.alloc_reg();
-                ASMD(MOV64rr, op_ref.cur_reg(), reg);
+                if (op_ref.can_salvage()) {
+                    // owned temporary: move elsewhere
+                    scratch.alloc_specific(op_ref.salvage());
+                    op_ref.alloc_reg();
+                    ASMD(MOV64rr, op_ref.cur_reg(), reg);
+                } else {
+                    // unowned temporary: use backup
+                    alloc_backup();
+                    *op_ptr = backup_reg.scratch.cur_reg();
+                }
                 return;
             }
             continue;
