@@ -2126,6 +2126,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
 
   const llvm::Value *src_val = inst->getOperand(0);
   auto *src_ty = src_val->getType();
+  if (src_ty->isVectorTy()) {
+    return false;
+  }
+
   const auto bit_width = inst->getType()->getIntegerBitWidth();
 
   if (bit_width > 64) {
@@ -3117,6 +3121,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
     const llvm::Instruction *inst, const ValInfo &val_info, u64) noexcept {
+  if (!inst->getOperand(0)->getType()->isIntegerTy()) {
+    return false;
+  }
+
   auto [cond_vr, cond] = this->val_ref_single(inst->getOperand(0));
   auto lhs = this->val_ref(inst->getOperand(1));
   auto rhs = this->val_ref(inst->getOperand(2));
@@ -3240,6 +3248,9 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   auto *gep = llvm::cast<llvm::GetElementPtrInst>(inst);
+  if (gep->getType()->isVectorTy()) {
+    return false;
+  }
 
   ValueRef ptr_ref = this->val_ref(gep->getPointerOperand());
   ValueRef idx_ref{this};
@@ -3363,6 +3374,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
     const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   const auto *cmp = llvm::cast<llvm::FCmpInst>(inst);
   auto *cmp_ty = cmp->getOperand(0)->getType();
+  if (cmp_ty->isVectorTy()) {
+    return false;
+  }
+
   const auto pred = cmp->getPredicate();
 
   if (pred == llvm::CmpInst::FCMP_FALSE || pred == llvm::CmpInst::FCMP_TRUE) {
