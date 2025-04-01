@@ -37,6 +37,7 @@ public:
   operator bool() const noexcept { return impl != nullptr; }
 };
 
+/// Compiler for LLVM modules
 class LLVMCompiler {
 protected:
   LLVMCompiler() = default;
@@ -47,16 +48,22 @@ public:
   LLVMCompiler(const LLVMCompiler &) = delete;
   LLVMCompiler &operator=(const LLVMCompiler &) = delete;
 
-  /// Create a compiler for the specified target triple. Returns null if the
-  /// triple is not supported.
+  /// Create a compiler for the specified target triple.
+  /// \returns null if the triple is not supported.
   static std::unique_ptr<LLVMCompiler>
       create(const llvm::Triple &triple) noexcept;
 
   /// Compile the module to an object file and emit it into the buffer. The
-  /// module might be modified during compilation. Returns true on success.
+  /// module might be modified during compilation.
+  /// \returns true on success.
   virtual bool compile_to_elf(llvm::Module &mod,
                               std::vector<uint8_t> &buf) noexcept = 0;
 
+  /// Compile the module and map it into memory, calling resolver to resolve
+  /// references to external symbols. This function will also register unwind
+  /// information. The module might be modified during compilation.
+  /// \returns RAII container for the code that will free any allocated memory
+  /// while mapping and deregister unwind information
   virtual JITMapper compile_and_map(
       llvm::Module &mod,
       std::function<void *(std::string_view)> resolver) noexcept = 0;
