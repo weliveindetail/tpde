@@ -14,6 +14,7 @@ option(TPDE_INCLUDE_TESTS "enable test" ON)
 option(TPDE_ENABLE_ENCODEGEN "enable tpde-encodegen tool (needs LLVM)" ON)
 option(TPDE_ENABLE_LLVM "enable LLVM back-end (needs LLVM)" ON)
 option(TPDE_ENABLE_COVERAGE "enable coverage instrumentation" OFF)
+option(TPDE_BUILD_DOCS "Build documentation" OFF)
 
 # warnings
 if (MSVC)
@@ -115,3 +116,6 @@ if (TPDE_INCLUDE_TESTS)
     get_property(TPDE_LIT_DEPENDS GLOBAL PROPERTY TPDE_LIT_DEPENDS)
     add_tpde_lit_target(check-tpde ${TPDE_LIT_TESTSUITES} DEPENDS ${TPDE_LIT_DEPENDS})
 endif()
+
+if (TPDE_BUILD_DOCS)
+    add_subdirectory(docs)

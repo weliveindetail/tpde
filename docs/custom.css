@@ -1,0 +1,8 @@
+body {
+    --side-nav-arrow-opacity: 1;
+}
+
+.arrow {
+	vertical-align: baseline;
+	font-size: 95%;
+}
