@@ -3029,6 +3029,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
     const llvm::Instruction *inst, const ValInfo &info, u64) noexcept {
   const auto *call = llvm::cast<llvm::CallBase>(inst);
 
+  if (call->isMustTailCall()) {
+    return false;
+  }
+
   // For indirect calls, target_ref must outlive call_target.
   ValueRef target_ref{this};
 
