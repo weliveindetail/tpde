@@ -61,7 +61,7 @@ public:
 
   void emit_jump_table(Label table, std::span<Label> labels) noexcept;
 
-  /// Make sure that text_write_ptr can be safely incremented by size
+  /// Make sure that text_cur_ptr() can be safely incremented by size
   void text_more_space(u32 size) noexcept;
 
   void reset() noexcept;
@@ -138,20 +138,20 @@ inline void
   for (u32 i = 0; i < labels.size(); i++) {
     const auto entry_off = table_off + 4 * i;
     if (label_is_pending(labels[i])) {
-      *reinterpret_cast<u32 *>(text_write_ptr) = table_off;
+      *reinterpret_cast<u32 *>(text_cur_ptr()) = table_off;
       add_unresolved_entry(
           labels[i], entry_off, UnresolvedEntryKind::JUMP_TABLE);
     } else {
       const auto label_off = this->label_offset(labels[i]);
       const auto diff = (i32)label_off - (i32)table_off;
-      *reinterpret_cast<i32 *>(text_write_ptr) = diff;
+      *reinterpret_cast<i32 *>(text_cur_ptr()) = diff;
     }
-    text_write_ptr += 4;
+    text_cur_ptr() += 4;
   }
 }
 
 inline void AssemblerElfA64::text_more_space(u32 size) noexcept {
-  if (text_reserve_end - text_begin >= (128 * 1024 * 1024)) {
+  if (text_allocated_size() >= (128 * 1024 * 1024)) {
     // we do not support multiple text sections currently
     TPDE_FATAL("AArch64 doesn't support sections larger than 128 MiB");
   }
@@ -171,7 +171,7 @@ inline void AssemblerElfA64::text_more_space(u32 size) noexcept {
   // last veneer.
   u32 first_condbr = vi.veneers.empty() ? 0 : vi.veneers.back();
   // If all condbrs can only jump inside the now-reserved memory, do nothing.
-  if (first_condbr + max_dist > text_reserve_end - text_begin) {
+  if (first_condbr + max_dist > text_allocated_size()) {
     return;
   }
 
@@ -180,7 +180,7 @@ inline void AssemblerElfA64::text_more_space(u32 size) noexcept {
   vi.unresolved_test_brs = vi.unresolved_cond_brs = 0;
 
   *reinterpret_cast<u32 *>(text_ptr(cur_off)) = de64_B(veneer_size / 4 + 1);
-  text_write_ptr += veneer_size + 4;
+  text_cur_ptr() += veneer_size + 4;
 }
 
 inline void AssemblerElfA64::reset() noexcept {

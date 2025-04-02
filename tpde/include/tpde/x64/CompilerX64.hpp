@@ -17,14 +17,14 @@
 #endif
 
 // This is a lambda, because the parameters might call ASM macros themselves --
-// so we need to evaluate text_write_ptr after the arguments.
+// so we need to evaluate text_cur_ptr() after the arguments.
 #define ASM_FULL(compiler, reserve, op, flags, ...)                            \
   [c = (compiler), f = (flags)]<typename... Args>(Args... args) {              \
     (reserve ? c->assembler.text_ensure_space(reserve) : (void)0);             \
-    unsigned n = (fe64_##op)(c->assembler.text_write_ptr, f, args...);         \
+    unsigned n = (fe64_##op)(c->assembler.text_cur_ptr(), f, args...);         \
     assert(n != 0);                                                            \
-    assert(c->assembler.text_reserve_end - c->assembler.text_write_ptr >= n);  \
-    c->assembler.text_write_ptr += n;                                          \
+    assert(c->assembler.text_has_space(n));                                    \
+    c->assembler.text_cur_ptr() += n;                                          \
   }(__VA_ARGS__)
 
 #define ASM(op, ...) ASM_FULL(this, 16, op, 0 __VA_OPT__(, ) __VA_ARGS__)
@@ -999,7 +999,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::
       reg_save_size += (reg.id() < AsmReg::R8) ? 1 : 2;
     }
     this->assembler.text_ensure_space(reg_save_size);
-    this->assembler.text_write_ptr += reg_save_size;
+    this->assembler.text_cur_ptr() += reg_save_size;
     func_reg_save_alloc = reg_save_size;
     // pop uses the same amount of bytes as push
     func_reg_restore_alloc = reg_save_size;
@@ -1209,7 +1209,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
     if (epilogue_size > ret_size) {
       fe64_NOP(write_ptr, epilogue_size - ret_size);
       if (first_ret_off == func_end_ret_off) {
-        this->assembler.text_write_ptr -= epilogue_size - ret_size;
+        this->assembler.text_cur_ptr() -= epilogue_size - ret_size;
       }
     }
   }
@@ -1218,7 +1218,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
     std::memcpy(
         text_data + func_ret_offs[i], text_data + first_ret_off, epilogue_size);
     if (func_ret_offs[i] == func_end_ret_off) {
-      this->assembler.text_write_ptr -= epilogue_size - ret_size;
+      this->assembler.text_cur_ptr() -= epilogue_size - ret_size;
     }
   }
 
@@ -1286,7 +1286,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_epilog() noexcept {
       func_reg_restore_alloc; // add/lea + pop + ret + size of reg restore
 
   this->assembler.text_ensure_space(epilogue_size);
-  this->assembler.text_write_ptr += epilogue_size;
+  this->assembler.text_cur_ptr() += epilogue_size;
 }
 
 template <IRAdaptor Adaptor,
@@ -1803,7 +1803,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
     Jump jmp, Assembler::Label target_label) noexcept {
   if (this->assembler.label_is_pending(target_label)) {
     this->assembler.text_ensure_space(6);
-    auto *target = this->assembler.text_write_ptr;
+    auto *target = this->assembler.text_cur_ptr();
     switch (jmp) {
     case Jump::ja: ASMNCF(JA, FE_JMPL, target); break;
     case Jump::jae: ASMNCF(JNC, FE_JMPL, target); break;
@@ -2010,7 +2010,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
 
   if (std::holds_alternative<Assembler::SymRef>(target)) {
     this->assembler.text_ensure_space(8);
-    auto *target_ptr = this->assembler.text_write_ptr;
+    auto *target_ptr = this->assembler.text_cur_ptr();
     ASMNC(CALL, target_ptr);
     this->assembler.reloc_text(std::get<Assembler::SymRef>(target),
                                R_X86_64_PLT32,
@@ -2031,7 +2031,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     if (!ref.has_assignment()) {
       assert(((1ull << AsmReg::R10) & (calling_conv.callee_saved_mask() |
                                        calling_conv.arg_regs_mask())) == 0);
-      this->register_file.clobbered |= (1ull << AsmReg::R10);
+      this->register_file.mark_clobbered(Reg{AsmReg::R10});
       ASM(CALLr, ref.reload_into_specific(derived(), AsmReg::R10));
     } else {
       auto ap = ref.assignment();
@@ -2078,14 +2078,14 @@ CompilerX64<Adaptor, Derived, BaseTy, Config>::ScratchReg
     // Call sequence with extra prefixes for linker relaxation. Code sequence
     // taken from "ELF Handling For Thread-Local Storage".
     this->assembler.text_ensure_space(0x10);
-    *this->assembler.text_write_ptr++ = 0x66;
+    *this->assembler.text_cur_ptr()++ = 0x66;
     ASMNC(LEA64rm, arg_reg, FE_MEM(FE_IP, 0, FE_NOREG, 0));
     this->assembler.reloc_text(
         sym, R_X86_64_TLSGD, this->assembler.text_cur_off() - 4, -4);
-    *this->assembler.text_write_ptr++ = 0x66;
-    *this->assembler.text_write_ptr++ = 0x66;
-    *this->assembler.text_write_ptr++ = 0x48;
-    ASMNC(CALL, this->assembler.text_write_ptr);
+    *this->assembler.text_cur_ptr()++ = 0x66;
+    *this->assembler.text_cur_ptr()++ = 0x66;
+    *this->assembler.text_cur_ptr()++ = 0x48;
+    ASMNC(CALL, this->assembler.text_cur_ptr());
     if (!this->sym_tls_get_addr.valid()) [[unlikely]] {
       this->sym_tls_get_addr = this->assembler.sym_add_undef(
           "__tls_get_addr", Assembler::SymBinding::GLOBAL);

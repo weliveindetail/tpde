@@ -20,8 +20,8 @@
     this->assembler.text_ensure_space(4);                                      \
     u32 inst = de64_##op(__VA_ARGS__);                                         \
     assert(inst != 0);                                                         \
-    *reinterpret_cast<u32 *>(this->assembler.text_write_ptr) = inst;           \
-    this->assembler.text_write_ptr += 4;                                       \
+    *reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()) = inst;           \
+    this->assembler.text_cur_ptr() += 4;                                       \
   } while (false)
 
 // generate instruction and reserve a custom amount of bytes
@@ -31,8 +31,8 @@
     this->assembler.text_ensure_space(bytes);                                  \
     u32 inst = de64_##op(__VA_ARGS__);                                         \
     assert(inst != 0);                                                         \
-    *reinterpret_cast<u32 *>(this->assembler.text_write_ptr) = inst;           \
-    this->assembler.text_write_ptr += 4;                                       \
+    *reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()) = inst;           \
+    this->assembler.text_cur_ptr() += 4;                                       \
   } while (false)
 
 // generate an instruction without checking that enough space is available
@@ -40,11 +40,9 @@
   do {                                                                         \
     u32 inst = de64_##op(__VA_ARGS__);                                         \
     assert(inst != 0);                                                         \
-    assert(this->assembler.text_reserve_end -                                  \
-               this->assembler.text_write_ptr >=                               \
-           4);                                                                 \
-    *reinterpret_cast<u32 *>(this->assembler.text_write_ptr) = inst;           \
-    this->assembler.text_write_ptr += 4;                                       \
+    assert(this->assembler.text_has_space(4));                                 \
+    *reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()) = inst;           \
+    this->assembler.text_cur_ptr() += 4;                                       \
   } while (false)
 
 // generate an instruction with a custom compiler ptr
@@ -53,8 +51,8 @@
     compiler->assembler.text_ensure_space(4);                                  \
     u32 inst = de64_##op(__VA_ARGS__);                                         \
     assert(inst != 0);                                                         \
-    *reinterpret_cast<u32 *>(compiler->assembler.text_write_ptr) = inst;       \
-    compiler->assembler.text_write_ptr += 4;                                   \
+    *reinterpret_cast<u32 *>(compiler->assembler.text_cur_ptr()) = inst;       \
+    compiler->assembler.text_cur_ptr() += 4;                                   \
   } while (false)
 
 // check if the instruction could be successfully encoded with custom compiler
@@ -64,8 +62,8 @@
     u32 inst = de64_##op(__VA_ARGS__);                                         \
     if (inst == 0)                                                             \
       return false;                                                            \
-    *reinterpret_cast<u32 *>(compiler->assembler.text_write_ptr) = inst;       \
-    compiler->assembler.text_write_ptr += 4;                                   \
+    *reinterpret_cast<u32 *>(compiler->assembler.text_cur_ptr()) = inst;       \
+    compiler->assembler.text_cur_ptr() += 4;                                   \
     return true;                                                               \
   })())
 // check if the instruction could be successfully encoded
@@ -1190,7 +1188,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::
     // Reserve space for sub sp, stp x29/x30, and mov x29, sp.
     func_prologue_alloc = reg_save_size + 12;
     this->assembler.text_ensure_space(func_prologue_alloc);
-    this->assembler.text_write_ptr += func_prologue_alloc;
+    this->assembler.text_cur_ptr() += func_prologue_alloc;
     // ldp needs the same number of instructions as stp
     func_reg_restore_alloc = reg_save_size;
   }
@@ -1489,7 +1487,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::gen_func_epilog() noexcept {
   }
 
   this->assembler.text_ensure_space(epilogue_size);
-  this->assembler.text_write_ptr += epilogue_size;
+  this->assembler.text_cur_ptr() += epilogue_size;
 }
 
 template <IRAdaptor Adaptor,
@@ -1767,9 +1765,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     }
 
     this->assembler.text_ensure_space(5 * 4);
-    this->assembler.text_write_ptr +=
+    this->assembler.text_cur_ptr() +=
         sizeof(u32) *
-        de64_MOVconst(reinterpret_cast<u32 *>(this->assembler.text_write_ptr),
+        de64_MOVconst(reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()),
                       dst,
                       const_u64);
     return;
@@ -1783,9 +1781,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
       ScratchReg scratch{derived()};
       const auto tmp = scratch.alloc_gp();
       this->assembler.text_ensure_space(5 * 4);
-      this->assembler.text_write_ptr +=
+      this->assembler.text_cur_ptr() +=
           sizeof(u32) *
-          de64_MOVconst(reinterpret_cast<u32 *>(this->assembler.text_write_ptr),
+          de64_MOVconst(reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()),
                         tmp,
                         (u32)const_u64);
       ASMNC(FMOVsw, dst, tmp);
@@ -1800,9 +1798,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
       ScratchReg scratch{derived()};
       const auto tmp = scratch.alloc_gp();
       this->assembler.text_ensure_space(5 * 4);
-      this->assembler.text_write_ptr +=
+      this->assembler.text_cur_ptr() +=
           sizeof(u32) *
-          de64_MOVconst(reinterpret_cast<u32 *>(this->assembler.text_write_ptr),
+          de64_MOVconst(reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()),
                         tmp,
                         const_u64);
       ASMNC(FMOVdx, dst, tmp);

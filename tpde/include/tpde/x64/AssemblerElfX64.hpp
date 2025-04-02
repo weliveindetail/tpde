@@ -69,15 +69,15 @@ inline void
   for (u32 i = 0; i < labels.size(); i++) {
     const auto entry_off = table_off + 4 * i;
     if (label_is_pending(labels[i])) {
-      *reinterpret_cast<u32 *>(text_write_ptr) = table_off;
+      *reinterpret_cast<u32 *>(text_cur_ptr()) = table_off;
       add_unresolved_entry(
           labels[i], entry_off, UnresolvedEntryKind::JUMP_TABLE);
     } else {
       const auto label_off = this->label_offset(labels[i]);
       const auto diff = (i32)label_off - (i32)table_off;
-      *reinterpret_cast<i32 *>(text_write_ptr) = diff;
+      *reinterpret_cast<i32 *>(text_cur_ptr()) = diff;
     }
-    text_write_ptr += 4;
+    text_cur_ptr() += 4;
   }
 }
 
@@ -86,7 +86,7 @@ inline void AssemblerElfX64::text_align_impl(u64 align) noexcept {
   Base::text_align_impl(align);
   // Pad text section with NOPs.
   if (u32 cur_off = text_cur_off(); cur_off > old_off) {
-    fe64_NOP(text_write_ptr - (cur_off - old_off), cur_off - old_off);
+    fe64_NOP(text_cur_ptr() - (cur_off - old_off), cur_off - old_off);
   }
 }
 

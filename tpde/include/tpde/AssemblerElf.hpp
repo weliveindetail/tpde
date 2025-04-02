@@ -535,6 +535,8 @@ template <typename Derived>
 struct AssemblerElf : public AssemblerElfBase {
   /// The current write pointer for the text section
   SecRef current_section = INVALID_SEC_REF;
+
+private:
   u8 *text_begin = nullptr;
   u8 *text_write_ptr = nullptr;
   u8 *text_reserve_end = nullptr;
@@ -543,6 +545,7 @@ struct AssemblerElf : public AssemblerElfBase {
   bool currently_in_func = false;
 #endif
 
+public:
   explicit AssemblerElf(const bool generating_object)
       : AssemblerElfBase(Derived::TARGET_INFO, generating_object) {
     static_assert(std::is_base_of_v<AssemblerElf, Derived>);
@@ -566,6 +569,14 @@ struct AssemblerElf : public AssemblerElfBase {
   }
 
   u8 *text_ptr(u32 off) noexcept { return text_begin + off; }
+
+  u8 *&text_cur_ptr() noexcept { return text_write_ptr; }
+
+  bool text_has_space(u32 size) noexcept {
+    return text_reserve_end - text_write_ptr >= size;
+  }
+
+  u32 text_allocated_size() noexcept { return text_reserve_end - text_begin; }
 
   /// Make sure that text_write_ptr can be safely incremented by size
   void text_ensure_space(u32 size) noexcept {
