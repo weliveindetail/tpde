@@ -102,6 +102,8 @@ struct CompilerBase {
   // allocations
   util::SmallVector<typename Assembler::Label> block_labels;
 
+  util::SmallVector<std::pair<IRFuncRef, typename Assembler::SymRef>, 4>
+      personality_syms = {};
 
   struct ScratchReg;
   class ValuePart;
@@ -241,6 +243,8 @@ struct CompilerBase {
   void analysis_end() noexcept {}
 
 protected:
+  Assembler::SymRef get_personality_sym() noexcept;
+
   bool compile_func(IRFuncRef func, u32 func_idx) noexcept;
 
   bool compile_block(IRBlockRef block, u32 block_idx) noexcept;
@@ -328,6 +332,7 @@ void CompilerBase<Adaptor, Derived, Config>::reset() {
   assembler.reset();
   func_syms.clear();
   block_labels.clear();
+  personality_syms.clear();
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -1299,6 +1304,48 @@ typename CompilerBase<Adaptor, Derived, Config>::BlockIndex
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+typename CompilerBase<Adaptor, Derived, Config>::Assembler::SymRef
+    CompilerBase<Adaptor, Derived, Config>::get_personality_sym() noexcept {
+  using SymRef = typename Assembler::SymRef;
+  SymRef personality_sym;
+  if (this->adaptor->cur_needs_unwind_info()) {
+    const IRFuncRef personality_func = this->adaptor->cur_personality_func();
+    if (personality_func != Adaptor::INVALID_FUNC_REF) {
+      for (const auto &[func_ref, sym] : personality_syms) {
+        if (func_ref == personality_func) {
+          personality_sym = sym;
+          break;
+        }
+      }
+
+      if (!personality_sym.valid()) {
+        // create symbol that contains the address of the personality
+        // function
+        auto fn_sym = this->assembler.sym_add_undef(
+            this->adaptor->func_link_name(personality_func),
+            Assembler::SymBinding::GLOBAL);
+
+        u32 off;
+        u8 tmp[8] = {};
+
+        auto rodata = this->assembler.get_data_section(true, true);
+        personality_sym =
+            this->assembler.sym_def_data(rodata,
+                                         {},
+                                         {tmp, sizeof(tmp)},
+                                         8,
+                                         Assembler::SymBinding::LOCAL,
+                                         &off);
+        this->assembler.reloc_abs(rodata, fn_sym, off, 0);
+
+        personality_syms.emplace_back(personality_func, personality_sym);
+      }
+    }
+  }
+  return personality_sym;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     const IRFuncRef func, const u32 func_idx) noexcept {
   // reset per-func data
@@ -1377,9 +1424,6 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   }
 
   derived()->finish_func(func_idx);
-#ifdef TPDE_ASSERTS
-  assert(assembler.func_was_ended());
-#endif
 
   return true;
 }

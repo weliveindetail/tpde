@@ -389,7 +389,8 @@ public:
       : target_info(target_info), generating_object(generating_object) {
     strtab.push_back('\0');
 
-    local_symbols.resize(1); // First symbol must be null.
+    local_symbols.resize(1);       // First symbol must be null.
+    except_action_table.resize(2); // cleanup entry
     init_sections();
     eh_init_cie();
   }
@@ -589,10 +590,13 @@ public:
   void eh_write_uleb(std::vector<u8> &dst, u64 value) noexcept;
   void eh_write_sleb(std::vector<u8> &dst, i64 value) noexcept;
 
+private:
   void eh_init_cie(SymRef personality_func_addr = SymRef()) noexcept;
-  u32 eh_begin_fde() noexcept;
+
+public:
+  u32 eh_begin_fde(SymRef personality_func_addr = SymRef()) noexcept;
   void eh_end_fde(u32 fde_start, SymRef func) noexcept;
-  void except_encode_func() noexcept;
+  void except_encode_func(SymRef func_sym) noexcept;
 
   /// add an entry to the call-site table
   /// must be called in strictly increasing order wrt text_off
@@ -641,12 +645,6 @@ struct AssemblerElf : public AssemblerElfBase {
   /// The current write pointer for the text section
   SecRef current_section = INVALID_SEC_REF;
 
-private:
-#ifdef TPDE_ASSERTS
-  bool currently_in_func = false;
-#endif
-
-public:
   explicit AssemblerElf(const bool generating_object)
       : AssemblerElfBase(Derived::TARGET_INFO, generating_object) {
     static_assert(std::is_base_of_v<AssemblerElf, Derived>);
@@ -654,10 +652,6 @@ public:
   }
 
   Derived *derived() noexcept { return static_cast<Derived *>(this); }
-
-  void start_func(SymRef func, SymRef personality_func_addr) noexcept;
-
-  void end_func() noexcept;
 
   void reset() noexcept;
 
@@ -670,54 +664,7 @@ public:
   void label_place(Label label) noexcept {
     derived()->label_place(label, current_section, derived()->text_cur_off());
   }
-
-  // TODO(ts): func to map into memory
-
-#ifdef TPDE_ASSERTS
-  [[nodiscard]] bool func_was_ended() const noexcept {
-    return !currently_in_func;
-  }
-#endif
 };
-
-template <typename Derived>
-void AssemblerElf<Derived>::start_func(
-    const SymRef func, const SymRef personality_func_addr) noexcept {
-  cur_func = func;
-
-  derived()->text_align(16);
-  auto *elf_sym = sym_ptr(func);
-  elf_sym->st_value = derived()->text_cur_off();
-  elf_sym->st_shndx = static_cast<Elf64_Section>(current_section);
-
-  if (personality_func_addr != cur_personality_func_addr) {
-    assert(generating_object); // the jit model does not yet output relocations
-    // need to start a new CIE
-    eh_init_cie(personality_func_addr);
-
-    cur_personality_func_addr = personality_func_addr;
-  }
-
-  except_call_site_table.clear();
-  except_action_table.clear();
-  except_type_info_table.clear();
-  except_spec_table.clear();
-  except_action_table.resize(2); // cleanup entry
-
-#ifdef TPDE_ASSERTS
-  currently_in_func = true;
-#endif
-}
-
-template <typename Derived>
-void AssemblerElf<Derived>::end_func() noexcept {
-  auto *elf_sym = sym_ptr(cur_func);
-  elf_sym->st_size = derived()->text_cur_off() - elf_sym->st_value;
-
-#ifdef TPDE_ASSERTS
-  currently_in_func = false;
-#endif
-}
 
 template <typename Derived>
 void AssemblerElf<Derived>::label_place(Label label,

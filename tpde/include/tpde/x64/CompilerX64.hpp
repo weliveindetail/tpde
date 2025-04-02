@@ -388,9 +388,6 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   u32 var_arg_stack_off = 0;
   util::SmallVector<u32, 8> func_ret_offs = {};
 
-  util::SmallVector<std::pair<IRFuncRef, typename Assembler::SymRef>, 4>
-      personality_syms = {};
-
   /// Symbol for __tls_get_addr.
   Assembler::SymRef sym_tls_get_addr;
 
@@ -406,7 +403,6 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
   void gen_func_prolog_and_args() noexcept;
 
-  // note: this has to call assembler->end_func
   void finish_func(u32 func_idx) noexcept;
 
   u32 func_reserved_frame_size() noexcept;
@@ -918,43 +914,8 @@ template <IRAdaptor Adaptor,
           template <typename, typename, typename> class BaseTy,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::start_func(
-    const u32 func_idx) noexcept {
-  using SymRef = typename Assembler::SymRef;
-  SymRef personality_sym;
-  if (this->adaptor->cur_needs_unwind_info()) {
-    const IRFuncRef personality_func = this->adaptor->cur_personality_func();
-    if (personality_func != Adaptor::INVALID_FUNC_REF) {
-      for (const auto &[func_ref, sym] : personality_syms) {
-        if (func_ref == personality_func) {
-          personality_sym = sym;
-          break;
-        }
-      }
-
-      if (!personality_sym.valid()) {
-        // create symbol that contains the address of the personality
-        // function
-        auto fn_sym = this->assembler.sym_add_undef(
-            this->adaptor->func_link_name(personality_func),
-            Assembler::SymBinding::GLOBAL);
-
-        u32 off;
-        u8 tmp[8] = {};
-        auto rodata = this->assembler.get_data_section(true, true);
-        personality_sym =
-            this->assembler.sym_def_data(rodata,
-                                         {},
-                                         {tmp, sizeof(tmp)},
-                                         8,
-                                         Assembler::SymBinding::LOCAL,
-                                         &off);
-        this->assembler.reloc_abs(rodata, fn_sym, off, 0);
-
-        personality_syms.emplace_back(personality_func, personality_sym);
-      }
-    }
-  }
-  this->assembler.start_func(this->func_syms[func_idx], personality_sym);
+    const u32 /*func_idx*/) noexcept {
+  this->assembler.text_align(16);
 
   const CallingConv conv = derived()->cur_calling_convention();
   this->register_file.allocatable = conv.initial_free_regs();
@@ -1062,7 +1023,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
   const CallingConv conv = Base::derived()->cur_calling_convention();
 
   // NB: code alignment factor 1, data alignment factor -8.
-  const auto fde_off = this->assembler.eh_begin_fde();
+  auto fde_off = this->assembler.eh_begin_fde(this->get_personality_sym());
   // push rbp
   this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 1);
   this->assembler.eh_write_inst(dwarf::DW_CFA_def_cfa_offset, 16);
@@ -1165,11 +1126,14 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
     assert(this->assembler.except_call_site_table.empty());
   }
 
+  auto func_sym = this->func_syms[func_idx];
   if (func_ret_offs.empty()) {
     // TODO(ts): honor cur_needs_unwind_info
-    this->assembler.end_func();
-    this->assembler.eh_end_fde(fde_off, this->func_syms[func_idx]);
-    this->assembler.except_encode_func();
+    auto func_size = this->assembler.text_cur_off() - func_start_off;
+    this->assembler.sym_def(
+        func_sym, this->assembler.current_section, func_start_off, func_size);
+    this->assembler.eh_end_fde(fde_off, func_sym);
+    this->assembler.except_encode_func(func_sym);
     return;
   }
 
@@ -1222,12 +1186,14 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
     }
   }
 
-  // Do end_func at the very end; we shorten the function here again, so only
-  // at this point we know the actual size of the function.
+  // Do sym_def at the very end; we shorten the function here again, so only at
+  // this point we know the actual size of the function.
   // TODO(ts): honor cur_needs_unwind_info
-  this->assembler.end_func();
-  this->assembler.eh_end_fde(fde_off, this->func_syms[func_idx]);
-  this->assembler.except_encode_func();
+  auto func_size = this->assembler.text_cur_off() - func_start_off;
+  this->assembler.sym_def(
+      func_sym, this->assembler.current_section, func_start_off, func_size);
+  this->assembler.eh_end_fde(fde_off, func_sym);
+  this->assembler.except_encode_func(func_sym);
 }
 
 template <IRAdaptor Adaptor,
@@ -1252,7 +1218,6 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::reset() noexcept {
   func_ret_offs.clear();
-  personality_syms.clear();
   sym_tls_get_addr = {};
   Base::reset();
 }

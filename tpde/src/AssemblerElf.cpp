@@ -116,7 +116,6 @@ void AssemblerElfBase::reset() noexcept {
   secref_eh_frame = INVALID_SEC_REF;
   secref_except_table = INVALID_SEC_REF;
   cur_personality_func_addr = SymRef();
-  cur_func = SymRef();
 
   init_sections();
   eh_init_cie();
@@ -495,7 +494,12 @@ void AssemblerElfBase::eh_init_cie(SymRef personality_func_addr) noexcept {
   }
 }
 
-u32 AssemblerElfBase::eh_begin_fde() noexcept {
+u32 AssemblerElfBase::eh_begin_fde(SymRef personality_func_addr) noexcept {
+  if (personality_func_addr != cur_personality_func_addr) {
+    eh_init_cie(personality_func_addr);
+    cur_personality_func_addr = personality_func_addr;
+  }
+
   eh_align_frame();
 
   auto &data = get_section(secref_eh_frame).data;
@@ -570,7 +574,7 @@ void AssemblerElfBase::eh_end_fde(u32 fde_start, SymRef func) noexcept {
   }
 }
 
-void AssemblerElfBase::except_encode_func() noexcept {
+void AssemblerElfBase::except_encode_func(SymRef func_sym) noexcept {
   if (!cur_personality_func_addr.valid()) {
     return;
   }
@@ -579,7 +583,7 @@ void AssemblerElfBase::except_encode_func() noexcept {
   except_encoded_call_sites.clear();
   except_encoded_call_sites.reserve(16 * except_call_site_table.size());
 
-  const auto *sym = sym_ptr(cur_func);
+  const auto *sym = sym_ptr(func_sym);
   u64 fn_start = sym->st_value;
   u64 fn_end = fn_start + sym->st_size;
   u64 cur = fn_start;
@@ -654,6 +658,12 @@ void AssemblerElfBase::except_encode_func() noexcept {
     except_table.insert(
         except_table.end(), except_spec_table.begin(), except_spec_table.end());
   }
+
+  except_call_site_table.clear();
+  except_action_table.clear();
+  except_type_info_table.clear();
+  except_spec_table.clear();
+  except_action_table.resize(2); // cleanup entry
 }
 
 void AssemblerElfBase::except_add_call_site(const u32 text_off,

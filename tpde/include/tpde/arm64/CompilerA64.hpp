@@ -464,9 +464,6 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   u32 var_arg_stack_off = 0;
   util::SmallVector<u32, 8> func_ret_offs = {};
 
-  util::SmallVector<std::pair<IRFuncRef, typename Assembler::SymRef>, 4>
-      personality_syms = {};
-
   // for now, always generate an object
   explicit CompilerA64(Adaptor *adaptor,
                        const CPU_FEATURES cpu_features = CPU_BASELINE)
@@ -1085,44 +1082,8 @@ template <IRAdaptor Adaptor,
           template <typename, typename, typename> class BaseTy,
           typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::start_func(
-    const u32 func_idx) noexcept {
-  using SymRef = typename Assembler::SymRef;
-  SymRef personality_sym;
-  if (this->adaptor->cur_needs_unwind_info()) {
-    const IRFuncRef personality_func = this->adaptor->cur_personality_func();
-    if (personality_func != Adaptor::INVALID_FUNC_REF) {
-      for (const auto &[func_ref, sym] : personality_syms) {
-        if (func_ref == personality_func) {
-          personality_sym = sym;
-          break;
-        }
-      }
-
-      if (!personality_sym.valid()) {
-        // create symbol that contains the address of the personality
-        // function
-        auto fn_sym = this->assembler.sym_add_undef(
-            this->adaptor->func_link_name(personality_func),
-            Assembler::SymBinding::GLOBAL);
-
-        u32 off;
-        u8 tmp[8] = {};
-
-        auto rodata = this->assembler.get_data_section(true, true);
-        personality_sym =
-            this->assembler.sym_def_data(rodata,
-                                         {},
-                                         {tmp, sizeof(tmp)},
-                                         8,
-                                         Assembler::SymBinding::LOCAL,
-                                         &off);
-        this->assembler.reloc_abs(rodata, fn_sym, off, 0);
-
-        personality_syms.emplace_back(personality_func, personality_sym);
-      }
-    }
-  }
-  this->assembler.start_func(this->func_syms[func_idx], personality_sym);
+    const u32 /*func_idx*/) noexcept {
+  this->assembler.text_align(16);
 
   const CallingConv conv = derived()->cur_calling_convention();
   this->register_file.allocatable = conv.initial_free_regs();
@@ -1236,7 +1197,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     assert(final_frame_size < 16 * 1024 * 1024);
   }
 
-  const auto fde_off = this->assembler.eh_begin_fde();
+  auto fde_off = this->assembler.eh_begin_fde(this->get_personality_sym());
 
   {
     // NB: code alignment factor 4, data alignment factor -8.
@@ -1352,9 +1313,12 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
   }
 
   // TODO(ts): honor cur_needs_unwind_info
-  this->assembler.end_func();
-  this->assembler.eh_end_fde(fde_off, this->func_syms[func_idx]);
-  this->assembler.except_encode_func();
+  auto func_sym = this->func_syms[func_idx];
+  auto func_size = this->assembler.text_cur_off() - func_start_off;
+  this->assembler.sym_def(
+      func_sym, this->assembler.current_section, func_start_off, func_size);
+  this->assembler.eh_end_fde(fde_off, func_sym);
+  this->assembler.except_encode_func(func_sym);
 
   if (func_ret_offs.empty()) {
     return;
@@ -1451,7 +1415,6 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::reset() noexcept {
   func_ret_offs.clear();
-  personality_syms.clear();
   Base::reset();
 }
 
