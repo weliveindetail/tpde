@@ -41,7 +41,7 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
   SectionWriter text_writer;
 
   explicit AssemblerElfA64(const bool gen_obj) : Base{gen_obj} {
-    text_writer.switch_section(get_section(current_section));
+    text_writer.switch_section(get_section(secref_text));
   }
 
 private:
@@ -56,6 +56,7 @@ public:
   void add_unresolved_entry(Label label,
                             u32 text_off,
                             UnresolvedEntryKind kind) noexcept {
+    SecRef current_section = text_writer.get_sec_ref();
     AssemblerElfBase::reloc_sec(
         current_section, label, static_cast<u8>(kind), text_off);
     if (kind == UnresolvedEntryKind::COND_BR) {
@@ -74,6 +75,10 @@ public:
   void text_more_space(u32 size) noexcept;
 
   void reset() noexcept;
+
+  void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend = 0) noexcept {
+    reloc_sec(text_writer.get_sec_ref(), sym, type, offset, addend);
+  }
 
   /// Align the text write pointer
   void text_align(u64 align) noexcept { text_writer.align(align); }
@@ -221,6 +226,6 @@ inline void AssemblerElfA64::SectionWriter::more_space(u32 size) noexcept {
 inline void AssemblerElfA64::reset() noexcept {
   Base::reset();
   veneer_infos.clear();
-  text_writer.switch_section(get_section(current_section));
+  text_writer.switch_section(get_section(secref_text));
 }
 } // namespace tpde::a64

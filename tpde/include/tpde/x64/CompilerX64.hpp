@@ -1127,11 +1127,11 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
   }
 
   auto func_sym = this->func_syms[func_idx];
+  auto func_sec = this->assembler.text_writer.get_sec_ref();
   if (func_ret_offs.empty()) {
     // TODO(ts): honor cur_needs_unwind_info
     auto func_size = this->assembler.text_cur_off() - func_start_off;
-    this->assembler.sym_def(
-        func_sym, this->assembler.current_section, func_start_off, func_size);
+    this->assembler.sym_def(func_sym, func_sec, func_start_off, func_size);
     this->assembler.eh_end_fde(fde_off, func_sym);
     this->assembler.except_encode_func(func_sym);
     return;
@@ -1190,8 +1190,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
   // this point we know the actual size of the function.
   // TODO(ts): honor cur_needs_unwind_info
   auto func_size = this->assembler.text_cur_off() - func_start_off;
-  this->assembler.sym_def(
-      func_sym, this->assembler.current_section, func_start_off, func_size);
+  this->assembler.sym_def(func_sym, func_sec, func_start_off, func_size);
   this->assembler.eh_end_fde(fde_off, func_sym);
   this->assembler.except_encode_func(func_sym);
 }

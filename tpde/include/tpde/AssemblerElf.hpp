@@ -199,6 +199,11 @@ struct AssemblerElfBase {
 
     Elf64_Shdr hdr;
     SymRef sym;
+
+  private:
+    SecRef sec_ref;
+
+  public:
     /// Generic field for target-specific data.
     void *target_info = nullptr;
 
@@ -207,9 +212,12 @@ struct AssemblerElfBase {
     bool locked = false;
 #endif
 
-    DataSection() = default;
-    DataSection(unsigned type, unsigned flags, unsigned name_off)
-        : hdr{.sh_name = name_off, .sh_type = type, .sh_flags = flags} {}
+    // DataSection() = default;
+    DataSection(SecRef ref, unsigned type, unsigned flags, unsigned name_off)
+        : hdr{.sh_name = name_off, .sh_type = type, .sh_flags = flags},
+          sec_ref(ref) {}
+
+    SecRef get_ref() const noexcept { return sec_ref; }
 
     size_t size() const {
       return (hdr.sh_type == SHT_NOBITS) ? hdr.sh_size : data.size();
@@ -236,6 +244,15 @@ struct AssemblerElfBase {
     Derived *derived() noexcept { return static_cast<Derived *>(this); }
 
   public:
+    /// Get the SecRef of the current section.
+    SecRef get_sec_ref() const noexcept { return get_section().get_ref(); }
+
+    /// Get the current section.
+    DataSection &get_section() const noexcept {
+      assert(section != nullptr);
+      return *section;
+    }
+
     /// Switch section writer to new section; must be flushed.
     void switch_section(DataSection &new_section) noexcept {
       assert(data_cur == data_reserve_end &&
@@ -643,26 +660,18 @@ void AssemblerElfBase::SectionWriterBase<Derived>::more_space(
 template <typename Derived>
 struct AssemblerElf : public AssemblerElfBase {
   /// The current write pointer for the text section
-  SecRef current_section = INVALID_SEC_REF;
-
   explicit AssemblerElf(const bool generating_object)
       : AssemblerElfBase(Derived::TARGET_INFO, generating_object) {
     static_assert(std::is_base_of_v<AssemblerElf, Derived>);
-    current_section = secref_text;
   }
 
   Derived *derived() noexcept { return static_cast<Derived *>(this); }
 
-  void reset() noexcept;
-
-  void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend = 0) noexcept {
-    reloc_sec(current_section, sym, type, offset, addend);
-  }
-
   void label_place(Label label, SecRef sec, u32 off) noexcept;
 
   void label_place(Label label) noexcept {
-    derived()->label_place(label, current_section, derived()->text_cur_off());
+    derived()->label_place(
+        label, derived()->text_writer.get_sec_ref(), derived()->text_cur_off());
   }
 };
 
@@ -684,13 +693,6 @@ void AssemblerElf<Derived>::label_place(Label label,
     next_free_tsfixup = fixup_idx;
     fixup_idx = next;
   }
-}
-
-template <typename Derived>
-void AssemblerElf<Derived>::reset() noexcept {
-  AssemblerElfBase::reset();
-
-  current_section = secref_text;
 }
 
 } // namespace tpde

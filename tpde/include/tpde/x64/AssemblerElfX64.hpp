@@ -27,14 +27,14 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
   SectionWriter text_writer;
 
   explicit AssemblerElfX64(const bool gen_obj) : Base{gen_obj} {
-    text_writer.switch_section(get_section(current_section));
+    text_writer.switch_section(get_section(secref_text));
   }
 
   void add_unresolved_entry(Label label,
                             u32 text_off,
                             UnresolvedEntryKind kind) noexcept {
     AssemblerElfBase::reloc_sec(
-        current_section, label, static_cast<u8>(kind), text_off);
+        text_writer.get_sec_ref(), label, static_cast<u8>(kind), text_off);
   }
 
   void handle_fixup(const TempSymbolInfo &info,
@@ -44,7 +44,11 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
 
   void reset() noexcept {
     Base::reset();
-    text_writer.switch_section(get_section(current_section));
+    text_writer.switch_section(get_section(secref_text));
+  }
+
+  void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend = 0) noexcept {
+    reloc_sec(text_writer.get_sec_ref(), sym, type, offset, addend);
   }
 
   /// Align the text write pointer

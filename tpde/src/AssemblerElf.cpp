@@ -124,7 +124,8 @@ void AssemblerElfBase::reset() noexcept {
 AssemblerElfBase::SecRef AssemblerElfBase::create_section(
     unsigned type, unsigned flags, unsigned name) noexcept {
   SecRef ref = static_cast<SecRef>(sections.size());
-  sections.emplace_back(new (section_allocator) DataSection(type, flags, name));
+  sections.emplace_back(new (section_allocator)
+                            DataSection(ref, type, flags, name));
   return ref;
 }
 
