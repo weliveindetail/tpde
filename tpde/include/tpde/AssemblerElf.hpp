@@ -202,12 +202,102 @@ struct AssemblerElfBase {
     /// Generic field for target-specific data.
     void *target_info = nullptr;
 
+#ifndef NDEBUG
+    /// Whether the section is currently in use by a SectionWriter.
+    bool locked = false;
+#endif
+
     DataSection() = default;
     DataSection(unsigned type, unsigned flags, unsigned name_off)
         : hdr{.sh_name = name_off, .sh_type = type, .sh_flags = flags} {}
 
     size_t size() const {
       return (hdr.sh_type == SHT_NOBITS) ? hdr.sh_size : data.size();
+    }
+  };
+
+  template <typename Derived>
+  class SectionWriterBase {
+  protected:
+    DataSection *section = nullptr;
+    u8 *data_begin = nullptr;
+    u8 *data_cur = nullptr;
+    u8 *data_reserve_end = nullptr;
+
+  public:
+    SectionWriterBase() noexcept = default;
+
+    ~SectionWriterBase() {
+      assert(data_cur == data_reserve_end &&
+             "must flush section writer before destructing");
+    }
+
+  protected:
+    Derived *derived() noexcept { return static_cast<Derived *>(this); }
+
+  public:
+    /// Switch section writer to new section; must be flushed.
+    void switch_section(DataSection &new_section) noexcept {
+      assert(data_cur == data_reserve_end &&
+             "must flush section writer before switching sections");
+      section = &new_section;
+      data_begin = section->data.data();
+      data_cur = data_begin + section->data.size();
+      data_reserve_end = data_cur;
+    }
+
+    /// Get the current offset into the section.
+    size_t offset() const noexcept { return data_cur - data_begin; }
+
+    /// Get the current allocated size of the section.
+    size_t allocated_size() const noexcept {
+      return data_reserve_end - data_begin;
+    }
+
+    /// Pointer to beginning of section data.
+    u8 *begin_ptr() noexcept { return data_begin; }
+
+    /// Modifiable pointer to current writing position of the section. Must not
+    /// be moved beyond the allocated region.
+    u8 *&cur_ptr() noexcept { return data_cur; }
+
+    void ensure_space(size_t size) noexcept {
+      assert(data_reserve_end >= data_cur);
+      if (size_t(data_reserve_end - data_cur) < size) [[unlikely]] {
+        derived()->more_space(size);
+      }
+    }
+
+    void more_space(size_t size) noexcept;
+
+    template <std::integral T>
+    void write_unchecked(T t) noexcept {
+      assert(data_reserve_end - data_cur >= sizeof(T));
+      std::memcpy(data_cur, &t, sizeof(T));
+      data_cur += sizeof(T);
+    }
+
+    template <std::integral T>
+    void write(T t) noexcept {
+      ensure_space(sizeof(T));
+      write_unchecked<T>(t);
+    }
+
+    void flush() noexcept {
+      if (data_cur != data_reserve_end) {
+        section->data.resize(offset());
+        data_reserve_end = data_cur;
+#ifndef NDEBUG
+        section->locked = false;
+#endif
+      }
+    }
+
+    void align(size_t align) noexcept {
+      assert(align > 0 && (align & (align - 1)) == 0);
+      ensure_space(align);
+      data_cur = data_begin + util::align_up(offset(), align);
+      section->hdr.sh_addralign = std::max(section->hdr.sh_addralign, align);
     }
   };
 
@@ -528,6 +618,21 @@ public:
   std::vector<u8> build_object_file() noexcept;
 };
 
+template <typename Derived>
+void AssemblerElfBase::SectionWriterBase<Derived>::more_space(
+    size_t size) noexcept {
+  size = util::align_up(size, 16 * 1024);
+  const size_t off = offset();
+  section->data.resize(section->data.size() + size);
+#ifndef NDEBUG
+  section->locked = true;
+#endif
+
+  data_begin = section->data.data();
+  data_cur = data_begin + off;
+  data_reserve_end = data_begin + section->data.size();
+}
+
 /// AssemblerElf contains the architecture-independent logic to emit
 /// ELF object files (currently linux-specific) which is then extended by
 /// AssemblerElfX64 or AssemblerElfA64
@@ -537,10 +642,6 @@ struct AssemblerElf : public AssemblerElfBase {
   SecRef current_section = INVALID_SEC_REF;
 
 private:
-  u8 *text_begin = nullptr;
-  u8 *text_write_ptr = nullptr;
-  u8 *text_reserve_end = nullptr;
-
 #ifdef TPDE_ASSERTS
   bool currently_in_func = false;
 #endif
@@ -558,35 +659,6 @@ public:
 
   void end_func() noexcept;
 
-  /// Align the text write pointer
-  void text_align(u64 align) noexcept { derived()->text_align_impl(align); }
-
-  void text_align_impl(u64 align) noexcept;
-
-  /// \returns The current used space in the text section
-  [[nodiscard]] u32 text_cur_off() const noexcept {
-    return static_cast<u32>(text_write_ptr - text_begin);
-  }
-
-  u8 *text_ptr(u32 off) noexcept { return text_begin + off; }
-
-  u8 *&text_cur_ptr() noexcept { return text_write_ptr; }
-
-  bool text_has_space(u32 size) noexcept {
-    return text_reserve_end - text_write_ptr >= size;
-  }
-
-  u32 text_allocated_size() noexcept { return text_reserve_end - text_begin; }
-
-  /// Make sure that text_write_ptr can be safely incremented by size
-  void text_ensure_space(u32 size) noexcept {
-    if (text_reserve_end - text_write_ptr < size) [[unlikely]] {
-      derived()->text_more_space(size);
-    }
-  }
-
-  void text_more_space(u32 size) noexcept;
-
   void reset() noexcept;
 
   void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend = 0) noexcept {
@@ -596,16 +668,7 @@ public:
   void label_place(Label label, SecRef sec, u32 off) noexcept;
 
   void label_place(Label label) noexcept {
-    derived()->label_place(label, current_section, text_cur_off());
-  }
-
-  std::vector<u8> build_object_file() {
-    // Truncate text section to actually needed size
-    DataSection &sec_text = get_section(current_section);
-    sec_text.data.resize(text_cur_off());
-    text_reserve_end = text_ptr(text_cur_off());
-
-    return AssemblerElfBase::build_object_file();
+    derived()->label_place(label, current_section, derived()->text_cur_off());
   }
 
   // TODO(ts): func to map into memory
@@ -622,9 +685,9 @@ void AssemblerElf<Derived>::start_func(
     const SymRef func, const SymRef personality_func_addr) noexcept {
   cur_func = func;
 
-  text_align(16);
+  derived()->text_align(16);
   auto *elf_sym = sym_ptr(func);
-  elf_sym->st_value = text_cur_off();
+  elf_sym->st_value = derived()->text_cur_off();
   elf_sym->st_shndx = static_cast<Elf64_Section>(current_section);
 
   if (personality_func_addr != cur_personality_func_addr) {
@@ -649,30 +712,11 @@ void AssemblerElf<Derived>::start_func(
 template <typename Derived>
 void AssemblerElf<Derived>::end_func() noexcept {
   auto *elf_sym = sym_ptr(cur_func);
-  elf_sym->st_size = text_cur_off() - elf_sym->st_value;
+  elf_sym->st_size = derived()->text_cur_off() - elf_sym->st_value;
 
 #ifdef TPDE_ASSERTS
   currently_in_func = false;
 #endif
-}
-
-template <typename Derived>
-void AssemblerElf<Derived>::text_align_impl(u64 align) noexcept {
-  text_ensure_space(align);
-  text_write_ptr = reinterpret_cast<u8 *>(
-      util::align_up(reinterpret_cast<uintptr_t>(text_write_ptr), align));
-}
-
-template <typename Derived>
-void AssemblerElf<Derived>::text_more_space(u32 size) noexcept {
-  size = util::align_up(size, 16 * 1024);
-  const size_t off = text_write_ptr - text_begin;
-  DataSection &sec = get_section(current_section);
-  sec.data.resize(sec.data.size() + size);
-
-  text_begin = sec.data.data();
-  text_write_ptr = text_ptr(off);
-  text_reserve_end = text_ptr(sec.data.size());
 }
 
 template <typename Derived>
@@ -700,7 +744,6 @@ void AssemblerElf<Derived>::reset() noexcept {
   AssemblerElfBase::reset();
 
   current_section = secref_text;
-  text_begin = text_write_ptr = text_reserve_end = nullptr;
 }
 
 } // namespace tpde

@@ -16,6 +16,11 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
 
   static const TargetInfo TARGET_INFO;
 
+  class SectionWriter : public Base::SectionWriterBase<SectionWriter> {
+  public:
+    void more_space(u32 size) noexcept;
+  };
+
   enum class UnresolvedEntryKind : u8 {
     BR,
     COND_BR,
@@ -33,7 +38,11 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
 
   util::SegmentedVector<VeneerInfo> veneer_infos;
 
-  explicit AssemblerElfA64(const bool gen_obj) : Base{gen_obj} {}
+  SectionWriter text_writer;
+
+  explicit AssemblerElfA64(const bool gen_obj) : Base{gen_obj} {
+    text_writer.switch_section(get_section(current_section));
+  }
 
 private:
   VeneerInfo &get_veneer_info(DataSection &section) noexcept {
@@ -65,6 +74,29 @@ public:
   void text_more_space(u32 size) noexcept;
 
   void reset() noexcept;
+
+  /// Align the text write pointer
+  void text_align(u64 align) noexcept { text_writer.align(align); }
+
+  /// \returns The current used space in the text section
+  [[nodiscard]] u32 text_cur_off() const noexcept {
+    return text_writer.offset();
+  }
+
+  u8 *text_ptr(u32 off) noexcept { return text_writer.begin_ptr() + off; }
+
+  u8 *&text_cur_ptr() noexcept { return text_writer.cur_ptr(); }
+
+  bool text_has_space(u32 size) noexcept {
+    return text_writer.allocated_size() - text_writer.offset() >= size;
+  }
+
+  u32 text_allocated_size() noexcept { return text_writer.allocated_size(); }
+
+  /// Make sure that text_write_ptr can be safely incremented by size
+  void text_ensure_space(u32 size) noexcept { text_writer.ensure_space(size); }
+
+  void flush() noexcept { text_writer.flush(); }
 };
 
 inline void
@@ -150,41 +182,45 @@ inline void
   }
 }
 
-inline void AssemblerElfA64::text_more_space(u32 size) noexcept {
-  if (text_allocated_size() >= (128 * 1024 * 1024)) {
+inline void AssemblerElfA64::SectionWriter::more_space(u32 size) noexcept {
+  if (allocated_size() >= (128 * 1024 * 1024)) {
     // we do not support multiple text sections currently
     TPDE_FATAL("AArch64 doesn't support sections larger than 128 MiB");
   }
 
-  VeneerInfo &vi = get_veneer_info(get_section(current_section));
-  u32 unresolved_count = vi.unresolved_test_brs + vi.unresolved_cond_brs;
+  // If the section has no unresolved conditional branch, veneer_info is null.
+  // In that case, we don't need to do anything regarding veneers.
+  VeneerInfo *vi = static_cast<VeneerInfo *>(section->target_info);
+  u32 unresolved_count =
+      vi ? vi->unresolved_test_brs + vi->unresolved_cond_brs : 0;
   u32 veneer_size = sizeof(u32) * unresolved_count;
-  Base::text_more_space(size + veneer_size + 4);
+  SectionWriterBase::more_space(size + veneer_size + 4);
   if (veneer_size == 0) {
     return;
   }
 
   // TBZ has 14 bits, CBZ has 19 bits; but the first bit is the sign bit
-  u32 max_dist = vi.unresolved_test_brs ? 4 << (14 - 1) : 4 << (19 - 1);
+  u32 max_dist = vi->unresolved_test_brs ? 4 << (14 - 1) : 4 << (19 - 1);
   max_dist -= veneer_size; // must be able to reach last veneer
   // TODO: get a better approximation of the first unresolved condbr after the
   // last veneer.
-  u32 first_condbr = vi.veneers.empty() ? 0 : vi.veneers.back();
+  u32 first_condbr = vi->veneers.empty() ? 0 : vi->veneers.back();
   // If all condbrs can only jump inside the now-reserved memory, do nothing.
-  if (first_condbr + max_dist > text_allocated_size()) {
+  if (first_condbr + max_dist > allocated_size()) {
     return;
   }
 
-  u32 cur_off = text_cur_off();
-  vi.veneers.push_back(cur_off + 4);
-  vi.unresolved_test_brs = vi.unresolved_cond_brs = 0;
+  u32 cur_off = offset();
+  vi->veneers.push_back(cur_off + 4);
+  vi->unresolved_test_brs = vi->unresolved_cond_brs = 0;
 
-  *reinterpret_cast<u32 *>(text_ptr(cur_off)) = de64_B(veneer_size / 4 + 1);
-  text_cur_ptr() += veneer_size + 4;
+  *reinterpret_cast<u32 *>(data_begin + cur_off) = de64_B(veneer_size / 4 + 1);
+  cur_ptr() += veneer_size + 4;
 }
 
 inline void AssemblerElfA64::reset() noexcept {
-  veneer_infos.clear();
   Base::reset();
+  veneer_infos.clear();
+  text_writer.switch_section(get_section(current_section));
 }
 } // namespace tpde::a64

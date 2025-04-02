@@ -14,12 +14,21 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
 
   static const TargetInfo TARGET_INFO;
 
+  class SectionWriter : public Base::SectionWriterBase<SectionWriter> {
+  public:
+    void align(size_t align) noexcept;
+  };
+
   enum class UnresolvedEntryKind : u8 {
     JMP_OR_MEM_DISP,
     JUMP_TABLE,
   };
 
-  explicit AssemblerElfX64(const bool gen_obj) : Base{gen_obj} {}
+  SectionWriter text_writer;
+
+  explicit AssemblerElfX64(const bool gen_obj) : Base{gen_obj} {
+    text_writer.switch_section(get_section(current_section));
+  }
 
   void add_unresolved_entry(Label label,
                             u32 text_off,
@@ -33,7 +42,33 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
 
   void emit_jump_table(Label table, std::span<Label> labels) noexcept;
 
-  void text_align_impl(u64 align) noexcept;
+  void reset() noexcept {
+    Base::reset();
+    text_writer.switch_section(get_section(current_section));
+  }
+
+  /// Align the text write pointer
+  void text_align(u64 align) noexcept { text_writer.align(align); }
+
+  /// \returns The current used space in the text section
+  [[nodiscard]] u32 text_cur_off() const noexcept {
+    return text_writer.offset();
+  }
+
+  u8 *text_ptr(u32 off) noexcept { return text_writer.begin_ptr() + off; }
+
+  u8 *&text_cur_ptr() noexcept { return text_writer.cur_ptr(); }
+
+  bool text_has_space(u32 size) noexcept {
+    return text_writer.allocated_size() - text_writer.offset() >= size;
+  }
+
+  u32 text_allocated_size() noexcept { return text_writer.allocated_size(); }
+
+  /// Make sure that text_write_ptr can be safely incremented by size
+  void text_ensure_space(u32 size) noexcept { text_writer.ensure_space(size); }
+
+  void flush() noexcept { text_writer.flush(); }
 };
 
 inline void
@@ -81,12 +116,12 @@ inline void
   }
 }
 
-inline void AssemblerElfX64::text_align_impl(u64 align) noexcept {
-  u32 old_off = text_cur_off();
-  Base::text_align_impl(align);
+inline void AssemblerElfX64::SectionWriter::align(size_t align) noexcept {
+  u32 old_off = offset();
+  SectionWriterBase::align(align);
   // Pad text section with NOPs.
-  if (u32 cur_off = text_cur_off(); cur_off > old_off) {
-    fe64_NOP(text_cur_ptr() - (cur_off - old_off), cur_off - old_off);
+  if (u32 cur_off = offset(); cur_off > old_off) {
+    fe64_NOP(cur_ptr() - (cur_off - old_off), cur_off - old_off);
   }
 }
 

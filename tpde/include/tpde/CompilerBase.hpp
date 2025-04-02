@@ -303,6 +303,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile() {
     ++func_idx;
   }
 
+  this->assembler.flush();
+
   // TODO(ts): generate object/map?
 
   return success;
