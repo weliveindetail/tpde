@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
-#include <vector>
-
 #include "tpde/AssemblerElf.hpp"
+#include "tpde/util/SegmentedVector.hpp"
+#include "tpde/util/SmallVector.hpp"
 #include <disarm64.h>
 
 namespace tpde::a64 {
@@ -23,22 +23,36 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
     JUMP_TABLE,
   };
 
-  /// Begin offsets of veneer space. A veneer always has space for all
-  /// unresolved cbz/tbz branches that come after it.
-  util::SmallVector<u32, 16> veneers;
-  u32 unresolved_test_brs = 0, unresolved_cond_brs = 0;
+  /// Information about veneers and unresolved branches for a section.
+  struct VeneerInfo {
+    /// Begin offsets of veneer space. A veneer always has space for all
+    /// unresolved cbz/tbz branches that come after it.
+    util::SmallVector<u32, 16> veneers;
+    u32 unresolved_test_brs = 0, unresolved_cond_brs = 0;
+  };
+
+  util::SegmentedVector<VeneerInfo> veneer_infos;
 
   explicit AssemblerElfA64(const bool gen_obj) : Base{gen_obj} {}
 
+private:
+  VeneerInfo &get_veneer_info(DataSection &section) noexcept {
+    if (!section.target_info) [[unlikely]] {
+      section.target_info = &veneer_infos.emplace_back();
+    }
+    return *static_cast<VeneerInfo *>(section.target_info);
+  }
+
+public:
   void add_unresolved_entry(Label label,
                             u32 text_off,
                             UnresolvedEntryKind kind) noexcept {
     AssemblerElfBase::reloc_sec(
         current_section, label, static_cast<u8>(kind), text_off);
     if (kind == UnresolvedEntryKind::COND_BR) {
-      unresolved_cond_brs++;
+      get_veneer_info(get_section(current_section)).unresolved_cond_brs++;
     } else if (kind == UnresolvedEntryKind::TEST_BR) {
-      unresolved_test_brs++;
+      get_veneer_info(get_section(current_section)).unresolved_test_brs++;
     }
   }
 
@@ -58,10 +72,14 @@ inline void
                                   const TempSymbolFixup &fixup) noexcept {
   // TODO: emit relocations when fixup is in different section
   assert(info.section == fixup.section && "multi-text section not supported");
-  u8 *section_data = get_section(fixup.section).data.data();
+  DataSection &section = get_section(fixup.section);
+  VeneerInfo &vi = get_veneer_info(section);
+  auto &veneers = vi.veneers;
+
+  u8 *section_data = section.data.data();
   u32 *dst_ptr = reinterpret_cast<u32 *>(section_data + fixup.off);
 
-  auto fix_condbr = [=, this](unsigned nbits) {
+  auto fix_condbr = [&, this](unsigned nbits) {
     i64 diff = (i64)info.off - (i64)fixup.off;
     assert(diff >= 0 && diff < 128 * 1024 * 1024);
     // lowest two bits are ignored, highest bit is sign bit
@@ -90,15 +108,15 @@ inline void
   }
   case UnresolvedEntryKind::COND_BR:
     if (veneers.empty() || veneers.back() < fixup.off) {
-      assert(unresolved_cond_brs > 0);
-      unresolved_cond_brs -= 1;
+      assert(vi.unresolved_cond_brs > 0);
+      vi.unresolved_cond_brs -= 1;
     }
     fix_condbr(19); // CBZ/CBNZ has 19 bits.
     break;
   case UnresolvedEntryKind::TEST_BR:
     if (veneers.empty() || veneers.back() < fixup.off) {
-      assert(unresolved_test_brs > 0);
-      unresolved_test_brs -= 1;
+      assert(vi.unresolved_test_brs > 0);
+      vi.unresolved_test_brs -= 1;
     }
     fix_condbr(14); // TBZ/TBNZ has 14 bits.
     break;
@@ -138,34 +156,35 @@ inline void AssemblerElfA64::text_more_space(u32 size) noexcept {
     TPDE_FATAL("AArch64 doesn't support sections larger than 128 MiB");
   }
 
-  u32 veneer_size = sizeof(u32) * (unresolved_test_brs + unresolved_cond_brs);
+  VeneerInfo &vi = get_veneer_info(get_section(current_section));
+  u32 unresolved_count = vi.unresolved_test_brs + vi.unresolved_cond_brs;
+  u32 veneer_size = sizeof(u32) * unresolved_count;
   Base::text_more_space(size + veneer_size + 4);
   if (veneer_size == 0) {
     return;
   }
 
   // TBZ has 14 bits, CBZ has 19 bits; but the first bit is the sign bit
-  u32 max_dist = unresolved_test_brs ? 4 << (14 - 1) : 4 << (19 - 1);
+  u32 max_dist = vi.unresolved_test_brs ? 4 << (14 - 1) : 4 << (19 - 1);
   max_dist -= veneer_size; // must be able to reach last veneer
   // TODO: get a better approximation of the first unresolved condbr after the
   // last veneer.
-  u32 first_condbr = veneers.empty() ? 0 : veneers.back();
+  u32 first_condbr = vi.veneers.empty() ? 0 : vi.veneers.back();
   // If all condbrs can only jump inside the now-reserved memory, do nothing.
   if (first_condbr + max_dist > text_reserve_end - text_begin) {
     return;
   }
 
   u32 cur_off = text_cur_off();
-  veneers.push_back(cur_off + 4);
-  unresolved_test_brs = unresolved_cond_brs = 0;
+  vi.veneers.push_back(cur_off + 4);
+  vi.unresolved_test_brs = vi.unresolved_cond_brs = 0;
 
   *reinterpret_cast<u32 *>(text_ptr(cur_off)) = de64_B(veneer_size / 4 + 1);
   text_write_ptr += veneer_size + 4;
 }
 
 inline void AssemblerElfA64::reset() noexcept {
-  veneers.clear();
-  unresolved_test_brs = unresolved_cond_brs = 0;
+  veneer_infos.clear();
   Base::reset();
 }
 } // namespace tpde::a64

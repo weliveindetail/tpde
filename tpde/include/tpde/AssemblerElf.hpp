@@ -199,6 +199,8 @@ struct AssemblerElfBase {
 
     Elf64_Shdr hdr;
     SymRef sym;
+    /// Generic field for target-specific data.
+    void *target_info = nullptr;
 
     DataSection() = default;
     DataSection(unsigned type, unsigned flags, unsigned name_off)
