@@ -283,6 +283,8 @@ bool CompilerBase<Adaptor, Derived, Config>::compile() {
 
   // TODO(ts): create function labels?
 
+  bool success = true;
+
   u32 func_idx = 0;
   for (const IRFuncRef func : adaptor->funcs()) {
     if (adaptor->func_extern(func)) {
@@ -296,14 +298,14 @@ bool CompilerBase<Adaptor, Derived, Config>::compile() {
     if (!derived()->compile_func(func, func_idx)) {
       TPDE_LOG_ERR("Failed to compile function {}",
                    adaptor->func_link_name(func));
-      return false;
+      success = false;
     }
     ++func_idx;
   }
 
   // TODO(ts): generate object/map?
 
-  return true;
+  return success;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
