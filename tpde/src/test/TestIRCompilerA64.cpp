@@ -132,9 +132,9 @@ bool TestIRCompilerA64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
   }
   case zerofill: {
     auto size = ir()->value_operands[value.op_begin_idx];
-    this->assembler.text_ensure_space(size);
+    this->text_writer.ensure_space(size);
     ASM(B, size / 4);
-    this->assembler.text_cur_ptr() += (size - 4) & -4u;
+    this->text_writer.cur_ptr() += (size - 4) & -4u;
     return true;
   }
   case condbr:

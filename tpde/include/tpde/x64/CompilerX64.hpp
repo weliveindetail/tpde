@@ -20,11 +20,10 @@
 // so we need to evaluate text_cur_ptr() after the arguments.
 #define ASM_FULL(compiler, reserve, op, flags, ...)                            \
   [c = (compiler), f = (flags)]<typename... Args>(Args... args) {              \
-    (reserve ? c->assembler.text_ensure_space(reserve) : (void)0);             \
-    unsigned n = (fe64_##op)(c->assembler.text_cur_ptr(), f, args...);         \
+    (reserve ? c->text_writer.ensure_space(reserve) : (void)0);                \
+    unsigned n = (fe64_##op)(c->text_writer.cur_ptr(), f, args...);            \
     assert(n != 0);                                                            \
-    assert(c->assembler.text_has_space(n));                                    \
-    c->assembler.text_cur_ptr() += n;                                          \
+    c->text_writer.cur_ptr() += n;                                             \
   }(__VA_ARGS__)
 
 #define ASM(op, ...) ASM_FULL(this, 16, op, 0 __VA_OPT__(, ) __VA_ARGS__)
@@ -915,7 +914,7 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::start_func(
     const u32 /*func_idx*/) noexcept {
-  this->assembler.text_align(16);
+  this->text_writer.align(16);
 
   const CallingConv conv = derived()->cur_calling_convention();
   this->register_file.allocatable = conv.initial_free_regs();
@@ -943,14 +942,14 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::
   // calls into account
 
   func_ret_offs.clear();
-  func_start_off = this->assembler.text_cur_off();
+  func_start_off = this->text_writer.offset();
   scalar_arg_count = vec_arg_count = 0xFFFF'FFFF;
   ASM(PUSHr, FE_BP);
   ASM(MOV64rr, FE_BP, FE_SP);
 
   const CallingConv call_conv = derived()->cur_calling_convention();
   {
-    func_reg_save_off = this->assembler.text_cur_off();
+    func_reg_save_off = this->text_writer.offset();
 
     u32 reg_save_size = 0u;
     for (const auto reg : call_conv.callee_saved_regs()) {
@@ -959,8 +958,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::
       assert(reg.id() <= AsmReg::R15);
       reg_save_size += (reg.id() < AsmReg::R8) ? 1 : 2;
     }
-    this->assembler.text_ensure_space(reg_save_size);
-    this->assembler.text_cur_ptr() += reg_save_size;
+    this->text_writer.ensure_space(reg_save_size);
+    this->text_writer.cur_ptr() += reg_save_size;
     func_reg_save_alloc = reg_save_size;
     // pop uses the same amount of bytes as push
     func_reg_restore_alloc = reg_save_size;
@@ -969,10 +968,10 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::
   // TODO(ts): support larger stack alignments?
 
   // placeholder for later
-  frame_size_setup_offset = this->assembler.text_cur_off();
+  frame_size_setup_offset = this->text_writer.offset();
   ASM(SUB64ri, FE_SP, 0x7FFF'FFFF);
 #ifdef TPDE_ASSERTS
-  assert((this->assembler.text_cur_off() - frame_size_setup_offset) == 7);
+  assert((this->text_writer.offset() - frame_size_setup_offset) == 7);
 #endif
 
   if (this->adaptor->cur_is_vararg()) {
@@ -1008,7 +1007,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::
     ASM(SSE_MOVDQUmr, mem, FE_XMM6);
     mem.off += 16;
     ASM(SSE_MOVDQUmr, mem, FE_XMM7);
-    this->assembler.label_place(skip_fp);
+    this->label_place(skip_fp);
   }
 
   call_conv.handle_func_args(this);
@@ -1040,7 +1039,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
   auto fde_prologue_adv_off = sec_eh_frame.data.size();
   this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 0);
 
-  auto *write_ptr = this->assembler.text_ptr(func_reg_save_off);
+  auto *write_ptr = this->text_writer.begin_ptr() + func_reg_save_off;
   const u64 saved_regs =
       this->register_file.clobbered & conv.callee_saved_mask();
   u32 num_saved_regs = 0u;
@@ -1076,7 +1075,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
     this->assembler.eh_write_inst(dwarf::DW_CFA_offset, dwarf_reg, cfa_off);
   }
 
-  u32 prologue_size = write_ptr - this->assembler.text_ptr(func_start_off);
+  u32 prologue_size =
+      write_ptr - (this->text_writer.begin_ptr() + func_start_off);
   assert(prologue_size < 0x44);
   sec_eh_frame.data[fde_prologue_adv_off] =
       dwarf::DW_CFA_advance_loc | (prologue_size - 4);
@@ -1085,11 +1085,11 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
   // the stack space we used for the saved registers
   const auto final_frame_size =
       util::align_up(this->stack.frame_size, 16) - num_saved_regs * 8;
-  *reinterpret_cast<u32 *>(
-      this->assembler.text_ptr(frame_size_setup_offset + 3)) = final_frame_size;
+  *reinterpret_cast<u32 *>(this->text_writer.begin_ptr() +
+                           frame_size_setup_offset + 3) = final_frame_size;
 #ifdef TPDE_ASSERTS
   FdInstr instr = {};
-  assert(fd_decode(this->assembler.text_ptr(frame_size_setup_offset),
+  assert(fd_decode(this->text_writer.begin_ptr() + frame_size_setup_offset,
                    7,
                    64,
                    0,
@@ -1104,7 +1104,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
 
   // nop out the rest
   const auto reg_save_end =
-      this->assembler.text_ptr(func_reg_save_off + func_reg_save_alloc);
+      this->text_writer.begin_ptr() + func_reg_save_off + func_reg_save_alloc;
   assert(reg_save_end >= write_ptr);
   const u32 nop_len = reg_save_end - write_ptr;
   if (nop_len) {
@@ -1127,21 +1127,21 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
   }
 
   auto func_sym = this->func_syms[func_idx];
-  auto func_sec = this->assembler.text_writer.get_sec_ref();
+  auto func_sec = this->text_writer.get_sec_ref();
   if (func_ret_offs.empty()) {
     // TODO(ts): honor cur_needs_unwind_info
-    auto func_size = this->assembler.text_cur_off() - func_start_off;
+    auto func_size = this->text_writer.offset() - func_start_off;
     this->assembler.sym_def(func_sym, func_sec, func_start_off, func_size);
     this->assembler.eh_end_fde(fde_off, func_sym);
     this->assembler.except_encode_func(func_sym);
     return;
   }
 
-  auto *text_data = this->assembler.text_ptr(0);
+  auto *text_data = this->text_writer.begin_ptr();
   u32 first_ret_off = func_ret_offs[0];
   u32 ret_size = 0;
   u32 epilogue_size = 7 + 1 + 1 + func_reg_restore_alloc; // add + pop + ret
-  u32 func_end_ret_off = this->assembler.text_cur_off() - epilogue_size;
+  u32 func_end_ret_off = this->text_writer.offset() - epilogue_size;
   {
     write_ptr = text_data + first_ret_off;
     const auto ret_start = write_ptr;
@@ -1173,7 +1173,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
     if (epilogue_size > ret_size) {
       fe64_NOP(write_ptr, epilogue_size - ret_size);
       if (first_ret_off == func_end_ret_off) {
-        this->assembler.text_cur_ptr() -= epilogue_size - ret_size;
+        this->text_writer.cur_ptr() -= epilogue_size - ret_size;
       }
     }
   }
@@ -1182,14 +1182,14 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
     std::memcpy(
         text_data + func_ret_offs[i], text_data + first_ret_off, epilogue_size);
     if (func_ret_offs[i] == func_end_ret_off) {
-      this->assembler.text_cur_ptr() -= epilogue_size - ret_size;
+      this->text_writer.cur_ptr() -= epilogue_size - ret_size;
     }
   }
 
   // Do sym_def at the very end; we shorten the function here again, so only at
   // this point we know the actual size of the function.
   // TODO(ts): honor cur_needs_unwind_info
-  auto func_size = this->assembler.text_cur_off() - func_start_off;
+  auto func_size = this->text_writer.offset() - func_start_off;
   this->assembler.sym_def(func_sym, func_sec, func_start_off, func_size);
   this->assembler.eh_end_fde(fde_off, func_sym);
   this->assembler.except_encode_func(func_sym);
@@ -1239,7 +1239,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_epilog() noexcept {
   // however, since we will later patch this, we only
   // reserve the space for now
 
-  func_ret_offs.push_back(this->assembler.text_cur_off());
+  func_ret_offs.push_back(this->text_writer.offset());
 
   // add reg, imm32
   // and
@@ -1249,8 +1249,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_epilog() noexcept {
       7 + 1 + 1 +
       func_reg_restore_alloc; // add/lea + pop + ret + size of reg restore
 
-  this->assembler.text_ensure_space(epilogue_size);
-  this->assembler.text_cur_ptr() += epilogue_size;
+  this->text_writer.ensure_space(epilogue_size);
+  this->text_writer.cur_ptr() += epilogue_size;
 }
 
 template <IRAdaptor Adaptor,
@@ -1259,7 +1259,7 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::spill_reg(
     const AsmReg reg, const i32 frame_off, const u32 size) noexcept {
-  this->assembler.text_ensure_space(16);
+  this->text_writer.ensure_space(16);
   assert(frame_off < 0);
   const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, frame_off);
   if (reg.id() <= AsmReg::R15) {
@@ -1290,7 +1290,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
     const i32 frame_off,
     const u32 size,
     const bool sign_extend) noexcept {
-  this->assembler.text_ensure_space(16);
+  this->text_writer.ensure_space(16);
   const auto mem = FE_MEM(FE_BP, 0, FE_NOREG, frame_off);
 
   if (dst.id() <= AsmReg::R15) {
@@ -1588,8 +1588,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     } else {
       ASM(SSE_MOVAPSrm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
     }
-    this->assembler.reloc_text(
-        sym, R_X86_64_PC32, this->assembler.text_cur_off() - 4, -4);
+    this->reloc_text(sym, R_X86_64_PC32, this->text_writer.offset() - 4, -4);
     return;
   }
 
@@ -1755,7 +1754,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_branch_to_block(
 
     generate_raw_jump(Jump::jmp, this->block_labels[(u32)target_idx]);
 
-    this->assembler.label_place(tmp_label);
+    this->label_place(tmp_label);
   }
 }
 
@@ -1766,8 +1765,8 @@ template <IRAdaptor Adaptor,
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
     Jump jmp, Assembler::Label target_label) noexcept {
   if (this->assembler.label_is_pending(target_label)) {
-    this->assembler.text_ensure_space(6);
-    auto *target = this->assembler.text_cur_ptr();
+    this->text_writer.ensure_space(6);
+    auto *target = this->text_writer.cur_ptr();
     switch (jmp) {
     case Jump::ja: ASMNCF(JA, FE_JMPL, target); break;
     case Jump::jae: ASMNCF(JNC, FE_JMPL, target); break;
@@ -1790,12 +1789,13 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
 
     this->assembler.add_unresolved_entry(
         target_label,
-        this->assembler.text_cur_off() - 4,
+        this->text_writer.get_sec_ref(),
+        this->text_writer.offset() - 4,
         Assembler::UnresolvedEntryKind::JMP_OR_MEM_DISP);
   } else {
-    this->assembler.text_ensure_space(6);
-    auto *target =
-        this->assembler.text_ptr(this->assembler.label_offset(target_label));
+    this->text_writer.ensure_space(6);
+    auto *target = this->text_writer.begin_ptr() +
+                   this->assembler.label_offset(target_label);
     switch (jmp) {
     case Jump::ja: ASMNC(JA, target); break;
     case Jump::jae: ASMNC(JNC, target); break;
@@ -1973,13 +1973,13 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
   }
 
   if (std::holds_alternative<Assembler::SymRef>(target)) {
-    this->assembler.text_ensure_space(8);
-    auto *target_ptr = this->assembler.text_cur_ptr();
+    this->text_writer.ensure_space(8);
+    auto *target_ptr = this->text_writer.cur_ptr();
     ASMNC(CALL, target_ptr);
-    this->assembler.reloc_text(std::get<Assembler::SymRef>(target),
-                               R_X86_64_PLT32,
-                               this->assembler.text_cur_off() - 4,
-                               -4);
+    this->reloc_text(std::get<Assembler::SymRef>(target),
+                     R_X86_64_PLT32,
+                     this->text_writer.offset() - 4,
+                     -4);
   } else if (std::holds_alternative<ScratchReg>(target)) {
     auto &reg = std::get<ScratchReg>(target);
     assert(reg.has_reg());
@@ -2041,23 +2041,22 @@ CompilerX64<Adaptor, Derived, BaseTy, Config>::ScratchReg
 
     // Call sequence with extra prefixes for linker relaxation. Code sequence
     // taken from "ELF Handling For Thread-Local Storage".
-    this->assembler.text_ensure_space(0x10);
-    *this->assembler.text_cur_ptr()++ = 0x66;
+    this->text_writer.ensure_space(0x10);
+    *this->text_writer.cur_ptr()++ = 0x66;
     ASMNC(LEA64rm, arg_reg, FE_MEM(FE_IP, 0, FE_NOREG, 0));
-    this->assembler.reloc_text(
-        sym, R_X86_64_TLSGD, this->assembler.text_cur_off() - 4, -4);
-    *this->assembler.text_cur_ptr()++ = 0x66;
-    *this->assembler.text_cur_ptr()++ = 0x66;
-    *this->assembler.text_cur_ptr()++ = 0x48;
-    ASMNC(CALL, this->assembler.text_cur_ptr());
+    this->reloc_text(sym, R_X86_64_TLSGD, this->text_writer.offset() - 4, -4);
+    *this->text_writer.cur_ptr()++ = 0x66;
+    *this->text_writer.cur_ptr()++ = 0x66;
+    *this->text_writer.cur_ptr()++ = 0x48;
+    ASMNC(CALL, this->text_writer.cur_ptr());
     if (!this->sym_tls_get_addr.valid()) [[unlikely]] {
       this->sym_tls_get_addr = this->assembler.sym_add_undef(
           "__tls_get_addr", Assembler::SymBinding::GLOBAL);
     }
-    this->assembler.reloc_text(this->sym_tls_get_addr,
-                               R_X86_64_PLT32,
-                               this->assembler.text_cur_off() - 4,
-                               -4);
+    this->reloc_text(this->sym_tls_get_addr,
+                     R_X86_64_PLT32,
+                     this->text_writer.offset() - 4,
+                     -4);
     arg.reset();
 
     ScratchReg res{this};

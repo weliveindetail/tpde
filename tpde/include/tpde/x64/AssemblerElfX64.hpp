@@ -24,55 +24,17 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
     JUMP_TABLE,
   };
 
-  SectionWriter text_writer;
-
-  explicit AssemblerElfX64(const bool gen_obj) : Base{gen_obj} {
-    text_writer.switch_section(get_section(secref_text));
-  }
+  explicit AssemblerElfX64(const bool gen_obj) : Base{gen_obj} {}
 
   void add_unresolved_entry(Label label,
-                            u32 text_off,
+                            SecRef sec,
+                            u32 off,
                             UnresolvedEntryKind kind) noexcept {
-    AssemblerElfBase::reloc_sec(
-        text_writer.get_sec_ref(), label, static_cast<u8>(kind), text_off);
+    AssemblerElfBase::reloc_sec(sec, label, static_cast<u8>(kind), off);
   }
 
   void handle_fixup(const TempSymbolInfo &info,
                     const TempSymbolFixup &fixup) noexcept;
-
-  void emit_jump_table(Label table, std::span<Label> labels) noexcept;
-
-  void reset() noexcept {
-    Base::reset();
-    text_writer.switch_section(get_section(secref_text));
-  }
-
-  void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend = 0) noexcept {
-    reloc_sec(text_writer.get_sec_ref(), sym, type, offset, addend);
-  }
-
-  /// Align the text write pointer
-  void text_align(u64 align) noexcept { text_writer.align(align); }
-
-  /// \returns The current used space in the text section
-  [[nodiscard]] u32 text_cur_off() const noexcept {
-    return text_writer.offset();
-  }
-
-  u8 *text_ptr(u32 off) noexcept { return text_writer.begin_ptr() + off; }
-
-  u8 *&text_cur_ptr() noexcept { return text_writer.cur_ptr(); }
-
-  bool text_has_space(u32 size) noexcept {
-    return text_writer.allocated_size() - text_writer.offset() >= size;
-  }
-
-  u32 text_allocated_size() noexcept { return text_writer.allocated_size(); }
-
-  /// Make sure that text_write_ptr can be safely incremented by size
-  void text_ensure_space(u32 size) noexcept { text_writer.ensure_space(size); }
-
-  void flush() noexcept { text_writer.flush(); }
 };
 
 inline void
@@ -95,28 +57,6 @@ inline void
     std::memcpy(dst_ptr, &diff, sizeof(u32));
     break;
   }
-  }
-}
-
-inline void
-    AssemblerElfX64::emit_jump_table(const Label table,
-                                     const std::span<Label> labels) noexcept {
-  text_ensure_space(4 + 4 * labels.size());
-  text_align(4);
-  label_place(table);
-  const auto table_off = text_cur_off();
-  for (u32 i = 0; i < labels.size(); i++) {
-    const auto entry_off = table_off + 4 * i;
-    if (label_is_pending(labels[i])) {
-      *reinterpret_cast<u32 *>(text_cur_ptr()) = table_off;
-      add_unresolved_entry(
-          labels[i], entry_off, UnresolvedEntryKind::JUMP_TABLE);
-    } else {
-      const auto label_off = this->label_offset(labels[i]);
-      const auto diff = (i32)label_off - (i32)table_off;
-      *reinterpret_cast<i32 *>(text_cur_ptr()) = diff;
-    }
-    text_cur_ptr() += 4;
   }
 }
 

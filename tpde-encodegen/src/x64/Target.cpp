@@ -181,10 +181,10 @@ void EncodingTargetX64::get_inst_candidates(
           if (!cp_sym.empty()) {
             assert(!has_imm && "CPI with imm unsupported!");
             os << "        "
-                  "derived()->assembler.reloc_text("
+                  "derived()->reloc_text("
                << cp_sym
                << ", R_X86_64_PC32, "
-                  "derived()->assembler.text_cur_off() - 4, -4);\n";
+                  "derived()->text_writer.offset() - 4, -4);\n";
           }
         });
   };
@@ -357,10 +357,10 @@ void EncodingTargetX64::get_inst_candidates(
           if (!cp_sym.empty()) {
             assert(!has_imm && "CPI with imm unsupported!");
             os << "        "
-                  "derived()->assembler.reloc_text("
+                  "derived()->reloc_text("
                << cp_sym
                << ", R_X86_64_PC32, "
-                  "derived()->assembler.text_cur_off() - 4, -4);\n";
+                  "derived()->text_writer.offset() - 4, -4);\n";
           }
         });
   };

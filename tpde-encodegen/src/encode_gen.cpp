@@ -1049,7 +1049,7 @@ bool create_encode_function(llvm::MachineFunction *func,
                      bb_it->getNumber());
 
       os << "  // Start of block " << bb_it->getNumber() << "\n";
-      os << "  derived()->assembler.label_place(block" << bb_it->getNumber()
+      os << "  derived()->label_place(block" << bb_it->getNumber()
          << "_label);\n";
     }
 
@@ -1088,7 +1088,7 @@ bool create_encode_function(llvm::MachineFunction *func,
     // separate block labels from ScratchRegs
     write_buf += '\n';
 
-    os << "  derived()->assembler.label_place(ret_converge_label);\n";
+    os << "  derived()->label_place(ret_converge_label);\n";
   }
 
   // create ScratchRegs

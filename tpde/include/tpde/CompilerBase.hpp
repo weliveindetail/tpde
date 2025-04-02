@@ -96,6 +96,7 @@ struct CompilerBase {
   RegisterFile register_file;
 
   Assembler assembler;
+  Assembler::SectionWriter text_writer;
   // TODO(ts): smallvector?
   std::vector<typename Assembler::SymRef> func_syms;
   // TODO(ts): combine this with the block vectors in the analyzer to save on
@@ -242,6 +243,19 @@ struct CompilerBase {
 
   void analysis_end() noexcept {}
 
+  void reloc_text(Assembler::SymRef sym,
+                  u32 type,
+                  u64 offset,
+                  i64 addend = 0) noexcept {
+    this->assembler.reloc_sec(
+        text_writer.get_sec_ref(), sym, type, offset, addend);
+  }
+
+  void label_place(Assembler::Label label) noexcept {
+    this->assembler.label_place(
+        label, text_writer.get_sec_ref(), text_writer.offset());
+  }
+
 protected:
   Assembler::SymRef get_personality_sym() noexcept;
 
@@ -261,6 +275,8 @@ namespace tpde {
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile() {
   // create function symbols
+  text_writer.switch_section(
+      assembler.get_section(assembler.get_text_section()));
 
   assert(func_syms.empty());
   for (const IRFuncRef func : adaptor->funcs()) {
@@ -307,7 +323,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile() {
     ++func_idx;
   }
 
-  this->assembler.flush();
+  text_writer.flush();
 
   // TODO(ts): generate object/map?
 
@@ -1434,7 +1450,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
   cur_block_idx =
       static_cast<typename Analyzer<Adaptor>::BlockIndex>(block_idx);
 
-  assembler.label_place(block_labels[block_idx]);
+  label_place(block_labels[block_idx]);
   auto &&val_range = adaptor->block_insts(block);
   auto end = val_range.end();
   for (auto it = val_range.begin(); it != end; ++it) {

@@ -17,22 +17,19 @@
 
 #define ASM(op, ...)                                                           \
   do {                                                                         \
-    this->assembler.text_ensure_space(4);                                      \
     u32 inst = de64_##op(__VA_ARGS__);                                         \
     assert(inst != 0);                                                         \
-    *reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()) = inst;           \
-    this->assembler.text_cur_ptr() += 4;                                       \
+    this->text_writer.write(inst);                                             \
   } while (false)
 
 // generate instruction and reserve a custom amount of bytes
 #define ASME(bytes, op, ...)                                                   \
   do {                                                                         \
     assert(bytes >= 4);                                                        \
-    this->assembler.text_ensure_space(bytes);                                  \
+    this->text_writer.ensure_space(bytes);                                     \
     u32 inst = de64_##op(__VA_ARGS__);                                         \
     assert(inst != 0);                                                         \
-    *reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()) = inst;           \
-    this->assembler.text_cur_ptr() += 4;                                       \
+    this->text_writer.write_unchecked(inst);                                   \
   } while (false)
 
 // generate an instruction without checking that enough space is available
@@ -40,30 +37,24 @@
   do {                                                                         \
     u32 inst = de64_##op(__VA_ARGS__);                                         \
     assert(inst != 0);                                                         \
-    assert(this->assembler.text_has_space(4));                                 \
-    *reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()) = inst;           \
-    this->assembler.text_cur_ptr() += 4;                                       \
+    this->text_writer.write_unchecked(inst);                                   \
   } while (false)
 
 // generate an instruction with a custom compiler ptr
 #define ASMC(compiler, op, ...)                                                \
   do {                                                                         \
-    compiler->assembler.text_ensure_space(4);                                  \
     u32 inst = de64_##op(__VA_ARGS__);                                         \
     assert(inst != 0);                                                         \
-    *reinterpret_cast<u32 *>(compiler->assembler.text_cur_ptr()) = inst;       \
-    compiler->assembler.text_cur_ptr() += 4;                                   \
+    compiler->text_writer.write(inst);                                         \
   } while (false)
 
 // check if the instruction could be successfully encoded with custom compiler
 #define ASMIFC(compiler, op, ...)                                              \
   (([&]() -> bool {                                                            \
-    compiler->assembler.text_ensure_space(4);                                  \
     u32 inst = de64_##op(__VA_ARGS__);                                         \
     if (inst == 0)                                                             \
       return false;                                                            \
-    *reinterpret_cast<u32 *>(compiler->assembler.text_cur_ptr()) = inst;       \
-    compiler->assembler.text_cur_ptr() += 4;                                   \
+    compiler->text_writer.write(inst);                                         \
     return true;                                                               \
   })())
 // check if the instruction could be successfully encoded
@@ -673,7 +664,7 @@ void CallingConv::handle_func_args(
     }
 
     const auto reg = stack_off_scratch.alloc_reg(arg_regs_mask());
-    compiler->func_arg_stack_add_off = compiler->assembler.text_cur_off();
+    compiler->func_arg_stack_add_off = compiler->text_writer.offset();
     compiler->func_arg_stack_add_reg = reg;
     ASMC(compiler, ADDxi, reg, DA_SP, 0);
     return reg;
@@ -1083,7 +1074,7 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::start_func(
     const u32 /*func_idx*/) noexcept {
-  this->assembler.text_align(16);
+  this->text_writer.align(16);
 
   const CallingConv conv = derived()->cur_calling_convention();
   this->register_file.allocatable = conv.initial_free_regs();
@@ -1112,7 +1103,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::
   // as otherwise stack accesses need to skip the reg-save area
 
   func_ret_offs.clear();
-  func_start_off = this->assembler.text_cur_off();
+  func_start_off = this->text_writer.offset();
   scalar_arg_count = vec_arg_count = 0xFFFF'FFFF;
   func_arg_stack_add_off = ~0u;
 
@@ -1148,8 +1139,8 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::
 
     // Reserve space for sub sp, stp x29/x30, and mov x29, sp.
     func_prologue_alloc = reg_save_size + 12;
-    this->assembler.text_ensure_space(func_prologue_alloc);
-    this->assembler.text_cur_ptr() += func_prologue_alloc;
+    this->text_writer.ensure_space(func_prologue_alloc);
+    this->text_writer.cur_ptr() += func_prologue_alloc;
     // ldp needs the same number of instructions as stp
     func_reg_restore_alloc = reg_save_size;
   }
@@ -1159,7 +1150,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::
   if (this->adaptor->cur_is_vararg()) {
     reg_save_frame_off =
         util::align_up(8u * call_conv.callee_saved_regs().size(), 16) + 16;
-    this->assembler.text_ensure_space(4 * 8);
+    this->text_writer.ensure_space(4 * 8);
     ASMNC(STPx, DA_GP(0), DA_GP(1), DA_SP, reg_save_frame_off);
     ASMNC(STPx, DA_GP(2), DA_GP(3), DA_SP, reg_save_frame_off + 16);
     ASMNC(STPx, DA_GP(4), DA_GP(5), DA_SP, reg_save_frame_off + 32);
@@ -1287,13 +1278,14 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     func_start_off +=
         util::align_down(func_prologue_alloc - prologue.size() * 4, 16);
     this->assembler.sym_set_value(this->func_syms[func_idx], func_start_off);
-    std::memcpy(this->assembler.text_ptr(func_start_off),
+    std::memcpy(this->text_writer.begin_ptr() + func_start_off,
                 prologue.data(),
                 prologue.size() * sizeof(u32));
   }
 
   if (func_arg_stack_add_off != ~0u) {
-    *reinterpret_cast<u32 *>(this->assembler.text_ptr(func_arg_stack_add_off)) =
+    auto *inst_ptr = this->text_writer.begin_ptr() + func_arg_stack_add_off;
+    *reinterpret_cast<u32 *>(inst_ptr) =
         de64_ADDxi(func_arg_stack_add_reg, DA_SP, final_frame_size);
   }
 
@@ -1314,8 +1306,8 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
 
   // TODO(ts): honor cur_needs_unwind_info
   auto func_sym = this->func_syms[func_idx];
-  auto func_sec = this->assembler.text_writer.get_sec_ref();
-  auto func_size = this->assembler.text_cur_off() - func_start_off;
+  auto func_sec = this->text_writer.get_sec_ref();
+  auto func_size = this->text_writer.offset() - func_start_off;
   this->assembler.sym_def(func_sym, func_sec, func_start_off, func_size);
   this->assembler.eh_end_fde(fde_off, func_sym);
   this->assembler.except_encode_func(func_sym);
@@ -1324,7 +1316,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     return;
   }
 
-  auto *text_data = this->assembler.text_ptr(0);
+  auto *text_data = this->text_writer.begin_ptr();
   u32 first_ret_off = func_ret_offs[0];
   u32 ret_size = 0;
   {
@@ -1441,7 +1433,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::gen_func_epilog() noexcept {
   // however, since we will later patch this, we only
   // reserve the space for now
 
-  func_ret_offs.push_back(this->assembler.text_cur_off());
+  func_ret_offs.push_back(this->text_writer.offset());
 
   u32 epilogue_size = 4 + func_reg_restore_alloc + 4 +
                       4; // ldp + size of reg restore + add + ret
@@ -1449,8 +1441,8 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::gen_func_epilog() noexcept {
     epilogue_size += 4; // extra mov sp, fp
   }
 
-  this->assembler.text_ensure_space(epilogue_size);
-  this->assembler.text_cur_ptr() += epilogue_size;
+  this->text_writer.ensure_space(epilogue_size);
+  this->text_writer.cur_ptr() += epilogue_size;
 }
 
 template <IRAdaptor Adaptor,
@@ -1487,7 +1479,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_reg(
     }
   }
 
-  this->assembler.text_ensure_space(4);
+  this->text_writer.ensure_space(4);
   assert(-static_cast<i32>(frame_off) < 0);
   if (reg.id() <= AsmReg::R30) {
     switch (size) {
@@ -1539,7 +1531,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
     off &= 0xfff;
   }
 
-  this->assembler.text_ensure_space(4);
+  this->text_writer.ensure_space(4);
   if (dst.id() <= AsmReg::R30) {
     if (!sign_extend) {
       switch (size) {
@@ -1727,10 +1719,10 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
       return;
     }
 
-    this->assembler.text_ensure_space(5 * 4);
-    this->assembler.text_cur_ptr() +=
+    this->text_writer.ensure_space(5 * 4);
+    this->text_writer.cur_ptr() +=
         sizeof(u32) *
-        de64_MOVconst(reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()),
+        de64_MOVconst(reinterpret_cast<u32 *>(this->text_writer.cur_ptr()),
                       dst,
                       const_u64);
     return;
@@ -1743,10 +1735,10 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     } else {
       ScratchReg scratch{derived()};
       const auto tmp = scratch.alloc_gp();
-      this->assembler.text_ensure_space(5 * 4);
-      this->assembler.text_cur_ptr() +=
+      this->text_writer.ensure_space(5 * 4);
+      this->text_writer.cur_ptr() +=
           sizeof(u32) *
-          de64_MOVconst(reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()),
+          de64_MOVconst(reinterpret_cast<u32 *>(this->text_writer.cur_ptr()),
                         tmp,
                         (u32)const_u64);
       ASMNC(FMOVsw, dst, tmp);
@@ -1760,10 +1752,10 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     } else {
       ScratchReg scratch{derived()};
       const auto tmp = scratch.alloc_gp();
-      this->assembler.text_ensure_space(5 * 4);
-      this->assembler.text_cur_ptr() +=
+      this->text_writer.ensure_space(5 * 4);
+      this->text_writer.cur_ptr() +=
           sizeof(u32) *
-          de64_MOVconst(reinterpret_cast<u32 *>(this->assembler.text_cur_ptr()),
+          de64_MOVconst(reinterpret_cast<u32 *>(this->text_writer.cur_ptr()),
                         tmp,
                         const_u64);
       ASMNC(FMOVdx, dst, tmp);
@@ -1789,12 +1781,12 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     std::span<const u8> raw_data{reinterpret_cast<const u8 *>(data), size};
     auto sym = this->assembler.sym_def_data(
         rodata, "", raw_data, 16, Assembler::SymBinding::LOCAL);
-    this->assembler.text_ensure_space(8); // ensure contiguous instructions
-    this->assembler.reloc_text(
-        sym, R_AARCH64_ADR_PREL_PG_HI21, this->assembler.text_cur_off(), 0);
+    this->text_writer.ensure_space(8); // ensure contiguous instructions
+    this->reloc_text(
+        sym, R_AARCH64_ADR_PREL_PG_HI21, this->text_writer.offset(), 0);
     ASMNC(ADRP, tmp, 0, 0);
-    this->assembler.reloc_text(
-        sym, R_AARCH64_LDST128_ABS_LO12_NC, this->assembler.text_cur_off(), 0);
+    this->reloc_text(
+        sym, R_AARCH64_LDST128_ABS_LO12_NC, this->text_writer.offset(), 0);
     ASMNC(LDRqu, dst, tmp, 0);
     return;
   }
@@ -1965,7 +1957,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_branch_to_block(
 
     generate_raw_jump(Jump::jmp, this->block_labels[(u32)target_idx]);
 
-    this->assembler.label_place(tmp_label);
+    this->label_place(tmp_label);
   }
 }
 
@@ -1976,16 +1968,17 @@ template <IRAdaptor Adaptor,
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
     Jump jmp, Assembler::Label target_label) noexcept {
   const auto is_pending = this->assembler.label_is_pending(target_label);
-  this->assembler.text_ensure_space(4);
+  this->text_writer.ensure_space(4);
   if (jmp.kind == Jump::jmp) {
     if (is_pending) {
       ASMNC(B, 0);
       this->assembler.add_unresolved_entry(target_label,
-                                           this->assembler.text_cur_off() - 4,
+                                           this->text_writer.get_sec_ref(),
+                                           this->text_writer.offset() - 4,
                                            Assembler::UnresolvedEntryKind::BR);
     } else {
       const auto label_off = this->assembler.label_offset(target_label);
-      const auto cur_off = this->assembler.text_cur_off();
+      const auto cur_off = this->text_writer.offset();
       assert(cur_off >= label_off);
       const auto diff = cur_off - label_off;
       assert((diff & 0b11) == 0);
@@ -2000,7 +1993,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
     u32 off = 0;
     if (!is_pending) {
       const auto label_off = this->assembler.label_offset(target_label);
-      const auto cur_off = this->assembler.text_cur_off();
+      const auto cur_off = this->text_writer.offset();
       assert(cur_off >= label_off);
       off = cur_off - label_off;
       assert((off & 0b11) == 0);
@@ -2026,12 +2019,13 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
       if (is_pending) {
         this->assembler.add_unresolved_entry(
             target_label,
-            this->assembler.text_cur_off() - 4,
+            this->text_writer.get_sec_ref(),
+            this->text_writer.offset() - 4,
             Assembler::UnresolvedEntryKind::COND_BR);
       }
     } else {
       assert(!is_pending);
-      this->assembler.text_ensure_space(2 * 4);
+      this->text_writer.ensure_space(2 * 4);
 
       if (jmp.kind == Jump::Cbz) {
         if (jmp.cmp_is_32) { // need to jump over 2 instructions
@@ -2056,7 +2050,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
     u32 off = 0;
     if (!is_pending) {
       const auto label_off = this->assembler.label_offset(target_label);
-      const auto cur_off = this->assembler.text_cur_off();
+      const auto cur_off = this->text_writer.offset();
       assert(cur_off >= label_off);
       off = cur_off - label_off;
       assert((off & 0b11) == 0);
@@ -2074,12 +2068,13 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
       if (is_pending) {
         this->assembler.add_unresolved_entry(
             target_label,
-            this->assembler.text_cur_off() - 4,
+            this->text_writer.get_sec_ref(),
+            this->text_writer.offset() - 4,
             Assembler::UnresolvedEntryKind::TEST_BR);
       }
     } else {
       assert(!is_pending);
-      this->assembler.text_ensure_space(2 * 4);
+      this->text_writer.ensure_space(2 * 4);
 
       if (jmp.kind == Jump::Tbz) {
         // need to jump over 2 instructions
@@ -2158,7 +2153,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
   u32 off = 0;
   if (!is_pending) {
     const auto label_off = this->assembler.label_offset(target_label);
-    const auto cur_off = this->assembler.text_cur_off();
+    const auto cur_off = this->text_writer.offset();
     assert(cur_off >= label_off);
     off = cur_off - label_off;
     assert((off & 0b11) == 0);
@@ -2171,12 +2166,13 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_jump(
     if (is_pending) {
       this->assembler.add_unresolved_entry(
           target_label,
-          this->assembler.text_cur_off() - 4,
+          this->text_writer.get_sec_ref(),
+          this->text_writer.offset() - 4,
           Assembler::UnresolvedEntryKind::COND_BR);
     }
   } else {
     assert(!is_pending);
-    this->assembler.text_ensure_space(2 * 4);
+    this->text_writer.ensure_space(2 * 4);
 
     // 2 to skip over the branch following
     ASMNC(BCOND, cond_compl, 2);
@@ -2191,7 +2187,7 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_set(
     Jump jmp, AsmReg dst) noexcept {
-  this->assembler.text_ensure_space(4);
+  this->text_writer.ensure_space(4);
   switch (jmp.kind) {
   case Jump::Jeq: ASMNC(CSETw, dst, DA_EQ); break;
   case Jump::Jne: ASMNC(CSETw, dst, DA_NE); break;
@@ -2218,7 +2214,7 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_raw_mask(
     Jump jmp, AsmReg dst) noexcept {
-  this->assembler.text_ensure_space(4);
+  this->text_writer.ensure_space(4);
   switch (jmp.kind) {
   case Jump::Jeq: ASMNC(CSETMx, dst, DA_EQ); break;
   case Jump::Jne: ASMNC(CSETMx, dst, DA_NE); break;
@@ -2320,11 +2316,11 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
   spill_before_call(calling_conv, except_mask);
 
   if (std::holds_alternative<Assembler::SymRef>(target)) {
-    this->assembler.text_ensure_space(4);
+    this->text_writer.ensure_space(4);
     ASMNC(BL, 0);
-    this->assembler.reloc_text(std::get<Assembler::SymRef>(target),
-                               R_AARCH64_CALL26,
-                               this->assembler.text_cur_off() - 4);
+    this->reloc_text(std::get<Assembler::SymRef>(target),
+                     R_AARCH64_CALL26,
+                     this->text_writer.offset() - 4);
   } else if (std::holds_alternative<ScratchReg>(target)) {
     auto &reg = std::get<ScratchReg>(target);
     assert(reg.has_reg());
@@ -2381,18 +2377,18 @@ CompilerA64<Adaptor, Derived, BaseTy, Config>::ScratchReg
     // in the scratch registers, so only make sure that lr isn't used otherwise.
     spill_before_call(CallingConv::SYSV_CC, ~(1ull << AsmReg{AsmReg::LR}.id()));
 
-    this->assembler.text_ensure_space(0x18);
-    this->assembler.reloc_text(
-        sym, R_AARCH64_TLSDESC_ADR_PAGE21, this->assembler.text_cur_off(), 0);
+    this->text_writer.ensure_space(0x18);
+    this->reloc_text(
+        sym, R_AARCH64_TLSDESC_ADR_PAGE21, this->text_writer.offset(), 0);
     ASMNC(ADRP, r0, 0, 0);
-    this->assembler.reloc_text(
-        sym, R_AARCH64_TLSDESC_LD64_LO12, this->assembler.text_cur_off(), 0);
+    this->reloc_text(
+        sym, R_AARCH64_TLSDESC_LD64_LO12, this->text_writer.offset(), 0);
     ASMNC(LDRxu, r1, r0, 0);
-    this->assembler.reloc_text(
-        sym, R_AARCH64_TLSDESC_ADD_LO12, this->assembler.text_cur_off(), 0);
+    this->reloc_text(
+        sym, R_AARCH64_TLSDESC_ADD_LO12, this->text_writer.offset(), 0);
     ASMNC(ADDxi, r0, r0, 0);
-    this->assembler.reloc_text(
-        sym, R_AARCH64_TLSDESC_CALL, this->assembler.text_cur_off(), 0);
+    this->reloc_text(
+        sym, R_AARCH64_TLSDESC_CALL, this->text_writer.offset(), 0);
     ASMNC(BLR, r1);
     ASMNC(MRS, r1, 0xde82); // TPIDR_EL0
     // TODO: maybe return expr x0+x1.

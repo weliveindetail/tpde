@@ -227,13 +227,11 @@ void LLVMCompilerX64::load_address_of_var_reference(
     if (!global->isDSOLocal() || global->hasExternalWeakLinkage()) {
       // mov the ptr from the GOT
       ASM(MOV64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
-      this->assembler.reloc_text(
-          sym, R_X86_64_GOTPCREL, this->assembler.text_cur_off() - 4, -4);
+      reloc_text(sym, R_X86_64_GOTPCREL, text_writer.offset() - 4, -4);
     } else {
       // emit lea with relocation
       ASM(LEA64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
-      this->assembler.reloc_text(
-          sym, R_X86_64_PC32, this->assembler.text_cur_off() - 4, -4);
+      reloc_text(sym, R_X86_64_PC32, text_writer.offset() - 4, -4);
     }
   }
 }
@@ -701,14 +699,32 @@ bool LLVMCompilerX64::switch_emit_jump_table(Label default_label,
   // we reuse the jump offset stuff since the patch procedure is the same
   assembler.add_unresolved_entry(
       jump_table,
-      assembler.text_cur_off() - 4,
+      text_writer.get_sec_ref(),
+      text_writer.offset() - 4,
       Assembler::UnresolvedEntryKind::JMP_OR_MEM_DISP);
   // load the 4 byte displacement from the jump table
   ASM(MOVSXr64m32, cmp_reg, FE_MEM(tmp, 4, cmp_reg, 0));
   ASM(ADD64rr, tmp, cmp_reg);
   ASM(JMPr, tmp);
 
-  assembler.emit_jump_table(jump_table, labels);
+  auto sec_ref = text_writer.get_sec_ref();
+  text_writer.align(4);
+  text_writer.ensure_space(4 + 4 * labels.size());
+  label_place(jump_table);
+  const auto table_off = text_writer.offset();
+  for (u32 i = 0; i < labels.size(); i++) {
+    if (assembler.label_is_pending(labels[i])) {
+      assembler.add_unresolved_entry(
+          labels[i],
+          sec_ref,
+          text_writer.offset(),
+          tpde::x64::AssemblerElfX64::UnresolvedEntryKind::JUMP_TABLE);
+      text_writer.write<u32>(table_off);
+    } else {
+      const auto label_off = assembler.label_offset(labels[i]);
+      text_writer.write<i32>((i32)label_off - (i32)table_off);
+    }
+  }
   return true;
 }
 

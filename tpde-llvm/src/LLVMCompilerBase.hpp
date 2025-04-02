@@ -3637,14 +3637,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
     self(begin, begin + half_len, self);
 
     // and the upper half
-    this->assembler.label_place(gt_label);
+    this->label_place(gt_label);
     self(begin + half_len + 1, end, self);
   };
 
   build_range(0, case_labels.size(), build_range);
 
   // write out the labels
-  this->assembler.label_place(default_label);
+  this->label_place(default_label);
   // TODO(ts): factor into arch-code?
   derived()->generate_branch_to_block(
       Derived::Jump::jmp,
@@ -3653,7 +3653,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       false);
 
   for (auto i = 0u; i < cases.size(); ++i) {
-    this->assembler.label_place(case_labels[i]);
+    this->label_place(case_labels[i]);
     derived()->generate_branch_to_block(
         Derived::Jump::jmp, cases[i].second, false, false);
   }
@@ -3674,7 +3674,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
   // for later
   auto spilled = this->spill_before_branch();
 
-  const auto off_before_call = this->assembler.text_cur_off();
+  const auto off_before_call = this->text_writer.offset();
   // compile the call
   // TODO: in the case of an exception we need to invalidate the result
   // registers
@@ -3684,7 +3684,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
   if (!this->compile_call(invoke, val_info, 0)) {
     return false;
   }
-  const auto off_after_call = this->assembler.text_cur_off();
+  const auto off_after_call = this->text_writer.offset();
 
   // build the eh table
   auto *unwind_block = invoke->getUnwindDest();
@@ -3776,7 +3776,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
                                         /* last_inst */ false);
 
     unwind_label = this->assembler.label_create();
-    this->assembler.label_place(unwind_label);
+    this->label_place(unwind_label);
 
     // allocate the special registers that are set by the unwinding logic
     // so the phi-propagation does not use them as temporaries

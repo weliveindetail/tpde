@@ -289,7 +289,7 @@ struct AssemblerElfBase {
 
     template <std::integral T>
     void write_unchecked(T t) noexcept {
-      assert(data_reserve_end - data_cur >= sizeof(T));
+      assert(size_t(data_reserve_end - data_cur) >= sizeof(T));
       std::memcpy(data_cur, &t, sizeof(T));
       data_cur += sizeof(T);
     }
@@ -441,6 +441,7 @@ private:
                                      bool with_rela = true) noexcept;
 
 public:
+  SecRef get_text_section() noexcept { return secref_text; }
   SecRef get_data_section(bool rodata, bool relro = false) noexcept;
   SecRef get_bss_section() noexcept;
   SecRef get_tdata_section() noexcept;
@@ -668,11 +669,6 @@ struct AssemblerElf : public AssemblerElfBase {
   Derived *derived() noexcept { return static_cast<Derived *>(this); }
 
   void label_place(Label label, SecRef sec, u32 off) noexcept;
-
-  void label_place(Label label) noexcept {
-    derived()->label_place(
-        label, derived()->text_writer.get_sec_ref(), derived()->text_cur_off());
-  }
 };
 
 template <typename Derived>

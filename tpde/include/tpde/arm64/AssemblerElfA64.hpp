@@ -38,11 +38,7 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
 
   util::SegmentedVector<VeneerInfo> veneer_infos;
 
-  SectionWriter text_writer;
-
-  explicit AssemblerElfA64(const bool gen_obj) : Base{gen_obj} {
-    text_writer.switch_section(get_section(secref_text));
-  }
+  explicit AssemblerElfA64(const bool gen_obj) : Base{gen_obj} {}
 
 private:
   VeneerInfo &get_veneer_info(DataSection &section) noexcept {
@@ -54,54 +50,21 @@ private:
 
 public:
   void add_unresolved_entry(Label label,
-                            u32 text_off,
+                            SecRef sec,
+                            u32 off,
                             UnresolvedEntryKind kind) noexcept {
-    SecRef current_section = text_writer.get_sec_ref();
-    AssemblerElfBase::reloc_sec(
-        current_section, label, static_cast<u8>(kind), text_off);
+    AssemblerElfBase::reloc_sec(sec, label, static_cast<u8>(kind), off);
     if (kind == UnresolvedEntryKind::COND_BR) {
-      get_veneer_info(get_section(current_section)).unresolved_cond_brs++;
+      get_veneer_info(get_section(sec)).unresolved_cond_brs++;
     } else if (kind == UnresolvedEntryKind::TEST_BR) {
-      get_veneer_info(get_section(current_section)).unresolved_test_brs++;
+      get_veneer_info(get_section(sec)).unresolved_test_brs++;
     }
   }
 
   void handle_fixup(const TempSymbolInfo &info,
                     const TempSymbolFixup &fixup) noexcept;
 
-  void emit_jump_table(Label table, std::span<Label> labels) noexcept;
-
-  /// Make sure that text_cur_ptr() can be safely incremented by size
-  void text_more_space(u32 size) noexcept;
-
   void reset() noexcept;
-
-  void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend = 0) noexcept {
-    reloc_sec(text_writer.get_sec_ref(), sym, type, offset, addend);
-  }
-
-  /// Align the text write pointer
-  void text_align(u64 align) noexcept { text_writer.align(align); }
-
-  /// \returns The current used space in the text section
-  [[nodiscard]] u32 text_cur_off() const noexcept {
-    return text_writer.offset();
-  }
-
-  u8 *text_ptr(u32 off) noexcept { return text_writer.begin_ptr() + off; }
-
-  u8 *&text_cur_ptr() noexcept { return text_writer.cur_ptr(); }
-
-  bool text_has_space(u32 size) noexcept {
-    return text_writer.allocated_size() - text_writer.offset() >= size;
-  }
-
-  u32 text_allocated_size() noexcept { return text_writer.allocated_size(); }
-
-  /// Make sure that text_write_ptr can be safely incremented by size
-  void text_ensure_space(u32 size) noexcept { text_writer.ensure_space(size); }
-
-  void flush() noexcept { text_writer.flush(); }
 };
 
 inline void
@@ -116,7 +79,7 @@ inline void
   u8 *section_data = section.data.data();
   u32 *dst_ptr = reinterpret_cast<u32 *>(section_data + fixup.off);
 
-  auto fix_condbr = [&, this](unsigned nbits) {
+  auto fix_condbr = [&](unsigned nbits) {
     i64 diff = (i64)info.off - (i64)fixup.off;
     assert(diff >= 0 && diff < 128 * 1024 * 1024);
     // lowest two bits are ignored, highest bit is sign bit
@@ -125,7 +88,7 @@ inline void
       assert(veneer != veneers.end());
 
       // Create intermediate branch at v.begin
-      auto *br = reinterpret_cast<u32 *>(text_ptr(*veneer));
+      auto *br = reinterpret_cast<u32 *>(section.data.data() + *veneer);
       assert(*br == 0 && "overwriting instructions with veneer branch");
       *br = de64_B((info.off - *veneer) / 4);
       diff = *veneer - fixup.off;
@@ -158,32 +121,10 @@ inline void
     fix_condbr(14); // TBZ/TBNZ has 14 bits.
     break;
   case UnresolvedEntryKind::JUMP_TABLE: {
-    const auto table_off = *reinterpret_cast<u32 *>(text_ptr(fixup.off));
+    auto table_off = *reinterpret_cast<u32 *>(section.data.data() + fixup.off);
     *dst_ptr = (i32)info.off - (i32)table_off;
     break;
   }
-  }
-}
-
-inline void
-    AssemblerElfA64::emit_jump_table(const Label table,
-                                     const std::span<Label> labels) noexcept {
-  text_ensure_space(4 + 4 * labels.size());
-  text_align(4);
-  label_place(table);
-  const auto table_off = text_cur_off();
-  for (u32 i = 0; i < labels.size(); i++) {
-    const auto entry_off = table_off + 4 * i;
-    if (label_is_pending(labels[i])) {
-      *reinterpret_cast<u32 *>(text_cur_ptr()) = table_off;
-      add_unresolved_entry(
-          labels[i], entry_off, UnresolvedEntryKind::JUMP_TABLE);
-    } else {
-      const auto label_off = this->label_offset(labels[i]);
-      const auto diff = (i32)label_off - (i32)table_off;
-      *reinterpret_cast<i32 *>(text_cur_ptr()) = diff;
-    }
-    text_cur_ptr() += 4;
   }
 }
 
@@ -226,6 +167,6 @@ inline void AssemblerElfA64::SectionWriter::more_space(u32 size) noexcept {
 inline void AssemblerElfA64::reset() noexcept {
   Base::reset();
   veneer_infos.clear();
-  text_writer.switch_section(get_section(secref_text));
 }
+
 } // namespace tpde::a64

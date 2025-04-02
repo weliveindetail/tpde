@@ -224,23 +224,19 @@ void LLVMCompilerArm64::load_address_of_var_reference(
       TPDE_FATAL("thread-local variable access without intrinsic");
     }
     // These pairs must be contiguous, avoid possible veneers in between.
-    this->assembler.text_ensure_space(8);
+    this->text_writer.ensure_space(8);
     // External weak might be undefined, hence cannot use relative addressing.
     if (!global->isDSOLocal() || global->hasExternalWeakLinkage()) {
       // mov the ptr from the GOT
-      this->assembler.reloc_text(
-          sym, R_AARCH64_ADR_GOT_PAGE, this->assembler.text_cur_off(), 0);
+      reloc_text(sym, R_AARCH64_ADR_GOT_PAGE, this->text_writer.offset());
       ASMNC(ADRP, dst, 0, 0);
-      this->assembler.reloc_text(
-          sym, R_AARCH64_LD64_GOT_LO12_NC, this->assembler.text_cur_off(), 0);
+      reloc_text(sym, R_AARCH64_LD64_GOT_LO12_NC, this->text_writer.offset());
       ASMNC(LDRxu, dst, dst, 0);
     } else {
       // emit lea with relocation
-      this->assembler.reloc_text(
-          sym, R_AARCH64_ADR_PREL_PG_HI21, this->assembler.text_cur_off(), 0);
+      reloc_text(sym, R_AARCH64_ADR_PREL_PG_HI21, this->text_writer.offset());
       ASMNC(ADRP, dst, 0, 0);
-      this->assembler.reloc_text(
-          sym, R_AARCH64_ADD_ABS_LO12_NC, this->assembler.text_cur_off(), 0);
+      reloc_text(sym, R_AARCH64_ADD_ABS_LO12_NC, this->text_writer.offset());
       ASMNC(ADDxi, dst, dst, 0);
     }
   }
