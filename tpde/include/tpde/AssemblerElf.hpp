@@ -195,7 +195,10 @@ struct AssemblerElfBase {
 
   // TODO(ts): 32 bit version?
   struct DataSection {
-    using StorageTy = std::vector<u8>;
+    /// 256 bytes inline storage is enough for 10 relocations, which is a
+    /// typical number for a single function (relevant for COMDAT sections with
+    /// one section per function).
+    using StorageTy = util::SmallVector<u8, 256>;
 
     /// Section data.
     StorageTy data;
