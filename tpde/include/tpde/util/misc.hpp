@@ -100,6 +100,19 @@ constexpr unsigned uleb_write(u8 *dst, u64 value) noexcept {
   }
 }
 
+constexpr unsigned sleb_write(u8 *dst, i64 value) noexcept {
+  u8 *base = dst;
+  while (true) {
+    u8 write = value & 0b0111'1111;
+    value >>= 7;
+    if ((value == 0 && (value & 0x40) == 0) || (value == -1 && value & 0x40)) {
+      *dst++ = write;
+      return dst - base;
+    }
+    *dst++ = write | 0b1000'0000;
+  }
+}
+
 template <bool Reverse = false>
 struct BitSetIterator {
   u64 set;

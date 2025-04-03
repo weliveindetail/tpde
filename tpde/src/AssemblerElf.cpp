@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
 #include "tpde/AssemblerElf.hpp"
+#include "tpde/util/VectorWriter.hpp"
+#include "tpde/util/misc.hpp"
 
 #include <algorithm>
 #include <elf.h>
@@ -416,32 +418,7 @@ void AssemblerElfBase::eh_write_inst(const u8 opcode,
 }
 
 void AssemblerElfBase::eh_write_uleb(u64 value) noexcept {
-  eh_write_uleb(get_section(secref_eh_frame).data, value);
-}
-
-void AssemblerElfBase::eh_write_uleb(std::vector<u8> &dst, u64 value) noexcept {
-  while (true) {
-    u8 write = value & 0b0111'1111;
-    value >>= 7;
-    if (value == 0) {
-      dst.push_back(write);
-      break;
-    }
-    dst.push_back(write | 0b1000'0000);
-  }
-}
-
-void AssemblerElfBase::eh_write_sleb(std::vector<u8> &dst, i64 value) noexcept {
-  while (true) {
-    u8 tmp = value & 0x7F;
-    value >>= 7;
-    if ((value == 0 && (value & 0x40) == 0) || (value == -1 && value & 0x40)) {
-      dst.push_back(tmp);
-      break;
-    } else {
-      dst.push_back(tmp | 0x80);
-    }
-  }
+  util::VectorWriter(get_section(secref_eh_frame).data).write_uleb(value);
 }
 
 void AssemblerElfBase::eh_init_cie(SymRef personality_func_addr) noexcept {
@@ -627,83 +604,83 @@ void AssemblerElfBase::except_encode_func(SymRef func_sym) noexcept {
   }
 
   // encode the call sites first, otherwise we can't write the header
-  except_encoded_call_sites.clear();
-  except_encoded_call_sites.reserve(16 * except_call_site_table.size());
+  {
+    util::VectorWriter ecst_writer(except_encoded_call_sites, 0);
+    ecst_writer.reserve(16 * except_call_site_table.size() + 40);
 
-  const auto *sym = sym_ptr(func_sym);
-  u64 fn_start = sym->st_value;
-  u64 fn_end = fn_start + sym->st_size;
-  u64 cur = fn_start;
-  for (auto &info : except_call_site_table) {
-    if (info.start > cur) {
-      // Encode padding entry
-      eh_write_uleb(except_encoded_call_sites, cur - fn_start);
-      eh_write_uleb(except_encoded_call_sites, info.start - cur);
-      eh_write_uleb(except_encoded_call_sites, 0);
-      eh_write_uleb(except_encoded_call_sites, 0);
+    const auto *sym = sym_ptr(func_sym);
+    u64 fn_start = sym->st_value;
+    u64 fn_end = fn_start + sym->st_size;
+    u64 cur = fn_start;
+    for (auto &info : except_call_site_table) {
+      ecst_writer.reserve(80);
+
+      if (info.start > cur) {
+        // Encode padding entry
+        ecst_writer.write_uleb_unchecked(cur - fn_start);
+        ecst_writer.write_uleb_unchecked(info.start - cur);
+        ecst_writer.write_uleb_unchecked(0);
+        ecst_writer.write_uleb_unchecked(0);
+      }
+      ecst_writer.write_uleb_unchecked(info.start - fn_start);
+      ecst_writer.write_uleb_unchecked(info.len);
+      assert((info.pad_label_or_off - fn_start) < (fn_end - fn_start));
+      ecst_writer.write_uleb_unchecked(info.pad_label_or_off - fn_start);
+      ecst_writer.write_uleb_unchecked(info.action_entry);
+      cur = info.start + info.len;
     }
-    eh_write_uleb(except_encoded_call_sites, info.start - fn_start);
-    eh_write_uleb(except_encoded_call_sites, info.len);
-    assert((info.pad_label_or_off - fn_start) < (fn_end - fn_start));
-    eh_write_uleb(except_encoded_call_sites, info.pad_label_or_off - fn_start);
-    eh_write_uleb(except_encoded_call_sites, info.action_entry);
-    cur = info.start + info.len;
-  }
-  if (cur < fn_end) {
-    // Add padding until the end of the function
-    eh_write_uleb(except_encoded_call_sites, cur - fn_start);
-    eh_write_uleb(except_encoded_call_sites, fn_end - cur);
-    eh_write_uleb(except_encoded_call_sites, 0);
-    eh_write_uleb(except_encoded_call_sites, 0);
-  }
-
-  // zero-terminate
-  except_encoded_call_sites.push_back(0);
-  except_encoded_call_sites.push_back(0);
-
-  auto &except_table = get_section(secref_except_table).data;
-  // write the lsda (see
-  // https://github.com/llvm/llvm-project/blob/main/libcxxabi/src/cxa_personality.cpp#L60)
-  except_table.push_back(dwarf::DW_EH_PE_omit); // lpStartEncoding
-  if (except_action_table.empty()) {
-    assert(except_type_info_table.empty());
-    // we don't need the type_info table if there is no action entry
-    except_table.push_back(dwarf::DW_EH_PE_omit); // ttypeEncoding
-  } else {
-    except_table.push_back(dwarf::DW_EH_PE_sdata4 | dwarf::DW_EH_PE_pcrel |
-                           dwarf::DW_EH_PE_indirect); // ttypeEncoding
-    uint64_t classInfoOff =
-        (except_type_info_table.size() + 1) * sizeof(uint32_t);
-    classInfoOff += except_action_table.size();
-    classInfoOff += except_encoded_call_sites.size() +
-                    util::uleb_len(except_encoded_call_sites.size()) + 1;
-    eh_write_uleb(except_table, classInfoOff);
-  }
-
-  except_table.push_back(dwarf::DW_EH_PE_uleb128); // callSiteEncoding
-  eh_write_uleb(except_table,
-                except_encoded_call_sites.size()); // callSiteTableLength
-  except_table.insert(except_table.end(),
-                      except_encoded_call_sites.begin(),
-                      except_encoded_call_sites.end());
-  except_table.insert(except_table.end(),
-                      except_action_table.begin(),
-                      except_action_table.end());
-
-  if (!except_action_table.empty()) {
-    except_table.resize(except_table.size() +
-                        ((except_type_info_table.size() + 1) *
-                         sizeof(u32))); // allocate space for type_info table
-
-    // in reverse order since indices are negative
-    size_t off = except_table.size() - sizeof(u32) * 2;
-    for (auto sym : except_type_info_table) {
-      reloc_sec(secref_except_table, sym, target_info.reloc_pc32, off, 0);
-      off -= sizeof(u32);
+    if (cur < fn_end) {
+      // Add padding until the end of the function
+      ecst_writer.write_uleb_unchecked(cur - fn_start);
+      ecst_writer.write_uleb_unchecked(fn_end - cur);
+      ecst_writer.write_uleb_unchecked(0);
+      ecst_writer.write_uleb_unchecked(0);
     }
 
-    except_table.insert(
-        except_table.end(), except_spec_table.begin(), except_spec_table.end());
+    // zero-terminate
+    ecst_writer.write_unchecked<u8>(0);
+    ecst_writer.write_unchecked<u8>(0);
+  }
+
+  {
+    util::VectorWriter et_writer(get_section(secref_except_table).data);
+    // write the lsda (see
+    // https://github.com/llvm/llvm-project/blob/main/libcxxabi/src/cxa_personality.cpp#L60)
+    et_writer.write<u8>(dwarf::DW_EH_PE_omit); // lpStartEncoding
+    if (except_action_table.empty()) {
+      assert(except_type_info_table.empty());
+      // we don't need the type_info table if there is no action entry
+      et_writer.write<u8>(dwarf::DW_EH_PE_omit); // ttypeEncoding
+    } else {
+      et_writer.write<u8>(dwarf::DW_EH_PE_sdata4 | dwarf::DW_EH_PE_pcrel |
+                          dwarf::DW_EH_PE_indirect); // ttypeEncoding
+      uint64_t classInfoOff =
+          (except_type_info_table.size() + 1) * sizeof(uint32_t);
+      classInfoOff += except_action_table.size();
+      classInfoOff += except_encoded_call_sites.size() +
+                      util::uleb_len(except_encoded_call_sites.size()) + 1;
+      et_writer.write_uleb(classInfoOff);
+    }
+
+    et_writer.write<u8>(dwarf::DW_EH_PE_uleb128); // callSiteEncoding
+    et_writer.write_uleb(
+        except_encoded_call_sites.size()); // callSiteTableLength
+    et_writer.write(except_encoded_call_sites);
+    et_writer.write(except_action_table);
+
+    if (!except_action_table.empty()) {
+      // allocate space for type_info table
+      et_writer.skip((except_type_info_table.size() + 1) * sizeof(u32));
+
+      // in reverse order since indices are negative
+      size_t off = et_writer.size() - sizeof(u32) * 2;
+      for (auto sym : except_type_info_table) {
+        reloc_sec(secref_except_table, sym, target_info.reloc_pc32, off, 0);
+        off -= sizeof(u32);
+      }
+
+      et_writer.write(except_spec_table);
+    }
   }
 
   except_call_site_table.clear();
@@ -729,8 +706,8 @@ void AssemblerElfBase::except_add_call_site(const u32 text_off,
 void AssemblerElfBase::except_add_cleanup_action() noexcept {
   // pop back the action offset
   except_action_table.pop_back();
-  eh_write_sleb(except_action_table,
-                -static_cast<i64>(except_action_table.size()));
+  i64 offset = -static_cast<i64>(except_action_table.size());
+  util::VectorWriter(except_action_table).write_sleb(offset);
 }
 
 void AssemblerElfBase::except_add_action(const bool first_action,
@@ -755,7 +732,7 @@ void AssemblerElfBase::except_add_action(const bool first_action,
     }
   }
 
-  eh_write_sleb(except_action_table, idx + 1);
+  util::VectorWriter(except_action_table).write_sleb(idx + 1);
   except_action_table.push_back(0);
 }
 
@@ -769,7 +746,7 @@ void AssemblerElfBase::except_add_empty_spec_action(
     except_spec_table.resize(4);
   }
 
-  eh_write_sleb(except_action_table, -1);
+  except_action_table.push_back(127); // SLEB -1
   except_action_table.push_back(0);
 }
 

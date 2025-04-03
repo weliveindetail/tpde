@@ -654,8 +654,6 @@ public:
   void eh_write_inst(u8 opcode, u64 arg) noexcept;
   void eh_write_inst(u8 opcode, u64 first_arg, u64 second_arg) noexcept;
   void eh_write_uleb(u64 value) noexcept;
-  void eh_write_uleb(std::vector<u8> &dst, u64 value) noexcept;
-  void eh_write_sleb(std::vector<u8> &dst, i64 value) noexcept;
 
 private:
   void eh_init_cie(SymRef personality_func_addr = SymRef()) noexcept;
