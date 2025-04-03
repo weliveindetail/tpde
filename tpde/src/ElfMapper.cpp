@@ -65,13 +65,6 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
   u32 got_plt_slot_count =
       assembler.local_symbols.size() + assembler.global_symbols.size();
 
-  // zero-terminate eh_frame
-  // TODO(ts): this should probably go somewhere else
-  if (auto &eh_frame = assembler.get_section(assembler.secref_eh_frame);
-      !eh_frame.data.empty()) {
-    eh_frame.data.resize(eh_frame.data.size() + 4);
-  }
-
 #ifdef __x86_64__
   // PLT+GOT slot: jmp qword ptr [rip + 2]; ud2; <address>
   constexpr size_t PLT_ENTRY_SIZE = 16;

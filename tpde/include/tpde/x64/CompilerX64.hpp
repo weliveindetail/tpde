@@ -1033,10 +1033,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
   this->assembler.eh_write_inst(dwarf::DW_CFA_def_cfa_register,
                                 dwarf::x64::DW_reg_rbp);
 
-  auto secref_eh_frame = this->assembler.get_eh_frame_section();
-  auto &sec_eh_frame = this->assembler.get_section(secref_eh_frame);
   // Patched below
-  auto fde_prologue_adv_off = sec_eh_frame.data.size();
+  auto fde_prologue_adv_off = this->assembler.eh_writer.size();
   this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 0);
 
   auto *write_ptr = this->text_writer.begin_ptr() + func_reg_save_off;
@@ -1078,7 +1076,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
   u32 prologue_size =
       write_ptr - (this->text_writer.begin_ptr() + func_start_off);
   assert(prologue_size < 0x44);
-  sec_eh_frame.data[fde_prologue_adv_off] =
+  this->assembler.eh_writer.data()[fde_prologue_adv_off] =
       dwarf::DW_CFA_advance_loc | (prologue_size - 4);
 
   // The frame_size contains the reserved frame size so we need to subtract

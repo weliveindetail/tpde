@@ -1207,10 +1207,8 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     this->assembler.eh_write_inst(
         dwarf::DW_CFA_offset, dwarf::a64::DW_reg_lr, final_frame_size / 8 - 1);
 
-    auto secref_eh_frame = this->assembler.get_eh_frame_section();
-    auto &sec_eh_frame = this->assembler.get_section(secref_eh_frame);
     // Patched below
-    auto fde_prologue_adv_off = sec_eh_frame.data.size();
+    auto fde_prologue_adv_off = this->assembler.eh_writer.size();
     this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 0);
 
     AsmReg last_reg = AsmReg::make_invalid();
@@ -1263,7 +1261,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     assert(prologue.size() * sizeof(u32) <= func_prologue_alloc);
 
     assert(prologue.size() < 0x4c);
-    sec_eh_frame.data[fde_prologue_adv_off] =
+    this->assembler.eh_writer.data()[fde_prologue_adv_off] =
         dwarf::DW_CFA_advance_loc | (prologue.size() - 3);
 
     // Pad with NOPs so that func_prologue_alloc - prologue.size() is a

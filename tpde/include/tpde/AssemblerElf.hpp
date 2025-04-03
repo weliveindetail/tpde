@@ -13,6 +13,7 @@
 
 #include "base.hpp"
 #include "tpde/util/BumpAllocator.hpp"
+#include "tpde/util/VectorWriter.hpp"
 #include "util/SmallVector.hpp"
 #include "util/misc.hpp"
 
@@ -194,7 +195,10 @@ struct AssemblerElfBase {
 
   // TODO(ts): 32 bit version?
   struct DataSection {
-    std::vector<u8> data;
+    using StorageTy = std::vector<u8>;
+
+    /// Section data.
+    StorageTy data;
 
     Elf64_Shdr hdr;
     SymRef sym;
@@ -377,6 +381,9 @@ protected:
   SecRef secref_eh_frame = INVALID_SEC_REF;
   SecRef secref_except_table = INVALID_SEC_REF;
 
+public:
+  util::VectorWriter<DataSection::StorageTy> eh_writer;
+
   struct ExceptCallSiteInfo {
     /// Start offset *in section* (not inside function)
     u64 start;
@@ -385,7 +392,6 @@ protected:
     u32 action_entry;
   };
 
-public:
   /// Exception Handling temporary storage
   /// Call Sites for current function
   std::vector<ExceptCallSiteInfo> except_call_site_table;
@@ -488,7 +494,6 @@ public:
   SecRef get_tdata_section() noexcept;
   SecRef get_tbss_section() noexcept;
   SecRef get_structor_section(bool init) noexcept;
-  SecRef get_eh_frame_section() const noexcept { return secref_eh_frame; }
 
   /// Create a new section with the given name, ELF section type, and flags.
   /// Optionally, a corresponding relocation (.rela) section is also created,
@@ -681,6 +686,8 @@ public:
   void except_add_empty_spec_action(bool first_action) noexcept;
 
   u32 except_type_idx_for_sym(SymRef sym) noexcept;
+
+  void finalize() noexcept;
 
   // Output file generation
 
