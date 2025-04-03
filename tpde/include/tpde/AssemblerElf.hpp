@@ -195,7 +195,6 @@ struct AssemblerElfBase {
   // TODO(ts): 32 bit version?
   struct DataSection {
     std::vector<u8> data;
-    std::vector<Elf64_Rela> relocs;
 
     Elf64_Shdr hdr;
     SymRef sym;
@@ -221,6 +220,15 @@ struct AssemblerElfBase {
 
     size_t size() const {
       return (hdr.sh_type == SHT_NOBITS) ? hdr.sh_size : data.size();
+    }
+
+    template <typename T>
+    void write(const T &t) noexcept {
+      assert(!locked);
+      assert(hdr.sh_type != SHT_NOBITS);
+      size_t off = data.size();
+      data.resize(data.size() + sizeof(T));
+      memcpy(data.data() + off, &t, sizeof(T));
     }
   };
 
@@ -431,9 +439,37 @@ public:
 private:
   void init_sections() noexcept;
 
+  bool has_reloc_section(SecRef ref) const noexcept {
+    assert(ref != INVALID_SEC_REF);
+    if (static_cast<u32>(ref) + 1 < sections.size()) {
+      return sections[static_cast<u32>(ref) + 1]->hdr.sh_type == SHT_RELA;
+    }
+    return false;
+  }
+
+  DataSection &get_reloc_section(SecRef ref) noexcept {
+    assert(has_reloc_section(ref));
+    DataSection &reloc_sec = *sections[static_cast<u32>(ref) + 1];
+    return reloc_sec;
+  }
+
+  std::span<Elf64_Rela> get_relocs(SecRef ref) {
+    if (!has_reloc_section(ref)) {
+      return {};
+    }
+    DataSection &rela_sec = get_reloc_section(ref);
+    size_t count = rela_sec.size() / sizeof(Elf64_Rela);
+    return {reinterpret_cast<Elf64_Rela *>(rela_sec.data.data()), count};
+  }
+
   /// Allocate a new section.
   [[nodiscard]] SecRef
       create_section(unsigned type, unsigned flags, unsigned name) noexcept;
+
+  /// Allocate a new section for relocations.
+  [[nodiscard]] SecRef create_rela_section(SecRef ref,
+                                           unsigned flags,
+                                           unsigned rela_name) noexcept;
 
   [[nodiscard]] SymRef create_section_symbol(SecRef ref,
                                              std::string_view name) noexcept;

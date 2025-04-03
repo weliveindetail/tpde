@@ -130,6 +130,16 @@ AssemblerElfBase::SecRef AssemblerElfBase::create_section(
   return ref;
 }
 
+AssemblerElfBase::SecRef AssemblerElfBase::create_rela_section(
+    SecRef ref, unsigned flags, unsigned rela_name) noexcept {
+  SecRef rela = create_section(SHT_RELA, flags | SHF_INFO_LINK, rela_name);
+  DataSection &rela_sec = get_section(rela);
+  rela_sec.hdr.sh_info = static_cast<u32>(ref);
+  rela_sec.hdr.sh_addralign = alignof(Elf64_Rela);
+  rela_sec.hdr.sh_entsize = sizeof(Elf64_Rela);
+  return rela;
+}
+
 AssemblerElfBase::SymRef
     AssemblerElfBase::create_section_symbol(SecRef ref,
                                             std::string_view name) noexcept {
@@ -159,7 +169,7 @@ AssemblerElfBase::DataSection &
   if (ref == INVALID_SEC_REF) [[unlikely]] {
     if (with_rela) {
       ref = create_section(type, flags, rela_name + 5);
-      (void)create_section(SHT_RELA, 0, rela_name);
+      (void)create_rela_section(ref, 0, rela_name);
     } else {
       ref = create_section(type, flags, rela_name);
     }
@@ -241,7 +251,7 @@ AssemblerElfBase::SecRef
   SecRef ref;
   if (with_rela) {
     ref = create_section(type, flags, rela_name + 5);
-    (void)create_section(SHT_RELA, 0, rela_name);
+    (void)create_rela_section(ref, 0, rela_name);
   } else {
     ref = create_section(type, flags, rela_name);
   }
@@ -353,8 +363,8 @@ void AssemblerElfBase::reloc_sec(const SecRef sec_ref,
   rel.r_offset = offset;
   rel.r_info = ELF64_R_INFO(sym.id(), type);
   rel.r_addend = addend;
-  DataSection &sec = get_section(sec_ref);
-  sec.relocs.push_back(rel);
+  DataSection &sec = get_reloc_section(sec_ref);
+  sec.write<Elf64_Rela>(rel);
 }
 
 void AssemblerElfBase::reloc_sec(const SecRef sec,
@@ -796,7 +806,7 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
   obj_size += strtab.size();
   obj_size += SHSTRTAB.size() + shstrtab_extra.size();
   for (const auto &sec : sections) {
-    obj_size += sec->data.size() + sec->relocs.size() * sizeof(Elf64_Rela) + 16;
+    obj_size += sec->data.size() + 16;
   }
   out.reserve(obj_size);
 
@@ -917,16 +927,13 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
     out.insert(out.end(), sec.data.begin(), sec.data.end());
     out.resize(out.size() + pad);
 
-    if (i + 1 < sections.size() && sections[i + 1]->hdr.sh_type == SHT_RELA) {
-      const auto rela_sh_off = out.size();
-      if (size_t count = sec.relocs.size()) {
-        out.insert(out.end(),
-                   reinterpret_cast<uint8_t *>(sec.relocs.data()),
-                   reinterpret_cast<uint8_t *>(sec.relocs.data() + count));
-
+    if (sec.hdr.sh_type == SHT_RELA) {
+      sec_hdr(i)->sh_link = sec_idx(".symtab");
+      if (sec_hdr(i)->sh_size > 0) {
         // patch relocations in output
+        size_t count = sec_hdr(i)->sh_size / sizeof(Elf64_Rela);
         std::span<Elf64_Rela> out_relocs{
-            reinterpret_cast<Elf64_Rela *>(&out[rela_sh_off]), count};
+            reinterpret_cast<Elf64_Rela *>(&out[sec_hdr(i)->sh_offset]), count};
         for (auto &reloc : out_relocs) {
           if (u32 sym = ELF64_R_SYM(reloc.r_info); !sym_is_local(SymRef{sym})) {
             auto ty = ELF64_R_TYPE(reloc.r_info);
@@ -935,21 +942,6 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
           }
         }
       }
-
-
-      auto *hdr = sec_hdr(i + 1);
-      hdr->sh_name = sections[i + 1]->hdr.sh_name;
-      hdr->sh_type = SHT_RELA;
-      hdr->sh_flags = SHF_INFO_LINK;
-      hdr->sh_offset = rela_sh_off;
-      hdr->sh_size = sizeof(Elf64_Rela) * sec.relocs.size();
-      hdr->sh_link = elf::sec_idx(".symtab");
-      hdr->sh_info = i;
-      hdr->sh_addralign = 8;
-      hdr->sh_entsize = sizeof(Elf64_Rela);
-      ++i;
-    } else {
-      assert(sec.relocs.empty() && "relocations in section without .rela");
     }
   }
 

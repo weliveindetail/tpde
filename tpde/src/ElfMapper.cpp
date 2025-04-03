@@ -365,7 +365,7 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
     }
 
     u8 *sec_addr = mapped_addr + sec.hdr.sh_addr;
-    for (auto &reloc : sec.relocs) {
+    for (auto &reloc : assembler.get_relocs(as.section)) {
       resolve_reloc(sec_addr, reloc);
     }
   }
