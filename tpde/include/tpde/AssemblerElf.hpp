@@ -350,6 +350,8 @@ private:
   u32 next_free_tsfixup = ~0u;
 
   std::vector<char> strtab;
+  /// Storage for extra user-provided section names.
+  std::string shstrtab_extra;
 
 protected:
   SecRef secref_text = INVALID_SEC_REF;
@@ -433,6 +435,9 @@ private:
   [[nodiscard]] SecRef
       create_section(unsigned type, unsigned flags, unsigned name) noexcept;
 
+  [[nodiscard]] SymRef create_section_symbol(SecRef ref,
+                                             std::string_view name) noexcept;
+
   DataSection &get_or_create_section(SecRef &ref,
                                      unsigned rela_name,
                                      unsigned type,
@@ -448,6 +453,14 @@ public:
   SecRef get_tbss_section() noexcept;
   SecRef get_structor_section(bool init) noexcept;
   SecRef get_eh_frame_section() const noexcept { return secref_eh_frame; }
+
+  /// Create a new section with the given name, ELF section type, and flags.
+  /// Optionally, a corresponding relocation (.rela) section is also created,
+  /// otherwise, the section must not have relocations.
+  [[nodiscard]] SecRef create_section(std::string_view name,
+                                      unsigned type,
+                                      unsigned flags,
+                                      bool with_rela) noexcept;
 
   const char *sec_name(SecRef ref) const noexcept;
 

@@ -104,6 +104,7 @@ void AssemblerElfBase::reset() noexcept {
   temp_symbol_fixups.clear();
   next_free_tsfixup = ~0u;
   strtab.resize(1); // must begin with null byte
+  shstrtab_extra.clear();
   secref_text = INVALID_SEC_REF;
   secref_rodata = INVALID_SEC_REF;
   secref_relro = INVALID_SEC_REF;
@@ -129,6 +130,25 @@ AssemblerElfBase::SecRef AssemblerElfBase::create_section(
   return ref;
 }
 
+AssemblerElfBase::SymRef
+    AssemblerElfBase::create_section_symbol(SecRef ref,
+                                            std::string_view name) noexcept {
+  const auto str_off = strtab.size();
+  strtab.insert(strtab.end(), name.begin(), name.end());
+  strtab.push_back('\0');
+
+  SymRef sym = SymRef(local_symbols.size());
+  local_symbols.push_back(Elf64_Sym{
+      .st_name = static_cast<Elf64_Word>(str_off),
+      .st_info = ELF64_ST_INFO(STB_LOCAL, STT_SECTION),
+      .st_other = STV_DEFAULT,
+      .st_shndx = static_cast<Elf64_Section>(ref),
+      .st_value = 0,
+      .st_size = 0,
+  });
+  return sym;
+}
+
 AssemblerElfBase::DataSection &
     AssemblerElfBase::get_or_create_section(SecRef &ref,
                                             unsigned rela_name,
@@ -137,7 +157,6 @@ AssemblerElfBase::DataSection &
                                             unsigned align,
                                             bool with_rela) noexcept {
   if (ref == INVALID_SEC_REF) [[unlikely]] {
-    const auto str_off = strtab.size();
     if (with_rela) {
       ref = create_section(type, flags, rela_name + 5);
       (void)create_section(SHT_RELA, 0, rela_name);
@@ -147,20 +166,10 @@ AssemblerElfBase::DataSection &
 
     std::string_view name{elf::SHSTRTAB.data() + rela_name +
                           (with_rela ? 5 : 0)};
-    strtab.insert(strtab.end(), name.begin(), name.end());
-    strtab.push_back('\0');
 
     DataSection &sec = get_section(ref);
     sec.hdr.sh_addralign = align;
-    sec.sym = SymRef(local_symbols.size());
-    local_symbols.push_back(Elf64_Sym{
-        .st_name = static_cast<Elf64_Word>(str_off),
-        .st_info = ELF64_ST_INFO(STB_LOCAL, STT_SECTION),
-        .st_other = STV_DEFAULT,
-        .st_shndx = static_cast<Elf64_Section>(ref),
-        .st_value = 0,
-        .st_size = 0,
-    });
+    sec.sym = create_section_symbol(ref, name);
   }
   return get_section(ref);
 }
@@ -212,6 +221,33 @@ AssemblerElfBase::SecRef
   unsigned type = init ? SHT_INIT_ARRAY : SHT_FINI_ARRAY;
   (void)get_or_create_section(secref, off_r, type, SHF_ALLOC | SHF_WRITE, 8);
   return secref;
+}
+
+AssemblerElfBase::SecRef
+    AssemblerElfBase::create_section(std::string_view name,
+                                     unsigned type,
+                                     unsigned flags,
+                                     bool with_rela) noexcept {
+  assert(name.find('\0') == std::string_view::npos &&
+         "name must not contain null-bytes");
+  size_t rela_name = shstrtab_extra.size() + elf::SHSTRTAB.size();
+  shstrtab_extra.reserve(shstrtab_extra.size() + name.size() + 6);
+  if (with_rela) {
+    shstrtab_extra += ".rela";
+  }
+  shstrtab_extra += name;
+  shstrtab_extra.push_back('\0');
+
+  SecRef ref;
+  if (with_rela) {
+    ref = create_section(type, flags, rela_name + 5);
+    (void)create_section(SHT_RELA, 0, rela_name);
+  } else {
+    ref = create_section(type, flags, rela_name);
+  }
+
+  get_section(ref).sym = create_section_symbol(ref, name);
+  return ref;
 }
 
 void AssemblerElfBase::init_sections() noexcept {
@@ -758,7 +794,7 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
   obj_size +=
       sizeof(Elf64_Sym) * (local_symbols.size() + global_symbols.size());
   obj_size += strtab.size();
-  obj_size += SHSTRTAB.size();
+  obj_size += SHSTRTAB.size() + shstrtab_extra.size();
   for (const auto &sec : sections) {
     obj_size += sec->data.size() + sec->relocs.size() * sizeof(Elf64_Rela) + 16;
   }
@@ -850,13 +886,17 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
 
   // .shstrtab
   {
-    const auto size = util::align_up(SHSTRTAB.size(), 8);
-    const auto pad = size - SHSTRTAB.size();
+    const auto size = SHSTRTAB.size() + shstrtab_extra.size();
+    const auto pad = util::align_up(size, 8) - size;
     const auto sh_off = out.size();
     out.insert(
         out.end(),
         reinterpret_cast<const uint8_t *>(SHSTRTAB.data()),
         reinterpret_cast<const uint8_t *>(SHSTRTAB.data() + SHSTRTAB.size()));
+    out.insert(out.end(),
+               reinterpret_cast<const uint8_t *>(shstrtab_extra.data()),
+               reinterpret_cast<const uint8_t *>(shstrtab_extra.data() +
+                                                 shstrtab_extra.size()));
     out.resize(out.size() + pad);
 
     auto *hdr = sec_hdr(sec_idx(".shstrtab"));

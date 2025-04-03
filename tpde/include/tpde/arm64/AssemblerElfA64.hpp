@@ -88,7 +88,7 @@ inline void
       assert(veneer != veneers.end());
 
       // Create intermediate branch at v.begin
-      auto *br = reinterpret_cast<u32 *>(section.data.data() + *veneer);
+      auto *br = reinterpret_cast<u32 *>(section_data + *veneer);
       assert(*br == 0 && "overwriting instructions with veneer branch");
       *br = de64_B((info.off - *veneer) / 4);
       diff = *veneer - fixup.off;
@@ -121,7 +121,7 @@ inline void
     fix_condbr(14); // TBZ/TBNZ has 14 bits.
     break;
   case UnresolvedEntryKind::JUMP_TABLE: {
-    auto table_off = *reinterpret_cast<u32 *>(section.data.data() + fixup.off);
+    auto table_off = *reinterpret_cast<u32 *>(section_data + fixup.off);
     *dst_ptr = (i32)info.off - (i32)table_off;
     break;
   }

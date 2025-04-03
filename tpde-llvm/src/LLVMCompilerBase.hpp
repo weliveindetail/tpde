@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <elf.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/Constants.h>
@@ -334,6 +335,18 @@ public:
   bool compile_func(IRFuncRef func, u32 idx) noexcept {
     // Reuse/release memory for stored constants from previous function
     const_allocator.reset();
+
+    typename Assembler::SecRef sec = this->assembler.get_text_section();
+    if (llvm::StringRef sec_name = func->getSection(); !sec_name.empty()) {
+      sec = this->assembler.create_section(
+          sec_name, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, true);
+    }
+
+    if (this->text_writer.get_sec_ref() != sec) {
+      this->text_writer.flush();
+      this->text_writer.switch_section(this->assembler.get_section(sec));
+    }
+
     // We might encounter types that are unsupported during compilation, which
     // cause the flag in the adaptor to be set. In such cases, return false.
     return Base::compile_func(func, idx) && !this->adaptor->func_unsupported;
@@ -697,6 +710,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
       continue;
     }
 
+    if (gv->getMetadata(llvm::LLVMContext::MD_associated)) {
+      // Rarely needed, only supported on ELF. The language reference also
+      // mentions that linker support is "spotty".
+      TPDE_LOG_ERR("!associated is not implemented");
+      return false;
+    }
+
     auto *init = gv->getInitializer();
     if (gv->hasAppendingLinkage()) [[unlikely]] {
       // TODO: for non-aliases in llvm.used, set SHF_GNU_RETAIN to prevent
@@ -778,10 +798,21 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
       return false;
     }
 
+    // I'm certain this simplified section assignment code is buggy...
+    typename Assembler::SecRef sec;
+    if (llvm::StringRef sec_name = gv->getSection(); !sec_name.empty()) {
+      // TODO: is it *required* that we merge sections here? For now, don't.
+      unsigned flags = SHF_ALLOC;
+      flags |= tls ? SHF_TLS : 0;
+      flags |= !read_only ? SHF_WRITE : 0;
+      sec = this->assembler.create_section(
+          sec_name, SHT_PROGBITS, flags, !relocs.empty());
+    } else {
+      sec = tls ? this->assembler.get_tdata_section()
+                : this->assembler.get_data_section(read_only, !relocs.empty());
+    }
+
     u32 off;
-    auto sec =
-        tls ? this->assembler.get_tdata_section()
-            : this->assembler.get_data_section(read_only, !relocs.empty());
     this->assembler.sym_def_predef_data(sec, sym, data, align, &off);
     for (auto &[inner_off, addend, target, type] : relocs) {
       if (type == RelocInfo::RELOC_ABS) {
