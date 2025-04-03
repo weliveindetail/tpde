@@ -204,6 +204,7 @@ struct AssemblerElfBase {
     StorageTy data;
 
     Elf64_Shdr hdr;
+    /// Section symbol, or signature symbol for SHT_GROUP sections.
     SymRef sym;
 
   private:
@@ -504,7 +505,12 @@ public:
   [[nodiscard]] SecRef create_section(std::string_view name,
                                       unsigned type,
                                       unsigned flags,
-                                      bool with_rela) noexcept;
+                                      bool with_rela,
+                                      SecRef group = INVALID_SEC_REF) noexcept;
+
+  /// Create a new group section.
+  [[nodiscard]] SecRef create_group_section(SymRef signature_sym,
+                                            bool is_comdat) noexcept;
 
   const char *sec_name(SecRef ref) const noexcept;
 

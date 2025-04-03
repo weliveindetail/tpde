@@ -37,7 +37,8 @@ constexpr static std::span<const char> SHSTRTAB = {
     ".rela.tdata\0"
     ".rela.gcc_except_table\0"
     ".rela.init_array\0"
-    ".rela.fini_array\0"};
+    ".rela.fini_array\0"
+    ".group\0"};
 
 static void fail_constexpr_compile(const char *) {
   assert(0);
@@ -239,7 +240,10 @@ AssemblerElfBase::SecRef
     AssemblerElfBase::create_section(std::string_view name,
                                      unsigned type,
                                      unsigned flags,
-                                     bool with_rela) noexcept {
+                                     bool with_rela,
+                                     SecRef group) noexcept {
+  assert(type != SHT_GROUP && "use create_group_section to create groups");
+
   assert(name.find('\0') == std::string_view::npos &&
          "name must not contain null-bytes");
   size_t rela_name = shstrtab_extra.size() + elf::SHSTRTAB.size();
@@ -250,15 +254,44 @@ AssemblerElfBase::SecRef
   shstrtab_extra += name;
   shstrtab_extra.push_back('\0');
 
+  assert(!(flags & SHF_GROUP) && "SHF_GROUP is added by assembler");
+  DataSection *group_sec = nullptr;
+  unsigned group_flag = 0;
+  if (group != INVALID_SEC_REF) {
+    group_flag = SHF_GROUP;
+    group_sec = &get_section(group);
+    assert(group_sec->hdr.sh_type == SHT_GROUP);
+  }
+
   SecRef ref;
   if (with_rela) {
-    ref = create_section(type, flags, rela_name + 5);
-    (void)create_rela_section(ref, 0, rela_name);
+    ref = create_section(type, flags | group_flag, rela_name + 5);
+    SecRef rela = create_rela_section(ref, group_flag, rela_name);
+    if (group_sec) {
+      group_sec->write<u32>(static_cast<u32>(ref));
+      group_sec->write<u32>(static_cast<u32>(rela));
+    }
   } else {
-    ref = create_section(type, flags, rela_name);
+    ref = create_section(type, flags | group_flag, rela_name);
+    if (group_sec) {
+      group_sec->write<u32>(static_cast<u32>(ref));
+    }
   }
 
   get_section(ref).sym = create_section_symbol(ref, name);
+  return ref;
+}
+
+AssemblerElfBase::SecRef
+    AssemblerElfBase::create_group_section(SymRef signature_sym,
+                                           bool is_comdat) noexcept {
+  SecRef ref = create_section(SHT_GROUP, 0, elf::sec_off(".group"));
+  DataSection &sec = get_section(ref);
+  sec.hdr.sh_addralign = 4;
+  sec.hdr.sh_entsize = 4;
+  sec.sym = signature_sym;
+  // Group flags.
+  sec.write<u32>(is_comdat ? GRP_COMDAT : 0);
   return ref;
 }
 
@@ -898,6 +931,14 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
     DataSection &sec = *sections[i];
     sec.hdr.sh_offset = out.size();
     sec.hdr.sh_size = sec.size();
+    if (sec.hdr.sh_type == SHT_GROUP) [[unlikely]] {
+      if (sym_is_local(sec.sym)) {
+        sec.hdr.sh_info = sym_idx(sec.sym);
+      } else {
+        sec.hdr.sh_info = local_symbols.size() + sym_idx(sec.sym);
+      }
+      sec.hdr.sh_link = sec_idx(".symtab");
+    }
     *sec_hdr(i) = sec.hdr;
 
     const auto pad = util::align_up(sec.data.size(), 8) - sec.data.size();

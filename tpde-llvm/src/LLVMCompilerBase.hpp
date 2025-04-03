@@ -4,9 +4,13 @@
 #pragma once
 
 #include <elf.h>
+#include <llvm/ADT/SmallString.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/ConstantFolding.h>
+#include <llvm/IR/Comdat.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/GlobalIFunc.h>
+#include <llvm/IR/GlobalObject.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
@@ -48,6 +52,7 @@ struct LLVMCompilerBase : public LLVMCompiler,
   using InstRange = typename Base::InstRange;
 
   using Assembler = typename Base::Assembler;
+  using SecRef = typename Assembler::SecRef;
   using SymRef = typename Assembler::SymRef;
 
   using AsmReg = typename Base::AsmReg;
@@ -160,6 +165,8 @@ struct LLVMCompilerBase : public LLVMCompiler,
   tpde::util::BumpAllocator<> const_allocator;
 
   llvm::DenseMap<const llvm::GlobalValue *, SymRef> global_syms;
+  /// Map from LLVM Comdat to the corresponding group section.
+  llvm::DenseMap<const llvm::Comdat *, SecRef> group_secs;
 
   tpde::util::SmallVector<VarRefInfo, 16> variable_refs{};
   tpde::util::SmallVector<std::pair<IRValueRef, SymRef>, 16> type_info_syms;
@@ -313,6 +320,12 @@ private:
 
 public:
   void define_func_idx(IRFuncRef func, const u32 idx) noexcept;
+
+  /// Select section for a global. (and create if needed)
+  SecRef select_section(SymRef sym,
+                        const llvm::GlobalObject *go,
+                        bool needs_relocs) noexcept;
+
   bool hook_post_func_sym_init() noexcept;
   [[nodiscard]] bool
       global_init_to_data(const llvm::Value *reloc_base,
@@ -336,12 +349,12 @@ public:
     // Reuse/release memory for stored constants from previous function
     const_allocator.reset();
 
-    typename Assembler::SecRef sec = this->assembler.get_text_section();
-    if (llvm::StringRef sec_name = func->getSection(); !sec_name.empty()) {
-      sec = this->assembler.create_section(
-          sec_name, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, true);
+    SecRef sec = this->select_section(this->func_syms[idx], func, true);
+    if (sec == Assembler::INVALID_SEC_REF) {
+      TPDE_LOG_ERR("unable to determine section for function {}",
+                   std::string_view(func->getName()));
+      return false;
     }
-
     if (this->text_writer.get_sec_ref() != sec) {
       this->text_writer.flush();
       this->text_writer.switch_section(this->assembler.get_section(sec));
@@ -644,6 +657,139 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::define_func_idx(
 }
 
 template <typename Adaptor, typename Derived, typename Config>
+LLVMCompilerBase<Adaptor, Derived, Config>::SecRef
+    LLVMCompilerBase<Adaptor, Derived, Config>::select_section(
+        SymRef sym, const llvm::GlobalObject *go, bool needs_relocs) noexcept {
+  // TODO: factor this out into platform-specific code.
+
+  // TODO: support ifuncs
+  if (llvm::isa<llvm::GlobalIFunc>(go)) {
+    return Assembler::INVALID_SEC_REF;
+  }
+
+  // I'm certain this simplified section assignment code is buggy...
+  bool tls = false;
+  bool read_only = true;
+  bool init_zero = false;
+  bool is_func = llvm::isa<llvm::Function>(go);
+  if (auto *gv = llvm::dyn_cast<llvm::GlobalVariable>(go)) {
+    tls = gv->isThreadLocal();
+    read_only = gv->isConstant();
+    init_zero = gv->getInitializer()->isNullValue();
+    assert((!init_zero || !needs_relocs) &&
+           "zero-initialized sections must not have relocations");
+  }
+
+  llvm::StringRef sec_name = go->getSection();
+  const llvm::Comdat *comdat = go->getComdat();
+
+  // If the section name is empty, use the default section.
+  if (!comdat && sec_name.empty()) [[likely]] {
+    if (is_func) {
+      return this->assembler.get_text_section();
+    }
+
+    if (tls) {
+      return init_zero ? this->assembler.get_tbss_section()
+                       : this->assembler.get_tdata_section();
+    }
+
+    if (!read_only && init_zero) {
+      return this->assembler.get_bss_section();
+    }
+    return this->assembler.get_data_section(read_only, needs_relocs);
+  }
+
+  llvm::StringRef go_name = go->getName();
+
+  SecRef group_sec = Assembler::INVALID_SEC_REF;
+  if (comdat) {
+    bool is_comdat;
+    switch (comdat->getSelectionKind()) {
+    case llvm::Comdat::Any: is_comdat = true; break;
+    case llvm::Comdat::NoDeduplicate: is_comdat = false; break;
+    default:
+      // ELF only support any/nodeduplicate.
+      return Assembler::INVALID_SEC_REF;
+    }
+
+    auto [it, inserted] = this->group_secs.try_emplace(comdat);
+    if (inserted) {
+      // We need to find or create the group signature symbol. Typically, this
+      // is the same as the name of the global.
+      SymRef group_sym;
+      bool define_group_sym = false;
+      if (llvm::StringRef cn = comdat->getName(); go_name == cn) {
+        group_sym = sym;
+      } else if (auto *cgv = this->adaptor->mod->getNamedValue(cn)) {
+        // In this case, we need to search for or create a symbol with the
+        // comdat name. As we don't have a symbol string map, we do this
+        // through the Module's map to find the matching global and map this to
+        // the symbol.
+        // TODO: name mangling might make this impossible: the names of globals
+        // are mangled, but comdat names are not.
+        group_sym = global_sym(cgv);
+      } else {
+        // Create a new symbol if no equally named global, thus symbol, exists.
+        // The symbol will be STB_LOCAL, STT_NOTYPE, section=group.
+        group_sym =
+            this->assembler.sym_add_undef(cn, Assembler::SymBinding::LOCAL);
+        define_group_sym = true;
+      }
+      it->second = this->assembler.create_group_section(group_sym, is_comdat);
+      if (define_group_sym) {
+        this->assembler.sym_def(group_sym, it->second, 0, 0);
+      }
+    }
+    group_sec = it->second;
+  }
+
+  llvm::StringRef def_name;
+  unsigned type = SHT_PROGBITS;
+  unsigned flags = SHF_ALLOC;
+  if (is_func) {
+    def_name = ".text";
+    flags |= SHF_EXECINSTR;
+  } else if (tls) {
+    def_name = init_zero ? llvm::StringRef(".tbss") : llvm::StringRef(".tdata");
+    type = init_zero ? SHT_NOBITS : SHT_PROGBITS;
+    flags |= SHF_WRITE | SHF_TLS;
+  } else if (!read_only && init_zero) {
+    def_name = ".bss";
+    type = SHT_NOBITS;
+    flags |= SHF_WRITE;
+  } else if (!read_only) {
+    def_name = ".data";
+    flags |= SHF_WRITE;
+  } else if (needs_relocs) {
+    def_name = ".data.rel.ro";
+    flags |= SHF_WRITE;
+  } else {
+    def_name = ".rodata";
+  }
+
+  if (sec_name.empty()) {
+    sec_name = def_name; // Use default prefix
+  }
+
+  llvm::SmallString<512> name_buf;
+  if (comdat) {
+    name_buf.reserve(sec_name.size() + 1 + go_name.size());
+    name_buf.append(sec_name);
+    name_buf.push_back('.');
+    // TODO: apply LLVM's name mangling.
+    // TODO: do we need to include the platform prefix (_ on Darwin) here?
+    name_buf.append(go_name);
+    sec_name = name_buf.str();
+  }
+
+  // TODO: is it *required* that we merge sections here? For now, don't.
+
+  return this->assembler.create_section(
+      sec_name, type, flags, needs_relocs, group_sec);
+}
+
+template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::
     hook_post_func_sym_init() noexcept {
   llvm::TimeTraceScope time_scope("TPDE_GlobalGen");
@@ -656,40 +802,46 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
 
   // create the symbols first so that later relocations don't try to look up
   // non-existant symbols
-  for (auto it = llvm_mod.global_begin(); it != llvm_mod.global_end(); ++it) {
-    const llvm::GlobalVariable *gv = &*it;
-    if (gv->hasAppendingLinkage()) [[unlikely]] {
-      if (gv->getName() != "llvm.global_ctors" &&
-          gv->getName() != "llvm.global_dtors" &&
-          gv->getName() != "llvm.used" &&
-          gv->getName() != "llvm.compiler.used") {
+  for (const llvm::GlobalVariable &gv : llvm_mod.globals()) {
+    // TODO: name mangling
+    if (!gv.hasName()) {
+      TPDE_LOG_ERR("unnamed globals are not implemented");
+      return false;
+    }
+
+    if (gv.hasAppendingLinkage()) [[unlikely]] {
+      if (gv.getName() != "llvm.global_ctors" &&
+          gv.getName() != "llvm.global_dtors" && gv.getName() != "llvm.used" &&
+          gv.getName() != "llvm.compiler.used") {
         TPDE_LOG_ERR("Unknown global with appending linkage: {}\n",
-                     static_cast<std::string_view>(gv->getName()));
+                     static_cast<std::string_view>(gv.getName()));
         return false;
       }
       continue;
     }
 
-    // TODO(ts): we ignore weak linkage here, should emit a weak symbol for
-    // it in the data section and place an undef symbol in the symbol
-    // lookup
-    auto binding = convert_linkage(gv);
-    if (gv->isThreadLocal()) {
-      global_syms[gv] = this->assembler.sym_predef_tls(gv->getName(), binding);
-    } else if (!gv->isDeclarationForLinker()) {
-      global_syms[gv] = this->assembler.sym_predef_data(gv->getName(), binding);
+    auto binding = convert_linkage(&gv);
+    if (gv.isThreadLocal()) {
+      global_syms[&gv] = this->assembler.sym_predef_tls(gv.getName(), binding);
+    } else if (!gv.isDeclarationForLinker()) {
+      global_syms[&gv] = this->assembler.sym_predef_data(gv.getName(), binding);
     } else {
-      global_syms[gv] = this->assembler.sym_add_undef(gv->getName(), binding);
+      global_syms[&gv] = this->assembler.sym_add_undef(gv.getName(), binding);
     }
   }
 
-  for (auto it = llvm_mod.alias_begin(); it != llvm_mod.alias_end(); ++it) {
-    const llvm::GlobalAlias *ga = &*it;
-    auto binding = convert_linkage(ga);
-    if (ga->isThreadLocal()) {
-      global_syms[ga] = this->assembler.sym_predef_tls(ga->getName(), binding);
+  for (const llvm::GlobalAlias &ga : llvm_mod.aliases()) {
+    // TODO: name mangling
+    if (!ga.hasName()) {
+      TPDE_LOG_ERR("unnamed globals are not implemented");
+      return false;
+    }
+
+    auto binding = convert_linkage(&ga);
+    if (ga.isThreadLocal()) {
+      global_syms[&ga] = this->assembler.sym_predef_tls(ga.getName(), binding);
     } else {
-      global_syms[ga] = this->assembler.sym_add_undef(ga->getName(), binding);
+      global_syms[&ga] = this->assembler.sym_add_undef(ga.getName(), binding);
     }
   }
 
@@ -777,39 +929,29 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
 
     auto size = data_layout.getTypeAllocSize(init->getType());
     auto align = gv->getAlign().valueOrOne().value();
-    bool tls = gv->isThreadLocal();
-    auto read_only = gv->isConstant();
+    bool is_zero = init->isNullValue();
     auto sym = global_sym(gv);
-
-    // check if the data value is a zero aggregate and put into bss if that
-    // is the case
-    if (!read_only && init->isNullValue()) {
-      auto secref = tls ? this->assembler.get_tbss_section()
-                        : this->assembler.get_bss_section();
-      this->assembler.sym_def_predef_zero(secref, sym, size, align);
-      continue;
-    }
 
     data.clear();
     relocs.clear();
+    if (!is_zero) {
+      data.resize(size);
+      if (!global_init_to_data(gv, data, relocs, data_layout, init, 0)) {
+        return false;
+      }
+    }
 
-    data.resize(size);
-    if (!global_init_to_data(gv, data, relocs, data_layout, init, 0)) {
+    SecRef sec = this->select_section(sym, gv, !relocs.empty());
+    if (sec == Assembler::INVALID_SEC_REF) {
+      std::string global_str;
+      llvm::raw_string_ostream(global_str) << *gv;
+      TPDE_LOG_ERR("unable to determine section for global {}", global_str);
       return false;
     }
 
-    // I'm certain this simplified section assignment code is buggy...
-    typename Assembler::SecRef sec;
-    if (llvm::StringRef sec_name = gv->getSection(); !sec_name.empty()) {
-      // TODO: is it *required* that we merge sections here? For now, don't.
-      unsigned flags = SHF_ALLOC;
-      flags |= tls ? SHF_TLS : 0;
-      flags |= !read_only ? SHF_WRITE : 0;
-      sec = this->assembler.create_section(
-          sec_name, SHT_PROGBITS, flags, !relocs.empty());
-    } else {
-      sec = tls ? this->assembler.get_tdata_section()
-                : this->assembler.get_data_section(read_only, !relocs.empty());
+    if (is_zero) {
+      this->assembler.sym_def_predef_zero(sec, sym, size, align);
+      continue;
     }
 
     u32 off;
@@ -1111,6 +1253,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile(
 
   type_info_syms.clear();
   global_syms.clear();
+  group_secs.clear();
   libfunc_syms.fill({});
 
   if (!Base::compile()) {
