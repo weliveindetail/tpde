@@ -1,12 +1,10 @@
-\page tpde-overview Overview
-
-This is the overview for TPDE
+\page tpde-encodegen EncodeGen Reference
 
 <div class="section_buttons">
  
 | Previous          |                              Next |
 |:------------------|----------------------------------:|
-| [TPDE - Core Library](@ref tpde-main) | [IRAdaptor Reference](@ref tpde-adaptor) |
+| [Compiler Reference](@ref tpde-compiler-ref) | [Guide: TPDE example back-end](@ref tpde-guide) |
  
 </div>
 
