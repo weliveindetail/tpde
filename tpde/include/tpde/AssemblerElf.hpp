@@ -341,6 +341,8 @@ private:
   util::SmallVector<util::BumpAllocUniquePtr<DataSection>, 16> sections;
 
   std::vector<Elf64_Sym> global_symbols, local_symbols;
+  /// Section indices for large section numbers
+  util::SmallVector<u32, 0> global_shndx, local_shndx;
 
 protected:
   struct TempSymbolInfo {
@@ -514,6 +516,12 @@ public:
 
   const char *sec_name(SecRef ref) const noexcept;
 
+private:
+  bool sec_is_xindex(SecRef ref) const noexcept {
+    return static_cast<u32>(ref) >= SHN_LORESERVE;
+  }
+
+public:
   // Symbols
 
   void sym_copy(SymRef dst, SymRef src) noexcept;
@@ -566,12 +574,22 @@ public:
                            u32 align,
                            u32 *off = nullptr) noexcept;
 
+private:
+  /// Set symbol sections for SHN_XINDEX.
+  void sym_def_xindex(SymRef sym_ref, SecRef sec_ref) noexcept;
+
+public:
   void sym_def(SymRef sym_ref, SecRef sec_ref, u64 pos, u64 size) noexcept {
     Elf64_Sym *sym = sym_ptr(sym_ref);
     assert(sym->st_shndx == SHN_UNDEF && "cannot redefined symbol");
-    sym->st_shndx = static_cast<Elf64_Section>(sec_ref);
     sym->st_value = pos;
     sym->st_size = size;
+    if (!sec_is_xindex(sec_ref)) [[likely]] {
+      sym->st_shndx = static_cast<Elf64_Section>(sec_ref);
+    } else {
+      sym->st_shndx = SHN_XINDEX;
+      sym_def_xindex(sym_ref, sec_ref);
+    }
     // TODO: handle fixups?
   }
 
@@ -582,6 +600,16 @@ public:
 
   const char *sym_name(SymRef sym) const noexcept {
     return strtab.data() + sym_ptr(sym)->st_name;
+  }
+
+  SecRef sym_section(SymRef sym) const noexcept {
+    Elf64_Section shndx = sym_ptr(sym)->st_shndx;
+    if (shndx < SHN_LORESERVE && shndx != SHN_UNDEF) [[likely]] {
+      return SecRef(shndx);
+    }
+    assert(shndx == SHN_XINDEX);
+    const auto &shndx_tab = sym_is_local(sym) ? local_shndx : global_shndx;
+    return SecRef(shndx_tab[sym_idx(sym)]);
   }
 
   Label label_create() noexcept {

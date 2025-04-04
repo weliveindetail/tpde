@@ -176,8 +176,10 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
         sym_addrs[idx] = addr;
       } else if (elf_sym->st_shndx == SHN_ABS) {
         sym_addrs[idx] = reinterpret_cast<void *>(elf_sym->st_value);
-      } else if (elf_sym->st_shndx < SHN_LORESERVE) {
-        auto off = assembler.sections[elf_sym->st_shndx]->hdr.sh_addr;
+      } else if (elf_sym->st_shndx < SHN_LORESERVE ||
+                 elf_sym->st_shndx == SHN_XINDEX) {
+        auto sec = assembler.sym_section(sym);
+        auto off = assembler.get_section(sec).hdr.sh_addr;
         sym_addrs[idx] = mapped_addr + off + elf_sym->st_value;
       } else {
         TPDE_LOG_ERR("unhandled section index {:x}", elf_sym->st_shndx);
@@ -193,7 +195,8 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
   // Resolve all defined global symbols.
   for (size_t i = 0; i < assembler.global_symbols.size(); ++i) {
     auto &elf_sym = assembler.global_symbols[i];
-    if (elf_sym.st_shndx != SHN_UNDEF && elf_sym.st_shndx < SHN_LORESERVE) {
+    if (elf_sym.st_shndx != SHN_UNDEF &&
+        (elf_sym.st_shndx < SHN_LORESERVE || elf_sym.st_shndx == SHN_XINDEX)) {
       (void)sym_addr(typename AssemblerElfBase::SymRef(0x8000'0000 | i));
     }
   }

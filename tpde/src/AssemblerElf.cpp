@@ -38,7 +38,8 @@ constexpr static std::span<const char> SHSTRTAB = {
     ".rela.gcc_except_table\0"
     ".rela.init_array\0"
     ".rela.fini_array\0"
-    ".group\0"};
+    ".group\0"
+    ".symtab_shndx\0"};
 
 static void fail_constexpr_compile(const char *) {
   assert(0);
@@ -81,7 +82,7 @@ consteval static u32 sec_off(const std::string_view name) {
   return ~0u;
 }
 
-consteval static u32 sec_count() {
+consteval static u32 predef_sec_count() {
   // skip the first null string
   const char *data = SECTION_NAMES.data() + 1;
   u32 idx = 1;
@@ -150,15 +151,20 @@ AssemblerElfBase::SymRef
   strtab.insert(strtab.end(), name.begin(), name.end());
   strtab.push_back('\0');
 
+  unsigned shndx = sec_is_xindex(ref) ? SHN_XINDEX : static_cast<uint32_t>(ref);
+
   SymRef sym = SymRef(local_symbols.size());
   local_symbols.push_back(Elf64_Sym{
       .st_name = static_cast<Elf64_Word>(str_off),
       .st_info = ELF64_ST_INFO(STB_LOCAL, STT_SECTION),
       .st_other = STV_DEFAULT,
-      .st_shndx = static_cast<Elf64_Section>(ref),
+      .st_shndx = static_cast<Elf64_Section>(shndx),
       .st_value = 0,
       .st_size = 0,
   });
+  if (sec_is_xindex(ref)) {
+    sym_def_xindex(sym, ref);
+  }
   return sym;
 }
 
@@ -296,7 +302,7 @@ AssemblerElfBase::SecRef
 }
 
 void AssemblerElfBase::init_sections() noexcept {
-  for (size_t i = 0; i < elf::sec_count(); i++) {
+  for (size_t i = 0; i < elf::predef_sec_count(); i++) {
     (void)create_section(SHT_NULL, 0, 0);
   }
 
@@ -314,6 +320,9 @@ void AssemblerElfBase::sym_copy(SymRef dst, SymRef src) noexcept {
   Elf64_Sym *src_ptr = sym_ptr(src), *dst_ptr = sym_ptr(dst);
 
   dst_ptr->st_shndx = src_ptr->st_shndx;
+  if (src_ptr->st_shndx == SHN_XINDEX) {
+    sym_def_xindex(dst, sym_section(src));
+  }
   dst_ptr->st_size = src_ptr->st_size;
   dst_ptr->st_value = src_ptr->st_value;
   // Don't copy st_info.
@@ -388,6 +397,15 @@ void AssemblerElfBase::sym_def_predef_zero(
   if (off) {
     *off = pos;
   }
+}
+
+void AssemblerElfBase::sym_def_xindex(SymRef sym_ref, SecRef sec_ref) noexcept {
+  assert(sec_is_xindex(sec_ref));
+  auto &shndx = sym_is_local(sym_ref) ? local_shndx : global_shndx;
+  if (shndx.size() <= sym_idx(sym_ref)) {
+    shndx.resize(sym_idx(sym_ref) + 1);
+  }
+  shndx[sym_idx(sym_ref)] = static_cast<uint32_t>(sec_ref);
 }
 
 void AssemblerElfBase::reloc_sec(const SecRef sec_ref,
@@ -605,7 +623,7 @@ void AssemblerElfBase::eh_end_fde(u32 fde_start, SymRef func) noexcept {
   // relocate against .text so we don't have to fix up any relocations
   // NB: ld.bfd (for a reason that needs to be investigated) doesn't accept
   // using the function symbol here.
-  DataSection &func_sec = get_section(SecRef{func_sym->st_shndx});
+  DataSection &func_sec = get_section(sym_section(func));
   this->reloc_sec(secref_eh_frame,
                   func_sec.sym,
                   target_info.reloc_pc32,
@@ -810,20 +828,33 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
 
   std::vector<u8> out{};
 
-  u32 obj_size = sizeof(Elf64_Ehdr) + sizeof(Elf64_Shdr) * sections.size() + 16;
-  obj_size +=
-      sizeof(Elf64_Sym) * (local_symbols.size() + global_symbols.size());
+  unsigned secidx_symtax_shndx = 0;
+
+  uint32_t sym_count = local_symbols.size() + global_symbols.size();
+  uint32_t sec_count = sections.size();
+  if (sec_count >= SHN_LORESERVE) {
+    sec_count += 1;
+    secidx_symtax_shndx = sections.size();
+  } else {
+    assert(local_shndx.empty() && global_shndx.empty());
+  }
+
+  u32 obj_size = sizeof(Elf64_Ehdr) + sizeof(Elf64_Shdr) * sec_count + 16;
+  obj_size += sizeof(Elf64_Sym) * sym_count;
   obj_size += strtab.size();
   obj_size += SHSTRTAB.size() + shstrtab_extra.size();
   for (const auto &sec : sections) {
     obj_size += sec->data.size() + 16;
+  }
+  if (secidx_symtax_shndx != 0) {
+    obj_size += sizeof(uint32_t) * sym_count;
   }
   out.reserve(obj_size);
 
   out.resize(sizeof(Elf64_Ehdr));
 
   const auto shdr_off = out.size();
-  out.resize(out.size() + sizeof(Elf64_Shdr) * sections.size());
+  out.resize(out.size() + sizeof(Elf64_Shdr) * sec_count);
 
   const auto sec_hdr = [shdr_off, &out](const u32 idx) {
     return reinterpret_cast<Elf64_Shdr *>(out.data() + shdr_off) + idx;
@@ -847,7 +878,14 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
     hdr->e_shoff = shdr_off;
     hdr->e_ehsize = sizeof(Elf64_Ehdr);
     hdr->e_shentsize = sizeof(Elf64_Shdr);
-    hdr->e_shnum = sections.size();
+    if (sec_count < SHN_LORESERVE) {
+      hdr->e_shnum = sec_count;
+    } else {
+      // If e_shnum is too small, the number of sections is stored in the size
+      // field of the NULL section entry.
+      hdr->e_shnum = 0;
+      sec_hdr(0)->sh_size = sec_count;
+    }
     hdr->e_shstrndx = sec_idx(".shstrtab");
   }
 
@@ -927,7 +965,7 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
     hdr->sh_addralign = 1;
   }
 
-  for (size_t i = sec_count(); i < sections.size(); ++i) {
+  for (size_t i = predef_sec_count(); i < sections.size(); ++i) {
     DataSection &sec = *sections[i];
     sec.hdr.sh_offset = out.size();
     sec.hdr.sh_size = sec.size();
@@ -960,6 +998,32 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
           }
         }
       }
+    }
+  }
+
+  if (secidx_symtax_shndx != 0) {
+    auto *hdr = sec_hdr(secidx_symtax_shndx);
+    hdr->sh_name = sec_off(".symtab_shndx");
+    hdr->sh_type = SHT_SYMTAB_SHNDX;
+    hdr->sh_offset = out.size();
+    hdr->sh_size = sizeof(uint32_t) * sym_count;
+    hdr->sh_link = sec_idx(".symtab");
+    hdr->sh_addralign = 4;
+    hdr->sh_entsize = 4;
+
+    out.insert(out.end(),
+               reinterpret_cast<const uint8_t *>(local_shndx.data()),
+               reinterpret_cast<const uint8_t *>(local_shndx.data() +
+                                                 local_shndx.size()));
+    if (uint32_t missing = local_symbols.size() - local_shndx.size()) {
+      out.resize(out.size() + sizeof(uint32_t) * missing);
+    }
+    out.insert(out.end(),
+               reinterpret_cast<const uint8_t *>(global_shndx.data()),
+               reinterpret_cast<const uint8_t *>(global_shndx.data() +
+                                                 global_shndx.size()));
+    if (uint32_t missing = global_symbols.size() - global_shndx.size()) {
+      out.resize(out.size() + sizeof(uint32_t) * missing);
     }
   }
 

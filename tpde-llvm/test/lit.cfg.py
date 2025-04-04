@@ -10,7 +10,7 @@ from lit.llvm import llvm_config
 config.name = 'TPDE-LLVM'
 config.test_format = lit.formats.ShTest(True)
 
-config.suffixes = ['.ll', '.cpp']
+config.suffixes = ['.ll', '.cpp', '.test']
 
 config.test_source_root = os.path.dirname(__file__)
 config.environment["FILECHECK_OPTS"] = "--enable-var-scope --dump-input-filter=all --allow-unused-prefixes=false"
