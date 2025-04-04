@@ -332,6 +332,31 @@ private:
   }
 
 public:
+  /// Whether to use a DSO-local access instead of going through the GOT.
+  static bool use_local_access(const llvm::GlobalValue *gv) noexcept {
+    // If the symbol is preemptible, don't generate a local access.
+    if (!gv->isDSOLocal()) {
+      return false;
+    }
+
+    // Symbol be undefined, hence cannot use relative addressing.
+    if (gv->hasExternalWeakLinkage()) {
+      return false;
+    }
+
+    // If the symbol would need a local alias symbol (LLVM generates an extra
+    // .L<sym>$local symbol), we would actually be able to generate a local
+    // access through a private symbol (i.e., a section-relative relocation in
+    // the object file). We don't support this right now, as it would require
+    // fixing up symbols and converting them into relocations if required.
+    // TODO: support local aliases for default-visibility dso_local definitions.
+    if (gv->canBenefitFromLocalAlias()) {
+      return false;
+    }
+
+    return true;
+  }
+
   void define_func_idx(IRFuncRef func, const u32 idx) noexcept;
 
   /// Select section for a global. (and create if needed)

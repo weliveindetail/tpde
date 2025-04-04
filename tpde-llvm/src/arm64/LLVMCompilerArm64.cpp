@@ -225,8 +225,7 @@ void LLVMCompilerArm64::load_address_of_var_reference(
     }
     // These pairs must be contiguous, avoid possible veneers in between.
     this->text_writer.ensure_space(8);
-    // External weak might be undefined, hence cannot use relative addressing.
-    if (!global->isDSOLocal() || global->hasExternalWeakLinkage()) {
+    if (!use_local_access(global)) {
       // mov the ptr from the GOT
       reloc_text(sym, R_AARCH64_ADR_GOT_PAGE, this->text_writer.offset());
       ASMNC(ADRP, dst, 0, 0);

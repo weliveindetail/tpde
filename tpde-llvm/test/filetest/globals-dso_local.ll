@@ -151,8 +151,8 @@ define ptr @ret_def_glob_external_dso_local() {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    lea rax, <ret_def_glob_external_dso_local+0x13>
-; X64-NEXT:     R_X86_64_PC32 def_glob_external_dso_local-0x4
+; X64-NEXT:    mov rax, qword ptr <ret_def_glob_external_dso_local+0x13>
+; X64-NEXT:     R_X86_64_GOTPCREL def_glob_external_dso_local-0x4
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -163,13 +163,41 @@ define ptr @ret_def_glob_external_dso_local() {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    adrp x0, 0x0 <.text>
-; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21 def_glob_external_dso_local
-; ARM64-NEXT:    add x0, x0, #0x0
-; ARM64-NEXT:     R_AARCH64_ADD_ABS_LO12_NC def_glob_external_dso_local
+; ARM64-NEXT:     R_AARCH64_ADR_GOT_PAGE def_glob_external_dso_local
+; ARM64-NEXT:    ldr x0, [x0]
+; ARM64-NEXT:     R_AARCH64_LD64_GOT_LO12_NC def_glob_external_dso_local
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
   ret ptr @def_glob_external_dso_local
+}
+
+@def_glob_external_dso_local_hidden = dso_local hidden global i32 100, align 4
+define ptr @ret_def_glob_external_dso_local_hidden() {
+; X64-LABEL: <ret_def_glob_external_dso_local_hidden>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    lea rax, <ret_def_glob_external_dso_local_hidden+0x13>
+; X64-NEXT:     R_X86_64_PC32 def_glob_external_dso_local_hidden-0x4
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <ret_def_glob_external_dso_local_hidden>:
+; ARM64:         sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    adrp x0, 0x0 <.text>
+; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21 def_glob_external_dso_local_hidden
+; ARM64-NEXT:    add x0, x0, #0x0
+; ARM64-NEXT:     R_AARCH64_ADD_ABS_LO12_NC def_glob_external_dso_local_hidden
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+  ret ptr @def_glob_external_dso_local_hidden
 }
 
 @def_glob_private = private global i32 100, align 4
