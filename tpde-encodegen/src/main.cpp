@@ -170,6 +170,8 @@ int main(const int argc, char *argv[]) {
   unsigned sym_count = 0;
 
   const auto compile_mod = [&](llvm::Module &mod) {
+    mod.setDataLayout(target_machine->createDataLayout());
+
     // TODO(ts): switch all functions to regcall so that the code does not
     // try to spill for the calling convention when it wouldn't have to in
     // the generated code
