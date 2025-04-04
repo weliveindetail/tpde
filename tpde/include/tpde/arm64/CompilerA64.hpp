@@ -1074,6 +1074,7 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::start_func(
     const u32 /*func_idx*/) noexcept {
+  this->assembler.except_begin_func();
   this->text_writer.align(16);
 
   const CallingConv conv = derived()->cur_calling_convention();
@@ -1285,21 +1286,6 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     auto *inst_ptr = this->text_writer.begin_ptr() + func_arg_stack_add_off;
     *reinterpret_cast<u32 *>(inst_ptr) =
         de64_ADDxi(func_arg_stack_add_reg, DA_SP, final_frame_size);
-  }
-
-  if (this->adaptor->cur_needs_unwind_info()) {
-    // we need to patch the landing pad labels into their actual offsets
-    for (auto &info : this->assembler.except_call_site_table) {
-      if (info.pad_label_or_off == ~0u) {
-        info.pad_label_or_off = 0; // special marker for resume/normal calls
-                                   // where we dont have a landing pad
-        continue;
-      }
-      info.pad_label_or_off = this->assembler.label_offset(
-          static_cast<Assembler::Label>(info.pad_label_or_off));
-    }
-  } else {
-    assert(this->assembler.except_call_site_table.empty());
   }
 
   // TODO(ts): honor cur_needs_unwind_info

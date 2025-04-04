@@ -397,11 +397,12 @@ protected:
 public:
   util::VectorWriter<DataSection::StorageTy> eh_writer;
 
+private:
   struct ExceptCallSiteInfo {
     /// Start offset *in section* (not inside function)
     u64 start;
     u64 len;
-    u32 pad_label_or_off;
+    Label landing_pad;
     u32 action_entry;
   };
 
@@ -409,7 +410,6 @@ public:
   /// Call Sites for current function
   std::vector<ExceptCallSiteInfo> except_call_site_table;
 
-protected:
   /// Temporary storage for encoding call sites
   std::vector<u8> except_encoded_call_sites;
   /// Action Table for current function
@@ -435,8 +435,7 @@ public:
       : target_info(target_info), generating_object(generating_object) {
     strtab.push_back('\0');
 
-    local_symbols.resize(1);       // First symbol must be null.
-    except_action_table.resize(2); // cleanup entry
+    local_symbols.resize(1); // First symbol must be null.
     init_sections();
     eh_init_cie();
   }
@@ -714,13 +713,16 @@ private:
 public:
   u32 eh_begin_fde(SymRef personality_func_addr = SymRef()) noexcept;
   void eh_end_fde(u32 fde_start, SymRef func) noexcept;
+
+  void except_begin_func() noexcept;
+
   void except_encode_func(SymRef func_sym) noexcept;
 
   /// add an entry to the call-site table
   /// must be called in strictly increasing order wrt text_off
   void except_add_call_site(u32 text_off,
                             u32 len,
-                            u32 landing_pad_id,
+                            Label landing_pad,
                             bool is_cleanup) noexcept;
 
   /// Add a cleanup action to the action table

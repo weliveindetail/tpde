@@ -4029,7 +4029,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
 
   this->assembler.except_add_call_site(off_before_call,
                                        off_after_call - off_before_call,
-                                       static_cast<u32>(unwind_label),
+                                       unwind_label,
                                        only_cleanup);
 
   if (only_cleanup) {

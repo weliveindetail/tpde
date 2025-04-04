@@ -650,8 +650,20 @@ void AssemblerElfBase::eh_end_fde(u32 fde_start, SymRef func) noexcept {
   }
 }
 
+void AssemblerElfBase::except_begin_func() noexcept {
+  except_call_site_table.clear();
+  except_action_table.clear();
+  except_type_info_table.clear();
+  except_spec_table.clear();
+  except_action_table.resize(2); // cleanup entry
+}
+
 void AssemblerElfBase::except_encode_func(SymRef func_sym) noexcept {
   if (!cur_personality_func_addr.valid()) {
+    assert(except_call_site_table.empty());
+    assert(except_type_info_table.empty());
+    assert(except_spec_table.empty());
+    assert(except_action_table.size() == 2);
     return;
   }
 
@@ -676,8 +688,9 @@ void AssemblerElfBase::except_encode_func(SymRef func_sym) noexcept {
       }
       ecst_writer.write_uleb_unchecked(info.start - fn_start);
       ecst_writer.write_uleb_unchecked(info.len);
-      assert((info.pad_label_or_off - fn_start) < (fn_end - fn_start));
-      ecst_writer.write_uleb_unchecked(info.pad_label_or_off - fn_start);
+      u64 fn_off = label_offset(info.landing_pad) - fn_start;
+      assert(fn_off < (fn_end - fn_start));
+      ecst_writer.write_uleb_unchecked(fn_off);
       ecst_writer.write_uleb_unchecked(info.action_entry);
       cur = info.start + info.len;
     }
@@ -734,22 +747,16 @@ void AssemblerElfBase::except_encode_func(SymRef func_sym) noexcept {
       et_writer.write(except_spec_table);
     }
   }
-
-  except_call_site_table.clear();
-  except_action_table.clear();
-  except_type_info_table.clear();
-  except_spec_table.clear();
-  except_action_table.resize(2); // cleanup entry
 }
 
 void AssemblerElfBase::except_add_call_site(const u32 text_off,
                                             const u32 len,
-                                            const u32 landing_pad_id,
+                                            const Label landing_pad,
                                             const bool is_cleanup) noexcept {
   except_call_site_table.push_back(ExceptCallSiteInfo{
       .start = text_off,
       .len = len,
-      .pad_label_or_off = landing_pad_id,
+      .landing_pad = landing_pad,
       .action_entry =
           (is_cleanup ? 0 : static_cast<u32>(except_action_table.size()) + 1),
   });

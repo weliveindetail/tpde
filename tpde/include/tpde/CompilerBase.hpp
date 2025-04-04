@@ -1426,7 +1426,6 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   // TODO(ts): make function labels optional?
 
   derived()->gen_func_prolog_and_args();
-  // TODO(ts): exception handling
 
   for (u32 i = 0; i < analyzer.block_layout.size(); ++i) {
     const auto block_ref = analyzer.block_layout[i];
