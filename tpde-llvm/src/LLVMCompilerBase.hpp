@@ -318,6 +318,19 @@ private:
     return Assembler::SymBinding::GLOBAL;
   }
 
+  static typename Assembler::SymVisibility
+      convert_visibility(const llvm::GlobalValue *gv) noexcept {
+    switch (gv->getVisibility()) {
+    case llvm::GlobalValue::DefaultVisibility:
+      return Assembler::SymVisibility::DEFAULT;
+    case llvm::GlobalValue::HiddenVisibility:
+      return Assembler::SymVisibility::HIDDEN;
+    case llvm::GlobalValue::ProtectedVisibility:
+      return Assembler::SymVisibility::PROTECTED;
+    default: TPDE_UNREACHABLE("invalid global visibility");
+    }
+  }
+
 public:
   void define_func_idx(IRFuncRef func, const u32 idx) noexcept;
 
@@ -653,7 +666,11 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
 template <typename Adaptor, typename Derived, typename Config>
 void LLVMCompilerBase<Adaptor, Derived, Config>::define_func_idx(
     IRFuncRef func, const u32 idx) noexcept {
-  global_syms[func] = this->func_syms[idx];
+  SymRef fn_sym = this->func_syms[idx];
+  global_syms[func] = fn_sym;
+  if (!func->hasDefaultVisibility()) {
+    this->assembler.sym_set_visibility(fn_sym, convert_visibility(func));
+  }
 }
 
 template <typename Adaptor, typename Derived, typename Config>
@@ -800,9 +817,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
 
   global_syms.reserve(2 * llvm_mod.global_size());
 
-  // create the symbols first so that later relocations don't try to look up
-  // non-existant symbols
-  for (const llvm::GlobalVariable &gv : llvm_mod.globals()) {
+  auto declare_global = [&, this](const llvm::GlobalValue &gv) {
     // TODO: name mangling
     if (!gv.hasName()) {
       TPDE_LOG_ERR("unnamed globals are not implemented");
@@ -817,31 +832,36 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
                      static_cast<std::string_view>(gv.getName()));
         return false;
       }
-      continue;
+      return true;
     }
 
     auto binding = convert_linkage(&gv);
+    SymRef sym;
     if (gv.isThreadLocal()) {
-      global_syms[&gv] = this->assembler.sym_predef_tls(gv.getName(), binding);
+      sym = this->assembler.sym_predef_tls(gv.getName(), binding);
     } else if (!gv.isDeclarationForLinker()) {
-      global_syms[&gv] = this->assembler.sym_predef_data(gv.getName(), binding);
+      sym = this->assembler.sym_predef_data(gv.getName(), binding);
     } else {
-      global_syms[&gv] = this->assembler.sym_add_undef(gv.getName(), binding);
+      sym = this->assembler.sym_add_undef(gv.getName(), binding);
+    }
+    global_syms[&gv] = sym;
+    if (!gv.hasDefaultVisibility()) {
+      this->assembler.sym_set_visibility(sym, convert_visibility(&gv));
+    }
+    return true;
+  };
+
+  // create the symbols first so that later relocations don't try to look up
+  // non-existant symbols
+  for (const llvm::GlobalVariable &gv : llvm_mod.globals()) {
+    if (!declare_global(gv)) {
+      return false;
     }
   }
 
   for (const llvm::GlobalAlias &ga : llvm_mod.aliases()) {
-    // TODO: name mangling
-    if (!ga.hasName()) {
-      TPDE_LOG_ERR("unnamed globals are not implemented");
+    if (!declare_global(ga)) {
       return false;
-    }
-
-    auto binding = convert_linkage(&ga);
-    if (ga.isThreadLocal()) {
-      global_syms[&ga] = this->assembler.sym_predef_tls(ga.getName(), binding);
-    } else {
-      global_syms[&ga] = this->assembler.sym_add_undef(ga.getName(), binding);
     }
   }
 

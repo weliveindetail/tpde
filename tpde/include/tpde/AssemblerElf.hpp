@@ -169,6 +169,13 @@ struct AssemblerElfBase {
     GLOBAL,
   };
 
+  enum class SymVisibility : u8 {
+    DEFAULT = STV_DEFAULT,
+    INTERNAL = STV_INTERNAL,
+    HIDDEN = STV_HIDDEN,
+    PROTECTED = STV_PROTECTED,
+  };
+
   struct SymRef {
   private:
     u32 val;
@@ -591,6 +598,10 @@ public:
       sym_def_xindex(sym_ref, sec_ref);
     }
     // TODO: handle fixups?
+  }
+
+  void sym_set_visibility(SymRef sym, SymVisibility visibility) noexcept {
+    sym_ptr(sym)->st_other = static_cast<u8>(visibility);
   }
 
   /// Forcefully set value of symbol, doesn't change section.
