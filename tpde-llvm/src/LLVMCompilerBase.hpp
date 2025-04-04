@@ -3286,6 +3286,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
     }
   }
 
+  if (call->hasOperandBundles()) {
+    return false;
+  }
+
   return derived()->compile_call_inner(call, call_target, var_arg);
 }
 
@@ -4129,9 +4133,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
   case llvm::Intrinsic::lifetime_end:
   case llvm::Intrinsic::invariant_start:
   case llvm::Intrinsic::invariant_end:
-    // reference counting
-    for (llvm::Value *arg : inst->args()) {
-      this->val_ref_single(arg);
+    // reference counting; also include operand bundle uses
+    for (llvm::Value *arg : inst->data_ops()) {
+      this->val_ref(arg);
     }
     return true;
   case llvm::Intrinsic::expect: {

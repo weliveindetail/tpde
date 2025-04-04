@@ -5,7 +5,7 @@
 ; RUN: tpde-llc --target=x86_64 %s | %objdump | FileCheck %s -check-prefixes=X64
 ; RUN: tpde-llc --target=aarch64 %s | %objdump | FileCheck %s -check-prefixes=ARM64
 
-define void @free_intrinsics() {
+define void @free_intrinsics(ptr %p) {
 ; X64-LABEL: <free_intrinsics>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
@@ -28,6 +28,7 @@ define void @free_intrinsics() {
   call void @llvm.donothing()
 ; %a0 = call i32 @llvm.annotation.i32(i32 undef, ptr undef, ptr undef, i32 undef)
   call void @llvm.assume(i1 undef)
+  call void @llvm.assume(i1 undef) ["nonnull"(ptr %p)]
   call void @llvm.experimental.noalias.scope.decl(metadata !4)
   call void @llvm.sideeffect()
   call void @llvm.dbg.assign(metadata ptr undef, metadata !0, metadata !DIExpression(), metadata !10, metadata ptr undef, metadata !DIExpression()), !dbg !8
