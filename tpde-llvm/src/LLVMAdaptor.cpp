@@ -412,7 +412,7 @@ namespace {
   switch (type->getTypeID()) {
   case llvm::Type::FloatTyID: return {1, LLVMBasicValType::f32};
   case llvm::Type::DoubleTyID: return {1, LLVMBasicValType::f64};
-  case llvm::Type::FP128TyID: return {1, LLVMBasicValType::v128};
+  case llvm::Type::FP128TyID: return {1, LLVMBasicValType::f128};
   case llvm::Type::VoidTyID:
     return {1, LLVMBasicValType::none};
     // case llvm::Type::X86_MMXTyID: return {1, LLVMBasicValType::v64};

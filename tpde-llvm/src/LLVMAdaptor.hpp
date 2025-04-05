@@ -62,6 +62,7 @@ enum class LLVMBasicValType : u8 {
   i128,
   f32,
   f64,
+  f128,
   v32,
   v64,
   v128,
@@ -549,6 +550,7 @@ public:
     case i128: return 8;
     case f32: return 4;
     case f64: return 8;
+    case f128: return 16;
     case v32: return 4;
     case v64: return 8;
     case v128: return 16;
@@ -573,6 +575,7 @@ public:
     case ptr: return tpde::RegBank{0};
     case f32:
     case f64:
+    case f128:
     case v32:
     case v64:
     case v128:
@@ -598,6 +601,7 @@ private:
     case i128: return 16;
     case f32: return 4;
     case f64: return 8;
+    case f128: return 16;
     case v32: return 4;
     case v64: return 8;
     case v128: return 16;
@@ -621,6 +625,7 @@ private:
     case ptr:
     case f32:
     case f64:
+    case f128:
     case v32:
     case v64:
     case v128: return 1;

@@ -669,17 +669,11 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
     u64 *data = new (const_allocator) u64[int_val.getNumWords()];
     std::memcpy(
         data, int_val.getRawData(), int_val.getNumWords() * sizeof(u64));
-    switch (ty) {
-      using enum LLVMBasicValType;
-    case f32:
-    case v32: return ValuePartRef(this, data, 4, Config::FP_BANK);
-    case f64:
-    case v64: return ValuePartRef(this, data, 8, Config::FP_BANK);
-    case v128:
-      return ValuePartRef(this, data, 16, Config::FP_BANK);
-      // TODO(ts): support the rest
-    default: TPDE_FATAL("illegal fp constant");
-    }
+
+    u32 size = this->adaptor->basic_ty_part_size(ty);
+    tpde::RegBank bank = this->adaptor->basic_ty_part_bank(ty);
+    assert(size <= int_val.getNumWords() * sizeof(u64));
+    return ValuePartRef(this, data, size, bank);
   }
 
   std::string const_str;
@@ -1552,10 +1546,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
     derived()->encode_loadf64(std::move(ptr_op), res_scratch);
     break;
   }
-  case v128: {
-    derived()->encode_loadv128(std::move(ptr_op), res_scratch);
-    break;
-  }
+  case v128:
+  case f128: derived()->encode_loadv128(std::move(ptr_op), res_scratch); break;
   case complex: {
     auto ty_idx = this->adaptor->val_info(load).complex_part_tys_idx;
     const LLVMComplexPart *part_descs =
@@ -1598,6 +1590,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
         derived()->encode_loadf64(std::move(part_addr), res_scratch);
         break;
       case v128:
+      case f128:
         derived()->encode_loadv128(std::move(part_addr), res_scratch);
         break;
       default: assert(0); return false;
@@ -1752,6 +1745,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
     derived()->encode_storef64(std::move(ptr_op), op_ref.part(0));
     break;
   case v128:
+  case f128:
     derived()->encode_storev128(std::move(ptr_op), op_ref.part(0));
     break;
   case complex: {
@@ -1800,6 +1794,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
         derived()->encode_storef64(std::move(part_addr), std::move(part_ref));
         break;
       case v128:
+      case f128:
         derived()->encode_storev128(std::move(part_addr), std::move(part_ref));
         break;
       default: assert(0); return false;
@@ -2121,7 +2116,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
   auto *inst_ty = inst->getType();
   auto *scalar_ty = inst_ty->getScalarType();
 
-  if (inst_ty->isFP128Ty()) {
+  if (val_info.type == LLVMBasicValType::f128) {
     LibFunc lf;
     switch (op) {
     case FloatBinaryOp::add: lf = LibFunc::addtf3; break;
@@ -3331,6 +3326,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
     derived()->encode_select_f64(
         std::move(cond), lhs.part(0), rhs.part(0), res_scratch);
     break;
+  case f128:
   case v128:
     derived()->encode_select_v2u64(
         std::move(cond), lhs.part(0), rhs.part(0), res_scratch);
