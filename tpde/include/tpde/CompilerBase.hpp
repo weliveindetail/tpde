@@ -1069,6 +1069,10 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
 
     auto phi_vr = derived()->result_ref(phi);
     auto val_vr = derived()->val_ref(incoming_val);
+    if (phi == incoming_val) {
+      return;
+    }
+
     u32 part_count = phi_vr.assignment()->part_count;
     for (u32 i = 0; i < part_count; ++i) {
       AssignmentPartRef phi_ap{phi_vr.assignment(), i};
@@ -1092,13 +1096,6 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
         allocate_spill_slot(phi_ap);
         derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
         phi_ap.set_stack_valid();
-      }
-
-      if (phi_ap.register_valid() && !phi_ap.fixed_assignment()) {
-        auto cur_reg = phi_ap.get_reg();
-        assert(!register_file.is_fixed(cur_reg));
-        register_file.unmark_used(cur_reg);
-        phi_ap.set_register_valid(false);
       }
     }
   };

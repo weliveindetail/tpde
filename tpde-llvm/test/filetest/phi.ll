@@ -55,8 +55,6 @@ define i32 @phi_unicycle() {
 ; X64-NEXT:    mov eax, 0x2
 ; X64-NEXT:    mov r12d, eax
 ; X64-NEXT:  <L0>:
-; X64-NEXT:    mov ebx, ebx
-; X64-NEXT:    mov r12d, r12d
 ; X64-NEXT:    jmp <L0>
 ;
 ; ARM64-LABEL: <phi_unicycle>:
@@ -68,8 +66,6 @@ define i32 @phi_unicycle() {
 ; ARM64-NEXT:    mov w19, w0
 ; ARM64-NEXT:    mov x0, #0x2 // =2
 ; ARM64-NEXT:    mov w20, w0
-; ARM64-NEXT:    mov w19, w19
-; ARM64-NEXT:    mov w20, w20
 ; ARM64-NEXT:    b 0x90 <phi_unicycle+0x20>
   br label %1
 1:
