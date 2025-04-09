@@ -558,7 +558,7 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::Instruction *inst,
   const llvm::BranchInst *fuse_br = nullptr;
   const llvm::Instruction *fuse_ext = nullptr;
   if (!cmp->user_empty() && *cmp->user_begin() == cmp->getNextNode() &&
-      (analyzer.liveness_info((u32)val_idx(cmp)).ref_count <= 2)) {
+      (analyzer.liveness_info(val_idx(cmp)).ref_count <= 2)) {
     auto *fuse_inst = cmp->getNextNode();
     assert(cmp->hasNUses(1));
     if (auto *br = llvm::dyn_cast<llvm::BranchInst>(fuse_inst)) {

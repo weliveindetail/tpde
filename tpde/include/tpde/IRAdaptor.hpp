@@ -4,6 +4,7 @@
 
 #pragma once
 #include "CompilerConfig.hpp"
+#include "ValLocalIdx.hpp"
 #include "base.hpp"
 #include <concepts>
 #include <format>
@@ -276,7 +277,9 @@ concept IRAdaptor = requires(T a) {
   /// them we ask the IRAdaptor to assign each value (including globals and
   /// possibly functions if they are exposed to the compiler) a local index in
   /// the context of the current function
-  { a.val_local_idx(ARG(typename T::IRValueRef)) } -> std::convertible_to<u32>;
+  {
+    a.val_local_idx(ARG(typename T::IRValueRef))
+  } -> std::convertible_to<ValLocalIdx>;
 
   // TODO(ts): add separate function to get local idx which is only used in
   // the analyzer if the adaptor wants to lazily assign indices?

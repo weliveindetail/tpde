@@ -8,6 +8,7 @@
 #include <ostream>
 
 #include "IRAdaptor.hpp"
+#include "tpde/ValLocalIdx.hpp"
 #include "tpde/base.hpp"
 #include "util/SmallBitSet.hpp"
 #include "util/SmallVector.hpp"
@@ -100,9 +101,9 @@ struct Analyzer {
     return static_cast<BlockIndex>(adaptor->block_info(block_ref));
   }
 
-  const LivenessInfo &liveness_info(const u32 val_idx) const noexcept {
-    assert(val_idx < liveness.size());
-    return liveness[val_idx];
+  const LivenessInfo &liveness_info(const ValLocalIdx val_idx) const noexcept {
+    assert(static_cast<u32>(val_idx) < liveness.size());
+    return liveness[static_cast<u32>(val_idx)];
   }
 
   u32 block_loop_idx(const BlockIndex idx) const noexcept {
@@ -229,17 +230,17 @@ void Analyzer<Adaptor>::reset() {
 template <IRAdaptor Adaptor>
 typename Analyzer<Adaptor>::LivenessInfo &
     Analyzer<Adaptor>::liveness_maybe(const IRValueRef val) noexcept {
-  const u32 val_idx = adaptor->val_local_idx(val);
+  const ValLocalIdx val_idx = adaptor->val_local_idx(val);
   if constexpr (Adaptor::TPDE_PROVIDES_HIGHEST_VAL_IDX) {
-    assert(liveness.size() > val_idx);
-    return liveness[val_idx];
+    assert(liveness.size() > static_cast<u32>(val_idx));
+    return liveness[static_cast<u32>(val_idx)];
   } else {
-    if (liveness.size() <= val_idx) {
+    if (liveness.size() <= static_cast<u32>(val_idx)) {
       // TODO(ts): add a check if liveness.size() == val_idx and then do
       // push_back?
-      liveness.resize(val_idx + 1);
+      liveness.resize(static_cast<u32>(val_idx) + 1);
     }
-    return liveness[val_idx];
+    return liveness[static_cast<u32>(val_idx)];
   }
 }
 

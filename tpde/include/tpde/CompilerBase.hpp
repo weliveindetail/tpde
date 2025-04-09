@@ -136,7 +136,7 @@ struct CompilerBase {
   const Derived *derived() const { return static_cast<const Derived *>(this); }
 
   [[nodiscard]] ValLocalIdx val_idx(const IRValueRef value) const noexcept {
-    return static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
+    return analyzer.adaptor->val_local_idx(value);
   }
 
   [[nodiscard]] ValueAssignment *
@@ -165,8 +165,7 @@ struct CompilerBase {
   void init_variable_ref(ValLocalIdx local_idx, u32 var_ref_data) noexcept;
   /// Init a variable-ref assignment
   void init_variable_ref(IRValueRef value, u32 var_ref_data) noexcept {
-    auto local_idx = static_cast<ValLocalIdx>(adaptor->val_local_idx(value));
-    init_variable_ref(local_idx, var_ref_data);
+    init_variable_ref(adaptor->val_local_idx(value), var_ref_data);
   }
 
   i32 allocate_stack_slot(u32 size) noexcept;
@@ -376,7 +375,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
     ap.set_part_size(size);
   }
 
-  const auto &liveness = analyzer.liveness_info(static_cast<u32>(local_idx));
+  const auto &liveness = analyzer.liveness_info(local_idx);
 
   // if there is only one part, try to hand out a fixed assignment
   // if the value is used for longer than one block and there aren't too many
@@ -578,9 +577,7 @@ typename CompilerBase<Adaptor, Derived, Config>::ValueRef
     return ValueRef{this, std::move(*special)};
   }
 
-  const auto local_idx =
-      static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
-
+  const ValLocalIdx local_idx = analyzer.adaptor->val_local_idx(value);
   assert(val_assignment(local_idx) != nullptr && "value use before def");
   return ValueRef{this, local_idx};
 }
@@ -599,9 +596,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::ValueRef
     CompilerBase<Adaptor, Derived, Config>::result_ref(
         IRValueRef value) noexcept {
-  const auto local_idx =
-      static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(value));
-
+  const ValLocalIdx local_idx = analyzer.adaptor->val_local_idx(value);
   if (val_assignment(local_idx) == nullptr) {
     init_assignment(value, local_idx);
   }
@@ -838,8 +833,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
       if (derived()->val_ref_special(inc_val)) {
         continue;
       }
-      ValLocalIdx local_idx =
-          static_cast<ValLocalIdx>(analyzer.adaptor->val_local_idx(inc_val));
+      ValLocalIdx local_idx = analyzer.adaptor->val_local_idx(inc_val);
       auto *assignment = this->val_assignment(local_idx);
       if (!assignment) {
         continue;
@@ -877,7 +871,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
       return false;
     }
 
-    const auto &liveness = analyzer.liveness_info(static_cast<u32>(local_idx));
+    const auto &liveness = analyzer.liveness_info(local_idx);
     if (assignment->references_left <= phi_ref_count[reg] &&
         liveness.last <= cur_block_idx) {
       return false;
@@ -1068,7 +1062,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
 
   util::SmallVector<NodeEntry, 16> nodes;
   for (IRValueRef phi : adaptor->block_phis(target_ref)) {
-    ValLocalIdx phi_local_idx = ValLocalIdx(adaptor->val_local_idx(phi));
+    ValLocalIdx phi_local_idx = adaptor->val_local_idx(phi);
     auto incoming = adaptor->val_as_phi(phi).incoming_val_for_block(cur_ref);
     nodes.emplace_back(NodeEntry{
         .phi = phi, .incoming_val = incoming, .phi_local_idx = phi_local_idx});
@@ -1134,8 +1128,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       continue;
     }
 
-    ValLocalIdx inc_local_idx =
-        ValLocalIdx(adaptor->val_local_idx(node.incoming_val));
+    ValLocalIdx inc_local_idx = adaptor->val_local_idx(node.incoming_val);
     auto it = std::lower_bound(nodes.begin(), nodes.end(), inc_local_idx);
     if (it == nodes.end() || it->phi != node.incoming_val) {
       // Incoming value is a PHI node, but it's not from our block, so we don't
@@ -1417,7 +1410,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
       auto size = adaptor->val_alloca_size(alloca);
       size = util::align_up(size, adaptor->val_alloca_align(alloca));
       const auto frame_off = allocate_stack_slot(size);
-      init_variable_ref(static_cast<ValLocalIdx>(local_idx), frame_off);
+      init_variable_ref(local_idx, frame_off);
     }
   } else {
     derived()->setup_var_ref_assignments();

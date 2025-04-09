@@ -41,7 +41,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
 #ifndef NDEBUG
     if (!variable_ref()) {
       const auto &liveness =
-          compiler->analyzer.liveness_info((u32)state.a.local_idx);
+          compiler->analyzer.liveness_info(state.a.local_idx);
       assert(liveness.last >= compiler->cur_block_idx &&
              "ref-counted value used outside of its live range");
       assert(state.a.assignment->references_left != 0);
@@ -149,8 +149,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValueRef::reset() noexcept {
         // need to wait until release
         TPDE_LOG_TRACE("Delay freeing assignment for value {}",
                        static_cast<u32>(local_idx));
-        const auto &liveness =
-            compiler->analyzer.liveness_info(static_cast<u32>(local_idx));
+        const auto &liveness = compiler->analyzer.liveness_info(local_idx);
         auto &free_list_head =
             compiler->assignments.delayed_free_lists[u32(liveness.last)];
         state.a.assignment->next_delayed_free_entry = free_list_head;

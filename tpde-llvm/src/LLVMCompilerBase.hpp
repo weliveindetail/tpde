@@ -608,8 +608,7 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
 
   if (llvm::isa<llvm::GlobalValue>(const_val)) {
     assert(ty == LLVMBasicValType::ptr && sub_part == 0);
-    auto local_idx =
-        static_cast<tpde::ValLocalIdx>(this->adaptor->val_local_idx(const_val));
+    auto local_idx = this->adaptor->val_local_idx(const_val);
     auto *assignment = this->val_assignment(local_idx);
     if (!assignment) {
       this->init_variable_ref(local_idx, static_cast<u32>(local_idx));

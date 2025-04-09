@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "tpde/ValLocalIdx.hpp"
 #include "tpde/base.hpp"
 
 namespace tpde::test {
@@ -259,9 +260,9 @@ struct TestIRAdaptor {
     return ir->values[static_cast<u32>(inst)].name;
   }
 
-  [[nodiscard]] u32 val_local_idx(IRValueRef val) {
+  [[nodiscard]] tpde::ValLocalIdx val_local_idx(IRValueRef val) {
     assert(static_cast<u32>(val) >= ir->functions[cur_func].arg_begin_idx);
-    return static_cast<u32>(val) - ir->functions[cur_func].arg_begin_idx;
+    return ValLocalIdx(u32(val) - ir->functions[cur_func].arg_begin_idx);
   }
 
   bool val_is_phi(IRValueRef val) const noexcept {

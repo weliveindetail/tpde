@@ -14,6 +14,7 @@
 
 #include "base.hpp"
 #include "tpde/RegisterFile.hpp"
+#include "tpde/ValLocalIdx.hpp"
 #include "tpde/base.hpp"
 #include "tpde/util/SmallVector.hpp"
 #include "tpde/util/misc.hpp"
@@ -327,8 +328,8 @@ struct LLVMAdaptor {
   }
 
 
-  [[nodiscard]] u32 val_local_idx(const IRValueRef value) const noexcept {
-    return val_lookup_idx(value);
+  tpde::ValLocalIdx val_local_idx(const IRValueRef value) const noexcept {
+    return tpde::ValLocalIdx(val_lookup_idx(value));
   }
 
   [[nodiscard]] auto inst_operands(const IRInstRef inst) const noexcept {
