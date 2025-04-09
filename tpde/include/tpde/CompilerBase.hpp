@@ -1049,13 +1049,15 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
 
   // collect all the nodes
   struct NodeEntry {
-    IRValueRef val;
+    IRValueRef phi;
+    IRValueRef incoming_val;
     u32 ref_count;
   };
 
   util::SmallVector<NodeEntry, 16> nodes;
   for (IRValueRef phi : adaptor->block_phis(target_ref)) {
-    nodes.push_back(NodeEntry{phi, 0});
+    auto incoming = adaptor->val_as_phi(phi).incoming_val_for_block(cur_ref);
+    nodes.push_back(NodeEntry{phi, incoming, 0});
   }
 
   // We check that the block has phi nodes before getting here.
@@ -1101,35 +1103,30 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
   };
 
   if (nodes.size() == 1) {
-    move_to_phi(
-        nodes[0].val,
-        adaptor->val_as_phi(nodes[0].val).incoming_val_for_block(cur_ref));
+    move_to_phi(nodes[0].phi, nodes[0].incoming_val);
     return;
   }
 
   // sort so we can binary search later
   std::sort(nodes.begin(), nodes.end(), [](const auto &lhs, const auto &rhs) {
-    return lhs.val < rhs.val;
+    return lhs.phi < rhs.phi;
   });
 
   // fill in the refcount
   auto all_zero_ref = true;
   for (auto &node : nodes) {
-    auto phi_ref = adaptor->val_as_phi(node.val);
-    auto incoming_val = phi_ref.incoming_val_for_block(cur_ref);
-
     // We don't need to do anything for self-referencing PHIs.
-    if (incoming_val == node.val) {
+    if (node.incoming_val == node.phi) {
       continue;
     }
 
     auto it = std::lower_bound(nodes.begin(),
                                nodes.end(),
-                               NodeEntry{.val = incoming_val},
+                               NodeEntry{.phi = node.incoming_val},
                                [](const NodeEntry &lhs, const NodeEntry &rhs) {
-                                 return lhs.val < rhs.val;
+                                 return lhs.phi < rhs.phi;
                                });
-    if (it == nodes.end() || it->val != incoming_val) {
+    if (it == nodes.end() || it->phi != node.incoming_val) {
       continue;
     }
     ++it->ref_count;
@@ -1139,9 +1136,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
   if (all_zero_ref) {
     // no cycles/chain that we need to take care of
     for (auto &node : nodes) {
-      move_to_phi(
-          node.val,
-          adaptor->val_as_phi(node.val).incoming_val_for_block(cur_ref));
+      move_to_phi(node.phi, node.incoming_val);
     }
     return;
   }
@@ -1212,7 +1207,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       assert(nodes[cur_idx].ref_count == 1);
       assert(cur_tmp_val == Adaptor::INVALID_VALUE_REF);
 
-      auto phi_val = nodes[cur_idx].val;
+      auto phi_val = nodes[cur_idx].phi;
       auto *assignment = val_assignment(
           static_cast<ValLocalIdx>(adaptor->val_local_idx(phi_val)));
       cur_tmp_part_count = assignment->part_count;
@@ -1263,9 +1258,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
     for (u32 i = 0; i < ready_indices.size(); ++i) {
       ++handled_count;
       auto cur_idx = ready_indices[i];
-      auto phi_val = nodes[cur_idx].val;
-      IRValueRef incoming_val =
-          adaptor->val_as_phi(phi_val).incoming_val_for_block(cur_ref);
+      auto phi_val = nodes[cur_idx].phi;
+      IRValueRef incoming_val = nodes[cur_idx].incoming_val;
       if (incoming_val == phi_val) {
         // no need to do anything
         continue;
@@ -1292,11 +1286,11 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       auto it =
           std::lower_bound(nodes.begin(),
                            nodes.end(),
-                           NodeEntry{.val = incoming_val},
+                           NodeEntry{.phi = incoming_val},
                            [](const NodeEntry &lhs, const NodeEntry &rhs) {
-                             return lhs.val < rhs.val;
+                             return lhs.phi < rhs.phi;
                            });
-      if (it == nodes.end() || it->val != incoming_val) {
+      if (it == nodes.end() || it->phi != incoming_val) {
         continue;
       }
 
