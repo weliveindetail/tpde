@@ -264,6 +264,10 @@ struct TestIRAdaptor {
     return static_cast<u32>(val) - ir->functions[cur_func].arg_begin_idx;
   }
 
+  bool val_is_phi(IRValueRef val) const noexcept {
+    return ir->values[u32(val)].type == TestIR::Value::Type::phi;
+  }
+
   [[nodiscard]] auto inst_operands(IRInstRef inst) {
     const auto &info = ir->values[static_cast<u32>(inst)];
     const auto *data = ir->value_operands.data();

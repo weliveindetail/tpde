@@ -288,6 +288,10 @@ concept IRAdaptor = requires(T a) {
     a.val_ignore_in_liveness_analysis(ARG(typename T::IRValueRef))
   } -> std::convertible_to<bool>;
 
+  /// Indicate whether a value is the result of a PHI node. Used to detect and
+  /// resolve dependencies between PHI nodes.
+  { a.val_is_phi(ARG(typename T::IRValueRef)) } -> std::convertible_to<bool>;
+
   /// Provides the PHIRef for a PHI
   {
     a.val_as_phi(ARG(typename T::IRValueRef))

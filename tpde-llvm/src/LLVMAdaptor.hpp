@@ -347,6 +347,10 @@ struct LLVMAdaptor {
     return !llvm::isa<llvm::Instruction, llvm::Argument>(value);
   }
 
+  bool val_is_phi(IRValueRef value) const noexcept {
+    return llvm::isa<llvm::PHINode>(value);
+  }
+
   [[nodiscard]] auto val_as_phi(const IRValueRef value) const noexcept {
     struct PHIRef {
       const llvm::PHINode *phi;

@@ -1051,13 +1051,27 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
   struct NodeEntry {
     IRValueRef phi;
     IRValueRef incoming_val;
+    ValLocalIdx phi_local_idx;
+    // local idx of same-block phi node that needs special handling
+    ValLocalIdx incoming_phi_local_idx = INVALID_VAL_LOCAL_IDX;
+    // bool incoming_is_phi;
     u32 ref_count;
+
+    bool operator<(const NodeEntry &other) const noexcept {
+      return phi_local_idx < other.phi_local_idx;
+    }
+
+    bool operator<(ValLocalIdx other) const noexcept {
+      return phi_local_idx < other;
+    }
   };
 
   util::SmallVector<NodeEntry, 16> nodes;
   for (IRValueRef phi : adaptor->block_phis(target_ref)) {
+    ValLocalIdx phi_local_idx = ValLocalIdx(adaptor->val_local_idx(phi));
     auto incoming = adaptor->val_as_phi(phi).incoming_val_for_block(cur_ref);
-    nodes.push_back(NodeEntry{phi, incoming, 0});
+    nodes.emplace_back(NodeEntry{
+        .phi = phi, .incoming_val = incoming, .phi_local_idx = phi_local_idx});
   }
 
   // We check that the block has phi nodes before getting here.
@@ -1108,27 +1122,27 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
   }
 
   // sort so we can binary search later
-  std::sort(nodes.begin(), nodes.end(), [](const auto &lhs, const auto &rhs) {
-    return lhs.phi < rhs.phi;
-  });
+  std::sort(nodes.begin(), nodes.end());
 
   // fill in the refcount
   auto all_zero_ref = true;
   for (auto &node : nodes) {
-    // We don't need to do anything for self-referencing PHIs.
-    if (node.incoming_val == node.phi) {
+    // We don't need to do anything for PHIs that don't reference other PHIs or
+    // self-referencing PHIs.
+    bool incoming_is_phi = adaptor->val_is_phi(node.incoming_val);
+    if (!incoming_is_phi || node.incoming_val == node.phi) {
       continue;
     }
 
-    auto it = std::lower_bound(nodes.begin(),
-                               nodes.end(),
-                               NodeEntry{.phi = node.incoming_val},
-                               [](const NodeEntry &lhs, const NodeEntry &rhs) {
-                                 return lhs.phi < rhs.phi;
-                               });
+    ValLocalIdx inc_local_idx =
+        ValLocalIdx(adaptor->val_local_idx(node.incoming_val));
+    auto it = std::lower_bound(nodes.begin(), nodes.end(), inc_local_idx);
     if (it == nodes.end() || it->phi != node.incoming_val) {
+      // Incoming value is a PHI node, but it's not from our block, so we don't
+      // need to be particularly careful when assigning values.
       continue;
     }
+    node.incoming_phi_local_idx = inc_local_idx;
     ++it->ref_count;
     all_zero_ref = false;
   }
@@ -1208,8 +1222,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       assert(cur_tmp_val == Adaptor::INVALID_VALUE_REF);
 
       auto phi_val = nodes[cur_idx].phi;
-      auto *assignment = val_assignment(
-          static_cast<ValLocalIdx>(adaptor->val_local_idx(phi_val)));
+      auto *assignment = val_assignment(nodes[cur_idx].phi_local_idx);
       cur_tmp_part_count = assignment->part_count;
       cur_tmp_val = phi_val;
 
@@ -1282,17 +1295,14 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
 
       move_to_phi(phi_val, incoming_val);
 
-      // check if the incoming val was another PHI
-      auto it =
-          std::lower_bound(nodes.begin(),
-                           nodes.end(),
-                           NodeEntry{.phi = incoming_val},
-                           [](const NodeEntry &lhs, const NodeEntry &rhs) {
-                             return lhs.phi < rhs.phi;
-                           });
-      if (it == nodes.end() || it->phi != incoming_val) {
+      if (nodes[cur_idx].incoming_phi_local_idx == INVALID_VAL_LOCAL_IDX) {
         continue;
       }
+
+      auto it = std::lower_bound(
+          nodes.begin(), nodes.end(), nodes[cur_idx].incoming_phi_local_idx);
+      assert(it != nodes.end() && it->phi == incoming_val &&
+             "incoming_phi_local_idx set incorrectly");
 
       assert(it->ref_count > 0);
       if (--it->ref_count == 0) {
