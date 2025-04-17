@@ -17,7 +17,7 @@ Subpages:
 - Internals: Assembler
 
 This is the main documentation for the TPDE framework. It is designed to help implement a baseline compiler back-end (i.e. machine code generation)
-when compiling from [SSA IRs](https://en.wikipedia.org/wiki/Static_single-assignment_form).
+when compiling from [SSA IRs](https://en.wikipedia.org/wiki/Static_single-assignment_form) and written in C++.
 
 The framework is designed to take care of register allocation, generating unwind information, object generation or mapping to memory as well as common operations needed in a back-end,
 e.g. branch generation, generating calls, handling function arguments or materializing constants.
