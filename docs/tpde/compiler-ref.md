@@ -142,7 +142,14 @@ function symbols. This function is optional to implement.
 void setup_var_ref_assignments() noexcept;
 ```
 This function is called when you set `DEFAULT_VAR_REF_HANDLING` to `false` in the config, before the prologue of the function is written,
-asking you to setup assignments for all values which are marked to be "variable references". The details of this are explained further down below.
+asking you to setup assignments for values which are marked to be "variable references". The details of this are explained further down below.
+
+#### load_address_of_var_reference
+```cpp
+void load_address_of_var_reference(AsmReg dst, AssignmentPartRef ap) noexcept;
+```
+This function is called whenever the `ValuePartRef` of a value which is marked as being a variable reference is needed in a register.
+The details of this mechanism are explained further down below.
 
 #### compile_inst
 ```cpp
@@ -157,9 +164,18 @@ How to implement this function is explained in the next section
 ### x86-64
 
 #### cur_call_conv
-TODO
+```cpp
+tpde::x64::CallingConv cur_call_conv() noexcept;
+```
+Returns the calling convention of the function currently being compiled
 
 ### AArch64
+
+#### cur_call_conv
+```cpp
+tpde::a64::CallingConv cur_call_conv() noexcept;
+```
+Returns the calling convention of the function currently being compiled
 
 ## How to compile instructions
 
@@ -579,8 +595,163 @@ bool compile_call_direct(IRInstRef inst) {
 - calling convention is architecture-specific, explained later
 
 ## Manual stack allocations
+- manual allocation of stack slots sometimes needed, e.g. when an instruction needs too many temporaries or manual handling of static allocations
+- allocated using [allocate_stack_slot](@ref CompilerBase::allocate_stack_slot), free'd using [free_stack_slot](@ref CompilerBase::free_stack_slot)
+- NOTE: only free when all blocks in which the stack slot could be live have been compiled
+
+```cpp
+ScratchReg scratch{this};
+AsmReg reg = scratch.alloc_gp();
+// calculate some value in reg...
+
+// allocate slot and spill
+i32 slot = this->allocate_stack_slot(/* size_bytes = */ 8);
+this->spill_reg(reg, slot, /* size_bytes = */ 8); // in architecture-compiler
+
+// use reg for something else
+
+// reload the value from the stack
+this->load_from_stack(reg, slot, /* size_bytes = */ 8, /* sign_extend = */ false); // in architecture compiler
+// use original value of reg...
+
+// free the stack slot
+this->free_stack_slot(slot, /* size_bytes = */ 8);
+```
+
+## Custom Variable Ref Handling
+- ValueRefs can be marked as being "variable references"
+- i.e. this means that these values are pointers that are easy to calculate on-demand and are not spilled when their registers are evicted
+- by default, ValueRefs for static stack allocations are classified as variable references
+- compiler has option to defer handling of variable references to user
+- puts the burden of allocating assignments and stack slots for static allocations to the user but allows to add other cheaply generated references, e.g. global value pointers
+- set `DEFAULT_VAR_REF_HANDLING` to `false`
+- then your compiler will need to implement `setup_var_ref_assignments` and `load_address_of_var_reference`:
+  - `setup_var_ref_assignments` can initialize the assignments of values which need to be valid at the beginning of the function, e.g. static stack allocations
+  - `load_address_of_var_reference` will need to calculate the address of the value the variable reference points to and load it into a register
+- user can use `var_ref_custom_idx` in [ValueAssignment](@ref CompilerBase::ValueAssignment) to store custom information about the value, e.g. an index
+  into a custom data structure
+
+## Architecture-specific
+
+### Calling Conventions
+- each architecture defines a class that implements functionality that depends on calling convention, i.e. function argument, call argument and call result handling
+- provides lists and masks of argument, result and callee-saved registers for each bank
+- your compiler has to implement the `cur_call_conv` function that returns the calling convention for the current function
+- `generate_call` allows passing the calling convention to use
+- currently, only SysV is supported
+
+## Assembler
+- manages data structures for code and data sections, their relocations, symbols and Labels (i.e. function-local symbols)
+- handles generating an object file and unwind information
+- configured using the compiler config, instance stored in CompilerBase
+- currently only x86-64 and AArch64 Linux ELF supported
+- unwind info is synchroneous
+- supports generating C++ exception information
+
+### Sections
+- various sections for code or data created
+- accessed using `SecRef`s
+- current code section stored in Assembler as [current_section](@ref AssemblerElf::current_section)
+- other sections accessed using `get_{data,bss,tdata,tbss,structor,eh_frame}_section`
+
+### Symbols
+- SymRef used to reference symbols
+- various functions to create and define symbols
+
+#### SymBinding
+- three levels to define linkage of symbols, reflecting ELF semantics:
+  - local
+  - weak
+  - global
+
+#### sym_add_undef
+```cpp
+SymRef sym_add_undef(std::string_view name, SymBinding binding) noexcept;
+```
+Adds an undefined symbol, possibly with a name.
+Can be defined later using [sym_def](@ref AssemblerElf::sym_def).
+
+#### sym_predef_*
+```cpp
+SymRef sym_predef_func(std::string_view name, SymBinding binding) noexcept;
+SymRef sym_predef_data(std::string_view name, SymBinding binding) noexcept;
+SymRef sym_predef_tls(std::string_view name, SymBinding binding) noexcept;
+```
+Predefines a symbol for a function, data or TLS object respectively. Must be defined later using [sym_def](@ref AssemblerElf::sym_def)
+for function or TLS objects and using [sym_def_predef_data](@ref AssemblerElf::sym_def_predef_data) for data objects.
+
+#### sym_def_predef_data
+```cpp
+void sym_def_predef_data(SecRef sec, SymRef sym, std::span<const u8> data, u32 align, u32 *off) noexcept;
+```
+Defines a data object refered to by `sym` in the section `sec` with the specified data and alignment.
+If `off` is not a `nullptr`, the offset of the data in the section is written to the `u32` pointed to by `off`.
+
+#### sym_def_data
+```cpp
+SymRef sym_def_data(SecRef sec, std::string_view name, std::span<const u8> data, u32 align, SymBinding binding, u32 *off = nullptr) noexcept;
+```
+Shortcut for [sym_predef_data](@ref AssemblerElf::sym_predef_data) followed by [sym_def_predef_data](@ref AssemblerElf::sym_def_predef_data)
+
+### Relocations
+TODO
+
+### Labels
+- markers for code in current function
+- used for `generate_raw_jump` in architecture compilers to encode control flow when compiling a single instruction
+- create with [label_create](@ref AssemblerElf::label_create)
+- place with [label_place](@ref AssemblerElf::label_place)
+- all control flow within an instruction must converge at the end of it, i.e. no branches to blocks inside control flow
 
 
+```cpp
+void compile_highest_bit_set(IRInstRef inst) noexcept {
+    // get input and output values for instruction
+    AsmReg in_reg = /* ... */;
+    AsmReg out_reg = /* ... */;
+    ScratchReg tmp{this};
+    AsmReg tmp_reg = tmp.alloc_gp();
+    
+    // very inefficient implementation...
+
+    // create labels for jump targets
+    Label fin = this->assembler.label_create();
+    Label cont = this->assembler.label_create();
+
+    ASM(XOR32rr, out_reg, out_reg);
+    ASM(DEC64r, out_reg);
+    ASM(MOV64rr, tmp_reg, in_reg);
+
+    // place continuation label
+    this->assembler.label_place(cont);
+
+    // check if tmp is zero
+    ASM(CMP64ri, tmp_reg, 0);
+
+    // break out of the loop if it is
+    this->generate_raw_jump(Jump::jz, fin);
+    
+    // increment counter and shift tmp
+    ASM(INC64r, out_reg);
+    ASM(SHR64ri, tmp_reg, 1);
+
+    // jump to beginning of the loop
+    this->generate_raw_jump(Jump::jmp, cont);
+
+    // place the label for the end of the loop
+    this->assembler.label_place(fin);
+
+    // no more code generation necessary
+
+    // set the result register for the result value...
+}
+```
+
+- WARNING: don't emit code that might cause registers to be spilled when in conditional control-flow
+
+### Mapping to memory
+
+## Compiling and Generating Object File
 
 <div class="section_buttons">
  
