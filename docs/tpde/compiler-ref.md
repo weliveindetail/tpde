@@ -371,7 +371,7 @@ if (lhs_part.is_const() && !rhs_part.is_const()) {
 }
 ```
 
-## materializing constants
+## Materializing constants
 - sometimes need constant that is not a value for computation in register
 - materializing constants might be tedious (AArch64)
 - simple helper to do that if you have allocated a `ScratchReg`
@@ -540,6 +540,47 @@ bool compile_condbr(IRInstRef inst) {
     return true;
 }
 ```
+
+## Emitting function calls
+- helper function `generate_call` in architecture compiler
+- API subject to change since it is suboptimal atm
+- three types of target:
+  - direct call to symbol
+  - indirect call to ptr in temporary register in ScratchReg
+  - indirect call to ptr in ValuePartRef
+- arguments given by their IRValueRef + flags for sign/zero-extension or passed as byval
+- results returned in [ValuePart](@ref ValuePart)s
+- supports calling vararg functions
+
+```cpp
+bool compile_call_direct(IRInstRef inst) {
+    IRValueRef res_val = /* IR-specific way to get result value */;
+    u32 target_idx = /* implementation-specific way to get index passed to define_func_idx for the target function */;
+    SymRef target_sym = this->func_syms[target_idx];
+
+    tpde::SmallVector<CallArg, 4> args{};
+    for (IRValueRef call_arg : /* IR-specific */) {
+        // no extensions, no byval arguments
+        args.push_back(CallArg{call_arg});
+    }
+
+    // assume only one result register
+    ValuePart res_part{};
+    CallingConv call_conv = /* IR-specific way to decide which calling convention to use */;
+    this->generate_call(target_sym, args, std::span{&res_part, 1}, call_conv, /* variable_args = */ false);
+
+    // assign result
+    this->result_ref(res_val).part(0).set_value(std::move(res_part));
+    return true;
+}
+```
+
+- other ways to get symbols, you can create your own, e.g. LLVM back-end does this
+- calling convention is architecture-specific, explained later
+
+## Manual stack allocations
+
+
 
 <div class="section_buttons">
  
