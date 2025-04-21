@@ -694,7 +694,47 @@ SymRef sym_def_data(SecRef sec, std::string_view name, std::span<const u8> data,
 Shortcut for [sym_predef_data](@ref AssemblerElf::sym_predef_data) followed by [sym_def_predef_data](@ref AssemblerElf::sym_def_predef_data)
 
 ### Relocations
-TODO
+- assembler can generate relocations
+- useful if constant data is needed or globals are used
+- usually target-dependent, you need to know what to generate
+- example: GOT address load
+```cpp
+void load_address_of_global(SymRef global_sym, AsmReg dst) {
+    // emit a mov from the GOT
+    // the following macro invocation will generate a `mov dst, [rip - 1]` to force a 32 bit displacement immediate to be generated
+    ASM(MOV64rm, dst, FE_MEM(/* base = */ FE_IP, /* scale = */ 0, /* idx_reg = */ FE_NOREG, /* disp = */ -1));
+
+    // the immediate operand of the MOV64rm is 4 bytes and comes at the end of the instruction
+    // since the offset is calculated by the CPU from the end of the instruction, we need an addend of -4
+    this->assembler.reloc_text(global_sym, /* type = */ R_X86_64_GOTPCREL, this->assembler.text_cur_off() - 4, /* addend = */ -4);
+}
+
+#### reloc_sec
+```cpp
+void reloc_sec(SecRef sec, SymRef sym, u32 type, u64 offset, i64 addend) noexcept;
+```
+Adds a relocation of `type` (architecture-/platform-specific) in section `sec` at `offset` to the specified symbol `sym`
+with an addend.
+
+#### reloc_pc32
+```cpp
+void reloc_pc32(SecRef sec, SymRef sym, u64 offset, i64 addend) noexcept;
+```
+Adds a 32-bit pc-relative relocation in section `sec` at `offset` to the specified symbol `sym` with an addend in an
+architecture-independent matter.
+
+#### reloc_abs
+```cpp
+void reloc_abs(SecRef sec, SymRef sym, u64 offset, i64 addend) noexcept;
+```
+Adds a 64-bit absolute relocation, i.e. writes the address of `sym`, in section `sec` at `offset` to the specified symbol `sym`
+with an addend in an architecture-independent matter.
+
+#### reloc_text
+```cpp
+void reloc_text(SymRef sym, u32 type, u64 offset, i64 addend = 0) noexcept;
+```
+Adds a reloctation to `sym` in the current text section at `offset` of `type` (architecture-/platform-specific) with an optional addend.
 
 ### Labels
 - markers for code in current function
@@ -749,9 +789,11 @@ void compile_highest_bit_set(IRInstRef inst) noexcept {
 
 - WARNING: don't emit code that might cause registers to be spilled when in conditional control-flow
 
-### Mapping to memory
+#### Jump Tables
 
 ## Compiling and Generating Object File
+
+### Mapping to memory
 
 <div class="section_buttons">
  
