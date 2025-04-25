@@ -1146,6 +1146,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::global_init_to_data(
           }
         }
       }
+      break;
     case llvm::Instruction::BitCast: {
       if (expr->getType()->isPointerTy()) {
         auto *op = expr->getOperand(0);

@@ -50,6 +50,12 @@
 #endif
 #define TPDE_FATAL(msg) ::tpde::fatal_error(msg)
 
+#if __has_cpp_attribute(clang::lifetimebound)
+  #define TPDE_LIFETIMEBOUND [[clang::lifetimebound]]
+#else
+  #define TPDE_LIFETIMEBOUND
+#endif
+
 namespace tpde {
 // NOTE(ts): someone's gonna hate me...
 using u8 = uint8_t;

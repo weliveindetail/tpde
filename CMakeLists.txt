@@ -22,12 +22,19 @@ else ()
 
     # this is annoying
     add_compile_options(-Wno-missing-field-initializers)
-    # practically supported by every compiler
-    add_compile_options(-Wno-nested-anon-types)
-    # i want these sometimes
-    add_compile_options(-Wno-old-style-cast)
-    # We often add unreachable() to default cases
-    add_compile_options(-Wno-covered-switch-default)
+
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        # practically supported by every compiler
+        add_compile_options(-Wno-nested-anon-types)
+        # i want these sometimes
+        add_compile_options(-Wno-old-style-cast)
+        # We often add unreachable() to default cases
+        add_compile_options(-Wno-covered-switch-default)
+        add_compile_options(-Wsign-compare)
+    endif()
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-changes-meaning>)
+    endif()
 
     # for development builds use -Werror and enable sanitizers
     if (PROJECT_IS_TOP_LEVEL)

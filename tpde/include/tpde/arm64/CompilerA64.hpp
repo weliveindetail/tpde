@@ -1438,7 +1438,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_reg(
   assert((size & (size - 1)) == 0);
   assert(util::align_up(frame_off, size) == frame_off);
   // We don't support stack frames that aren't encodeable with add/sub.
-  assert(frame_off >= 0 && frame_off < 0x1'000'000);
+  assert(frame_off < 0x1'000'000);
 
   u32 off = frame_off;
   u32 fp_mod = 0;

@@ -515,7 +515,7 @@ i32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
   } else if (size <= 16) {
     // Align up to next power of two.
     u32 free_list_idx = size == 1 ? 0 : 32 - util::cnt_lz<u32>(size - 1);
-    assert(size <= 1 << free_list_idx);
+    assert(size <= 1u << free_list_idx);
     size = 1 << free_list_idx;
     align_bits = free_list_idx;
 
@@ -960,8 +960,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
     AsmReg cur_reg = AsmReg::make_invalid();
     bool backed_up = false;
     bool was_modified = false;
-    u8 part;
-    ValLocalIdx local_idx;
+    u8 part = 0;
+    ValLocalIdx local_idx = INVALID_VAL_LOCAL_IDX;
 
     ScratchWrapper(CompilerBase *self) : self{self} {}
 

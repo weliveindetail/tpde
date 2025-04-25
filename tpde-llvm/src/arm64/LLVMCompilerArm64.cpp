@@ -38,6 +38,19 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                                      LLVMCompilerBase,
                                      CompilerConfig>;
 
+  using ScratchReg = typename Base::ScratchReg;
+  using ValuePartRef = typename Base::ValuePartRef;
+  using ValuePart = typename Base::ValuePart;
+  using ValueRef = typename Base::ValueRef;
+  using GenericValuePart = typename Base::GenericValuePart;
+  using InstRange = typename Base::InstRange;
+
+  using Assembler = typename Base::Assembler;
+  using SecRef = typename Assembler::SecRef;
+  using SymRef = typename Assembler::SymRef;
+
+  using AsmReg = typename Base::AsmReg;
+
   std::unique_ptr<LLVMAdaptor> adaptor;
 
   static constexpr std::array<AsmReg, 2> LANDING_PAD_RES_REGS = {AsmReg::R0,

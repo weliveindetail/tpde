@@ -75,7 +75,7 @@ constexpr u64 cnt_lz<u64>(const u64 val) {
 
 inline u64 zext(const u64 val, const unsigned bits) {
   assert(bits > 0 && bits < 64 && "invalid sext bit width");
-  return val & (u64{1} << bits) - 1;
+  return val & ((u64{1} << bits) - 1);
 }
 
 inline i64 sext(const u64 val, const unsigned bits) {

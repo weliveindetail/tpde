@@ -363,7 +363,8 @@ void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
     }
 
     const auto loop_begin = loops[parent].end;
-    reinterpret_cast<u32 &>(loops[parent].end) += loops[loop_idx].num_blocks;
+    loops[parent].end = static_cast<BlockIndex>(static_cast<u32>(loop_begin) +
+                                                loops[loop_idx].num_blocks);
     assert(static_cast<u32>(loops[parent].end) -
                static_cast<u32>(loops[parent].begin) <=
            loops[parent].num_blocks);
@@ -378,7 +379,8 @@ void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
     }
 
     const auto block_ref = block_rpo[loop_blocks[i].rpo_idx];
-    const auto block_idx = reinterpret_cast<u32 &>(loops[loop_idx].end)++;
+    const auto block_idx = static_cast<u32>(loops[loop_idx].end);
+    loops[loop_idx].end = static_cast<BlockIndex>(block_idx + 1);
 
     block_layout[block_idx] = block_ref;
     block_loop_map[block_idx] = loop_idx;

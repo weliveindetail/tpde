@@ -115,7 +115,7 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
     return state.a.local_idx;
   }
 
-  ValuePartRef part(unsigned part) noexcept [[clang::lifetimebound]] {
+  ValuePartRef part(unsigned part) noexcept TPDE_LIFETIMEBOUND {
     if (has_assignment()) {
       return ValuePartRef{
           compiler, local_idx(), state.a.assignment, part, state.a.mode == 2};
