@@ -470,6 +470,7 @@ bool compile_ret(IRInstRef inst) {
   can be spilled
 - after all branches are generated, call [release_spilled_regs](@ref CompilerBase::release_spilled_regs) so the register allocator can free values which can no longer be assumed to be in registers
   after the branch
+- WARNING: Never emit a branch to a block other than using `generate_branch_to_block`
 
 ### Unconditional branch
 - need to get `IRBlockRef` to jump to
@@ -708,6 +709,7 @@ void load_address_of_global(SymRef global_sym, AsmReg dst) {
     // since the offset is calculated by the CPU from the end of the instruction, we need an addend of -4
     this->assembler.reloc_text(global_sym, /* type = */ R_X86_64_GOTPCREL, this->assembler.text_cur_off() - 4, /* addend = */ -4);
 }
+```
 
 #### reloc_sec
 ```cpp
@@ -740,7 +742,7 @@ Adds a reloctation to `sym` in the current text section at `offset` of `type` (a
 - markers for code in current function
 - used for `generate_raw_jump` in architecture compilers to encode control flow when compiling a single instruction
 - create with [label_create](@ref AssemblerElf::label_create)
-- place with [label_place](@ref AssemblerElf::label_place)
+- place with [label_place](@ref CompilerBase::label_place)
 - all control flow within an instruction must converge at the end of it, i.e. no branches to blocks inside control flow
 
 
@@ -763,7 +765,7 @@ void compile_highest_bit_set(IRInstRef inst) noexcept {
     ASM(MOV64rr, tmp_reg, in_reg);
 
     // place continuation label
-    this->assembler.label_place(cont);
+    this->label_place(cont);
 
     // check if tmp is zero
     ASM(CMP64ri, tmp_reg, 0);
@@ -779,7 +781,7 @@ void compile_highest_bit_set(IRInstRef inst) noexcept {
     this->generate_raw_jump(Jump::jmp, cont);
 
     // place the label for the end of the loop
-    this->assembler.label_place(fin);
+    this->label_place(fin);
 
     // no more code generation necessary
 
@@ -790,10 +792,94 @@ void compile_highest_bit_set(IRInstRef inst) noexcept {
 - WARNING: don't emit code that might cause registers to be spilled when in conditional control-flow
 
 #### Jump Tables
+- for switch tables it is beneficial to generate jump tables which encode offsets to labels
+- NOTE: you cannot directly jump to blocks using an offset since the register allocator might need
+  to do PHI moves at the edge. You first have to jump to a label that then branches to the target block
+- Assembler has helper function to manually add an unresolved offset to a label
+
+```cpp
+void write_jump_table(Label jump_table, std::span<Label> cases) {
+    SecRef text_ref = this->text_writer.get_sec_ref();
+
+    // offsets are 32 bit in size
+    this->text_writer.align(4);
+
+    // we want the jump table to be continous
+    this->text_writer.ensure_space(4 + 4 * labels.size());
+
+    this->label_place(jump_table);
+
+    // offsets to case labels should be relative to the start of the table
+    u32 table_off = this->text_writer.offset();
+    for (Label case_label : cases) {
+        // add_unresolved_offset can only be used for labels which aren't placed yet
+        // depending on how you use this, the labels might always be unplaced
+        if (this->assembler.label_is_pending(case_label)) {
+            this->assembler.add_unresolved_entry(
+                case_label,
+                text_ref,
+                this->text_writer.offset(),
+                tpde::x64::AssemblerElfX64::UnresolvedEntryKind::JUMP_TABLE // for x64
+            );
+            // write the table_offset, this will be used to calculate the actual offset when the label is placed
+            this->text_writer.write<u32>(table_off);
+        } else {
+            // write the correct offset
+            u32 label_off = this->assembler.label_offset(case_label);
+            this->text_writer.write<i32>((i32)label_off - (i32)table_off);
+        }
+    }
+}
+```
 
 ## Compiling and Generating Object File
+- When compilation is finished (CompilerBase::compile returns), Assembler can be used to create object or write to memory
+
+### Generate object
+- [build_object_file](@ref AssemblerElf::build_object_file) writes out a finished ELF object file to a vector
+
+```cpp
+void compile_elf() {
+    // build compiler
+    if (!compiler->compile()) {
+        return;
+    }
+
+    std::vector<u8> obj = compiler->assembler.build_object_file();
+    // write to disk, pass to mapper, etc...
+}
+```
 
 ### Mapping to memory
+- For ELF Linux x64/AArch64 there is a helper class [ElfMapper](@ref ElfMapper) which maps the compiled sections directly into memory
+- Need to provide a function to resolve undefined symbols
+- Get symbol address using [get_sym_addr](@ref ElfMapper::get_sym_addr)
+- On destruction, automatically free's the memory and deregisters unwind info
+- NOTE: can be reused after reset
+
+```cpp
+void compile_and_map() {
+    // build compiler
+    if (!compiler->compile()) {
+        return;
+    }
+
+    tpde::ElfMapper mapper{};
+    if (!mapper.map(compiler->assembler, [](std::string_view sym_name) -> void* { /* resolve symbol */ })) {
+        return;
+    }
+
+    // code mapped to memory
+
+    // get address of first function compiled
+    void* fun_addr = mapper.get_sym_addr(compiler->func_syms[0]);
+    // and call it
+    static_cast<void(*)()>(fun_addr)();
+
+    // free memory manually
+    mapper.reset();
+}
+```
 
 <div class="section_buttons">
  
