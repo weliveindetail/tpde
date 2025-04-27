@@ -130,11 +130,17 @@ bool ElfMapper::map(AssemblerElfBase &assembler,
       base_off = util::align_up(base_off, sec.hdr.sh_addralign);
     }
     sec.hdr.sh_addr = base_off;
-    base_off += sec.size();
+    size_t sec_size = sec.size();
+    if (as.section == assembler.secref_eh_frame) {
+      // Add zero-terminator to eh_frame. This is required for libgcc's
+      // __register_frame, which iterates over FDEs up to the zero-terminator.
+      sec_size += 4;
+    }
+    base_off += sec_size;
 
     TPDE_LOG_TRACE("allocate section {} size={:#x} to offset={:x}",
                    assembler.sec_name(as.section),
-                   sec.size(),
+                   sec_size,
                    sec.hdr.sh_addr);
   }
   // TODO(ts): align base_off up to page_size?

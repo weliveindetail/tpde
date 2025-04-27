@@ -825,10 +825,7 @@ u32 AssemblerElfBase::except_type_idx_for_sym(const SymRef sym) noexcept {
   return idx;
 }
 
-void AssemblerElfBase::finalize() noexcept {
-  eh_writer.write<u32>(0); // zero-terminator
-  eh_writer.flush();
-}
+void AssemblerElfBase::finalize() noexcept { eh_writer.flush(); }
 
 std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
   using namespace elf;
