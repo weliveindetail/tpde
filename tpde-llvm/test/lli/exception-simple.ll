@@ -2,6 +2,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde-lli %s | FileCheck %s
+; RUN: tpde-lli --orc %s | FileCheck %s
 
 ; CHECK: caught exception
 

@@ -1,8 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+#include <llvm/ExecutionEngine/JITLink/EHFrameSupport.h>
+#include <llvm/ExecutionEngine/Orc/Core.h>
+#include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
+#include <llvm/ExecutionEngine/Orc/MapperJITLinkMemoryManager.h>
+#include <llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h>
+#include <llvm/ExecutionEngine/Orc/Shared/ExecutorSymbolDef.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/IRReader/IRReader.h>
+#include <llvm/Support/Error.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/TargetParser/Host.h>
@@ -21,6 +28,8 @@
 #define ARGS_NOEXCEPT
 #include <args/args.hxx>
 
+static llvm::ExitOnError exit_on_err;
+
 int main(int argc, char *argv[]) {
   args::ArgumentParser parser("TPDE LLI");
   args::HelpFlag help(parser, "help", "Display help", {'h', "help"});
@@ -32,7 +41,8 @@ int main(int argc, char *argv[]) {
       ">5=TRACE",
       {'l', "log-level"},
       2);
-  args::Flag print_ir(parser, "print_ir", "Print LLVM-IR", {"print-ir"});
+
+  args::Flag orc(parser, "orc", "Use LLVM ORC", {"orc"});
 
   args::Positional<std::string> ir_path(
       parser, "ir_path", "Path to the input IR file", "-");
@@ -90,14 +100,49 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  auto mapper = compiler->compile_and_map(*mod, [](std::string_view name) {
-    return ::dlsym(RTLD_DEFAULT, std::string(name).c_str());
-  });
-  void *main_addr = mapper.lookup_global(main_fn);
-  if (!main_addr) {
-    std::cerr << "JIT compilation failed\n";
-    return 1;
+  if (!orc) {
+    auto mapper = compiler->compile_and_map(*mod, [](std::string_view name) {
+      return ::dlsym(RTLD_DEFAULT, std::string(name).c_str());
+    });
+    void *main_addr = mapper.lookup_global(main_fn);
+    if (!main_addr) {
+      std::cerr << "JIT compilation failed\n";
+      return 1;
+    }
+    return ((int (*)(int, char **))main_addr)(0, nullptr);
   }
 
-  return ((int (*)(int, char **))main_addr)(0, nullptr);
+  std::vector<uint8_t> buf;
+  if (!compiler->compile_to_elf(*mod, buf)) {
+    std::cerr << "Failed to compile\n";
+    return 1;
+  }
+  llvm::StringRef buf_strref(reinterpret_cast<char *>(buf.data()), buf.size());
+  auto obj_membuf = llvm::MemoryBuffer::getMemBuffer(buf_strref, "", false);
+  assert(obj_membuf->getBufferSize());
+
+  size_t page_size = getpagesize();
+  llvm::orc::ExecutionSession es(
+      std::make_unique<llvm::orc::UnsupportedExecutorProcessControl>());
+  llvm::orc::MapperJITLinkMemoryManager memory_manager(
+      page_size, std::make_unique<llvm::orc::InProcessMemoryMapper>(page_size));
+  llvm::orc::ObjectLinkingLayer object_layer(es, memory_manager);
+  llvm::orc::JITDylib &dylib = exit_on_err(es.createJITDylib("<main>"));
+
+  // TODO: correct global prefix for MachO/COFF platforms
+  dylib.addGenerator(exit_on_err(
+      llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
+          /*GlobalPrefix=*/'\0')));
+
+  exit_on_err(object_layer.add(dylib, std::move(obj_membuf)));
+
+  object_layer.addPlugin(std::make_unique<llvm::orc::EHFrameRegistrationPlugin>(
+      es, std::make_unique<llvm::jitlink::InProcessEHFrameRegistrar>()));
+
+  llvm::orc::ExecutorSymbolDef sym = exit_on_err(es.lookup(&dylib, "main"));
+  uintptr_t main_addr = static_cast<uintptr_t>(sym.getAddress().getValue());
+  int ret = ((int (*)(int, char **))main_addr)(0, nullptr);
+
+  exit_on_err(es.endSession());
+  return ret;
 }

@@ -2,6 +2,7 @@
 ; SPDX-License-Identifier: LicenseRef-Proprietary
 
 ; RUN: tpde-lli %s | FileCheck %s
+; RUN: tpde-lli --orc %s | FileCheck %s
 
 @hello = private constant [6 x i8] c"Hello\00", align 1
 @stdout = external local_unnamed_addr global ptr, align 8
