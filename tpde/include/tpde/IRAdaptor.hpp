@@ -191,10 +191,6 @@ concept IRAdaptor = requires(T a) {
     { a.cur_highest_val_idx() } -> std::convertible_to<u32>;
   };
 
-  /// Provides the personality function for the current function or
-  /// INVALID_FUNC_REF otherwise
-  { a.cur_personality_func() } -> std::same_as<typename T::IRFuncRef>;
-
   /// Provides an iterator over the arguments of the current function
   { a.cur_args() } -> IRRange<typename T::IRValueRef>;
 

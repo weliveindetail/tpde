@@ -249,6 +249,8 @@ struct LLVMCompilerBase : public LLVMCompiler,
   // TODO(ts): check if it helps to check this
   static bool cur_func_may_emit_calls() noexcept { return true; }
 
+  SymRef cur_personality_func() const noexcept;
+
   static bool try_force_fixed_assignment(IRValueRef) noexcept { return false; }
 
   void analysis_start() noexcept;
@@ -539,6 +541,25 @@ public:
       llvm::Module &mod,
       std::function<void *(std::string_view)> resolver) noexcept override;
 };
+
+template <typename Adaptor, typename Derived, typename Config>
+typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
+    LLVMCompilerBase<Adaptor, Derived, Config>::cur_personality_func()
+        const noexcept {
+  if (!this->adaptor->cur_func->hasPersonalityFn()) {
+    return SymRef();
+  }
+
+  llvm::Constant *p = this->adaptor->cur_func->getPersonalityFn();
+  if (auto *gv = llvm::dyn_cast<llvm::GlobalValue>(p)) [[likely]] {
+    assert(global_syms.contains(gv));
+    return global_syms.lookup(gv);
+  }
+
+  TPDE_LOG_ERR("non-GlobalValue personality function unsupported");
+  this->adaptor->func_unsupported = true;
+  return SymRef();
+}
 
 template <typename Adaptor, typename Derived, typename Config>
 void LLVMCompilerBase<Adaptor, Derived, Config>::analysis_start() noexcept {

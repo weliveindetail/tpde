@@ -166,10 +166,6 @@ struct TestIRAdaptor {
     return highest_local_val_idx;
   }
 
-  [[nodiscard]] IRFuncRef cur_personality_func() const noexcept {
-    return INVALID_FUNC_REF;
-  }
-
   [[nodiscard]] auto cur_args() const noexcept {
     const auto &func = ir->functions[cur_func];
     return std::views::iota(func.arg_begin_idx, func.arg_end_idx) |

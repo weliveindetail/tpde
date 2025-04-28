@@ -222,14 +222,6 @@ struct LLVMAdaptor {
     return values.size();
   }
 
-  [[nodiscard]] IRFuncRef cur_personality_func() const noexcept {
-    if (!cur_func->hasPersonalityFn()) {
-      return nullptr;
-    }
-
-    return llvm::cast<llvm::Function>(cur_func->getPersonalityFn());
-  }
-
   [[nodiscard]] auto cur_args() const noexcept {
     return cur_func->args() |
            std::views::transform([](llvm::Argument &arg) { return &arg; });

@@ -87,6 +87,12 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
 
   { a.cur_func_may_emit_calls() } -> std::convertible_to<bool>;
 
+  /// Provides the personality function for the current function or
+  /// an invalid SymRef otherwise.
+  {
+    a.cur_personality_func()
+  } -> std::same_as<typename Config::Assembler::SymRef>;
+
   {
     a.try_force_fixed_assignment(ARG(typename T::IRValueRef))
   } -> std::convertible_to<bool>;

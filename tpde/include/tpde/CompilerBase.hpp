@@ -103,7 +103,9 @@ struct CompilerBase {
   // allocations
   util::SmallVector<typename Assembler::Label> block_labels;
 
-  util::SmallVector<std::pair<IRFuncRef, typename Assembler::SymRef>, 4>
+  util::SmallVector<
+      std::pair<typename Assembler::SymRef, typename Assembler::SymRef>,
+      4>
       personality_syms = {};
 
   struct ScratchReg;
@@ -1320,11 +1322,11 @@ typename CompilerBase<Adaptor, Derived, Config>::Assembler::SymRef
   using SymRef = typename Assembler::SymRef;
   SymRef personality_sym;
   if (this->adaptor->cur_needs_unwind_info()) {
-    const IRFuncRef personality_func = this->adaptor->cur_personality_func();
-    if (personality_func != Adaptor::INVALID_FUNC_REF) {
-      for (const auto &[func_ref, sym] : personality_syms) {
-        if (func_ref == personality_func) {
-          personality_sym = sym;
+    SymRef personality_func = derived()->cur_personality_func();
+    if (personality_func.valid()) {
+      for (const auto &[fn_sym, ptr_sym] : personality_syms) {
+        if (fn_sym == personality_func) {
+          personality_sym = ptr_sym;
           break;
         }
       }
@@ -1332,22 +1334,13 @@ typename CompilerBase<Adaptor, Derived, Config>::Assembler::SymRef
       if (!personality_sym.valid()) {
         // create symbol that contains the address of the personality
         // function
-        auto fn_sym = this->assembler.sym_add_undef(
-            this->adaptor->func_link_name(personality_func),
-            Assembler::SymBinding::GLOBAL);
-
         u32 off;
-        u8 tmp[8] = {};
+        static constexpr std::array<u8, 8> zero{};
 
         auto rodata = this->assembler.get_data_section(true, true);
-        personality_sym =
-            this->assembler.sym_def_data(rodata,
-                                         {},
-                                         {tmp, sizeof(tmp)},
-                                         8,
-                                         Assembler::SymBinding::LOCAL,
-                                         &off);
-        this->assembler.reloc_abs(rodata, fn_sym, off, 0);
+        personality_sym = this->assembler.sym_def_data(
+            rodata, "", zero, 8, Assembler::SymBinding::LOCAL, &off);
+        this->assembler.reloc_abs(rodata, personality_func, off, 0);
 
         personality_syms.emplace_back(personality_func, personality_sym);
       }
