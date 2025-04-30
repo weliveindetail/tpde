@@ -16,6 +16,9 @@ class Triple;
 namespace tpde_llvm {
 
 class JITMapperImpl;
+
+/// In-memory mapper for JIT execution. Memory and registered unwind info will
+/// be released on destruction.
 class JITMapper {
 private:
   friend class JITMapperImpl;
@@ -32,8 +35,11 @@ public:
   JITMapper &operator=(const JITMapper &) = delete;
   JITMapper &operator=(JITMapper &&other) noexcept;
 
+  /// Get the address for a global, which must be contained in the compiled
+  /// module.
   void *lookup_global(llvm::GlobalValue *) noexcept;
 
+  /// Indicate whether compilation and in-memory mapping was successful.
   operator bool() const noexcept { return impl != nullptr; }
 };
 
@@ -48,8 +54,9 @@ public:
   LLVMCompiler(const LLVMCompiler &) = delete;
   LLVMCompiler &operator=(const LLVMCompiler &) = delete;
 
-  /// Create a compiler for the specified target triple.
-  /// \returns null if the triple is not supported.
+  /// Create a compiler for the specified target triple; returns null if the
+  /// triple is not supported. The only supported code model is small, the only
+  /// supported relocation model is PIC.
   static std::unique_ptr<LLVMCompiler>
       create(const llvm::Triple &triple) noexcept;
 
@@ -62,8 +69,6 @@ public:
   /// Compile the module and map it into memory, calling resolver to resolve
   /// references to external symbols. This function will also register unwind
   /// information. The module might be modified during compilation.
-  /// \returns RAII container for the code that will free any allocated memory
-  /// while mapping and deregister unwind information
   virtual JITMapper compile_and_map(
       llvm::Module &mod,
       std::function<void *(std::string_view)> resolver) noexcept = 0;

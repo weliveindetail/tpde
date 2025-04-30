@@ -29,14 +29,14 @@ and incrementing through the pre-increment operator.
 using IRValueRef = /* opaque reference type */;
 ```
 To reference values in the IR, TPDE uses the `IRValueRef` type defined in the `IRAdaptor`.
-As it is sometimes stored in arrays or the like, it should not exceed the size of a pointer.
+As it might be stored in arrays or the like, it should not exceed the size of a pointer.
 
 ### IRInstRef
 ```cpp
 using IRInstRef = /* opaque reference type */;
 ```
 To reference instructions in the IR, TPDE uses the `IRInstRef` type defined in the `IRAdaptor`.
-As it is sometimes stored in arrays or the like, it should not exceed the size of a pointer.
+As it might be stored in arrays or the like, it should not exceed the size of a pointer.
 
 Note that if your IR treats values the same as instructions, `IRInstRef` may be the same as `IRValueRef`.
 
@@ -45,14 +45,14 @@ Note that if your IR treats values the same as instructions, `IRInstRef` may be 
 using IRBlockRef = /* opaque reference type */;
 ```
 To reference basic blocks in the IR, TPDE uses the `IRBlockRef` type defined in the `IRAdaptor`.
-As it is sometimes stored in arrays or the like, e.g. for the block layout, it should not exceed the size of a pointer.
+As it might be stored in arrays or the like, e.g. for the block layout, it should not exceed the size of a pointer.
 
 ### IRFuncRef
 ```cpp
 using IRFuncRef = /* opaque reference type */;
 ```
 To reference functions in the IR, TPDE uses the `IRFuncRef` type defined in the `IRAdaptor`.
-As it is sometimes stored in arrays or the like, it should not exceed the size of a pointer.
+As it might be stored in arrays or the like, it should not exceed the size of a pointer.
 
 Note that this is the only reference type that is stored across the compilation of multiple functions and as such a `IRFuncRef` must reference the same
 function for the whole compilation.
