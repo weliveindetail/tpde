@@ -164,6 +164,9 @@ struct LLVMCompilerBase : public LLVMCompiler,
 
   tpde::util::BumpAllocator<> const_allocator;
 
+  /// Set of all symbols referenced by llvm.used.
+  llvm::SmallPtrSet<const llvm::GlobalObject *, 2> used_globals;
+
   llvm::DenseMap<const llvm::GlobalValue *, SymRef> global_syms;
   /// Map from LLVM Comdat to the corresponding group section.
   llvm::DenseMap<const llvm::Comdat *, SecRef> group_secs;
@@ -728,6 +731,7 @@ LLVMCompilerBase<Adaptor, Derived, Config>::SecRef
   bool read_only = true;
   bool init_zero = false;
   bool is_func = llvm::isa<llvm::Function>(go);
+  bool retain = used_globals.contains(go);
   if (auto *gv = llvm::dyn_cast<llvm::GlobalVariable>(go)) {
     tls = gv->isThreadLocal();
     read_only = gv->isConstant();
@@ -740,7 +744,7 @@ LLVMCompilerBase<Adaptor, Derived, Config>::SecRef
   const llvm::Comdat *comdat = go->getComdat();
 
   // If the section name is empty, use the default section.
-  if (!comdat && sec_name.empty()) [[likely]] {
+  if (!retain && !comdat && sec_name.empty()) [[likely]] {
     if (is_func) {
       return this->assembler.get_text_section();
     }
@@ -824,6 +828,10 @@ LLVMCompilerBase<Adaptor, Derived, Config>::SecRef
     def_name = ".rodata";
   }
 
+  if (retain) {
+    flags |= SHF_GNU_RETAIN;
+  }
+
   if (sec_name.empty()) {
     sec_name = def_name; // Use default prefix
   }
@@ -863,12 +871,24 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
       return false;
     }
 
+    llvm::StringRef name = gv.getName();
+
     if (gv.hasAppendingLinkage()) [[unlikely]] {
-      if (gv.getName() != "llvm.global_ctors" &&
-          gv.getName() != "llvm.global_dtors" && gv.getName() != "llvm.used" &&
-          gv.getName() != "llvm.compiler.used") {
+      if (name == "llvm.used") {
+        auto init = llvm::cast<llvm::GlobalVariable>(gv).getInitializer();
+        if (auto used_array = llvm::cast_or_null<llvm::ConstantArray>(init)) {
+          for (const auto &op : used_array->operands()) {
+            if (const auto *go = llvm::dyn_cast<llvm::GlobalObject>(op)) {
+              used_globals.insert(go);
+            }
+          }
+        }
+      }
+
+      if (name != "llvm.global_ctors" && name != "llvm.global_dtors" &&
+          name != "llvm.used" && name != "llvm.compiler.used") {
         TPDE_LOG_ERR("Unknown global with appending linkage: {}\n",
-                     static_cast<std::string_view>(gv.getName()));
+                     static_cast<std::string_view>(name));
         return false;
       }
       return true;
@@ -877,11 +897,11 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
     auto binding = convert_linkage(&gv);
     SymRef sym;
     if (gv.isThreadLocal()) {
-      sym = this->assembler.sym_predef_tls(gv.getName(), binding);
+      sym = this->assembler.sym_predef_tls(name, binding);
     } else if (!gv.isDeclarationForLinker()) {
-      sym = this->assembler.sym_predef_data(gv.getName(), binding);
+      sym = this->assembler.sym_predef_data(name, binding);
     } else {
-      sym = this->assembler.sym_add_undef(gv.getName(), binding);
+      sym = this->assembler.sym_add_undef(name, binding);
     }
     global_syms[&gv] = sym;
     if (!gv.hasDefaultVisibility()) {
@@ -930,10 +950,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
 
     auto *init = gv->getInitializer();
     if (gv->hasAppendingLinkage()) [[unlikely]] {
-      // TODO: for non-aliases in llvm.used, set SHF_GNU_RETAIN to prevent
-      // linker section GC from removing the entire section.
       if (gv->getName() == "llvm.used" ||
           gv->getName() == "llvm.compiler.used") {
+        // llvm.used is collected above and handled by select_section.
+        // llvm.compiler.used needs no special handling.
         continue;
       }
 
