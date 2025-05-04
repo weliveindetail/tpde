@@ -11,6 +11,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/GlobalIFunc.h>
 #include <llvm/IR/GlobalObject.h>
+#include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
@@ -970,52 +971,66 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
         // llvm.compiler.used needs no special handling.
         continue;
       }
-
-      tpde::util::SmallVector<std::pair<SymRef, u32>, 16> functions;
       assert(gv->getName() == "llvm.global_ctors" ||
              gv->getName() == "llvm.global_dtors");
       if (llvm::isa<llvm::ConstantAggregateZero>(init)) {
         continue;
       }
 
-      auto *array = llvm::dyn_cast<llvm::ConstantArray>(init);
-      assert(array);
+      struct Structor {
+        SymRef func;
+        SecRef group;
+        unsigned priority;
 
-      u32 max = array->getNumOperands();
+        bool operator<(const Structor &rhs) const noexcept {
+          return std::tie(group, priority) < std::tie(rhs.group, rhs.priority);
+        }
+      };
+      tpde::util::SmallVector<Structor, 16> structors;
+
       // see
       // https://llvm.org/docs/LangRef.html#the-llvm-global-ctors-global-variable
-      for (auto i = 0u; i < max; ++i) {
-        auto *entry = array->getOperand(i);
-        auto *prio = llvm::dyn_cast<llvm::ConstantInt>(
-            entry->getAggregateElement(static_cast<unsigned>(0)));
-        assert(prio);
-        auto *ptr =
-            llvm::dyn_cast<llvm::GlobalValue>(entry->getAggregateElement(1));
-        assert(ptr);
-        // we should not need to care about the third element
-        functions.emplace_back(global_sym(ptr), prio->getZExtValue());
+      for (auto &entry : llvm::cast<llvm::ConstantArray>(init)->operands()) {
+        const auto *str = llvm::cast<llvm::ConstantStruct>(entry);
+        auto *prio = llvm::cast<llvm::ConstantInt>(str->getOperand(0));
+        auto *ptr = llvm::cast<llvm::GlobalValue>(str->getOperand(1));
+        SecRef group = Assembler::INVALID_SEC_REF;
+        if (auto *comdat = str->getOperand(2); !comdat->isNullValue()) {
+          comdat = comdat->stripPointerCasts();
+          if (auto *comdat_gv = llvm::dyn_cast<llvm::GlobalObject>(comdat)) {
+            if (comdat_gv->isDeclarationForLinker()) {
+              // Cf. AsmPrinter::emitXXStructorList
+              continue;
+            }
+            group = get_group_section(comdat_gv);
+          } else {
+            TPDE_LOG_ERR("non-GlobalObject ctor/dtor comdat not implemented");
+            return false;
+          }
+        }
+        unsigned prio_val = prio->getLimitedValue(65535);
+        if (prio_val != 65535) {
+          TPDE_LOG_ERR("ctor/dtor priorities not implemented");
+          return false;
+        }
+        structors.emplace_back(global_sym(ptr), group, prio_val);
       }
 
       const auto is_ctor = (gv->getName() == "llvm.global_ctors");
-      if (is_ctor) {
-        std::sort(functions.begin(), functions.end(), [](auto &lhs, auto &rhs) {
-          return lhs.second < rhs.second;
-        });
-      } else {
-        std::sort(functions.begin(), functions.end(), [](auto &lhs, auto &rhs) {
-          return lhs.second > rhs.second;
-        });
-      }
 
-      // TODO(ts): this hardcodes the ELF assembler
-      auto secref = this->assembler.get_structor_section(is_ctor);
-      auto &sec = this->assembler.get_section(secref);
-      u32 off = sec.data.size();
-      sec.data.resize(sec.data.size() + functions.size() * sizeof(u64));
+      // We need to create one array section per comdat group per priority.
+      // Therefore, sort so that structors for the same section are together.
+      std::sort(structors.begin(), structors.end());
 
-      for (auto i = 0u; i < functions.size(); ++i) {
-        this->assembler.reloc_abs(
-            secref, functions[i].first, off + i * sizeof(u64), 0);
+      SecRef secref = Assembler::INVALID_SEC_REF;
+      for (size_t i = 0; i < structors.size(); ++i) {
+        const auto &s = structors[i];
+        if (i == 0 || structors[i - 1] < s) {
+          secref = this->assembler.create_structor_section(is_ctor, s.group);
+        }
+        auto &sec = this->assembler.get_section(secref);
+        sec.data.resize(sec.data.size() + 8);
+        this->assembler.reloc_abs(secref, s.func, sec.data.size() - 8, 0);
       }
       continue;
     }

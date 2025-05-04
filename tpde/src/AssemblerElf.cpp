@@ -116,8 +116,6 @@ void AssemblerElfBase::reset() noexcept {
   secref_bss = INVALID_SEC_REF;
   secref_tdata = INVALID_SEC_REF;
   secref_tbss = INVALID_SEC_REF;
-  secref_init_array = INVALID_SEC_REF;
-  secref_fini_array = INVALID_SEC_REF;
   secref_eh_frame = INVALID_SEC_REF;
   secref_except_table = INVALID_SEC_REF;
   cur_personality_func_addr = SymRef();
@@ -232,13 +230,14 @@ AssemblerElfBase::SecRef AssemblerElfBase::get_tbss_section() noexcept {
 }
 
 AssemblerElfBase::SecRef
-    AssemblerElfBase::get_structor_section(bool init) noexcept {
-  // TODO: comdat, priorities
-  SecRef &secref = init ? secref_init_array : secref_fini_array;
-  unsigned off_r = init ? elf::sec_off(".rela.init_array")
-                        : elf::sec_off(".rela.fini_array");
+    AssemblerElfBase::create_structor_section(bool init,
+                                              SecRef group) noexcept {
+  // TODO: priorities
+  std::string_view name = init ? ".init_array" : ".fini_array";
   unsigned type = init ? SHT_INIT_ARRAY : SHT_FINI_ARRAY;
-  (void)get_or_create_section(secref, off_r, type, SHF_ALLOC | SHF_WRITE, 8);
+  SecRef secref =
+      create_section(name, type, SHF_ALLOC | SHF_WRITE, true, group);
+  get_section(secref).hdr.sh_addralign = 8;
   return secref;
 }
 

@@ -387,9 +387,6 @@ protected:
   SecRef secref_tdata = INVALID_SEC_REF;
   SecRef secref_tbss = INVALID_SEC_REF;
 
-  SecRef secref_init_array = INVALID_SEC_REF;
-  SecRef secref_fini_array = INVALID_SEC_REF;
-
   /// Unwind Info
   SecRef secref_eh_frame = INVALID_SEC_REF;
   SecRef secref_except_table = INVALID_SEC_REF;
@@ -502,7 +499,8 @@ public:
   SecRef get_bss_section() noexcept;
   SecRef get_tdata_section() noexcept;
   SecRef get_tbss_section() noexcept;
-  SecRef get_structor_section(bool init) noexcept;
+  SecRef create_structor_section(bool init,
+                                 SecRef group = INVALID_SEC_REF) noexcept;
 
   /// Create a new section with the given name, ELF section type, and flags.
   /// Optionally, a corresponding relocation (.rela) section is also created,
