@@ -37,6 +37,8 @@ int main(int argc, char *argv[]) {
       {'l', "log-level"},
       2);
   args::Flag print_ir(parser, "print_ir", "Print LLVM-IR", {"print-ir"});
+  args::Flag regular_exit(
+      parser, "regular_exit", "Exit regularly (no _Exit)", {"regular-exit"});
 
   args::ValueFlag<std::string> target(
       parser, "target", "Target architecture", {"target"}, args::Options::None);
@@ -170,5 +172,9 @@ int main(int argc, char *argv[]) {
     mod->print(llvm::outs(), nullptr);
   }
 
-  std::_Exit(0);
+  if (!regular_exit) {
+    std::_Exit(0);
+  }
+
+  return 0;
 }

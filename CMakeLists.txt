@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(TPDE_INCLUDE_TESTS "enable test" ON)
+option(TPDE_ENABLE_COVERAGE "enable coverage instrumentation" OFF)
 
 # warnings
 if (MSVC)
@@ -48,6 +49,13 @@ else ()
     endif ()
 endif ()
 
+if (TPDE_ENABLE_COVERAGE)
+    if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        error("coverage build only supported with Clang")
+    endif()
+    add_compile_options(-fprofile-instr-generate -fcoverage-mapping)
+    add_link_options(-fprofile-instr-generate -fcoverage-mapping)
+endif()
 
 if (NOT LLVM_FOUND)
     find_package(LLVM 19.1 CONFIG)
