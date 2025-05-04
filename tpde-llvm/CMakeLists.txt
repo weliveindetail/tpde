@@ -168,11 +168,12 @@ target_include_directories(tpde-lli PRIVATE ../deps/)
 
 # Tests
 
-# configure lit.site.cfg.py
-configure_file(test/lit.site.cfg.py.in test/lit.site.cfg.py @ONLY)
+if (TPDE_INCLUDE_TESTS)
+    # configure lit.site.cfg.py
+    configure_file(test/lit.site.cfg.py.in test/lit.site.cfg.py @ONLY)
+    add_tpde_lit_testsuite(check-tpde-llvm "${CMAKE_CURRENT_BINARY_DIR}/test"
+        DEPENDS tpde-llc tpde-lli)
 
-# TODO(ts): make this configurable
-add_custom_target(tpde_llvm_filetest
-    COMMAND ${LIT} -sv "${CMAKE_CURRENT_BINARY_DIR}/test"
-    DEPENDS tpde-llc tpde-lli
-    USES_TERMINAL)
+    # Backwards-compatibility
+    add_custom_target(tpde_llvm_filetest DEPENDS check-tpde-llvm)
+endif()

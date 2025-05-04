@@ -134,11 +134,12 @@ target_sources(tpde_test PRIVATE
 
 # Tests
 
-# configure lit.site.cfg.py
-configure_file(test/filetest/lit.site.cfg.py.in test/filetest/lit.site.cfg.py @ONLY)
+if (TPDE_INCLUDE_TESTS)
+    # configure lit.site.cfg.py
+    configure_file(test/filetest/lit.site.cfg.py.in test/filetest/lit.site.cfg.py @ONLY)
+    add_tpde_lit_testsuite(check-tpde-core "${CMAKE_CURRENT_BINARY_DIR}/test/filetest"
+        DEPENDS tpde_test)
 
-# TODO(ts): make this configurable
-add_custom_target(tpde_filetest
-    COMMAND ${LIT} -v "${CMAKE_CURRENT_BINARY_DIR}/test/filetest"
-    DEPENDS tpde_test
-    USES_TERMINAL)
+    # Backwards-compatibility
+    add_custom_target(tpde_filetest DEPENDS check-tpde-core)
+endif()

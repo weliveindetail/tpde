@@ -10,6 +10,8 @@ project(tpde2)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(TPDE_INCLUDE_TESTS "enable test" ON)
+
 # warnings
 if (MSVC)
     add_compile_options(/W4 /WX)
@@ -55,9 +57,34 @@ else ()
     message(STATUS "Using LLVM from parent directory")
 endif ()
 
-find_program(LIT NAMES ${LLVM_DEFAULT_EXTERNAL_LIT} lit llvm-lit REQUIRED)
-message(STATUS "Found lit: ${LIT}")
+if (TPDE_INCLUDE_TESTS)
+    find_program(LIT NAMES ${LLVM_DEFAULT_EXTERNAL_LIT} lit llvm-lit REQUIRED)
+    message(STATUS "Found lit: ${LIT}")
+endif()
+
+function(add_tpde_lit_target target)
+    cmake_parse_arguments(ARG "" "" "DEPENDS" ${ARGN})
+    add_custom_target(${target}
+        COMMAND ${LIT} -sv ${ARG_UNPARSED_ARGUMENTS}
+        USES_TERMINAL)
+    if (ARG_DEPENDS)
+        add_dependencies(${target} ${ARG_DEPENDS})
+    endif()
+endfunction()
+
+function(add_tpde_lit_testsuite target)
+    cmake_parse_arguments(ARG "" "" "DEPENDS" ${ARGN})
+    add_tpde_lit_target(${target} ${ARG_UNPARSED_ARGUMENTS} DEPENDS ${ARG_DEPENDS})
+    set_property(GLOBAL APPEND PROPERTY TPDE_LIT_TESTSUITES ${ARG_UNPARSED_ARGUMENTS})
+    set_property(GLOBAL APPEND PROPERTY TPDE_LIT_DEPENDS ${ARG_DEPENDS})
+endfunction()
 
 # *sigh*, why can't CLion just support this workflow...
 # add_subdirectory(tpde "${PROJECT_BINARY_DIR}/tpde")
 add_subdirectory(tpde-llvm)
+
+if (TPDE_INCLUDE_TESTS)
+    get_property(TPDE_LIT_TESTSUITES GLOBAL PROPERTY TPDE_LIT_TESTSUITES)
+    get_property(TPDE_LIT_DEPENDS GLOBAL PROPERTY TPDE_LIT_DEPENDS)
+    add_tpde_lit_target(check-tpde ${TPDE_LIT_TESTSUITES} DEPENDS ${TPDE_LIT_DEPENDS})
+endif()
