@@ -363,6 +363,11 @@ public:
 
   void define_func_idx(IRFuncRef func, const u32 idx) noexcept;
 
+  /// Get comdat section group. sym_hint, if present, is the symbol associated
+  /// with go to avoid an extra lookup.
+  SecRef get_group_section(const llvm::GlobalObject *go,
+                           SymRef sym_hint = {}) noexcept;
+
   /// Select section for a global. (and create if needed)
   SecRef select_section(SymRef sym,
                         const llvm::GlobalObject *go,
@@ -716,6 +721,57 @@ void LLVMCompilerBase<Adaptor, Derived, Config>::define_func_idx(
 
 template <typename Adaptor, typename Derived, typename Config>
 LLVMCompilerBase<Adaptor, Derived, Config>::SecRef
+    LLVMCompilerBase<Adaptor, Derived, Config>::get_group_section(
+        const llvm::GlobalObject *go, SymRef sym_hint) noexcept {
+  const llvm::Comdat *comdat = go->getComdat();
+  if (!comdat) {
+    return Assembler::INVALID_SEC_REF;
+  }
+
+  bool is_comdat;
+  switch (comdat->getSelectionKind()) {
+  case llvm::Comdat::Any: is_comdat = true; break;
+  case llvm::Comdat::NoDeduplicate: is_comdat = false; break;
+  default:
+    // ELF only support any/nodeduplicate.
+    return Assembler::INVALID_SEC_REF;
+  }
+
+  auto [it, inserted] = this->group_secs.try_emplace(comdat);
+  if (inserted) {
+    // We need to find or create the group signature symbol. Typically, this
+    // is the same as the name of the global.
+    SymRef group_sym;
+    bool define_group_sym = false;
+    if (llvm::StringRef cn = comdat->getName();
+        sym_hint.valid() && go->getName() == cn) {
+      group_sym = sym_hint;
+    } else if (auto *cgv = this->adaptor->mod->getNamedValue(cn)) {
+      // In this case, we need to search for or create a symbol with the
+      // comdat name. As we don't have a symbol string map, we do this
+      // through the Module's map to find the matching global and map this to
+      // the symbol.
+      // TODO: name mangling might make this impossible: the names of globals
+      // are mangled, but comdat names are not.
+      group_sym = global_sym(cgv);
+    } else {
+      // Create a new symbol if no equally named global, thus symbol, exists.
+      // The symbol will be STB_LOCAL, STT_NOTYPE, section=group.
+      group_sym =
+          this->assembler.sym_add_undef(cn, Assembler::SymBinding::LOCAL);
+      define_group_sym = true;
+    }
+    it->second = this->assembler.create_group_section(group_sym, is_comdat);
+    if (define_group_sym) {
+      this->assembler.sym_def(group_sym, it->second, 0, 0);
+    }
+  }
+
+  return it->second;
+}
+
+template <typename Adaptor, typename Derived, typename Config>
+LLVMCompilerBase<Adaptor, Derived, Config>::SecRef
     LLVMCompilerBase<Adaptor, Derived, Config>::select_section(
         SymRef sym, const llvm::GlobalObject *go, bool needs_relocs) noexcept {
   // TODO: factor this out into platform-specific code.
@@ -759,49 +815,7 @@ LLVMCompilerBase<Adaptor, Derived, Config>::SecRef
     return this->assembler.get_data_section(read_only, needs_relocs);
   }
 
-  llvm::StringRef go_name = go->getName();
-
-  SecRef group_sec = Assembler::INVALID_SEC_REF;
-  if (comdat) {
-    bool is_comdat;
-    switch (comdat->getSelectionKind()) {
-    case llvm::Comdat::Any: is_comdat = true; break;
-    case llvm::Comdat::NoDeduplicate: is_comdat = false; break;
-    default:
-      // ELF only support any/nodeduplicate.
-      return Assembler::INVALID_SEC_REF;
-    }
-
-    auto [it, inserted] = this->group_secs.try_emplace(comdat);
-    if (inserted) {
-      // We need to find or create the group signature symbol. Typically, this
-      // is the same as the name of the global.
-      SymRef group_sym;
-      bool define_group_sym = false;
-      if (llvm::StringRef cn = comdat->getName(); go_name == cn) {
-        group_sym = sym;
-      } else if (auto *cgv = this->adaptor->mod->getNamedValue(cn)) {
-        // In this case, we need to search for or create a symbol with the
-        // comdat name. As we don't have a symbol string map, we do this
-        // through the Module's map to find the matching global and map this to
-        // the symbol.
-        // TODO: name mangling might make this impossible: the names of globals
-        // are mangled, but comdat names are not.
-        group_sym = global_sym(cgv);
-      } else {
-        // Create a new symbol if no equally named global, thus symbol, exists.
-        // The symbol will be STB_LOCAL, STT_NOTYPE, section=group.
-        group_sym =
-            this->assembler.sym_add_undef(cn, Assembler::SymBinding::LOCAL);
-        define_group_sym = true;
-      }
-      it->second = this->assembler.create_group_section(group_sym, is_comdat);
-      if (define_group_sym) {
-        this->assembler.sym_def(group_sym, it->second, 0, 0);
-      }
-    }
-    group_sec = it->second;
-  }
+  SecRef group_sec = get_group_section(go, sym);
 
   llvm::StringRef def_name;
   unsigned type = SHT_PROGBITS;
@@ -837,6 +851,7 @@ LLVMCompilerBase<Adaptor, Derived, Config>::SecRef
 
   llvm::SmallString<512> name_buf;
   if (comdat) {
+    llvm::StringRef go_name = go->getName();
     name_buf.reserve(sec_name.size() + 1 + go_name.size());
     name_buf.append(sec_name);
     name_buf.push_back('.');
