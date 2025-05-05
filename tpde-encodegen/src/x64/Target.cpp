@@ -22,7 +22,7 @@ namespace tpde_encgen::x64 {
 
 void EncodingTargetX64::get_inst_candidates(
     llvm::MachineInstr &mi, llvm::SmallVectorImpl<MICandidate> &candidates) {
-  const llvm::LLVMTargetMachine &TM = mi.getMF()->getTarget();
+  const llvm::TargetMachine &TM = mi.getMF()->getTarget();
   const llvm::MCInstrInfo &MCII = *TM.getMCInstrInfo();
   const llvm::MCInstrDesc &MCID = MCII.get(mi.getOpcode());
   (void)MCID;

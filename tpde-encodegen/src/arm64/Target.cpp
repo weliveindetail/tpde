@@ -35,7 +35,7 @@ std::string format_reg(const llvm::MachineOperand &mo, std::string_view op) {
 
 void EncodingTargetArm64::get_inst_candidates(
     llvm::MachineInstr &mi, llvm::SmallVectorImpl<MICandidate> &candidates) {
-  const llvm::LLVMTargetMachine &TM = mi.getMF()->getTarget();
+  const llvm::TargetMachine &TM = mi.getMF()->getTarget();
   const llvm::MCInstrInfo &MCII = *TM.getMCInstrInfo();
   const llvm::MCInstrDesc &MCID = MCII.get(mi.getOpcode());
   (void)MCID;
@@ -465,6 +465,7 @@ void EncodingTargetArm64::get_inst_candidates(
 
   case_default("RBITWr", "RBITw");
   case_default("RBITXr", "RBITx");
+  case_default("REV16Wr", "REV16w");
   case_default("REVWr", "REV32w");
   case_default("REVXr", "REV64x");
   case_default("CLZWr", "CLZw");
@@ -617,7 +618,13 @@ void EncodingTargetArm64::get_inst_candidates(
   case_default("ABSv4i32", "ABS4s");
   case_default("ABSv2i64", "ABS2d");
   case_default("CNTv8i8", "CNT8b");
+  case_default("SADDLVv8i8v", "SADDLV8b");
   case_default("UADDLVv8i8v", "UADDLV8b");
+  case_default("SMINVv8i8v", "SMINV8b");
+  case_default("UMINVv8i8v", "UMINV8b");
+  case_default("SMAXVv8i8v", "SMAXV8b");
+  case_default("UMAXVv8i8v", "UMAXV8b");
+  case_default("ADDVv8i8v", "ADDV8b");
   case_default("ANDv8i8", "AND8b");
   case_default("ANDv16i8", "AND16b");
   case_default("BICv8i8", "BIC8b");
@@ -874,7 +881,7 @@ void EncodingTargetArm64::get_inst_candidates(
 
 std::optional<std::pair<unsigned, unsigned>>
     EncodingTargetArm64::is_move(const llvm::MachineInstr &mi) {
-  const llvm::LLVMTargetMachine &TM = mi.getMF()->getTarget();
+  const llvm::TargetMachine &TM = mi.getMF()->getTarget();
   llvm::StringRef name = TM.getMCInstrInfo()->getName(mi.getOpcode());
   if (name != "ORRXrs") {
     return std::nullopt;

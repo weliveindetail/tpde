@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+#include <llvm/Config/llvm-config.h>
 #include <llvm/ExecutionEngine/JITLink/EHFrameSupport.h>
 #include <llvm/ExecutionEngine/Orc/Core.h>
+#if LLVM_VERSION_MAJOR >= 20
+  #include <llvm/ExecutionEngine/Orc/EHFrameRegistrationPlugin.h>
+#endif
 #include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
 #include <llvm/ExecutionEngine/Orc/MapperJITLinkMemoryManager.h>
 #include <llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h>

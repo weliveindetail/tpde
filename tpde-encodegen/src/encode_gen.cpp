@@ -245,7 +245,7 @@ bool generate_inst(std::string &buf,
   }
 
   if (inst->isPseudo()) {
-    const llvm::LLVMTargetMachine &TM = inst->getMF()->getTarget();
+    const llvm::TargetMachine &TM = inst->getMF()->getTarget();
     const llvm::MCInstrInfo &MCII = *TM.getMCInstrInfo();
     llvm::StringRef Name = MCII.getName(inst->getOpcode());
 

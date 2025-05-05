@@ -11,6 +11,7 @@
 #include <llvm/CodeGen/MachineFunction.h>
 #include <llvm/CodeGen/MachineModuleInfo.h>
 #include <llvm/CodeGen/TargetPassConfig.h>
+#include <llvm/Config/llvm-config.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
@@ -124,17 +125,17 @@ int main(const int argc, char *argv[]) {
       /*Options=*/target_options,
       /*RelocModel=*/rm,
       /*CodeModel=*/cm,
-#if LLVM_VERSION_MAJOR < 18
-      /*OptLevel=*/static_cast<llvm::CodeGenOpt::Level>(unsigned(optLevel)),
-#else
       /*OptLevel=*/
       llvm::CodeGenOpt::getLevel(opt_level).value_or(
           llvm::CodeGenOptLevel::Default),
-#endif
       /*JIT=*/true)};
 
 
+#if LLVM_VERSION_MAJOR >= 20
+  auto *target_machine = static_cast<llvm::TargetMachine *>(tm.get());
+#else
   auto *target_machine = static_cast<llvm::LLVMTargetMachine *>(tm.get());
+#endif
   // If we use a unique_ptr, we get a Segfault when destructing it. So, we
   // leave it at that. (Memory leaks anyone? :eyes:)
   auto *MMIWP = new llvm::MachineModuleInfoWrapperPass{target_machine};

@@ -30,7 +30,7 @@ struct EncodingTargetX64 : EncodingTarget {
     if (mi.isMoveReg() && !mi.hasImplicitDef()) {
       return std::make_pair(0, 1);
     }
-    const llvm::LLVMTargetMachine &TM = mi.getMF()->getTarget();
+    const llvm::TargetMachine &TM = mi.getMF()->getTarget();
     llvm::StringRef name = TM.getMCInstrInfo()->getName(mi.getOpcode());
     if (name == "MOVDQArr" || name == "MOVAPSrr" || name == "MOVAPDrr") {
       return std::make_pair(0, 1);
