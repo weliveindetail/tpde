@@ -568,10 +568,11 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     return reg;
   }
 
-  assert(!state.v.reg.valid());
-
   auto ap = assignment();
-  if (ap.register_valid()) {
+  if (has_reg()) {
+    assert(cur_reg() != reg);
+    compiler->derived()->mov(reg, cur_reg(), ap.part_size());
+  } else if (ap.register_valid()) {
     assert(ap.get_reg() != reg);
 
     compiler->derived()->mov(reg, ap.get_reg(), ap.part_size());
