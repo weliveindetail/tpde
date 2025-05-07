@@ -76,11 +76,9 @@ if(TPDE_X64)
         COMMAND tpde_encodegen
             -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.hpp
             ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.ll
         DEPENDS
             tpde_encodegen
             ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.ll
     )
 
     target_compile_definitions(tpde_llvm PRIVATE TPDE_LLVM_X64)
@@ -116,11 +114,9 @@ if(TPDE_A64)
         COMMAND tpde_encodegen
             -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.hpp
             ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.ll
         DEPENDS
             tpde_encodegen
             ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.ll
     )
 
     target_compile_definitions(tpde_llvm PRIVATE TPDE_LLVM_ARM64)
