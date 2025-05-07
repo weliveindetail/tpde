@@ -556,9 +556,9 @@ define <2 x i64> @shl_v2i64_3(<2 x i64> %a) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <.text>
+; ARM64-NEXT:    adrp x16, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21
-; ARM64-NEXT:    ldr q1, [x0]
+; ARM64-NEXT:    ldr q1, [x16]
 ; ARM64-NEXT:     R_AARCH64_LDST128_ABS_LO12_NC
 ; ARM64-NEXT:    ushl v0.2d, v0.2d, v1.2d
 ; ARM64-NEXT:    ldp x29, x30, [sp]

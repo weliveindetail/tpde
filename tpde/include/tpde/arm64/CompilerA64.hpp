@@ -450,6 +450,10 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   u32 func_arg_stack_add_off = ~0u;
   AsmReg func_arg_stack_add_reg = AsmReg::make_invalid();
 
+  /// Permanent scratch register, e.g. to materialize constants/offsets. This is
+  /// used by materialize_constant, load_from_stack, spill_reg.
+  AsmReg permanent_scratch_reg = AsmReg::R16;
+
   u32 scalar_arg_count = 0xFFFF'FFFF, vec_arg_count = 0xFFFF'FFFF;
   u32 reg_save_frame_off = 0;
   u32 var_arg_stack_off = 0;
@@ -1507,10 +1511,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::load_from_stack(
 
   u32 off = frame_off;
   auto addr_base = AsmReg{AsmReg::FP};
-  ScratchReg scratch{derived()};
   if (off >= 0x1000 * size) [[unlikely]] {
     // need to calculate this explicitely
-    addr_base = dst.id() <= AsmReg::R30 ? dst : scratch.alloc_gp();
+    addr_base = dst.id() <= AsmReg::R30 ? dst : permanent_scratch_reg;
     ASM(ADDxi, addr_base, DA_GP(29), off & ~0xfff);
     off &= 0xfff;
   }
@@ -1713,53 +1716,43 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
   }
 
   assert(bank == Config::FP_BANK);
+  // Try instructions that take an immediate
   if (size == 4) {
     if (ASMIF(FMOVsi, dst, std::bit_cast<float>((u32)const_u64))) {
+      return;
     } else if (ASMIF(MOVId, dst, static_cast<u32>(const_u64))) {
-    } else {
-      ScratchReg scratch{derived()};
-      const auto tmp = scratch.alloc_gp();
-      this->text_writer.ensure_space(5 * 4);
-      this->text_writer.cur_ptr() +=
-          sizeof(u32) *
-          de64_MOVconst(reinterpret_cast<u32 *>(this->text_writer.cur_ptr()),
-                        tmp,
-                        (u32)const_u64);
-      ASMNC(FMOVsw, dst, tmp);
+      return;
     }
-    return;
-  }
-
-  if (size == 8) {
+  } else if (size == 8) {
     if (ASMIF(FMOVdi, dst, std::bit_cast<double>(const_u64))) {
+      return;
     } else if (ASMIF(MOVId, dst, const_u64)) {
-    } else {
-      ScratchReg scratch{derived()};
-      const auto tmp = scratch.alloc_gp();
-      this->text_writer.ensure_space(5 * 4);
-      this->text_writer.cur_ptr() +=
-          sizeof(u32) *
-          de64_MOVconst(reinterpret_cast<u32 *>(this->text_writer.cur_ptr()),
-                        tmp,
-                        const_u64);
-      ASMNC(FMOVdx, dst, tmp);
+      return;
     }
-    return;
-  }
-
-  // TODO(ts): have some facility to use a constant pool
-  if (size == 16) {
-    // TODO(ae): safe access...
+  } else if (size == 16) {
     const auto high_u64 = data[1];
     if (const_u64 == high_u64 && ASMIF(MOVI2d, dst, const_u64)) {
       return;
-    }
-    if (high_u64 == 0 && ASMIF(MOVId, dst, const_u64)) {
+    } else if (high_u64 == 0 && ASMIF(MOVId, dst, const_u64)) {
       return;
     }
+  }
 
-    ScratchReg scratch{derived()};
-    const auto tmp = scratch.alloc_gp();
+  // We must either load through a GP register of from memory. Both cases need a
+  // GP register in the common case. We reserve x16/x17 for cases like this.
+  if (size <= 16) {
+    this->register_file.mark_clobbered(permanent_scratch_reg);
+    // Copy from a GP register
+    // TODO: always load from memory?
+    if (size <= 8) {
+      materialize_constant(data, Config::GP_BANK, size, permanent_scratch_reg);
+      if (size <= 4) {
+        ASMNC(FMOVsw, dst, permanent_scratch_reg);
+      } else {
+        ASMNC(FMOVdx, dst, permanent_scratch_reg);
+      }
+      return;
+    }
 
     auto rodata = this->assembler.get_data_section(true, false);
     std::span<const u8> raw_data{reinterpret_cast<const u8 *>(data), size};
@@ -1768,10 +1761,10 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     this->text_writer.ensure_space(8); // ensure contiguous instructions
     this->reloc_text(
         sym, R_AARCH64_ADR_PREL_PG_HI21, this->text_writer.offset(), 0);
-    ASMNC(ADRP, tmp, 0, 0);
+    ASMNC(ADRP, permanent_scratch_reg, 0, 0);
     this->reloc_text(
         sym, R_AARCH64_LDST128_ABS_LO12_NC, this->text_writer.offset(), 0);
-    ASMNC(LDRqu, dst, tmp, 0);
+    ASMNC(LDRqu, dst, permanent_scratch_reg, 0);
     return;
   }
 

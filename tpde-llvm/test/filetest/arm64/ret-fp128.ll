@@ -24,9 +24,9 @@ define fp128 @ret_plus1() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <.text>
+; ARM64-NEXT:    adrp x16, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21
-; ARM64-NEXT:    ldr q0, [x0]
+; ARM64-NEXT:    ldr q0, [x16]
 ; ARM64-NEXT:     R_AARCH64_LDST128_ABS_LO12_NC
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0

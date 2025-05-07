@@ -1538,46 +1538,63 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::materialize_constant(
     return;
   }
 
-  if (size == 4) {
-    ScratchReg tmp{derived()};
-    auto tmp_reg = tmp.alloc_gp();
-    ASM(MOV32ri, tmp_reg, const_u64);
-    if (has_cpu_feats(CPU_AVX)) {
-      ASM(VMOVD_G2Xrr, dst, tmp_reg);
-    } else {
-      ASM(SSE_MOVD_G2Xrr, dst, tmp_reg);
+  if (size <= 8) {
+    // We must not evict registers here (might be used within branching code),
+    // so only use free registers and load from memory otherwise.
+    AsmReg tmp =
+        this->register_file.find_first_free_excluding(Config::GP_BANK, 0);
+    if (tmp.valid()) {
+      this->register_file.mark_clobbered(tmp);
+      materialize_constant(data, Config::GP_BANK, size, tmp);
+      if (size <= 4) {
+        if (has_cpu_feats(CPU_AVX)) {
+          ASM(VMOVD_G2Xrr, dst, tmp);
+        } else {
+          ASM(SSE_MOVD_G2Xrr, dst, tmp);
+        }
+      } else {
+        if (has_cpu_feats(CPU_AVX)) {
+          ASM(VMOVQ_G2Xrr, dst, tmp);
+        } else {
+          ASM(SSE_MOVQ_G2Xrr, dst, tmp);
+        }
+      }
+      return;
     }
-    return;
   }
 
-  if (size == 8) {
-    ScratchReg tmp{derived()};
-    auto tmp_reg = tmp.alloc_gp();
-    ASM(MOV64ri, tmp_reg, const_u64);
+  // TODO: round to next power of two but at least 4 byte
+  // We store constants in 8-byte units.
+  auto alloc_size = util::align_up(size, 8);
+  std::span<const u8> raw_data{reinterpret_cast<const u8 *>(data), alloc_size};
+  // TODO: deduplicate/pool constants?
+  auto rodata = this->assembler.get_data_section(true, false);
+  auto sym = this->assembler.sym_def_data(
+      rodata, "", raw_data, alloc_size, Assembler::SymBinding::LOCAL);
+  if (size <= 4) {
     if (has_cpu_feats(CPU_AVX)) {
-      ASM(VMOVQ_G2Xrr, dst, tmp_reg);
+      ASM(VMOVSSrm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
     } else {
-      ASM(SSE_MOVQ_G2Xrr, dst, tmp_reg);
+      ASM(SSE_MOVSSrm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
     }
-    return;
-  }
-
-  if (size == 16) {
-    auto rodata = this->assembler.get_data_section(true, false);
-    std::span<const u8> raw_data{reinterpret_cast<const u8 *>(data), size};
-    auto sym = this->assembler.sym_def_data(
-        rodata, "", raw_data, 16, Assembler::SymBinding::LOCAL);
+  } else if (size <= 8) {
+    if (has_cpu_feats(CPU_AVX)) {
+      ASM(VMOVSDrm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
+    } else {
+      ASM(SSE_MOVSDrm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
+    }
+  } else if (size <= 16) {
     if (has_cpu_feats(CPU_AVX)) {
       ASM(VMOVAPS128rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
     } else {
       ASM(SSE_MOVAPSrm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
     }
-    this->reloc_text(sym, R_X86_64_PC32, this->text_writer.offset() - 4, -4);
-    return;
+  } else {
+    // TODO: implement for AVX/AVX-512.
+    TPDE_FATAL("unable to materialize constant");
   }
 
-  // TODO(ts): have some facility to use a constant pool
-  TPDE_FATAL("unable to materialize constant");
+  this->reloc_text(sym, R_X86_64_PC32, this->text_writer.offset() - 4, -4);
 }
 
 template <IRAdaptor Adaptor,

@@ -52,9 +52,9 @@ define float @fsub_f32_5_32(float %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x0, #0x3d71 // =15729
-; ARM64-NEXT:    movk x0, #0x40aa, lsl #16
-; ARM64-NEXT:    fmov s1, w0
+; ARM64-NEXT:    mov x16, #0x3d71 // =15729
+; ARM64-NEXT:    movk x16, #0x40aa, lsl #16
+; ARM64-NEXT:    fmov s1, w16
 ; ARM64-NEXT:    fsub s0, s0, s1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -135,11 +135,11 @@ define double @fsub_f64_5_32(double %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x0, #0xe148 // =57672
-; ARM64-NEXT:    movk x0, #0x147a, lsl #16
-; ARM64-NEXT:    movk x0, #0x47ae, lsl #32
-; ARM64-NEXT:    movk x0, #0x4015, lsl #48
-; ARM64-NEXT:    fmov d1, x0
+; ARM64-NEXT:    mov x16, #0xe148 // =57672
+; ARM64-NEXT:    movk x16, #0x147a, lsl #16
+; ARM64-NEXT:    movk x16, #0x47ae, lsl #32
+; ARM64-NEXT:    movk x16, #0x4015, lsl #48
+; ARM64-NEXT:    fmov d1, x16
 ; ARM64-NEXT:    fsub d0, d0, d1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0

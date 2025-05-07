@@ -22,8 +22,8 @@ define <2 x float> @fadd_v2f32_1(<2 x float> %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x0, #0x3f8000003f800000 // =4575657222473777152
-; ARM64-NEXT:    fmov d1, x0
+; ARM64-NEXT:    mov x16, #0x3f8000003f800000 // =4575657222473777152
+; ARM64-NEXT:    fmov d1, x16
 ; ARM64-NEXT:    fadd v0.2s, v0.2s, v1.2s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -115,9 +115,9 @@ define <4 x float> @fadd_v4f32_1(<4 x float> %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <.text>
+; ARM64-NEXT:    adrp x16, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21
-; ARM64-NEXT:    ldr q1, [x0]
+; ARM64-NEXT:    ldr q1, [x16]
 ; ARM64-NEXT:     R_AARCH64_LDST128_ABS_LO12_NC
 ; ARM64-NEXT:    fadd v0.4s, v0.4s, v1.4s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -169,9 +169,9 @@ define <2 x double> @fadd_v2f64_1(<2 x double> %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <.text>
+; ARM64-NEXT:    adrp x16, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21
-; ARM64-NEXT:    ldr q1, [x0]
+; ARM64-NEXT:    ldr q1, [x16]
 ; ARM64-NEXT:     R_AARCH64_LDST128_ABS_LO12_NC
 ; ARM64-NEXT:    fadd v0.2d, v0.2d, v1.2d
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -225,8 +225,8 @@ define <2 x float> @fadd_v2f32_no_salvage_imm(<2 x float> %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x0, #0x3f8000003f800000 // =4575657222473777152
-; ARM64-NEXT:    fmov d1, x0
+; ARM64-NEXT:    mov x16, #0x3f8000003f800000 // =4575657222473777152
+; ARM64-NEXT:    fmov d1, x16
 ; ARM64-NEXT:    fadd v1.2s, v0.2s, v1.2s
 ; ARM64-NEXT:    fadd v0.2s, v0.2s, v1.2s
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -285,9 +285,9 @@ define <4 x float> @fadd_v4f32_no_salvage_imm(<4 x float> %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <.text>
+; ARM64-NEXT:    adrp x16, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21
-; ARM64-NEXT:    ldr q1, [x0]
+; ARM64-NEXT:    ldr q1, [x16]
 ; ARM64-NEXT:     R_AARCH64_LDST128_ABS_LO12_NC
 ; ARM64-NEXT:    fadd v1.4s, v0.4s, v1.4s
 ; ARM64-NEXT:    fadd v0.4s, v0.4s, v1.4s
@@ -347,9 +347,9 @@ define <2 x double> @fadd_v2f64_no_salvage_imm(<2 x double> %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    adrp x0, 0x0 <.text>
+; ARM64-NEXT:    adrp x16, 0x0 <.text>
 ; ARM64-NEXT:     R_AARCH64_ADR_PREL_PG_HI21
-; ARM64-NEXT:    ldr q1, [x0]
+; ARM64-NEXT:    ldr q1, [x16]
 ; ARM64-NEXT:     R_AARCH64_LDST128_ABS_LO12_NC
 ; ARM64-NEXT:    fadd v1.2d, v0.2d, v1.2d
 ; ARM64-NEXT:    fadd v0.2d, v0.2d, v1.2d
