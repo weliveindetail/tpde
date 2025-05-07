@@ -1376,13 +1376,13 @@ define i32 @alloca_call(i32 %a1, i32 %a2, i32 %a3, i32 %a4) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov w0, w1
-; ARM64-NEXT:    add x4, x29, #0x13, lsl #12 // =0x13000
-; ARM64-NEXT:    str w1, [x4, #0x920]
+; ARM64-NEXT:    add x16, x29, #0x13, lsl #12 // =0x13000
+; ARM64-NEXT:    str w1, [x16, #0x920]
 ; ARM64-NEXT:    add x1, x29, #0xa0
-; ARM64-NEXT:    add x4, x29, #0x13, lsl #12 // =0x13000
-; ARM64-NEXT:    str w2, [x4, #0x924]
-; ARM64-NEXT:    add x2, x29, #0x13, lsl #12 // =0x13000
-; ARM64-NEXT:    str w3, [x2, #0x928]
+; ARM64-NEXT:    add x16, x29, #0x13, lsl #12 // =0x13000
+; ARM64-NEXT:    str w2, [x16, #0x924]
+; ARM64-NEXT:    add x16, x29, #0x13, lsl #12 // =0x13000
+; ARM64-NEXT:    str w3, [x16, #0x928]
 ; ARM64-NEXT:    bl 0x1120 <alloca_call+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 alloca_call_tgt
 ; ARM64-NEXT:    add x1, x29, #0x13, lsl #12 // =0x13000

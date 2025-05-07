@@ -1445,26 +1445,12 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_reg(
   assert(frame_off < 0x1'000'000);
 
   u32 off = frame_off;
-  u32 fp_mod = 0;
   auto addr_base = AsmReg{AsmReg::FP};
-  ValuePartRef scratch{derived(), Config::GP_BANK};
   if (off >= 0x1000 * size) [[unlikely]] {
     // We cannot encode the offset in the store instruction.
-    AsmReg tmp =
-        this->register_file.find_first_free_excluding(Config::GP_BANK, 0);
-    if (tmp.valid()) {
-      scratch.alloc_specific(tmp);
-      ASM(ADDxi, tmp, DA_GP(29), off & ~0xfff);
-      off &= 0xfff;
-      addr_base = tmp;
-    } else {
-      fp_mod = off & ~u32{0xfff};
-      while (off >= 0x1000) {
-        u32 step = off > 0xff'f000 ? 0xff'f000 : off & 0xff'f000;
-        ASM(ADDxi, DA_GP(29), DA_GP(29), step);
-        off -= step;
-      }
-    }
+    ASM(ADDxi, permanent_scratch_reg, DA_GP(29), off & ~0xfff);
+    off &= 0xfff;
+    addr_base = permanent_scratch_reg;
   }
 
   this->text_writer.ensure_space(4);
@@ -1486,12 +1472,6 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_reg(
     case 16: ASMNC(STRqu, reg, addr_base, off); break;
     default: TPDE_UNREACHABLE("invalid register spill size");
     }
-  }
-
-  while (fp_mod) [[unlikely]] {
-    u32 step = fp_mod > 0xff'f000 ? 0xff'f000 : fp_mod & 0xff'f000;
-    ASM(SUBxi, DA_GP(29), DA_GP(29), step);
-    fp_mod -= step;
   }
 }
 
