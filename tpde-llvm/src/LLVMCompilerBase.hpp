@@ -4467,11 +4467,18 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     this->set_value(res_ref, res);
     return true;
   }
+  case llvm::Intrinsic::ucmp:
+  case llvm::Intrinsic::scmp:
+    if (!inst->getType()->isIntegerTy() ||
+        inst->getType()->getIntegerBitWidth() > 64) {
+      return false;
+    }
+    [[fallthrough]];
   case llvm::Intrinsic::umin:
   case llvm::Intrinsic::umax:
   case llvm::Intrinsic::smin:
   case llvm::Intrinsic::smax: {
-    auto *ty = inst->getType();
+    auto *ty = inst->getOperand(0)->getType();
     if (!ty->isIntegerTy()) {
       return false;
     }
@@ -4480,7 +4487,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       return false;
     }
 
-    bool sign = intrin_id == llvm::Intrinsic::smin ||
+    bool sign = intrin_id == llvm::Intrinsic::scmp ||
+                intrin_id == llvm::Intrinsic::smin ||
                 intrin_id == llvm::Intrinsic::smax;
 
     ValueRef lhs_ref = this->val_ref(inst->getOperand(0));
@@ -4500,16 +4508,20 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     EncodeFnTy encode_fn = nullptr;
     if (width <= 32) {
       switch (intrin_id) {
+      case llvm::Intrinsic::ucmp: encode_fn = &Derived::encode_ucmpi32; break;
       case llvm::Intrinsic::umin: encode_fn = &Derived::encode_umini32; break;
       case llvm::Intrinsic::umax: encode_fn = &Derived::encode_umaxi32; break;
+      case llvm::Intrinsic::scmp: encode_fn = &Derived::encode_scmpi32; break;
       case llvm::Intrinsic::smin: encode_fn = &Derived::encode_smini32; break;
       case llvm::Intrinsic::smax: encode_fn = &Derived::encode_smaxi32; break;
       default: TPDE_UNREACHABLE("invalid intrinsic");
       }
     } else {
       switch (intrin_id) {
+      case llvm::Intrinsic::ucmp: encode_fn = &Derived::encode_ucmpi64; break;
       case llvm::Intrinsic::umin: encode_fn = &Derived::encode_umini64; break;
       case llvm::Intrinsic::umax: encode_fn = &Derived::encode_umaxi64; break;
+      case llvm::Intrinsic::scmp: encode_fn = &Derived::encode_scmpi64; break;
       case llvm::Intrinsic::smin: encode_fn = &Derived::encode_smini64; break;
       case llvm::Intrinsic::smax: encode_fn = &Derived::encode_smaxi64; break;
       default: TPDE_UNREACHABLE("invalid intrinsic");
