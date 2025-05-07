@@ -4437,11 +4437,20 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
       return false;
     }
     const auto width = val_ty->getIntegerBitWidth();
+    ValueRef val_ref = this->val_ref(val);
+
+    if (width == 128) {
+      ValueRef res_ref = this->result_ref(inst);
+      ScratchReg lo{derived()}, hi{derived()};
+      derived()->encode_absi128(val_ref.part(0), val_ref.part(1), lo, hi);
+      this->set_value(res_ref.part(0), lo);
+      this->set_value(res_ref.part(1), hi);
+      return true;
+    }
     if (width > 64) {
       return false;
     }
 
-    ValueRef val_ref = this->val_ref(val);
     ValuePartRef op = val_ref.part(0);
     if (width != 32 && width != 64) {
       unsigned dst_width = tpde::util::align_up(width, 32);

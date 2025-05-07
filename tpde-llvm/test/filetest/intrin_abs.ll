@@ -190,3 +190,42 @@ entry:
   %1 = call i64 @llvm.abs.i64(i64 %0, i1 1)
   ret i64 %1
 }
+
+define i128 @absi128(i128 %v) {
+; X64-LABEL: <absi128>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    xor eax, eax
+; X64-NEXT:    mov rcx, rdi
+; X64-NEXT:    neg rcx
+; X64-NEXT:    sbb rax, rsi
+; X64-NEXT:    test rsi, rsi
+; X64-NEXT:    cmovns rcx, rdi
+; X64-NEXT:    cmovns rax, rsi
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rax
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    mov rdx, qword ptr [rbp - 0x38]
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <absi128>:
+; ARM64:         sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    asr x2, x1, #63
+; ARM64-NEXT:    eor x0, x0, x2
+; ARM64-NEXT:    eor x1, x1, x2
+; ARM64-NEXT:    subs x3, x0, x2
+; ARM64-NEXT:    sbc x4, x1, x2
+; ARM64-NEXT:    mov x0, x3
+; ARM64-NEXT:    mov x1, x4
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+  %r = call i128 @llvm.abs(i128 %v, i1 false)
+  ret i128 %r
+}

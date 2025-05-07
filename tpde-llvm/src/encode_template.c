@@ -167,6 +167,7 @@ u128 TARGET_V1 lxori128(u128 a, u128 b) { return (a ^ b); }
 u128 TARGET_V1 shli128(u128 a, u128 b) { return (a << b); }
 u128 TARGET_V1 shri128(u128 a, u128 b) { return (a >> b); }
 i128 TARGET_V1 ashri128(i128 a, i128 b) { return (a >> b); }
+u128 TARGET_V1 absi128(i128 a) { return a < 0 ? -(u128)a : a; }
 
 // For better codegen when shifting by immediates
 u128 TARGET_V1 shli128_lt64(u128 a, u64 amt, u64 iamt) {
