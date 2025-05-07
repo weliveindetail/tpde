@@ -432,11 +432,9 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
       TPDE_LOG_TRACE("Trying to assign fixed reg to value {}",
                      static_cast<u32>(local_idx));
 
-      if (!reg.invalid()) {
-        if (register_file.is_used(reg)) {
-          free_reg(reg);
-        }
-
+      // TODO: if the register is used, we can free it most of the time, but not
+      // always, e.g. for PHI nodes. Detect this case and free_reg otherwise.
+      if (!reg.invalid() && !register_file.is_used(reg)) {
         TPDE_LOG_TRACE("Assigning fixed assignment to reg {} for value {}",
                        reg.id(),
                        static_cast<u32>(local_idx));
