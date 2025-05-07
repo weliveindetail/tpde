@@ -108,23 +108,26 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
   void resolved_gep_to_base_reg(ResolvedGEP &resolved) noexcept;
   GenericValuePart create_addr_for_alloca(u32 ref_idx) noexcept;
 
-  void switch_emit_cmp(ScratchReg &scratch,
-                       AsmReg cmp_reg,
+  void switch_emit_cmp(AsmReg cmp_reg,
+                       AsmReg tmp_reg,
                        u64 case_value,
                        bool width_is_32) noexcept;
   void switch_emit_cmpeq(Label case_label,
                          AsmReg cmp_reg,
+                         AsmReg tmp_reg,
                          u64 case_value,
                          bool width_is_32) noexcept;
   bool switch_emit_jump_table(Label default_label,
                               std::span<Label> labels,
                               AsmReg cmp_reg,
+                              AsmReg tmp_reg,
                               u64 low_bound,
                               u64 high_bound,
                               bool width_is_32) noexcept;
   void switch_emit_binary_step(Label case_label,
                                Label gt_label,
                                AsmReg cmp_reg,
+                               AsmReg tmp_reg,
                                u64 case_value,
                                bool width_is_32) noexcept;
 
@@ -327,10 +330,12 @@ bool LLVMCompilerX64::compile_br(const llvm::Instruction *inst,
   const auto *br = llvm::cast<llvm::BranchInst>(inst);
   if (br->isUnconditional()) {
     auto spilled = this->spill_before_branch();
+    this->begin_branch_region();
 
     generate_branch_to_block(
         Jump::jmp, adaptor->block_lookup_idx(br->getSuccessor(0)), false, true);
 
+    this->end_branch_region();
     release_spilled_regs(spilled);
     return true;
   }
@@ -357,6 +362,7 @@ void LLVMCompilerX64::generate_conditional_branch(
   const auto false_needs_split = this->branch_needs_split(false_target);
 
   const auto spilled = this->spill_before_branch();
+  this->begin_branch_region();
 
   if (next_block == true_target ||
       (next_block != false_target && true_needs_split)) {
@@ -372,6 +378,7 @@ void LLVMCompilerX64::generate_conditional_branch(
     this->generate_branch_to_block(Jump::jmp, false_target, false, true);
   }
 
+  this->end_branch_region();
   this->release_spilled_regs(spilled);
 }
 
@@ -649,8 +656,8 @@ LLVMCompilerX64::GenericValuePart
   return GenericValuePart::Expr{AsmReg::BP, info.alloca_frame_off};
 }
 
-void LLVMCompilerX64::switch_emit_cmp(ScratchReg &scratch,
-                                      const AsmReg cmp_reg,
+void LLVMCompilerX64::switch_emit_cmp(const AsmReg cmp_reg,
+                                      const AsmReg tmp_reg,
                                       const u64 case_value,
                                       const bool width_is_32) noexcept {
   if (width_is_32) {
@@ -659,36 +666,34 @@ void LLVMCompilerX64::switch_emit_cmp(ScratchReg &scratch,
     if ((i64)((i32)case_value) == (i64)case_value) {
       ASM(CMP64ri, cmp_reg, case_value);
     } else {
-      const auto tmp = scratch.alloc_gp();
-      auto const_ref =
-          ValuePartRef{this, case_value, 8, CompilerConfig::GP_BANK};
-      const_ref.reload_into_specific_fixed(tmp);
-      ASM(CMP64rr, cmp_reg, tmp);
+      ValuePartRef const_ref{this, case_value, 8, CompilerConfig::GP_BANK};
+      ASM(CMP64rr, cmp_reg, const_ref.reload_into_specific_fixed(tmp_reg));
     }
   }
 }
 
 void LLVMCompilerX64::switch_emit_cmpeq(const Label case_label,
                                         const AsmReg cmp_reg,
+                                        const AsmReg tmp_reg,
                                         const u64 case_value,
                                         const bool width_is_32) noexcept {
-  ScratchReg scratch{this};
-  switch_emit_cmp(scratch, cmp_reg, case_value, width_is_32);
+  switch_emit_cmp(cmp_reg, tmp_reg, case_value, width_is_32);
   generate_raw_jump(Jump::je, case_label);
 }
 
 bool LLVMCompilerX64::switch_emit_jump_table(Label default_label,
                                              std::span<Label> labels,
                                              AsmReg cmp_reg,
+                                             AsmReg tmp_reg,
                                              u64 low_bound,
                                              u64 high_bound,
                                              bool width_is_32) noexcept {
-  ScratchReg scratch{this};
+  // NB: we must not evict any registers here.
   if (low_bound != 0) {
-    switch_emit_cmp(scratch, cmp_reg, low_bound, width_is_32);
+    switch_emit_cmp(cmp_reg, tmp_reg, low_bound, width_is_32);
     generate_raw_jump(Jump::jb, default_label);
   }
-  switch_emit_cmp(scratch, cmp_reg, high_bound, width_is_32);
+  switch_emit_cmp(cmp_reg, tmp_reg, high_bound, width_is_32);
   generate_raw_jump(Jump::ja, default_label);
 
   if (width_is_32) {
@@ -701,13 +706,12 @@ bool LLVMCompilerX64::switch_emit_jump_table(Label default_label,
       ASM(SUB64ri, cmp_reg, low_bound);
     } else {
       ValuePartRef const_ref{this, &low_bound, 8, CompilerConfig::GP_BANK};
-      ASM(SUB64rr, cmp_reg, const_ref.load_to_reg());
+      ASM(SUB64rr, cmp_reg, const_ref.reload_into_specific_fixed(tmp_reg));
     }
   }
 
-  auto tmp = scratch.alloc_gp();
   Label jump_table = assembler.label_create();
-  ASM(LEA64rm, tmp, FE_MEM(FE_IP, 0, FE_NOREG, -1));
+  ASM(LEA64rm, tmp_reg, FE_MEM(FE_IP, 0, FE_NOREG, -1));
   // we reuse the jump offset stuff since the patch procedure is the same
   assembler.add_unresolved_entry(
       jump_table,
@@ -715,9 +719,9 @@ bool LLVMCompilerX64::switch_emit_jump_table(Label default_label,
       text_writer.offset() - 4,
       Assembler::UnresolvedEntryKind::JMP_OR_MEM_DISP);
   // load the 4 byte displacement from the jump table
-  ASM(MOVSXr64m32, cmp_reg, FE_MEM(tmp, 4, cmp_reg, 0));
-  ASM(ADD64rr, tmp, cmp_reg);
-  ASM(JMPr, tmp);
+  ASM(MOVSXr64m32, cmp_reg, FE_MEM(tmp_reg, 4, cmp_reg, 0));
+  ASM(ADD64rr, tmp_reg, cmp_reg);
+  ASM(JMPr, tmp_reg);
 
   auto sec_ref = text_writer.get_sec_ref();
   text_writer.align(4);
@@ -743,9 +747,10 @@ bool LLVMCompilerX64::switch_emit_jump_table(Label default_label,
 void LLVMCompilerX64::switch_emit_binary_step(const Label case_label,
                                               const Label gt_label,
                                               const AsmReg cmp_reg,
+                                              const AsmReg tmp_reg,
                                               const u64 case_value,
                                               const bool width_is_32) noexcept {
-  switch_emit_cmpeq(case_label, cmp_reg, case_value, width_is_32);
+  switch_emit_cmpeq(case_label, cmp_reg, tmp_reg, case_value, width_is_32);
   generate_raw_jump(Jump::ja, gt_label);
 }
 

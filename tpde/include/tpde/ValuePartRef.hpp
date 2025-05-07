@@ -358,6 +358,10 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
         CompilerBase *compiler,
         u64 exclusion_mask,
         const bool reload) noexcept {
+  // The caller has no control over the selected register, so it must assume
+  // that this function evicts some register. This is not permitted if the value
+  // state ought to be the same.
+  assert(compiler->may_change_value_state());
   assert(!state.c.reg.valid());
 
   RegBank bank;
@@ -449,6 +453,8 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 
   reg_file.mark_clobbered(reg);
   if (has_assignment()) {
+    assert(compiler->may_change_value_state());
+
     reg_file.mark_used(reg, state.v.local_idx, state.v.part);
     auto ap = assignment();
     auto old_reg = AsmReg::make_invalid();
@@ -505,6 +511,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePart::reload_into_specific(
         CompilerBase *compiler, const AsmReg reg) noexcept {
+  assert(compiler->may_change_value_state());
   if (is_const()) {
     // TODO(ts): store a compiler* in the constant data?
     // make sure the register is free
@@ -683,6 +690,8 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value(
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value_reg(
     CompilerBase *compiler, AsmReg value_reg) noexcept {
+  assert(compiler->may_change_value_state());
+
   auto &reg_file = compiler->register_file;
 
   // We could support this, but there shouldn't bee the need for that.
@@ -732,6 +741,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ValuePart::salvage_keep_used(
         CompilerBase *compiler) noexcept {
+  assert(compiler->may_change_value_state());
   assert(can_salvage());
   if (!has_assignment()) {
     AsmReg reg = state.c.reg;
@@ -775,6 +785,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::reset(
       compiler->register_file.unmark_used(reg);
     }
   } else {
+    assert(compiler->may_change_value_state());
     bool reg_unlocked = compiler->register_file.dec_lock_count(reg);
     if (reg_unlocked && state.v.owned) {
       assert(assignment().register_valid());

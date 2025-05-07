@@ -3827,7 +3827,14 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
     }
   }
 
+  // We must not evict any registers in the branching code, as we don't track
+  // the individual value states per block. Hence, we must not allocate any
+  // registers (e.g., for constants, jump table address) below.
+  ScratchReg scratch2{this};
+  AsmReg tmp_reg = scratch2.alloc_gp();
+
   const auto spilled = this->spill_before_branch();
+  this->begin_branch_region();
 
   // get all cases, their target block and sort them in ascending order
   tpde::util::SmallVector<std::pair<u64, IRBlockRef>, 64> cases;
@@ -3864,6 +3871,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       for (auto i = 0u; i < num_cases; ++i) {
         derived()->switch_emit_cmpeq(case_labels[begin + i],
                                      cmp_reg,
+                                     tmp_reg,
                                      cases[begin + i].first,
                                      width_is_32);
       }
@@ -3902,6 +3910,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
       if (derived()->switch_emit_jump_table(default_label,
                                             labels,
                                             cmp_reg,
+                                            tmp_reg,
                                             cases[begin].first,
                                             cases[end - 1].first,
                                             width_is_32)) {
@@ -3920,6 +3929,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
     derived()->switch_emit_binary_step(case_labels[begin + half_len],
                                        gt_label,
                                        cmp_reg,
+                                       tmp_reg,
                                        half_value,
                                        width_is_32);
     // search the lower half
@@ -3947,6 +3957,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
         Derived::Jump::jmp, cases[i].second, false, false);
   }
 
+  this->end_branch_region();
   this->release_spilled_regs(spilled);
 
   return true;

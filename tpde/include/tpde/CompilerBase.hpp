@@ -94,6 +94,11 @@ struct CompilerBase {
   } assignments = {};
 
   RegisterFile register_file;
+#ifndef NDEBUG
+  /// Whether we are currently in the middle of generating branch-related code
+  /// and therefore must not change any value-related state.
+  bool generating_branch = false;
+#endif
 
   Assembler assembler;
   Assembler::SectionWriter text_writer;
@@ -220,6 +225,26 @@ struct CompilerBase {
   /// the end of that block so the compiler does not accidentally use
   /// registers which don't contain any values
   void release_regs_after_return() noexcept;
+
+  /// Indicate beginning of region where value-state must not change.
+  void begin_branch_region() noexcept {
+#ifndef NDEBUG
+    assert(!generating_branch);
+    generating_branch = true;
+#endif
+  }
+
+  /// Indicate end of region where value-state must not change.
+  void end_branch_region() noexcept {
+#ifndef NDEBUG
+    assert(generating_branch);
+    generating_branch = false;
+#endif
+  }
+
+#ifndef NDEBUG
+  bool may_change_value_state() const noexcept { return !generating_branch; }
+#endif
 
   void move_to_phi_nodes(BlockIndex target) noexcept {
     if (analyzer.block_has_phis(target)) {
@@ -715,6 +740,7 @@ void CompilerBase<Adaptor, Derived, Config>::allocate_spill_slot(
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::spill(
     AssignmentPartRef ap) noexcept {
+  assert(may_change_value_state());
   if (!ap.stack_valid() && !ap.variable_ref()) {
     assert(ap.register_valid() && "cannot spill uninitialized assignment part");
     allocate_spill_slot(ap);
@@ -726,6 +752,7 @@ void CompilerBase<Adaptor, Derived, Config>::spill(
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::evict(
     AssignmentPartRef ap) noexcept {
+  assert(may_change_value_state());
   assert(ap.register_valid());
   derived()->spill(ap);
   ap.set_register_valid(false);
@@ -734,6 +761,7 @@ void CompilerBase<Adaptor, Derived, Config>::evict(
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::evict_reg(Reg reg) noexcept {
+  assert(may_change_value_state());
   assert(!register_file.is_fixed(reg));
   assert(register_file.reg_local_idx(reg) != INVALID_VAL_LOCAL_IDX);
 
@@ -749,6 +777,7 @@ void CompilerBase<Adaptor, Derived, Config>::evict_reg(Reg reg) noexcept {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::free_reg(Reg reg) noexcept {
+  assert(may_change_value_state());
   assert(!register_file.is_fixed(reg));
   assert(register_file.reg_local_idx(reg) != INVALID_VAL_LOCAL_IDX);
 
@@ -789,6 +818,8 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
   // do not need to be spilled as they die at the edge.
 
   using RegBitSet = typename RegisterFile::RegBitSet;
+
+  assert(may_change_value_state());
 
   const IRBlockRef cur_block_ref = analyzer.block_ref(cur_block_idx);
   auto next_block_is_succ = false;
@@ -920,6 +951,8 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::release_spilled_regs(
     typename RegisterFile::RegBitSet regs) noexcept {
+  assert(may_change_value_state());
+
   // TODO(ts): needs changes for other RegisterFile impls
   for (auto reg_id : util::BitSetIterator<>{regs}) {
     auto reg = AsmReg{reg_id};
@@ -958,14 +991,14 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
   // stay reasonably efficient even with larger numbers of PHIs
 
   struct ScratchWrapper {
-    CompilerBase *self;
+    Derived *self;
     AsmReg cur_reg = AsmReg::make_invalid();
     bool backed_up = false;
     bool was_modified = false;
     u8 part = 0;
     ValLocalIdx local_idx = INVALID_VAL_LOCAL_IDX;
 
-    ScratchWrapper(CompilerBase *self) : self{self} {}
+    ScratchWrapper(Derived *self) : self{self} {}
 
     ~ScratchWrapper() { reset(); }
 
@@ -988,8 +1021,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
           if (!ap.variable_ref()) {
             // TODO(ts): assert that this always happens?
             assert(ap.stack_valid());
-            self->derived()->load_from_stack(
-                cur_reg, ap.frame_off(), ap.part_size());
+            self->load_from_stack(cur_reg, ap.frame_off(), ap.part_size());
           }
           ap.set_reg(cur_reg);
           ap.set_register_valid(true);
@@ -1026,7 +1058,16 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
         AssignmentPartRef ap{self->val_assignment(local_idx), part};
         was_modified = ap.modified();
         // TODO(ts): this does not spill for variable refs
-        self->evict_reg(reg);
+        // We don't use evict_reg here, as we know that we can't change the
+        // value state.
+        assert(ap.register_valid() && ap.get_reg() == reg);
+        if (!ap.stack_valid() && !ap.variable_ref()) {
+          self->allocate_spill_slot(ap);
+          self->spill_reg(ap.get_reg(), ap.frame_off(), ap.part_size());
+          ap.set_stack_valid();
+        }
+        ap.set_register_valid(false);
+        reg_file.unmark_used(reg);
       }
 
       reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
@@ -1073,7 +1114,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
   // We check that the block has phi nodes before getting here.
   assert(!nodes.empty() && "block marked has having phi nodes has none");
 
-  ScratchWrapper scratch{this};
+  ScratchWrapper scratch{derived()};
   const auto move_to_phi = [this, &scratch](IRValueRef phi,
                                             IRValueRef incoming_val) {
     // TODO(ts): if phi==incoming_val, we should be able to elide the move
@@ -1168,7 +1209,7 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
   i32 cur_tmp_slot = 0;
   u32 cur_tmp_slot_size = 0;
   IRValueRef cur_tmp_val = Adaptor::INVALID_VALUE_REF;
-  ScratchWrapper tmp_reg1{this}, tmp_reg2{this};
+  ScratchWrapper tmp_reg1{derived()}, tmp_reg2{derived()};
 
   const auto move_from_tmp_phi = [&](IRValueRef target_phi) {
     // ref-count the source val
@@ -1380,6 +1421,9 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
       static_cast<BlockIndex>(analyzer.block_idx(adaptor->cur_entry_block()));
 
   register_file.reset();
+#ifndef NDEBUG
+  generating_branch = false;
+#endif
 
   derived()->start_func(func_idx);
 

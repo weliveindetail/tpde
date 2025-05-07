@@ -71,6 +71,7 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ScratchReg::alloc_specific(
         AsmReg reg) noexcept {
+  assert(compiler->may_change_value_state());
   assert(!compiler->register_file.is_fixed(reg));
   reset();
 
@@ -89,6 +90,8 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 CompilerBase<Adaptor, Derived, Config>::AsmReg
     CompilerBase<Adaptor, Derived, Config>::ScratchReg::alloc(
         RegBank bank) noexcept {
+  assert(compiler->may_change_value_state());
+
   auto &reg_file = compiler->register_file;
   if (!reg.invalid()) {
     assert(bank == reg_file.reg_bank(reg));
