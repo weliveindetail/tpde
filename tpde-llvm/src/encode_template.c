@@ -33,6 +33,15 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef __uint128_t u128;
 
+#if defined(__LDBL_MANT_DIG__) && __LDBL_MANT_DIG__ == 113
+// IEEE-754 quad has 1 sign bit, 15 exponent bits, 113 mantissa bits
+typedef long double fp128;
+#elif defined(__FLOAT128__)
+typedef __float128 fp128;
+#else
+  #error "unable to determine C type for fp128"
+#endif
+
 typedef i8 v8i8 __attribute__((vector_size(8)));
 typedef u8 v8u8 __attribute__((vector_size(8)));
 typedef i16 v4i16 __attribute__((vector_size(8)));
@@ -453,6 +462,7 @@ v2f64 TARGET_V1 divv2f64(v2f64 a, v2f64 b) { return (a / b); }
 
 float TARGET_V1 fnegf32(float a) { return (-a); }
 double TARGET_V1 fnegf64(double a) { return (-a); }
+fp128 TARGET_V1 fnegf128(fp128 a) { return -a; }
 v2f32 TARGET_V1 fnegv2f32(v2f32 a) { return (-a); }
 v4f32 TARGET_V1 fnegv4f32(v4f32 a) { return (-a); }
 v2f64 TARGET_V1 fnegv2f64(v2f64 a) { return (-a); }

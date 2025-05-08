@@ -28,7 +28,12 @@ std::string format_reg(const llvm::MachineOperand &mo, std::string_view op) {
   const auto &tri =
       *mo.getParent()->getMF()->getRegInfo().getTargetRegisterInfo();
   llvm::StringRef name = tri.getName(mo.getReg());
-  return name == "WZR" || name == "XZR" ? "DA_ZR" : std::string(op);
+  if (name == "WZR" || name == "XZR") {
+    return "DA_ZR";
+  } else if (name == "WSP" || name == "SP") {
+    return "DA_SP";
+  }
+  return std::string(op);
 }
 
 } // end anonymous namespace
@@ -103,6 +108,23 @@ void EncodingTargetArm64::get_inst_candidates(
       os << ", " << format_reg(mi.getOperand(1), ops[op_idx]);
       os << ", " << (mi.getOperand(2).getImm() << shift) << ");\n";
     });
+  };
+  const auto handle_mem_simm = [&](std::string_view mnem, bool with_update) {
+    candidates.emplace_back(
+        [mnem, with_update](llvm::raw_ostream &os,
+                            const llvm::MachineInstr &mi,
+                            std::span<const std::string> ops) {
+          os << "    ASMD(" << mnem << ", ";
+          unsigned op_idx = with_update ? 1 : 0;
+          if (mi.getOperand(with_update).isImm()) {
+            os << "(Da64PrfOp)" << mi.getOperand(with_update).getImm();
+          } else {
+            os << format_reg(mi.getOperand(with_update), ops[op_idx]);
+            op_idx += 1;
+          }
+          os << ", " << format_reg(mi.getOperand(with_update + 1), ops[op_idx]);
+          os << ", " << mi.getOperand(with_update + 2).getImm() << ");\n";
+        });
   };
   const auto handle_shift_imm = [&](std::string_view mnem, unsigned size) {
     candidates.emplace_back(
@@ -314,6 +336,17 @@ void EncodingTargetArm64::get_inst_candidates(
     std::array<std::string_view, 2> mnems{"LDRSWxr_lsl", "LDRSWxr_sxtx"};
     handle_noimm(mnems[sign], std::format(", {}", shift));
   }
+
+  const auto case_mem_signed =
+      [&](std::string_view mnem_llvm, std::string_view mnem, bool with_update) {
+        if (std::string_view{Name} == mnem_llvm) {
+          // TODO: encode optimization
+          handle_mem_simm(mnem, with_update);
+        }
+      };
+  case_mem_signed("STRQpre", "STRq_pre", true);
+  case_mem_signed("LDRQpost", "LDRq_post", true);
+
   case_default("LDPWi", "LDPw");    // TODO: expr with base+off, merge offsets
   case_default("LDPXi", "LDPx");    // TODO: expr with base+off, merge offsets
   case_default("STPWi", "STPw");    // TODO: expr with base+off, merge offsets

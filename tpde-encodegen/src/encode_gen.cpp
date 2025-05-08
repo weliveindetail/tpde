@@ -868,9 +868,7 @@ bool encode_prepass(llvm::MachineFunction *func, GenerationState &state) {
   for (auto bb_it = func->begin(); bb_it != func->end(); ++bb_it) {
     for (auto inst_it = bb_it->begin(); inst_it != bb_it->end(); ++inst_it) {
       llvm::MachineInstr &inst = *inst_it;
-      if (inst.isDebugInstr() || inst.getFlag(llvm::MachineInstr::FrameSetup) ||
-          inst.getFlag(llvm::MachineInstr::FrameDestroy) ||
-          inst.isCFIInstruction()) {
+      if (inst.isDebugInstr() || inst.isCFIInstruction()) {
         continue;
       }
 
@@ -1055,10 +1053,7 @@ bool create_encode_function(llvm::MachineFunction *func,
 
     for (auto inst_it = bb_it->begin(); inst_it != bb_it->end(); ++inst_it) {
       llvm::MachineInstr *inst = &(*inst_it);
-      if (inst->isDebugInstr() ||
-          inst->getFlag(llvm::MachineInstr::FrameSetup) ||
-          inst->getFlag(llvm::MachineInstr::FrameDestroy) ||
-          inst->isCFIInstruction()) {
+      if (inst->isDebugInstr() || inst->isCFIInstruction()) {
         continue;
       }
 

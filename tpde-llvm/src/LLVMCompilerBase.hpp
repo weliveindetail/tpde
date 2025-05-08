@@ -2297,10 +2297,6 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fneg(
     const llvm::Instruction *inst, const ValInfo &val_info, u64) noexcept {
   auto *scalar_ty = inst->getType()->getScalarType();
-  const bool is_double = scalar_ty->isDoubleTy();
-  if (!scalar_ty->isFloatTy() && !scalar_ty->isDoubleTy()) {
-    return false;
-  }
 
   auto src = this->val_ref(inst->getOperand(0));
   auto [res_vr, res_ref] = this->result_ref_single(inst);
@@ -2309,18 +2305,20 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fneg(
     using enum LLVMBasicValType;
   case f32: derived()->encode_fnegf32(src.part(0), res_scratch); break;
   case f64: derived()->encode_fnegf64(src.part(0), res_scratch); break;
+  case f128: derived()->encode_fnegf128(src.part(0), res_scratch); break;
   case v64:
-    assert(!is_double);
+    assert(scalar_ty->isFloatTy());
     derived()->encode_fnegv2f32(src.part(0), res_scratch);
     break;
   case v128:
-    if (!is_double) {
+    if (scalar_ty->isFloatTy()) {
       derived()->encode_fnegv4f32(src.part(0), res_scratch);
     } else {
+      assert(scalar_ty->isDoubleTy());
       derived()->encode_fnegv2f64(src.part(0), res_scratch);
     }
     break;
-  default: TPDE_UNREACHABLE("invalid basic type for fneg");
+  default: return false;
   }
 
   this->set_value(res_ref, res_scratch);

@@ -182,6 +182,9 @@ int main(const int argc, char *argv[]) {
       if (func_name.starts_with(regcall_prefix)) {
         f.setName(func_name.substr(regcall_prefix.size()));
       }
+      if (the_triple.isX86()) {
+        f.addFnAttr("no_callee_saved_registers");
+      }
     }
 
     // TODO(ts): add ability to set CPU features here?

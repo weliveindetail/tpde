@@ -66,7 +66,7 @@ if(TPDE_X64)
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
         COMMAND ${clang} -c -emit-llvm -ffreestanding -fcf-protection=none
             -O3 -fomit-frame-pointer -fno-math-errno
-            --target=x86_64 -march=x86-64-v4
+            --target=x86_64-linux -march=x86-64-v4
             -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
             ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.c
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/encode_template.c

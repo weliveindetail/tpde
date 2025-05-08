@@ -74,7 +74,8 @@ struct EncodingTargetArm64 : EncodingTarget {
   bool reg_should_be_ignored(const llvm::MCRegister reg) override {
     const auto name =
         std::string_view{func->getSubtarget().getRegisterInfo()->getName(reg)};
-    return name == "WZR" || name == "XZR" || name == "NZCV" || name == "FPCR";
+    return name == "WZR" || name == "XZR" || name == "WSP" || name == "SP" ||
+           name == "NZCV" || name == "FPCR";
   }
 
   void generate_copy(std::string &buf,
