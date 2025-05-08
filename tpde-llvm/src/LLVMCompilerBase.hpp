@@ -4373,17 +4373,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     auto *val = inst->getOperand(0);
     auto *ty = val->getType();
 
-    if (!ty->isFloatTy() && !ty->isDoubleTy()) {
-      return false;
-    }
-
     auto [res_vr, res_ref] = this->result_ref_single(inst);
     ScratchReg res_scratch{derived()};
 
     if (ty->isDoubleTy()) {
       derived()->encode_fabsf64(this->val_ref(val).part(0), res_scratch);
-    } else {
+    } else if (ty->isFloatTy()) {
       derived()->encode_fabsf32(this->val_ref(val).part(0), res_scratch);
+    } else if (ty->isFP128Ty()) {
+      derived()->encode_fabsf128(this->val_ref(val).part(0), res_scratch);
+    } else {
+      return false;
     }
     this->set_value(res_ref, res_scratch);
     return true;
