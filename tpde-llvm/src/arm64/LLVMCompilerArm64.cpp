@@ -141,7 +141,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
                                bool width_is_32) noexcept;
 
   void create_helper_call(std::span<IRValueRef> args,
-                          std::span<ValuePart> results,
+                          ValueRef *result,
                           SymRef sym) noexcept;
 
   bool handle_intrin(const llvm::IntrinsicInst *) noexcept;
@@ -484,7 +484,6 @@ bool LLVMCompilerArm64::compile_call_inner(
     bool var_arg) noexcept {
   ValueRef res{this}; // must outlive results.
   tpde::util::SmallVector<CallArg, 16> args;
-  tpde::util::SmallVector<ValuePart, 4> results;
 
   const auto num_args = call->arg_size();
   args.reserve(num_args);
@@ -514,13 +513,9 @@ bool LLVMCompilerArm64::compile_call_inner(
 
   if (!call->getType()->isVoidTy()) {
     res = this->result_ref(call);
-    const auto res_part_count = res.assignment()->part_count;
-    for (u32 part_idx = 0; part_idx < res_part_count; ++part_idx) {
-      results.push_back(res.part(part_idx));
-    }
   }
 
-  std::variant<SymRef, ScratchReg, ValuePartRef> call_target;
+  std::variant<SymRef, ValuePart> call_target;
   if (std::holds_alternative<SymRef>(target)) {
     call_target = std::get<SymRef>(target);
   } else {
@@ -529,7 +524,7 @@ bool LLVMCompilerArm64::compile_call_inner(
 
   generate_call(std::move(call_target),
                 args,
-                results,
+                call->getType()->isVoidTy() ? nullptr : &res,
                 tpde::a64::CallingConv::SYSV_CC,
                 var_arg);
   return true;
@@ -838,14 +833,14 @@ void LLVMCompilerArm64::switch_emit_binary_step(
 }
 
 void LLVMCompilerArm64::create_helper_call(std::span<IRValueRef> args,
-                                           std::span<ValuePart> results,
+                                           ValueRef *result,
                                            SymRef sym) noexcept {
   tpde::util::SmallVector<CallArg, 8> arg_vec{};
   for (auto arg : args) {
     arg_vec.push_back(CallArg{arg});
   }
 
-  generate_call(sym, arg_vec, results, tpde::a64::CallingConv::SYSV_CC, false);
+  generate_call(sym, arg_vec, result, tpde::a64::CallingConv::SYSV_CC, false);
 }
 
 bool LLVMCompilerArm64::handle_intrin(

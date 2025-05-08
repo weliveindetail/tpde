@@ -531,15 +531,6 @@ public:
     return false;
   }
 
-  void create_helper_call(std::span<IRValueRef> args,
-                          std::span<ValuePart> results,
-                          SymRef sym) {
-    (void)args;
-    (void)results;
-    (void)sym;
-    assert(0);
-  }
-
   bool handle_intrin(const llvm::IntrinsicInst *) noexcept { return false; }
 
   bool compile_to_elf(llvm::Module &mod,
@@ -1980,8 +1971,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
     llvm::Value *rhs_op = inst->getOperand(1);
 
     auto res = this->result_ref(inst);
-    auto res_low = res.part(0);
-    auto res_high = res.part(1);
 
     if (op.is_div() || op.is_rem()) {
       LibFunc lf;
@@ -1992,8 +1981,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
       }
 
       std::array<IRValueRef, 2> args{lhs_op, rhs_op};
-      std::array<ValuePart, 2> res{std::move(res_low), std::move(res_high)};
-      derived()->create_helper_call(args, res, get_libfunc_sym(lf));
+      derived()->create_helper_call(args, &res, get_libfunc_sym(lf));
       return true;
     }
 
@@ -2116,8 +2104,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_binary_op(
                                               scratch_high);
     }
 
-    this->set_value(res_low, scratch_low);
-    this->set_value(res_high, scratch_high);
+    this->set_value(res.part(0), scratch_low);
+    this->set_value(res.part(1), scratch_high);
 
     return true;
   }
@@ -2199,9 +2187,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
     SymRef sym = get_libfunc_sym(lf);
     std::array<IRValueRef, 2> srcs{inst->getOperand(0), inst->getOperand(1)};
 
-    auto [res_vr, res_ref] = this->result_ref_single(inst);
-    derived()->create_helper_call(
-        srcs, {static_cast<ValuePart *>(&res_ref), 1}, sym);
+    auto res_vr = this->result_ref(inst);
+    derived()->create_helper_call(srcs, &res_vr, sym);
     return true;
   }
 
@@ -2218,9 +2205,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
     SymRef sym = get_libfunc_sym(is_double ? LibFunc::fmod : LibFunc::fmodf);
     std::array<IRValueRef, 2> srcs{inst->getOperand(0), inst->getOperand(1)};
 
-    auto [_, res_ref] = this->result_ref_single(inst);
-    derived()->create_helper_call(
-        srcs, {static_cast<ValuePart *>(&res_ref), 1}, sym);
+    auto res_vr = this->result_ref(inst);
+    derived()->create_helper_call(srcs, &res_vr, sym);
     return true;
   }
 
@@ -2332,7 +2318,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
   auto *src_ty = src_val->getType();
   auto *dst_ty = inst->getType();
 
-  auto [res_vr, res_ref] = this->result_ref_single(inst);
+  auto res_vr = this->result_ref(inst);
 
   ScratchReg res_scratch{derived()};
   SymRef sym;
@@ -2353,11 +2339,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_ext_trunc(
   }
 
   if (res_scratch.has_reg()) {
-    this->set_value(res_ref, res_scratch);
+    this->set_value(res_vr.part(0), res_scratch);
   } else if (sym.valid()) {
     IRValueRef src_ref = src_val;
-    derived()->create_helper_call(
-        {&src_ref, 1}, {static_cast<ValuePart *>(&res_ref), 1}, sym);
+    derived()->create_helper_call({&src_ref, 1}, &res_vr, sym);
   } else {
     return false;
   }
@@ -2391,9 +2376,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_to_int(
     LibFunc lf = sign ? LibFunc::fixtfdi : LibFunc::fixunstfdi;
     SymRef sym = get_libfunc_sym(lf);
 
-    auto [res_vr, res_ref] = this->result_ref_single(inst);
-    derived()->create_helper_call(
-        {&src_val, 1}, {static_cast<ValuePart *>(&res_ref), 1}, sym);
+    auto res_vr = this->result_ref(inst);
+    derived()->create_helper_call({&src_val, 1}, &res_vr, sym);
     return true;
   }
 
@@ -2467,9 +2451,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_int_to_float(
 
     SymRef sym = get_libfunc_sym(lf);
 
-    auto [res_vr, res_ref] = this->result_ref_single(inst);
-    derived()->create_helper_call(
-        {&src_val, 1}, {static_cast<ValuePart *>(&res_ref), 1}, sym);
+    auto res_vr = this->result_ref(inst);
+    derived()->create_helper_call({&src_val, 1}, &res_vr, sym);
     return true;
   }
 
@@ -3694,9 +3677,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_fcmp(
     IRValueRef rhs = cmp->getOperand(1);
     std::array<IRValueRef, 2> args{lhs, rhs};
 
-    auto [res_vr, res_ref] = this->result_ref_single(cmp);
-    derived()->create_helper_call(
-        args, {static_cast<ValuePart *>(&res_ref), 1}, sym);
+    auto res_vr = this->result_ref(cmp);
+    derived()->create_helper_call(args, &res_vr, sym);
     derived()->compile_i32_cmp_zero(res_vr.part(0).load_to_reg(), cmp_pred);
 
     return true;
@@ -4160,7 +4142,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_resume(
 
   const auto sym = get_libfunc_sym(LibFunc::resume);
 
-  derived()->create_helper_call({&arg, 1}, {}, sym);
+  derived()->create_helper_call({&arg, 1}, nullptr, sym);
   return derived()->compile_unreachable(nullptr, val_info, 0);
 }
 
@@ -4232,7 +4214,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     std::array<IRValueRef, 3> args{dst, src, len};
 
     const auto sym = get_libfunc_sym(LibFunc::memcpy);
-    derived()->create_helper_call(args, {}, sym);
+    derived()->create_helper_call(args, nullptr, sym);
     return true;
   }
   case llvm::Intrinsic::memset: {
@@ -4243,7 +4225,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     std::array<IRValueRef, 3> args{dst, val, len};
 
     const auto sym = get_libfunc_sym(LibFunc::memset);
-    derived()->create_helper_call(args, {}, sym);
+    derived()->create_helper_call(args, nullptr, sym);
     return true;
   }
   case llvm::Intrinsic::memmove: {
@@ -4254,7 +4236,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     std::array<IRValueRef, 3> args{dst, src, len};
 
     const auto sym = get_libfunc_sym(LibFunc::memmove);
-    derived()->create_helper_call(args, {}, sym);
+    derived()->create_helper_call(args, nullptr, sym);
     return true;
   }
   case llvm::Intrinsic::load_relative: {
@@ -4327,9 +4309,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     for (auto &op : inst->args()) {
       ops.push_back(op);
     }
-    auto [res_vr, res_ref] = this->result_ref_single(inst);
-    derived()->create_helper_call(
-        ops, {static_cast<ValuePart *>(&res_ref), 1}, get_libfunc_sym(func));
+    auto res_vr = this->result_ref(inst);
+    derived()->create_helper_call(ops, &res_vr, get_libfunc_sym(func));
     return true;
   }
   case llvm::Intrinsic::minnum:

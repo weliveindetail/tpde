@@ -196,8 +196,7 @@ bool TestIRCompilerA64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
                                        value.op_begin_idx),
         value.op_count};
 
-    auto [_, res_ref] =
-        this->result_ref_single(static_cast<IRValueRef>(inst_idx));
+    auto res_ref = this->result_ref(static_cast<IRValueRef>(inst_idx));
 
     util::SmallVector<CallArg, 8> arguments{};
     for (auto op : operands) {
@@ -206,7 +205,7 @@ bool TestIRCompilerA64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
 
     this->generate_call(this->func_syms[func_idx],
                         arguments,
-                        std::span{static_cast<ValuePart *>(&res_ref), 1},
+                        &res_ref,
                         a64::CallingConv::SYSV_CC,
                         false);
     return true;

@@ -251,9 +251,8 @@ struct CallingConv {
             typename Config>
   void fill_call_results(
       CompilerX64<Adaptor, Derived, BaseTy, Config> *,
-      std::span<
-          typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ValuePart>
-          results) noexcept;
+      typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ValueRef
+          &result) noexcept;
 
   struct SysV {
     constexpr static std::array<AsmReg, 6> arg_regs_gp{
@@ -509,13 +508,12 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   /// register bank)
   ///
   /// Targets can be a symbol (call to PLT with relocation), or an indirect
-  /// call to a ScratchReg/Value
-  void generate_call(
-      std::variant<Assembler::SymRef, ScratchReg, ValuePartRef> &&target,
-      std::span<CallArg> arguments,
-      std::span<ValuePart> results,
-      CallingConv calling_conv,
-      bool variable_args);
+  /// call to a ValuePart. Result is an optional reference.
+  void generate_call(std::variant<Assembler::SymRef, ValuePart> &&target,
+                     std::span<CallArg> arguments,
+                     typename Base::ValueRef *result,
+                     CallingConv calling_conv,
+                     bool variable_args);
 
   /// Generate code sequence to load address of sym into a register. This will
   /// generate a function call for dynamic TLS access models.
@@ -885,15 +883,19 @@ template <typename Adaptor,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
 void CallingConv::fill_call_results(
-    CompilerX64<Adaptor, Derived, BaseTy, Config> *compiler,
-    std::span<typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ValuePart>
-        results) noexcept {
+    CompilerX64<Adaptor, Derived, BaseTy, Config> *,
+    typename CompilerX64<Adaptor, Derived, BaseTy, Config>::ValueRef
+        &result) noexcept {
+  assert(result.has_assignment());
+
   u32 gp_reg_count = 0, xmm_reg_count = 0;
 
   const auto gp_regs = ret_regs_gp();
   const auto xmm_regs = ret_regs_vec();
 
-  for (auto &ref : results) {
+  u32 part_count = result.assignment()->part_count;
+  for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
+    auto ref = result.part(part_idx);
     AsmReg reg = AsmReg::make_invalid();
     if (ref.bank() == Config::GP_BANK) {
       assert(gp_reg_count < gp_regs.size());
@@ -904,7 +906,7 @@ void CallingConv::fill_call_results(
       reg = xmm_regs[xmm_reg_count++];
     }
 
-    ref.set_value_reg(compiler, reg);
+    ref.set_value_reg(reg);
   }
 }
 
@@ -1930,16 +1932,11 @@ template <IRAdaptor Adaptor,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
-    std::variant<Assembler::SymRef, ScratchReg, ValuePartRef> &&target,
+    std::variant<Assembler::SymRef, ValuePart> &&target,
     std::span<CallArg> arguments,
-    std::span<ValuePart> results,
+    typename Base::ValueRef *result,
     CallingConv calling_conv,
     const bool variable_args) {
-  if (std::holds_alternative<ScratchReg>(target)) {
-    assert(((1ull << std::get<ScratchReg>(target).cur_reg().id()) &
-            calling_conv.arg_regs_mask()) == 0);
-  }
-
   const auto stack_space_used = util::align_up(
       calling_conv.calculate_call_stack_space(this, arguments), 16);
 
@@ -1951,10 +1948,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
   auto vec_arg_count = calling_conv.handle_call_args(this, arguments, arg_regs);
 
   u64 except_mask = 0;
-  if (std::holds_alternative<ScratchReg>(target)) {
-    except_mask = (1ull << std::get<ScratchReg>(target).cur_reg().id());
-  } else if (std::holds_alternative<ValuePartRef>(target)) {
-    auto &ref = std::get<ValuePartRef>(target);
+  if (std::holds_alternative<ValuePart>(target)) {
+    auto &ref = std::get<ValuePart>(target);
     if (ref.has_assignment() && ref.assignment().register_valid()) {
       except_mask = (1ull << ref.assignment().get_reg().id());
     } else if (ref.has_reg()) {
@@ -1981,18 +1976,9 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
                      R_X86_64_PLT32,
                      this->text_writer.offset() - 4,
                      -4);
-  } else if (std::holds_alternative<ScratchReg>(target)) {
-    auto &reg = std::get<ScratchReg>(target);
-    assert(reg.has_reg());
-    ASM(CALLr, reg.cur_reg());
-
-    if (((1ull << reg.cur_reg().id()) & calling_conv.callee_saved_mask()) ==
-        0) {
-      reg.reset();
-    }
   } else {
-    assert(std::holds_alternative<ValuePartRef>(target));
-    auto &ref = std::get<ValuePartRef>(target);
+    assert(std::holds_alternative<ValuePart>(target));
+    auto &ref = std::get<ValuePart>(target);
     if (!ref.has_assignment()) {
       assert(((1ull << AsmReg::R10) & (calling_conv.callee_saved_mask() |
                                        calling_conv.arg_regs_mask())) == 0);
@@ -2004,14 +1990,15 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
         assert(ap.frame_off() < 0);
         ASM(CALLm, FE_MEM(FE_BP, 0, FE_NOREG, ap.frame_off()));
       } else {
-        AsmReg reg = ref.load_to_reg();
+        AsmReg reg = ref.load_to_reg(this);
         if (((1ull << reg.id()) & calling_conv.callee_saved_mask()) == 0) {
-          ref.unlock();
+          ref.unlock(this);
           this->evict(ref.assignment());
         }
         ASM(CALLr, reg);
       }
     }
+    ref.reset(this);
   }
 
   arg_regs.clear();
@@ -2021,7 +2008,9 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     ASM(ADD64ri, FE_SP, stack_space_used);
   }
 
-  calling_conv.fill_call_results(this, results);
+  if (result) {
+    calling_conv.fill_call_results(this, *result);
+  }
 }
 
 template <IRAdaptor Adaptor,
