@@ -60,9 +60,9 @@ define i32 @invoke_manyargs() personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    mov x6, #0x7 // =7
 ; ARM64-NEXT:    mov x7, #0x8 // =8
 ; ARM64-NEXT:    mov x8, #0x9 // =9
-; ARM64-NEXT:    str x8, [sp]
+; ARM64-NEXT:    str w8, [sp]
 ; ARM64-NEXT:    mov x8, #0xa // =10
-; ARM64-NEXT:    str x8, [sp, #0x8]
+; ARM64-NEXT:    str w8, [sp, #0x8]
 ; ARM64-NEXT:    bl 0x64 <invoke_manyargs+0x44>
 ; ARM64-NEXT:     R_AARCH64_CALL26 mayThrow
 ; ARM64-NEXT:    add sp, sp, #0x10

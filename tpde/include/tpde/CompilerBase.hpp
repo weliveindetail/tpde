@@ -226,6 +226,31 @@ struct CompilerBase {
   /// registers which don't contain any values
   void release_regs_after_return() noexcept;
 
+  struct CCAssignment {
+    ValuePart value;
+    Reg reg = Reg::make_invalid();
+
+    /// If non-zero, indicates that this and the next N values must be
+    /// assigned to consecutive registers, or to the stack. The following
+    /// values must be in the same register bank as this value.
+    u8 consecutive = 0;
+    bool sret : 1 = false; ///< Argument is return value pointer.
+    bool sext : 1 = false; ///< Sign-extend single integer.
+    bool zext : 1 = false; ///< Zero-extend single integer.
+    bool byval : 1 = false;
+    u8 align = 0;
+    u8 byval_align = 0;
+    u32 byval_size = 0; // only used if byval is set
+    u32 stack_off = 0;  // only used if reg is invalid
+  };
+
+  struct CallInfo {
+    u32 stack_size;
+    RegisterFile::RegBitSet clobber_mask;
+    std::span<CCAssignment> args;
+    std::span<CCAssignment> ret;
+  };
+
   /// Indicate beginning of region where value-state must not change.
   void begin_branch_region() noexcept {
 #ifndef NDEBUG

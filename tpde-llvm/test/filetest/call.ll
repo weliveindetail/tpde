@@ -334,7 +334,7 @@ define i32 @call_i32_i128_i128_i128_i32(i32 %0, i128 %1) {
 ; ARM64-NEXT:    ldr x6, [x29, #0xb0]
 ; ARM64-NEXT:    ldr x7, [x29, #0xb8]
 ; ARM64-NEXT:    ldr w1, [x29, #0xa0]
-; ARM64-NEXT:    str x1, [sp]
+; ARM64-NEXT:    str w1, [sp]
 ; ARM64-NEXT:    bl 0x408 <call_i32_i128_i128_i128_i32+0x38>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_i32_i128_i128_i128_i32
 ; ARM64-NEXT:    add sp, sp, #0x10
@@ -414,10 +414,10 @@ define i32 @call_i32_i128_i128_i32_i128_i32(i32 %0, i128 %1) {
 ; ARM64-NEXT:    ldr w6, [x29, #0xa0]
 ; ARM64-NEXT:    ldr x1, [x29, #0xb0]
 ; ARM64-NEXT:    str x1, [sp]
-; ARM64-NEXT:    ldr x1, [x29, #0xb8]
-; ARM64-NEXT:    str x1, [sp, #0x8]
-; ARM64-NEXT:    ldr w1, [x29, #0xa0]
-; ARM64-NEXT:    str x1, [sp, #0x10]
+; ARM64-NEXT:    ldr x7, [x29, #0xb8]
+; ARM64-NEXT:    str x7, [sp, #0x8]
+; ARM64-NEXT:    ldr w8, [x29, #0xa0]
+; ARM64-NEXT:    str w8, [sp, #0x10]
 ; ARM64-NEXT:    bl 0x514 <call_i32_i128_i128_i32_i128_i32+0x44>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_i32_i128_i128_i128_i32
 ; ARM64-NEXT:    add sp, sp, #0x20
@@ -476,8 +476,8 @@ define i32 @call_i128_i128_i128_i32_i128(i32 %0, i128 %1) {
 ; ARM64-NEXT:    ldr w6, [x29, #0xa0]
 ; ARM64-NEXT:    ldr x7, [x29, #0xb0]
 ; ARM64-NEXT:    str x7, [sp]
-; ARM64-NEXT:    ldr x7, [x29, #0xb8]
-; ARM64-NEXT:    str x7, [sp, #0x8]
+; ARM64-NEXT:    ldr x8, [x29, #0xb8]
+; ARM64-NEXT:    str x8, [sp, #0x8]
 ; ARM64-NEXT:    bl 0x5b4 <call_i128_i128_i128_i32_i128+0x44>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_i128_i128_i128_i32_i128
 ; ARM64-NEXT:    add sp, sp, #0x10
@@ -539,11 +539,11 @@ define i32 @call_i128_i128_i128_i128_i32_i128(i32 %0, i128 %1) {
 ; ARM64-NEXT:    ldr x6, [x29, #0xb0]
 ; ARM64-NEXT:    ldr x7, [x29, #0xb8]
 ; ARM64-NEXT:    ldr w8, [x29, #0xa0]
-; ARM64-NEXT:    str x8, [sp]
+; ARM64-NEXT:    str w8, [sp]
 ; ARM64-NEXT:    ldr x8, [x29, #0xb0]
 ; ARM64-NEXT:    str x8, [sp, #0x10]
-; ARM64-NEXT:    ldr x8, [x29, #0xb8]
-; ARM64-NEXT:    str x8, [sp, #0x18]
+; ARM64-NEXT:    ldr x9, [x29, #0xb8]
+; ARM64-NEXT:    str x9, [sp, #0x18]
 ; ARM64-NEXT:    bl 0x660 <call_i128_i128_i128_i128_i32_i128+0x50>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_i128_i128_i128_i128_i32_i128
 ; ARM64-NEXT:    add sp, sp, #0x20
@@ -897,8 +897,8 @@ define i32 @call_indirect(ptr %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str x0, [x29, #0xa0]
 ; ARM64-NEXT:    mov x0, #0xa // =10
-; ARM64-NEXT:    ldr x1, [x29, #0xa0]
-; ARM64-NEXT:    blr x1
+; ARM64-NEXT:    ldr x16, [x29, #0xa0]
+; ARM64-NEXT:    blr x16
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -925,7 +925,8 @@ define i32 @call_indirect2(i32 %i, ptr %f) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str x1, [x29, #0xa0]
-; ARM64-NEXT:    blr x1
+; ARM64-NEXT:    ldr x16, [x29, #0xa0]
+; ARM64-NEXT:    blr x16
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
@@ -958,7 +959,8 @@ define i32 @call_indirect3(ptr %m) {
 ; ARM64-NEXT:    ldr x0, [x0]
 ; ARM64-NEXT:    mov x19, x0
 ; ARM64-NEXT:    mov w0, #0x0 // =0
-; ARM64-NEXT:    blr x19
+; ARM64-NEXT:    mov x16, x19
+; ARM64-NEXT:    blr x16
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1497,10 +1499,10 @@ define i32 @call_byval(i32 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sub sp, sp, #0x10
 ; ARM64-NEXT:    add x1, x29, #0xa0
-; ARM64-NEXT:    ldr x2, [x1]
-; ARM64-NEXT:    str x2, [sp]
-; ARM64-NEXT:    ldr x2, [x1, #0x8]
-; ARM64-NEXT:    str x2, [sp, #0x8]
+; ARM64-NEXT:    ldr x16, [x1]
+; ARM64-NEXT:    str x16, [sp]
+; ARM64-NEXT:    ldr x16, [x1, #0x8]
+; ARM64-NEXT:    str x16, [sp, #0x8]
 ; ARM64-NEXT:    bl 0x1308 <call_byval+0x28>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_i32_byval_ptr_i32_i32
 ; ARM64-NEXT:    add sp, sp, #0x10
@@ -1623,7 +1625,7 @@ define void @call_sret_manyargs() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    sub sp, sp, #0x30
+; ARM64-NEXT:    sub sp, sp, #0x20
 ; ARM64-NEXT:    add x8, x29, #0xa0
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    mov w1, #0x0 // =0
@@ -1643,7 +1645,7 @@ define void @call_sret_manyargs() {
 ; ARM64-NEXT:    str x9, [sp, #0x18]
 ; ARM64-NEXT:    bl 0x14a8 <call_sret_manyargs+0x58>
 ; ARM64-NEXT:     R_AARCH64_CALL26 call_sret_tgt
-; ARM64-NEXT:    add sp, sp, #0x30
+; ARM64-NEXT:    add sp, sp, #0x20
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xc0
 ; ARM64-NEXT:    ret
@@ -1730,9 +1732,10 @@ define i32 @ind_call(ptr %call, i32 %a, i32 %b) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str x0, [x29, #0xa0]
-; ARM64-NEXT:    blr x0
-; ARM64-NEXT:    ldr x0, [x29, #0xa0]
-; ARM64-NEXT:    blr x0
+; ARM64-NEXT:    ldr x16, [x29, #0xa0]
+; ARM64-NEXT:    blr x16
+; ARM64-NEXT:    ldr x16, [x29, #0xa0]
+; ARM64-NEXT:    blr x16
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -1769,12 +1772,11 @@ define i8 @call_fn_v_i8sext_i8sext_i8sext(i8 %a, i8 %b, i8 %c, i8 %d) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxtb x0, w0
-; ARM64-NEXT:    mov w1, w2
-; ARM64-NEXT:    sxtb x1, w1
+; ARM64-NEXT:    sxtb x1, w2
 ; ARM64-NEXT:    mov w2, w3
 ; ARM64-NEXT:    sxtb x2, w2
 ; ARM64-NEXT:    strb w3, [x29, #0xa0]
-; ARM64-NEXT:    bl 0x1658 <call_fn_v_i8sext_i8sext_i8sext+0x28>
+; ARM64-NEXT:    bl 0x1654 <call_fn_v_i8sext_i8sext_i8sext+0x24>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_v_i8sext_i8sext_i8sext
 ; ARM64-NEXT:    ldrb w0, [x29, #0xa0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -1810,13 +1812,12 @@ define i8 @call_fn_v_i8zext_i8zext_i8zext(i8 %a, i8 %b, i8 %c, i8 %d) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    uxtb w0, w0
-; ARM64-NEXT:    mov w1, w2
-; ARM64-NEXT:    uxtb w1, w1
+; ARM64-NEXT:    ubfx x0, x0, #0, #8
+; ARM64-NEXT:    ubfx x1, x2, #0, #8
 ; ARM64-NEXT:    mov w2, w3
-; ARM64-NEXT:    uxtb w2, w2
+; ARM64-NEXT:    ubfx x2, x2, #0, #8
 ; ARM64-NEXT:    strb w3, [x29, #0xa0]
-; ARM64-NEXT:    bl 0x16d8 <call_fn_v_i8zext_i8zext_i8zext+0x28>
+; ARM64-NEXT:    bl 0x16d4 <call_fn_v_i8zext_i8zext_i8zext+0x24>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_v_i8zext_i8zext_i8zext
 ; ARM64-NEXT:    ldrb w0, [x29, #0xa0]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
