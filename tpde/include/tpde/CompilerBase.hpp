@@ -226,6 +226,30 @@ struct CompilerBase {
   /// registers which don't contain any values
   void release_regs_after_return() noexcept;
 
+  struct CallArg {
+    enum class Flag : u8 {
+      none,
+      zext,
+      sext,
+      sret,
+      byval
+    };
+
+    explicit CallArg(IRValueRef value,
+                     Flag flags = Flag::none,
+                     u32 byval_align = 0,
+                     u32 byval_size = 0)
+        : value(value),
+          flag(flags),
+          byval_align(byval_align),
+          byval_size(byval_size) {}
+
+    IRValueRef value;
+    Flag flag;
+    u32 byval_align;
+    u32 byval_size;
+  };
+
   struct CCAssignment {
     ValuePart value;
     Reg reg = Reg::make_invalid();

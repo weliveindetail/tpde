@@ -328,6 +328,8 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   using Assembler = typename PlatformConfig::Assembler;
   using RegisterFile = typename Base::RegisterFile;
 
+  using CallArg = typename Base::CallArg;
+
   using Base::derived;
 
 
@@ -475,29 +477,6 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
       AsmReg dst, AsmReg src, bool sign, u32 from, u32 to) noexcept;
 
   void spill_before_call(CallingConv calling_conv, u64 except_mask = 0);
-
-  struct CallArg {
-    enum class Flag : u8 {
-      none,
-      zext,
-      sext,
-      byval
-    };
-
-    explicit CallArg(IRValueRef value,
-                     Flag flags = Flag::none,
-                     u32 byval_align = 0,
-                     u32 byval_size = 0)
-        : value(value),
-          flag(flags),
-          byval_align(byval_align),
-          byval_size(byval_size) {}
-
-    IRValueRef value;
-    Flag flag;
-    u32 byval_align;
-    u32 byval_size;
-  };
 
   /// Generate a function call
   ///
