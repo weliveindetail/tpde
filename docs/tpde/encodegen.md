@@ -1,16 +1,5 @@
 \page tpde-encodegen EncodeGen Reference
 
-Contents:
-- function
-- class hierarchy
-- writing snippets
-  - restrictions
-- compiling them
-- embedding them
-  - NEED TO CALL RESET
-- calling them
-  - ptr and constant operands
-
 # Overview
 
 - writing instruction selection by hand is tedious, error-prone and not portable

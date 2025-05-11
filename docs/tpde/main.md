@@ -1,17 +1,5 @@
 \page tpde-main TPDE - Core Framework
 
-Content:
-- What is the core framework? What problems does it solve? What does it not solve?
-- Who is the core framework for?
-- TOC of the subpages
-
-Subpages:
-- Overview of the core framework. Components and compilation flow. Code Layout
-- IRAdaptor Reference (required functions)
-- Compiler{Base,X64,A64} Reference (required functions)
-- EncodeGen Reference
-- Guide: How-To implement a back-end (using TestIR as example IR); first without snippets then with snippets (maybe make this two pages)
-
 This is the main documentation for the TPDE framework. It is designed to help implement a baseline compiler back-end (i.e. machine code generation)
 when compiling from [SSA IRs](https://en.wikipedia.org/wiki/Static_single-assignment_form) and written in C++.
 

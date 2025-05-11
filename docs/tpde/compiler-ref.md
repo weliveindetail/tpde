@@ -1,24 +1,25 @@
 \page tpde-compiler-ref Compiler Reference
 
-Content:
-- base class hierarchy
-- settings
-- required functions to implement for user
-- how to implement an instruction (very simple, then use the other bullet points to go more advanced)
-- how to use Value(Part)Refs
-- constants using ValRefSpecial
-- materializing constants
-- fusing instructions
-- how to do branching/return
-- how to do calls
-- manual stack slot allocation
-- custom var ref handling
-- arch-specific:
-  - calling conv
-  - stack frame structure (ref to epilogue/prologue code)
-- assembler reference (what unwind info is generated?, how to make object, how to do relocations [ex: globals?])
-- at least mention (c++) exceptions
-- can always use LLVM implementation as guidance since it uses most features
+This is the reference for the `CompilerBase` and related classes. It is the main driver of compilation and the class you as the user will
+in the end create an instance of to start compilation.
+
+The reference starts by explaining the basic class hierarchy used in the compiler, ...
+
+[TOC]
+
+## Class Hierarchy
+- Compiler uses static polymorphism, i.e. templates using CRTP to adapt the compiler to your IR and use your provided functions
+- CompilerBase takes three template parameters
+  - Adaptor class type
+  - final derived type
+  - config for Assembler type, some flags and architecture-specific information
+- architecture-specific Compiler class (currently x64/arm64) which take 4 template parameters
+  - Adaptor class type
+  - final derived type
+  - base compiler type (can be CompilerBase or a user-provided base class that inherits from CompilerBase that can be used for architecture-independent functionality)
+  - config for CompilerBase config and some architecture-specific config
+- final compiler class which inherits from the architecture-specific compiler class and provides the template types
+- many funcs are called in the base classes using the derived class giving you the option to override or inject custom behavior
 
 ```
 ┌─────────┐         ┌────────────┐         ┌─────────┐
@@ -40,27 +41,6 @@ Content:
                  │UserCompiler{Arch}│                 
                  └──────────────────┘               
 ```
-
-This is the reference for the `CompilerBase` and related classes. It is the main driver of compilation and the class you as the user will
-in the end create an instance of to start compilation.
-
-The reference starts by explaining the basic class hierarchy used in the compiler, ...
-
-[TOC]
-
-## Class Hierarchy
-- Compiler uses static polymorphism, i.e. templates using CRTP to adapt the compiler to your IR and use your provided functions
-- CompilerBase takes three template parameters
-  - Adaptor class type
-  - final derived type
-  - config for Assembler type, some flags and architecture-specific information
-- architecture-specific Compiler class (currently x64/arm64) which take 4 template parameters
-  - Adaptor class type
-  - final derived type
-  - base compiler type (can be CompilerBase or a user-provided base class that inherits from CompilerBase that can be used for architecture-independent functionality)
-  - config for CompilerBase config and some architecture-specific config
-- final compiler class which inherits from the architecture-specific compiler class and provides the template types
-- many funcs are called in the base classes using the derived class giving you the option to override or inject custom behavior
 
 ## Config
 - type which provides typedefs and constants used to configure the compiler
