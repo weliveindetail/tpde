@@ -1,5 +1,6 @@
 #!/bin/sh
-# SPDX-License-Identifier: LicenseRef-Proprietary
+# SPDX-FileCopyrightText: 2025 Contributors to TPDE <https://tpde.org>
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 # Script to generate coverage statistics after running tests.
 # Overwrite environment variables TPDE_BUILD_DIR LLVM_COV LLVM_PROFDATA to
 # adjust paths.

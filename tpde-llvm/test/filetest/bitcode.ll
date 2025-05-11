@@ -1,7 +1,7 @@
 ; NOTE: Do not autogenerate
-; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+; SPDX-FileCopyrightText: 2025 Contributors to TPDE <https://tpde.org>
 ;
-; SPDX-License-Identifier: LicenseRef-Proprietary
+; SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 ; RUN: llvm-as < %s | tpde-llc --target=x86_64 | %objdump | FileCheck %s -check-prefixes=X64
 ; RUN: llvm-as < %s | tpde-llc --target=aarch64 | %objdump | FileCheck %s -check-prefixes=ARM64

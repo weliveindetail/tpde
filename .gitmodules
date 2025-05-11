@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Contributors to TPDE <https://tpde.org>
+#
+# SPDX-License-Identifier: CC0-1.0
+
 [submodule "tp/spdlog"]
 	path = deps/spdlog
 	url = https://github.com/gabime/spdlog.git

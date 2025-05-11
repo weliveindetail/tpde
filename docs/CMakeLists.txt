@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Contributors to TPDE <https://tpde.org>
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
 find_package(Doxygen REQUIRED)
 
 file(GLOB TPDE_HEADERS ${PROJECT_SOURCE_DIR}/tpde/include/**/*)

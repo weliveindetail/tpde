@@ -1,6 +1,6 @@
-; SPDX-FileCopyrightText: 2024 Tobias Schwarz <tobias.schwarz@tum.de>
+; SPDX-FileCopyrightText: 2025 Contributors to TPDE <https://tpde.org>
 ;
-; SPDX-License-Identifier: LicenseRef-Proprietary
+; SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 ; RUN: rm -rf %t
 ; RUN: mkdir %t

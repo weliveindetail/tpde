@@ -1,6 +1,6 @@
-; SPDX-FileCopyrightText: 2024 Alexis Engelke <engelke@tum.de>
+; SPDX-FileCopyrightText: 2025 Contributors to TPDE <https://tpde.org>
 ;
-; SPDX-License-Identifier: LicenseRef-Proprietary
+; SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 ; RUN: %tpde_test --arch=x64 %s -o /dev/stdout | llvm-dwarfdump --eh-frame - | FileCheck %s -check-prefixes=EH
 ; RUN: %tpde_test --arch=x64 %s -o /dev/stdout | llvm-objdump -d -Mintel --no-show-raw-insn - | FileCheck %s -check-prefixes=ASM

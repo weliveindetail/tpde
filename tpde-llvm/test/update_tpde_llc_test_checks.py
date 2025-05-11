@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: Contributors to TPDE <https://tpde.org> and Contributors to the LLVM project <https://llvm.org>
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 """A test case update script.

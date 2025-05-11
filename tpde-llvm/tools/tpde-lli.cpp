@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: LicenseRef-Proprietary
+// SPDX-FileCopyrightText: 2025 Contributors to TPDE <https://tpde.org>
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include <llvm/Config/llvm-config.h>
 #include <llvm/ExecutionEngine/JITLink/EHFrameSupport.h>
 #include <llvm/ExecutionEngine/Orc/Core.h>

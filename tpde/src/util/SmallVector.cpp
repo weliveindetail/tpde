@@ -1,4 +1,5 @@
-
+// SPDX-FileCopyrightText: 2025 Contributors to TPDE <https://tpde.org>
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "tpde/util/SmallVector.hpp"
 
 #include "tpde/base.hpp"

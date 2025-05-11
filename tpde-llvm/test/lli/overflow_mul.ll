@@ -1,5 +1,6 @@
 ; NOTE: Do not autogenerate
-; SPDX-License-Identifier: LicenseRef-Proprietary
+; SPDX-FileCopyrightText: 2025 Contributors to TPDE <https://tpde.org>
+; SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 ; RUN: tpde-lli %s | FileCheck %s
 
