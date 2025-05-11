@@ -418,11 +418,6 @@ void CompilerBase<Adaptor, Derived, Config>::reset() {
   }
   stack.dynamic_free_lists.clear();
 
-  assignments.allocator.reset();
-  assignments.value_ptrs.clear();
-  assignments.cur_fixed_assignment_count = {};
-  assignments.delayed_free_lists.clear();
-
   assembler.reset();
   func_syms.clear();
   block_labels.clear();
@@ -1465,6 +1460,7 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   }
   stack.dynamic_free_lists.clear();
 
+  assignments.cur_fixed_assignment_count = {};
   assignments.value_ptrs.clear();
   assignments.value_ptrs.resize(analyzer.liveness.size());
 

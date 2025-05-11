@@ -291,57 +291,57 @@ define i32 @main(ptr %0, i64 %1) personality ptr @__gxx_personality_v0 {
 ; X64-LABEL: <main>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    push r12
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x40
-; X64-NEXT:    mov qword ptr [rbp - 0x30], rsi
-; X64-NEXT:    mov qword ptr [rbp - 0x38], rdi
+; X64-NEXT:    sub rsp, 0x20
+; X64-NEXT:    mov rbx, rdi
+; X64-NEXT:    mov r12, rsi
 ; X64-NEXT:    mov edi, 0x0
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    call <L0>
 ; X64-NEXT:     R_X86_64_PLT32 fn_ptr_i64-0x4
-; X64-NEXT:    mov qword ptr [rbp - 0x40], rax
+; X64-NEXT:    mov qword ptr [rbp - 0x30], rax
 ; X64-NEXT:    jmp <L1>
 ; X64-NEXT:    mov eax, 0x0
-; X64-NEXT:    mov rsp, rbp
+; X64-NEXT:    lea rsp, [rbp - 0x10]
+; X64-NEXT:    pop r12
+; X64-NEXT:    pop rbx
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ; X64-NEXT:    nop word ptr [rax + rax]
-; X64-NEXT:    nop dword ptr [rax]
 ; X64-NEXT:  <L1>:
-; X64-NEXT:    mov rax, qword ptr [rbp - 0x40]
+; X64-NEXT:    mov rax, qword ptr [rbp - 0x30]
 ; X64-NEXT:    lea rax, [rax + 0x8]
 ; X64-NEXT:  <L2>:
 ; X64-NEXT:    mov eax, 0x0
-; X64-NEXT:    mov rax, qword ptr [rbp - 0x38]
-; X64-NEXT:    mov rcx, qword ptr [rbp - 0x30]
-; X64-NEXT:    movzx edx, byte ptr [rax + rcx]
+; X64-NEXT:    movzx eax, byte ptr [rbx + r12]
 ; X64-NEXT:    jmp <L2>
 ;
 ; ARM64-LABEL: <main>:
-; ARM64:         sub sp, sp, #0xc0
+; ARM64:         sub sp, sp, #0xb0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    nop
-; ARM64-NEXT:    str x0, [x29, #0xa0]
-; ARM64-NEXT:    str x1, [x29, #0xa8]
+; ARM64-NEXT:    stp x19, x20, [x29, #0x10]
+; ARM64-NEXT:    mov x19, x0
+; ARM64-NEXT:    mov x20, x1
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    bl 0x23c <main+0x1c>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_ptr_i64
-; ARM64-NEXT:    str x0, [x29, #0xb0]
+; ARM64-NEXT:    str x0, [x29, #0xa0]
 ; ARM64-NEXT:    b 0x280 <main+0x60>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    mov sp, x29
+; ARM64-NEXT:    ldp x19, x20, [x29, #0x10]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xc0
+; ARM64-NEXT:    add sp, sp, #0xb0
 ; ARM64-NEXT:    ret
 ; ARM64-NEXT:     ...
-; ARM64-NEXT:    ldr x0, [x29, #0xb0]
+; ARM64-NEXT:    ldr x0, [x29, #0xa0]
 ; ARM64-NEXT:    add x0, x0, #0x8
 ; ARM64-NEXT:    mov w0, #0x0 // =0
-; ARM64-NEXT:    ldr x0, [x29, #0xa0]
-; ARM64-NEXT:    ldr x1, [x29, #0xa8]
-; ARM64-NEXT:    add x2, x0, x1
-; ARM64-NEXT:    ldrb w2, [x2]
+; ARM64-NEXT:    add x0, x19, x20
+; ARM64-NEXT:    ldrb w0, [x0]
 ; ARM64-NEXT:    b 0x288 <main+0x68>
   %3 = invoke ptr @fn_ptr_i64(i64 0)
           to label %6 unwind label %4

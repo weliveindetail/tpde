@@ -307,7 +307,9 @@ bool LLVMCompilerX64::compile_alloca(const llvm::Instruction *inst,
 
     ASM(SUB64rr, FE_SP, res.cur_reg());
     res_ref.set_value(std::move(res));
-    res_ref.lock();
+    if (!res_ref.has_reg()) {
+      res_ref.lock();
+    }
   }
 
   auto align = alloca->getAlign().value();
