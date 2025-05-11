@@ -217,7 +217,8 @@ struct CompilerBase {
   void free_reg(Reg reg) noexcept;
 
   // TODO(ts): switch to a branch_spill_before naming style?
-  typename RegisterFile::RegBitSet spill_before_branch() noexcept;
+  typename RegisterFile::RegBitSet
+      spill_before_branch(bool force_spill = false) noexcept;
   void release_spilled_regs(typename RegisterFile::RegBitSet) noexcept;
 
   /// When reaching a point in the function where no other blocks will be
@@ -841,7 +842,8 @@ void CompilerBase<Adaptor, Derived, Config>::free_reg(Reg reg) noexcept {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
-    CompilerBase<Adaptor, Derived, Config>::spill_before_branch() noexcept {
+    CompilerBase<Adaptor, Derived, Config>::spill_before_branch(
+        bool force_spill) noexcept {
   // since we do not explicitly keep track of register assignments per block,
   // whenever we might branch off to a block that we do not directly compile
   // afterwards (i.e. the register assignments might change in between), we
@@ -870,23 +872,30 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
   assert(may_change_value_state());
 
   const IRBlockRef cur_block_ref = analyzer.block_ref(cur_block_idx);
-  auto next_block_is_succ = false;
-  auto next_block_has_multiple_incoming = false;
-  u32 succ_count = 0;
-  for (const IRBlockRef succ : adaptor->block_succs(cur_block_ref)) {
-    ++succ_count;
-    if (static_cast<u32>(analyzer.block_idx(succ)) ==
-        static_cast<u32>(cur_block_idx) + 1) {
-      next_block_is_succ = true;
-      if (analyzer.block_has_multiple_incoming(succ)) {
-        next_block_has_multiple_incoming = true;
+
+  bool must_spill = force_spill;
+  if (!must_spill) {
+    // We must always spill if no block is immediately succeeding or that block
+    // has multiple incoming edges.
+    auto next_block_is_succ = false;
+    auto next_block_has_multiple_incoming = false;
+    u32 succ_count = 0;
+    for (const IRBlockRef succ : adaptor->block_succs(cur_block_ref)) {
+      ++succ_count;
+      if (static_cast<u32>(analyzer.block_idx(succ)) ==
+          static_cast<u32>(cur_block_idx) + 1) {
+        next_block_is_succ = true;
+        if (analyzer.block_has_multiple_incoming(succ)) {
+          next_block_has_multiple_incoming = true;
+        }
       }
     }
-  }
 
-  if (succ_count == 1 && next_block_is_succ &&
-      !next_block_has_multiple_incoming) {
-    return RegBitSet{};
+    must_spill = !next_block_is_succ || next_block_has_multiple_incoming;
+
+    if (succ_count == 1 && !must_spill) {
+      return RegBitSet{};
+    }
   }
 
   /*if (!next_block_is_succ) {
@@ -958,7 +967,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
       return false;
     }
 
-    if (!next_block_is_succ || next_block_has_multiple_incoming) {
+    if (must_spill) {
       spill(ap);
       return false;
     }
@@ -985,8 +994,7 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
     const auto reg_fixed = spill_reg_if_needed(reg);
     // remove from register assignment if the next block cannot rely on the
     // value being in the specific register
-    if (!reg_fixed &&
-        (next_block_has_multiple_incoming || !next_block_is_succ)) {
+    if (!reg_fixed && must_spill) {
       // TODO(ts): this needs to be changed if this is supposed to work
       // with other RegisterFile implementations
       spilled |= RegBitSet{1ull} << reg;

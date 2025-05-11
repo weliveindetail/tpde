@@ -3989,61 +3989,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
   auto unwind_label =
       this->block_labels[(u32)this->analyzer.block_idx(unwind_block_ref)];
 
-  // we need to check whether the call result needs to be spilled, too.
-  // This needs to be done since the invoke is conceptually a branch
-  auto check_res_spill = [&]() {
-    auto call_res_idx = invoke;
-    auto *a = this->val_assignment(this->val_idx(call_res_idx));
-    if (a == nullptr) {
-      // call has void result
-      return;
-    }
-
-    auto cur_block = this->analyzer.block_ref(this->cur_block_idx);
-
-    // TODO: temporarily disable the optimization, it doesn't work reliably.
-    // First, if the unwind block has PHIs, we currently assume that the result
-    // registers (which are the landing pad result registers) are reserveable.
-    // Second, the result registers might be in the result from spill_before_br,
-    // which would cause the result to be freed immediately after the branch.
-    // Both cases could be handled by inspecting the result registers. However,
-    // a proper solution requires some more thought. Therefore, as a temporary
-    // workaround, *always* (=> && false) spill the result of an invoke if it is
-    // used outside of a PHI node in the normal block.
-    //
-    // This used to be: if (normal_is_next) return;
-
-    uint32_t num_phi_reads = 0;
-    for (auto i : this->adaptor->block_phis(normal_block_ref)) {
-      auto phi = this->adaptor->val_as_phi(i);
-
-      auto incoming_val = phi.incoming_val_for_block(cur_block);
-      if (incoming_val == call_res_idx) {
-        ++num_phi_reads;
-      }
-    }
-    // no need to spill if only the phi-nodes in the (normal) successor read
-    // the value
-    if (a->references_left <= num_phi_reads &&
-        (u32)this->analyzer
-                .liveness_info(this->adaptor->val_local_idx(call_res_idx))
-                .last <= (u32)this->cur_block_idx) {
-      return;
-    }
-
-    // spill
-    // no need to spill fixed assignments
-    for (u32 idx = 0; idx < a->part_count; idx++) {
-      tpde::AssignmentPartRef ap{a, idx};
-      if (!ap.fixed_assignment() && ap.register_valid()) {
-        // this is the call result...
-        assert(ap.modified());
-        this->evict_reg(ap.get_reg());
-        spilled |= 1ull << ap.get_reg().id();
-      }
-    }
-  };
-  check_res_spill();
+  // We always spill the call result. Also, generate_call might move values
+  // again into registers, which we need to release again.
+  // TODO: evaluate when exactly this is required.
+  spilled |= this->spill_before_branch(/*force_spill=*/true);
 
   // if the unwind block has phi-nodes, we need more code to propagate values
   // to it so do the propagation logic
@@ -4054,6 +4003,8 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
                                         normal_block_ref,
                                         /* split */ false,
                                         /* last_inst */ false);
+
+    this->release_spilled_regs(spilled);
 
     unwind_label = this->assembler.label_create();
     this->label_place(unwind_label);
@@ -4076,9 +4027,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_invoke(
                                         normal_block_ref,
                                         /* split */ false,
                                         /* last_inst */ true);
-  }
 
-  this->release_spilled_regs(spilled);
+    this->release_spilled_regs(spilled);
+  }
 
   const auto is_cleanup = landing_pad->isCleanup();
   const auto num_clauses = landing_pad->getNumClauses();
