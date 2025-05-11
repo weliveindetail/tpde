@@ -81,6 +81,13 @@ bool cur_func_may_emit_calls() const noexcept;
 Can the compilation of any instruction in the current function emit calls? This may be used to optimize register allocation or stack frame setup. If you can cheaply provide the answer,
 you should. Otherwise you currently should always return `true`.
 
+#### cur_personality_func
+```cpp
+typename CompilerConfig::Assembler::SymRef cur_personality_func() noexcept;
+```
+Returns the personality function of the current function. This is relevant for exception handling
+and cleanup actions performed on unwinding.
+
 #### try_force_fixed_assignment
 ```cpp
 bool try_force_fixed_assignment(IRValueRef val) const noexcept;
