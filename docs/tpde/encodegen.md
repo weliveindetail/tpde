@@ -97,7 +97,9 @@ void encode_addi32(GenericValuePart&& in0, GenericValuePart&& in1, ScratchReg& r
 
 # Embedding the EncodeCompiler
 - simply add as base class to your existing compiler
-- WARNING: you need to overwrite reset in your child class and call `Base::reset` as well as `EncodeCompiler{Arch}::reset`
+
+> [!warning]
+> you need to overwrite reset in your child class and call `Base::reset` as well as `EncodeCompiler{Arch}::reset`
 
 so if you have
 ```cpp

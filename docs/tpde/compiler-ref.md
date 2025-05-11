@@ -208,7 +208,8 @@ bool compile_first_inst() {
 - when *defining* a value we use the [result_ref](@ref CompilerBase::result_ref) function to get the [ValueRef](@ref ValueRef)
 - for each part that we use we can get a [ValuePartRef](@ref ValuePartRef) using [part](@ref ValueRef::part)
 - allows to allocate a register when defining a value using [alloc_reg](@ref ValuePartRef::alloc_reg)
-- NOTE: this *locks* the register for the `ValuePartRef` meaning it cannot be evicted until the `ValuePartRef` is destructed or you call [unlock](@ref ValuePartRef::unlock)
+> [!note]
+> this *locks* the register for the `ValuePartRef` meaning it cannot be evicted until the `ValuePartRef` is destructed or you call [unlock](@ref ValuePartRef::unlock)
 - when value defined, you have to call [set_modified](@ref ValuePartRef::set_modified) to tell the framework that the value needs to be spilled if the register is reused
 ```cpp
 bool compile_zero_inst(IRInstRef inst) {
@@ -449,7 +450,10 @@ bool compile_loadi8(IRInstRef inst, InstRange remaining) {
 - you only need to move result values into registers
 - i.e. get the result register for the current calling convention, move the values there
 - afterwards, call `gen_func_epilog` from the architecture compiler and then [release_regs_after_return](@ref CompilerBase::release_regs_after_return)
-- WARNING: you *always* need to call `release_regs_after_return` if you compile an instruction that terminates a basic block and does not branch to another block
+
+> [!warning]
+> you *always* need to call `release_regs_after_return` if you compile an instruction that terminates a basic block and does not branch to another block
+
 ```cpp
 bool compile_ret(IRInstRef inst) {
     if (/* IR-specific way to check if return should return a value */) {
@@ -477,7 +481,9 @@ bool compile_ret(IRInstRef inst) {
   can be spilled
 - after all branches are generated, call [release_spilled_regs](@ref CompilerBase::release_spilled_regs) so the register allocator can free values which can no longer be assumed to be in registers
   after the branch
-- WARNING: Never emit a branch to a block other than using `generate_branch_to_block`
+
+> [!warning]
+> Never emit a branch to a block other than using `generate_branch_to_block`
 
 ### Unconditional branch
 - need to get `IRBlockRef` to jump to
@@ -605,7 +611,8 @@ bool compile_call_direct(IRInstRef inst) {
 ## Manual stack allocations
 - manual allocation of stack slots sometimes needed, e.g. when an instruction needs too many temporaries or manual handling of static allocations
 - allocated using [allocate_stack_slot](@ref CompilerBase::allocate_stack_slot), free'd using [free_stack_slot](@ref CompilerBase::free_stack_slot)
-- NOTE: only free when all blocks in which the stack slot could be live have been compiled
+> [!note]
+> only free when all blocks in which the stack slot could be live have been compiled
 
 ```cpp
 ScratchReg scratch{this};
@@ -796,12 +803,14 @@ void compile_highest_bit_set(IRInstRef inst) noexcept {
 }
 ```
 
-- WARNING: don't emit code that might cause registers to be spilled when in conditional control-flow
+> [!warning]
+> Don't emit code that might cause registers to be spilled when in conditional control-flow
 
 #### Jump Tables
 - for switch tables it is beneficial to generate jump tables which encode offsets to labels
-- NOTE: you cannot directly jump to blocks using an offset since the register allocator might need
-  to do PHI moves at the edge. You first have to jump to a label that then branches to the target block
+> [!note]
+> you cannot directly jump to blocks using an offset since the register allocator might need
+> to do PHI moves at the edge. You first have to jump to a label that then branches to the target block
 - Assembler has helper function to manually add an unresolved offset to a label
 
 ```cpp
@@ -862,7 +871,8 @@ void compile_elf() {
 - Need to provide a function to resolve undefined symbols
 - Get symbol address using [get_sym_addr](@ref ElfMapper::get_sym_addr)
 - On destruction, automatically free's the memory and deregisters unwind info
-- NOTE: can be reused after reset
+> [!note]
+> can be reused after reset
 
 ```cpp
 void compile_and_map() {

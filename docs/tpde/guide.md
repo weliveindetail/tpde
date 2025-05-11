@@ -1095,7 +1095,7 @@ std::optional<std::vector<u8>> compile_ir_x64(TestIR* ir) {
 }
 ```
 
-```
+```cpp
 // TestIRCompilerA64.cpp
 std::optional<std::vector<u8>> compile_ir_a64(TestIR* ir) {
     TestIRAdaptor adaptor{ir};
