@@ -11,10 +11,6 @@ Subpages:
 - Compiler{Base,X64,A64} Reference (required functions)
 - EncodeGen Reference
 - Guide: How-To implement a back-end (using TestIR as example IR); first without snippets then with snippets (maybe make this two pages)
-- Internals: Detailed compilation flow (if necessary)
-- Internals: Analyzer
-- Internals: Register Allocator
-- Internals: Assembler
 
 This is the main documentation for the TPDE framework. It is designed to help implement a baseline compiler back-end (i.e. machine code generation)
 when compiling from [SSA IRs](https://en.wikipedia.org/wiki/Static_single-assignment_form) and written in C++.
@@ -44,10 +40,6 @@ This documentation is split up into multiple sections:
 - \subpage tpde-compiler-ref is a reference for the Compiler classes, explaining what functions you need to implement for instruction selection
 - \subpage tpde-encodegen is a reference for the tool generating snippet encoders
 - \subpage tpde-guide is a guide that explains how to implement a back-end using TPDE for an example IR
-- \subpage tpde-internals-flow is a more detailed documentation of the compilation flow
-- \subpage tpde-internals-analyzer describes how the Analyzer component of TPDE works
-- \subpage tpde-internals-regalloc describes how the register allocator works
-- \subpage tpde-internals-assembler describes how the Assembler component of TPDE works
 
 <div class="section_buttons">
  

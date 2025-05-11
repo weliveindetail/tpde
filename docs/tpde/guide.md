@@ -1134,7 +1134,7 @@ out_file.write(reinterpret_cast<const char *>(data->data()), data->size());
  
 | Previous          |                              Next |
 |:------------------|----------------------------------:|
-| [EncodeGen Reference](@ref tpde-encodegen) | [Internals: Compilation Flow](@ref tpde-internals-flow) |
+| [EncodeGen Reference](@ref tpde-encodegen) |  |
  
 </div>
 
