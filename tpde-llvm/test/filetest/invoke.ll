@@ -21,13 +21,13 @@ define i32 @invoke_manyargs() personality ptr @__gxx_personality_v0 {
 ; X64-NEXT:    mov r8d, 0x5
 ; X64-NEXT:    mov r9d, 0x6
 ; X64-NEXT:    mov eax, 0x7
-; X64-NEXT:    mov qword ptr [rsp], rax
+; X64-NEXT:    mov dword ptr [rsp], eax
 ; X64-NEXT:    mov eax, 0x8
-; X64-NEXT:    mov qword ptr [rsp + 0x8], rax
+; X64-NEXT:    mov dword ptr [rsp + 0x8], eax
 ; X64-NEXT:    mov eax, 0x9
-; X64-NEXT:    mov qword ptr [rsp + 0x10], rax
+; X64-NEXT:    mov dword ptr [rsp + 0x10], eax
 ; X64-NEXT:    mov eax, 0xa
-; X64-NEXT:    mov qword ptr [rsp + 0x18], rax
+; X64-NEXT:    mov dword ptr [rsp + 0x18], eax
 ; X64-NEXT:  <L0>:
 ; X64-NEXT:    call <L0>
 ; X64-NEXT:     R_X86_64_PLT32 mayThrow-0x4

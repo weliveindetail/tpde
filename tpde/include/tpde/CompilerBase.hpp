@@ -270,6 +270,7 @@ struct CompilerBase {
 
   struct CallInfo {
     u32 stack_size;
+    bool is_vararg;
     RegisterFile::RegBitSet clobber_mask;
     std::span<CCAssignment> args;
     std::span<CCAssignment> ret;
