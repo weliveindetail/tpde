@@ -3,10 +3,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
-/**
- * @file CompilerX64.hpp
- */
-
 #include "AssemblerElfX64.hpp"
 #include "tpde/CompilerBase.hpp"
 #include "tpde/ValLocalIdx.hpp"
@@ -29,7 +25,6 @@
 #define ASM_FULL(compiler, reserve, op, ...)                                   \
   ((compiler)->asm_helper(fe64_##op).encode(reserve, __VA_ARGS__))
 
-/// Test documentation
 #define ASM(op, ...) ASM_FULL(this, 16, op, 0 __VA_OPT__(, ) __VA_ARGS__)
 #define ASMC(compiler, op, ...)                                                \
   ASM_FULL(compiler, 16, op, 0 __VA_OPT__(, ) __VA_ARGS__)
