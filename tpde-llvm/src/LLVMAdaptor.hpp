@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
-#include <format>
 #include <ranges>
 
 #include <llvm/IR/Instruction.h>

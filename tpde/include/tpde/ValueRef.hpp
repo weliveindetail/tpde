@@ -3,9 +3,7 @@
 
 #include "tpde/ValueAssignment.hpp"
 
-#include <array>
 #include <cstring>
-#include <span>
 
 namespace tpde {
 

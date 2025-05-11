@@ -25,6 +25,7 @@ set_target_properties(tpde PROPERTIES
 # spdlog
 if (((TPDE_LOGGING STREQUAL "DebugOnly") AND (CMAKE_BUILD_TYPE STREQUAL "Debug")) OR (TPDE_LOGGING STREQUAL "ON"))
     set(SPDLOG_NO_EXCEPTIONS ON CACHE BOOL "TPDE compiles without exceptions")
+    set(SPDLOG_USE_STD_FORMAT ON CACHE BOOL "TPDE uses C++20")
     add_subdirectory(../deps/spdlog ${CMAKE_CURRENT_BINARY_DIR}/deps/spdlog)
 
     target_compile_definitions(tpde PUBLIC TPDE_LOGGING)

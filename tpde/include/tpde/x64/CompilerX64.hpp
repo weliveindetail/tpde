@@ -16,15 +16,10 @@
   #error Got definition for ASM macros from somewhere else. Maybe you included compilers for multiple architectures?
 #endif
 
-// This is a lambda, because the parameters might call ASM macros themselves --
-// so we need to evaluate text_cur_ptr() after the arguments.
-#define ASM_FULL(compiler, reserve, op, flags, ...)                            \
-  [c = (compiler), f = (flags)]<typename... Args>(Args... args) {              \
-    (reserve ? c->text_writer.ensure_space(reserve) : (void)0);                \
-    unsigned n = (fe64_##op)(c->text_writer.cur_ptr(), f, args...);            \
-    assert(n != 0);                                                            \
-    c->text_writer.cur_ptr() += n;                                             \
-  }(__VA_ARGS__)
+// Use helper, parameters might call ASM themselves => evaluate text_cur_ptr
+// after the arguments.
+#define ASM_FULL(compiler, reserve, op, ...)                                   \
+  ((compiler)->asm_helper(fe64_##op).encode(reserve, __VA_ARGS__))
 
 #define ASM(op, ...) ASM_FULL(this, 16, op, 0 __VA_OPT__(, ) __VA_ARGS__)
 #define ASMC(compiler, op, ...)                                                \
@@ -368,6 +363,23 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
       : Base{adaptor}, cpu_feats(cpu_features) {
     static_assert(std::is_base_of_v<CompilerX64, Derived>);
     static_assert(concepts::Compiler<Derived, PlatformConfig>);
+  }
+
+  template <typename... Args>
+  auto asm_helper(unsigned (*fn)(u8 *, int, Args...)) {
+    struct Helper {
+      CompilerX64 *compiler;
+      decltype(fn) fn;
+      void encode(unsigned reserve, int flags, Args... args) {
+        if (reserve) {
+          compiler->text_writer.ensure_space(reserve);
+        }
+        unsigned n = fn(compiler->text_writer.cur_ptr(), flags, args...);
+        assert(n != 0);
+        compiler->text_writer.cur_ptr() += n;
+      }
+    };
+    return Helper{this, fn};
   }
 
   void start_func(u32 func_idx) noexcept;

@@ -23,7 +23,7 @@
 #include <llvm/Support/TimeProfiler.h>
 #include <llvm/Support/raw_ostream.h>
 
-#include "tpde/AssemblerElf.hpp"
+
 #include "tpde/CompilerBase.hpp"
 #include "tpde/base.hpp"
 #include "tpde/util/BumpAllocator.hpp"

@@ -2,8 +2,6 @@
 
 #include "LLVMAdaptor.hpp"
 
-#include <format>
-
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>

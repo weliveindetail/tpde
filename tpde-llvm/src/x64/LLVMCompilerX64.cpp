@@ -2,8 +2,6 @@
 //
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
-#include <fstream>
-
 #include <llvm/IR/InlineAsm.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
