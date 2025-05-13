@@ -13,53 +13,22 @@
 #include <elf.h>
 
 // Helper macros for assembling in the compiler
-#if defined(ASM) || defined(ASME) || defined(ASMNC) || defined(ASMC)
+#if defined(ASM) || defined(ASMNC) || defined(ASMC)
   #error Got definition for ASM macros from somewhere else. Maybe you included compilers for multiple architectures?
 #endif
 
-#define ASM(op, ...)                                                           \
-  do {                                                                         \
-    u32 inst = de64_##op(__VA_ARGS__);                                         \
-    assert(inst != 0);                                                         \
-    this->text_writer.write(inst);                                             \
-  } while (false)
-
-// generate instruction and reserve a custom amount of bytes
-#define ASME(bytes, op, ...)                                                   \
-  do {                                                                         \
-    assert(bytes >= 4);                                                        \
-    this->text_writer.ensure_space(bytes);                                     \
-    u32 inst = de64_##op(__VA_ARGS__);                                         \
-    assert(inst != 0);                                                         \
-    this->text_writer.write_unchecked(inst);                                   \
-  } while (false)
-
-// generate an instruction without checking that enough space is available
-#define ASMNC(op, ...)                                                         \
-  do {                                                                         \
-    u32 inst = de64_##op(__VA_ARGS__);                                         \
-    assert(inst != 0);                                                         \
-    this->text_writer.write_unchecked(inst);                                   \
-  } while (false)
-
-// generate an instruction with a custom compiler ptr
+/// Encode an instruction with an explicit compiler pointer
 #define ASMC(compiler, op, ...)                                                \
-  do {                                                                         \
-    u32 inst = de64_##op(__VA_ARGS__);                                         \
-    assert(inst != 0);                                                         \
-    compiler->text_writer.write(inst);                                         \
-  } while (false)
-
-// check if the instruction could be successfully encoded with custom compiler
+  ((compiler)->text_writer.write_inst(de64_##op(__VA_ARGS__)))
+/// Encode an instruction into this
+#define ASM(...) ASMC(this, __VA_ARGS__)
+/// Encode an instruction without checking that enough space is available
+#define ASMNC(op, ...)                                                         \
+  (this->text_writer.write_inst_unchecked(de64_##op(__VA_ARGS__)))
+/// Encode an instruction if the encoding is successful (returns true)
 #define ASMIFC(compiler, op, ...)                                              \
-  (([&]() -> bool {                                                            \
-    u32 inst = de64_##op(__VA_ARGS__);                                         \
-    if (inst == 0)                                                             \
-      return false;                                                            \
-    compiler->text_writer.write(inst);                                         \
-    return true;                                                               \
-  })())
-// check if the instruction could be successfully encoded
+  ((compiler)->text_writer.try_write_inst(de64_##op(__VA_ARGS__)))
+/// Encode an instruction if the encoding is successful (returns true)
 #define ASMIF(...) ASMIFC(this, __VA_ARGS__)
 
 namespace tpde::a64 {

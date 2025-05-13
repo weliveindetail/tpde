@@ -19,6 +19,24 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
   class SectionWriter : public Base::SectionWriterBase<SectionWriter> {
   public:
     void more_space(u32 size) noexcept;
+
+    bool try_write_inst(u32 inst) noexcept {
+      if (inst == 0) {
+        return false;
+      }
+      write(inst);
+      return true;
+    }
+
+    void write_inst(u32 inst) noexcept {
+      assert(inst != 0);
+      write(inst);
+    }
+
+    void write_inst_unchecked(u32 inst) noexcept {
+      assert(inst != 0);
+      write_unchecked(inst);
+    }
   };
 
   enum class UnresolvedEntryKind : u8 {
