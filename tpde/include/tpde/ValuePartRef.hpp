@@ -127,18 +127,21 @@ public:
 
   /// If it is known that the value part has a register, this function can be
   /// used to quickly access it
-  AsmReg cur_reg() noexcept {
+  AsmReg cur_reg() const noexcept {
     assert(state.v.reg.valid());
     return state.v.reg;
   }
 
   /// Is the value part currently in the specified register?
   bool is_in_reg(AsmReg reg) const noexcept {
-    if (is_const()) {
-      return false;
+    if (has_reg()) {
+      return cur_reg() == reg;
     }
-    auto ap = assignment();
-    return ap.register_valid() && ap.get_reg() == reg;
+    if (has_assignment()) {
+      auto ap = assignment();
+      return ap.register_valid() && ap.get_reg() == reg;
+    }
+    return false;
   }
 
   bool has_reg() const noexcept { return state.v.reg.valid(); }

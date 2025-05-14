@@ -2174,6 +2174,9 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
   auto *inst_ty = inst->getType();
   auto *scalar_ty = inst_ty->getScalarType();
 
+  auto lhs = this->val_ref(inst->getOperand(0));
+  auto rhs = this->val_ref(inst->getOperand(1));
+
   if (val_info.type == LLVMBasicValType::f128) {
     LibFunc lf;
     switch (op) {
@@ -2184,11 +2187,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
     case FloatBinaryOp::rem: return false;
     default: TPDE_UNREACHABLE("invalid FloatBinaryOp");
     }
-    SymRef sym = get_libfunc_sym(lf);
-    std::array<IRValueRef, 2> srcs{inst->getOperand(0), inst->getOperand(1)};
-
+    auto cb = derived()->create_call_builder();
+    cb->add_arg(lhs.part(0), tpde::CCAssignment{});
+    cb->add_arg(rhs.part(0), tpde::CCAssignment{});
+    cb->call(get_libfunc_sym(lf));
     auto res_vr = this->result_ref(inst);
-    derived()->create_helper_call(srcs, &res_vr, sym);
+    cb->add_ret(res_vr);
     return true;
   }
 
@@ -2202,11 +2206,12 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
       return false;
     }
 
-    SymRef sym = get_libfunc_sym(is_double ? LibFunc::fmod : LibFunc::fmodf);
-    std::array<IRValueRef, 2> srcs{inst->getOperand(0), inst->getOperand(1)};
-
+    auto cb = derived()->create_call_builder();
+    cb->add_arg(lhs.part(0), tpde::CCAssignment{});
+    cb->add_arg(rhs.part(0), tpde::CCAssignment{});
+    cb->call(get_libfunc_sym(is_double ? LibFunc::fmod : LibFunc::fmodf));
     auto res_vr = this->result_ref(inst);
-    derived()->create_helper_call(srcs, &res_vr, sym);
+    cb->add_ret(res_vr);
     return true;
   }
 
@@ -2269,8 +2274,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_float_binary_op(
   }
 
   auto [res_vr, res] = this->result_ref_single(inst);
-  auto lhs = this->val_ref(inst->getOperand(0));
-  auto rhs = this->val_ref(inst->getOperand(1));
   ScratchReg res_scratch{derived()};
   if (!(derived()->*encode_fn)(lhs.part(0), rhs.part(0), res_scratch)) {
     return false;

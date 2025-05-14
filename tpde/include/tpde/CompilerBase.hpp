@@ -215,7 +215,10 @@ struct CompilerBase {
     // evict registers, do call, reset stack frame
     void call(std::variant<typename Assembler::SymRef, ValuePart>) noexcept;
 
-    void add_ret(ValuePart &&vp, CCAssignment cca) noexcept;
+    void add_ret(ValuePart &vp, CCAssignment cca) noexcept;
+    void add_ret(ValuePart &&vp, CCAssignment cca) noexcept {
+      add_ret(vp, cca);
+    }
     void add_ret(ValueRef &vr) noexcept;
   };
 
@@ -515,7 +518,7 @@ void CompilerBase<Adaptor, Derived, Config>::CallBuilderBase<CBDerived>::call(
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 template <typename CBDerived>
 void CompilerBase<Adaptor, Derived, Config>::CallBuilderBase<
-    CBDerived>::add_ret(ValuePart &&vp, CCAssignment cca) noexcept {
+    CBDerived>::add_ret(ValuePart &vp, CCAssignment cca) noexcept {
   cca.bank = vp.bank();
   cca.size = vp.part_size();
   assigner.assign_ret(cca);
