@@ -51,6 +51,8 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
 
   std::unique_ptr<LLVMAdaptor> adaptor;
 
+  std::variant<std::monostate, tpde::x64::CCAssignerSysV> cc_assigners;
+
   static constexpr std::array<AsmReg, 2> LANDING_PAD_RES_REGS = {AsmReg::AX,
                                                                  AsmReg::DX};
 
@@ -88,6 +90,9 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
   void load_address_of_var_reference(AsmReg dst,
                                      tpde::AssignmentPartRef ap) noexcept;
 
+  std::optional<CallBuilder>
+      create_call_builder(const llvm::CallBase * = nullptr) noexcept;
+
   bool compile_unreachable(const llvm::Instruction *,
                            const ValInfo &,
                            u64) noexcept;
@@ -97,9 +102,6 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
                                    IRBlockRef true_target,
                                    IRBlockRef false_target) noexcept;
   bool compile_inline_asm(const llvm::CallBase *) noexcept;
-  bool compile_call_inner(const llvm::CallBase *,
-                          std::variant<SymRef, ValuePartRef> &,
-                          bool) noexcept;
   bool compile_icmp(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
@@ -246,6 +248,24 @@ void LLVMCompilerX64::load_address_of_var_reference(
       ASM(LEA64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
       reloc_text(sym, R_X86_64_PC32, text_writer.offset() - 4, -4);
     }
+  }
+}
+
+std::optional<LLVMCompilerX64::CallBuilder>
+    LLVMCompilerX64::create_call_builder(const llvm::CallBase *cb) noexcept {
+  bool var_arg = cb ? cb->getFunctionType()->isVarArg() : false;
+  llvm::CallingConv::ID cc = llvm::CallingConv::C;
+  if (cb) {
+    cc = cb->getCallingConv();
+  }
+  switch (cc) {
+  case llvm::CallingConv::C:
+  case llvm::CallingConv::Fast:
+    // On x86-64, fastcc behaves like the C calling convention.
+    cc_assigners = tpde::x64::CCAssignerSysV(var_arg);
+    return CallBuilder{*this,
+                       std::get<tpde::x64::CCAssignerSysV>(cc_assigners)};
+  default: return std::nullopt;
   }
 }
 
@@ -403,56 +423,6 @@ bool LLVMCompilerX64::compile_inline_asm(const llvm::CallBase *call) noexcept {
     }
   }
 
-  return true;
-}
-
-bool LLVMCompilerX64::compile_call_inner(
-    const llvm::CallBase *call,
-    std::variant<SymRef, ValuePartRef> &target,
-    bool var_arg) noexcept {
-  ValueRef res{this}; // must outlive results.
-  tpde::util::SmallVector<CallArg, 16> args;
-
-  const auto num_args = call->arg_size();
-  args.reserve(num_args);
-
-  for (u32 i = 0; i < num_args; ++i) {
-    auto *op = call->getArgOperand(i);
-    auto flag = CallArg::Flag::none;
-    u32 byval_align = 0, byval_size = 0;
-
-    if (call->paramHasAttr(i, llvm::Attribute::AttrKind::ZExt)) {
-      flag = CallArg::Flag::zext;
-    } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::SExt)) {
-      flag = CallArg::Flag::sext;
-    } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::ByVal)) {
-      flag = CallArg::Flag::byval;
-      byval_align = call->getParamAlign(i).valueOrOne().value();
-      byval_size = this->adaptor->mod->getDataLayout().getTypeAllocSize(
-          call->getParamByValType(i));
-    }
-    assert(!call->paramHasAttr(i, llvm::Attribute::AttrKind::InAlloca));
-    assert(!call->paramHasAttr(i, llvm::Attribute::AttrKind::Preallocated));
-
-    args.push_back(CallArg{op, flag, byval_align, byval_size});
-  }
-
-  if (!call->getType()->isVoidTy()) {
-    res = this->result_ref(call);
-  }
-
-  std::variant<SymRef, ValuePart> call_target;
-  if (std::holds_alternative<SymRef>(target)) {
-    call_target = std::get<SymRef>(target);
-  } else {
-    call_target = std::move(std::get<ValuePartRef>(target));
-  }
-
-  generate_call(std::move(call_target),
-                args,
-                call->getType()->isVoidTy() ? nullptr : &res,
-                tpde::x64::CallingConv::SYSV_CC,
-                var_arg);
   return true;
 }
 

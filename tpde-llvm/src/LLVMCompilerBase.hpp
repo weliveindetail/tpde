@@ -3293,50 +3293,62 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
     const llvm::Instruction *inst, const ValInfo &info, u64) noexcept {
   const auto *call = llvm::cast<llvm::CallBase>(inst);
+  if (auto *intrin = llvm::dyn_cast<llvm::IntrinsicInst>(call)) {
+    return compile_intrin(intrin, info);
+  }
 
-  if (call->isMustTailCall()) {
+  if (call->isMustTailCall() || call->hasOperandBundles()) {
     return false;
   }
 
-  // For indirect calls, target_ref must outlive call_target.
-  ValueRef target_ref{this};
-
-  std::variant<SymRef, ValuePartRef> call_target;
-  auto var_arg = false;
-
-  if (auto *fn = call->getCalledFunction(); fn) {
-    if (fn->isIntrinsic()) {
-      return compile_intrin(llvm::cast<llvm::IntrinsicInst>(call), info);
-    }
-
-    // this is a direct call
-    call_target = global_sym(fn);
-    var_arg = fn->getFunctionType()->isVarArg();
-  } else if (call->isInlineAsm()) {
+  if (call->isInlineAsm()) {
     return derived()->compile_inline_asm(call);
-  } else {
-    // either indirect call or call with mismatch of arguments
-    var_arg = call->getFunctionType()->isVarArg();
-    auto *op = call->getCalledOperand();
-    if (auto *fn = llvm::dyn_cast<llvm::Function>(op); fn) {
-      call_target = global_sym(fn);
-    } else if (auto *ga = llvm::dyn_cast<llvm::GlobalAlias>(op); fn) {
-      // aliases also show up here
-      // TODO(ts): do we need to check if the alias target is a function
-      // and not a variable?
-      call_target = global_sym(ga);
-    } else {
-      // indirect call
-      target_ref = this->val_ref(call->getCalledOperand());
-      call_target = target_ref.part(0);
-    }
   }
 
-  if (call->hasOperandBundles()) {
+  auto cb = derived()->create_call_builder(call);
+  if (!cb) {
     return false;
   }
 
-  return derived()->compile_call_inner(call, call_target, var_arg);
+  for (u32 i = 0, num_args = call->arg_size(); i != num_args; ++i) {
+    using CallArg = typename Derived::CallArg;
+
+    auto *op = call->getArgOperand(i);
+    auto flag = CallArg::Flag::none;
+    u32 byval_align = 0, byval_size = 0;
+
+    if (call->paramHasAttr(i, llvm::Attribute::AttrKind::ZExt)) {
+      flag = CallArg::Flag::zext;
+    } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::SExt)) {
+      flag = CallArg::Flag::sext;
+    } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::ByVal)) {
+      flag = CallArg::Flag::byval;
+      byval_align = call->getParamAlign(i).valueOrOne().value();
+      byval_size = this->adaptor->mod->getDataLayout().getTypeAllocSize(
+          call->getParamByValType(i));
+    } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::StructRet)) {
+      flag = CallArg::Flag::sret;
+    }
+    assert(!call->paramHasAttr(i, llvm::Attribute::AttrKind::InAlloca));
+    assert(!call->paramHasAttr(i, llvm::Attribute::AttrKind::Preallocated));
+
+    cb->add_arg(CallArg{op, flag, byval_align, byval_size});
+  }
+
+  llvm::Value *target = call->getCalledOperand();
+  if (auto *global = llvm::dyn_cast<llvm::GlobalValue>(target)) {
+    cb->call(global_sym(global));
+  } else {
+    auto [_, tgt_vp] = this->val_ref_single(target);
+    cb->call(std::move(tgt_vp));
+  }
+
+  if (!call->getType()->isVoidTy()) {
+    ValueRef res = this->result_ref(call);
+    cb->add_ret(res);
+  }
+
+  return true;
 }
 
 template <typename Adaptor, typename Derived, typename Config>
