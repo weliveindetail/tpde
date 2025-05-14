@@ -28,7 +28,6 @@ define void @call_take_12_fp128() {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str d8, [sp, #0x10]
-; ARM64-NEXT:    sub sp, sp, #0x40
 ; ARM64-NEXT:    movi v0.8b, #0x0
 ; ARM64-NEXT:    movi v1.16b, #0x0
 ; ARM64-NEXT:    movi v2.8b, #0x0
@@ -37,6 +36,7 @@ define void @call_take_12_fp128() {
 ; ARM64-NEXT:    movi v5.16b, #0x0
 ; ARM64-NEXT:    movi v6.8b, #0x0
 ; ARM64-NEXT:    movi v7.16b, #0x0
+; ARM64-NEXT:    sub sp, sp, #0x40
 ; ARM64-NEXT:    movi v8.8b, #0x0
 ; ARM64-NEXT:    str d8, [sp]
 ; ARM64-NEXT:    movi v8.16b, #0x0

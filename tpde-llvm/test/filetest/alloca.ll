@@ -859,7 +859,6 @@ define void @f2(ptr %0, ptr %1, ptr %2, ptr %3, ptr %4, ptr %5, ptr %6, ptr %7, 
 ; X64-NEXT:    mov ecx, 0x0
 ; X64-NEXT:    mov qword ptr [rbp - 0x9cd8], rdx
 ; X64-NEXT:    mov edx, 0x0
-; X64-NEXT:    sub rsp, 0x130
 ; X64-NEXT:    mov qword ptr [rbp - 0x9ce0], rdi
 ; X64-NEXT:    mov edi, 0x0
 ; X64-NEXT:    mov qword ptr [rbp - 0x9ce8], rsi
@@ -872,6 +871,7 @@ define void @f2(ptr %0, ptr %1, ptr %2, ptr %3, ptr %4, ptr %5, ptr %6, ptr %7, 
 ; X64-NEXT:    mov r8d, 0x0
 ; X64-NEXT:    mov qword ptr [rbp - 0x9d08], r9
 ; X64-NEXT:    mov r9d, 0x0
+; X64-NEXT:    sub rsp, 0x130
 ; X64-NEXT:    mov qword ptr [rbp - 0x9d10], rbx
 ; X64-NEXT:    mov ebx, 0x0
 ; X64-NEXT:    mov qword ptr [rsp], rbx
@@ -984,7 +984,6 @@ define void @f2(ptr %0, ptr %1, ptr %2, ptr %3, ptr %4, ptr %5, ptr %6, ptr %7, 
 ; ARM64-NEXT:    mov w27, #0x0 // =0
 ; ARM64-NEXT:    mov w28, #0x0 // =0
 ; ARM64-NEXT:    mov w30, #0x0 // =0
-; ARM64-NEXT:    sub sp, sp, #0x120
 ; ARM64-NEXT:    add x16, x29, #0x9, lsl #12 // =0x9000
 ; ARM64-NEXT:    str x0, [x16, #0xce0]
 ; ARM64-NEXT:    mov w0, #0x0 // =0
@@ -1009,6 +1008,7 @@ define void @f2(ptr %0, ptr %1, ptr %2, ptr %3, ptr %4, ptr %5, ptr %6, ptr %7, 
 ; ARM64-NEXT:    add x16, x29, #0x9, lsl #12 // =0x9000
 ; ARM64-NEXT:    str x7, [x16, #0xd18]
 ; ARM64-NEXT:    mov w7, #0x0 // =0
+; ARM64-NEXT:    sub sp, sp, #0x120
 ; ARM64-NEXT:    add x16, x29, #0x9, lsl #12 // =0x9000
 ; ARM64-NEXT:    str x8, [x16, #0xd20]
 ; ARM64-NEXT:    mov w8, #0x0 // =0

@@ -28,6 +28,44 @@ enum class TLSModel {
   LocalExec,
 };
 
+struct CCAssignment {
+  Reg reg = Reg::make_invalid();
+
+  /// If non-zero, indicates that this and the next N values must be
+  /// assigned to consecutive registers, or to the stack. The following
+  /// values must be in the same register bank as this value. u8 is sufficient,
+  /// no architecture has more than 255 parameter registers in a single bank.
+  u8 consecutive = 0;
+  bool sret : 1 = false; ///< Argument is return value pointer.
+  bool sext : 1 = false; ///< Sign-extend single integer.
+  bool zext : 1 = false; ///< Zero-extend single integer.
+  bool byval : 1 = false;
+  u8 align = 0;
+  u8 size = 0;
+  RegBank bank = RegBank{};
+  u32 byval_align = 0;
+  u32 byval_size = 0; // only used if byval is set
+  u32 stack_off = 0;  // only used if reg is invalid
+};
+
+struct CCInfo {
+  // TODO: use RegBitSet
+  const u64 allocatable_regs;
+  const u64 callee_saved_regs;
+};
+
+class CCAssigner {
+public:
+  virtual ~CCAssigner() noexcept {}
+  virtual const CCInfo &get_ccinfo() const noexcept = 0;
+  virtual void assign_arg(CCAssignment &cca) noexcept = 0;
+  virtual u32 get_stack_size() noexcept = 0;
+  /// Some calling conventions need different call behavior when calling a
+  /// vararg function.
+  virtual bool is_vararg() const noexcept { return false; }
+  virtual void assign_ret(CCAssignment &cca) noexcept = 0;
+};
+
 /// The base class for the compiler.
 /// It implements the main platform independent compilation logic and houses the
 /// analyzer
@@ -129,6 +167,58 @@ struct CompilerBase {
     EndIter to;
   };
 
+  struct CallArg {
+    enum class Flag : u8 {
+      none,
+      zext,
+      sext,
+      sret,
+      byval
+    };
+
+    explicit CallArg(IRValueRef value,
+                     Flag flags = Flag::none,
+                     u32 byval_align = 0,
+                     u32 byval_size = 0)
+        : value(value),
+          flag(flags),
+          byval_align(byval_align),
+          byval_size(byval_size) {}
+
+    IRValueRef value;
+    Flag flag;
+    u32 byval_align;
+    u32 byval_size;
+  };
+
+  template <typename CBDerived>
+  class CallBuilderBase {
+  protected:
+    Derived &compiler;
+    CCAssigner &assigner;
+
+    RegisterFile::RegBitSet arg_regs{};
+
+  public:
+    CallBuilderBase(Derived &compiler, CCAssigner &assigner) noexcept
+        : compiler(compiler), assigner(assigner) {}
+
+    // CBDerived needs:
+    // void add_arg_byval(ValuePart &vp, CCAssignment &cca) noexcept;
+    // void add_arg_stack(ValuePart &vp, CCAssignment &cca) noexcept;
+    // void call_impl(std::variant<Assembler::SymRef, ValuePart> &&) noexcept;
+    CBDerived *derived() noexcept { return static_cast<CBDerived *>(this); }
+
+    void add_arg(ValuePart &&vp, CCAssignment cca) noexcept;
+    void add_arg(CallArg &&arg) noexcept;
+
+    // evict registers, do call, reset stack frame
+    void call(std::variant<typename Assembler::SymRef, ValuePart>) noexcept;
+
+    void add_ret(ValuePart &&vp, CCAssignment cca) noexcept;
+    void add_ret(ValueRef &vr) noexcept;
+  };
+
   /// Initialize a CompilerBase, should be called by the derived classes
   explicit CompilerBase(Adaptor *adaptor)
       : adaptor(adaptor), analyzer(adaptor), assembler() {
@@ -227,56 +317,6 @@ struct CompilerBase {
   /// registers which don't contain any values
   void release_regs_after_return() noexcept;
 
-  struct CallArg {
-    enum class Flag : u8 {
-      none,
-      zext,
-      sext,
-      sret,
-      byval
-    };
-
-    explicit CallArg(IRValueRef value,
-                     Flag flags = Flag::none,
-                     u32 byval_align = 0,
-                     u32 byval_size = 0)
-        : value(value),
-          flag(flags),
-          byval_align(byval_align),
-          byval_size(byval_size) {}
-
-    IRValueRef value;
-    Flag flag;
-    u32 byval_align;
-    u32 byval_size;
-  };
-
-  struct CCAssignment {
-    ValuePart value;
-    Reg reg = Reg::make_invalid();
-
-    /// If non-zero, indicates that this and the next N values must be
-    /// assigned to consecutive registers, or to the stack. The following
-    /// values must be in the same register bank as this value.
-    u8 consecutive = 0;
-    bool sret : 1 = false; ///< Argument is return value pointer.
-    bool sext : 1 = false; ///< Sign-extend single integer.
-    bool zext : 1 = false; ///< Zero-extend single integer.
-    bool byval : 1 = false;
-    u8 align = 0;
-    u8 byval_align = 0;
-    u32 byval_size = 0; // only used if byval is set
-    u32 stack_off = 0;  // only used if reg is invalid
-  };
-
-  struct CallInfo {
-    u32 stack_size;
-    bool is_vararg;
-    RegisterFile::RegBitSet clobber_mask;
-    std::span<CCAssignment> args;
-    std::span<CCAssignment> ret;
-  };
-
   /// Indicate beginning of region where value-state must not change.
   void begin_branch_region() noexcept {
 #ifndef NDEBUG
@@ -348,6 +388,152 @@ protected:
 #include "ValueRef.hpp"
 
 namespace tpde {
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+template <typename CBDerived>
+void CompilerBase<Adaptor, Derived, Config>::CallBuilderBase<
+    CBDerived>::add_arg(ValuePart &&vp, CCAssignment cca) noexcept {
+  cca.bank = vp.bank();
+  cca.size = vp.part_size();
+
+  assigner.assign_arg(cca);
+
+  if (cca.byval) {
+    derived()->add_arg_byval(vp, cca);
+    vp.reset(&compiler);
+  } else if (!cca.reg.valid()) {
+    derived()->add_arg_stack(vp, cca);
+    vp.reset(&compiler);
+  } else {
+    u32 size = vp.part_size();
+    if (vp.is_in_reg(cca.reg)) {
+      if (!vp.can_salvage()) {
+        compiler.evict_reg(cca.reg);
+      } else {
+        vp.salvage(&compiler);
+      }
+      if (cca.sext || cca.zext) {
+        compiler.generate_raw_intext(cca.reg, cca.reg, cca.sext, 8 * size, 64);
+      }
+    } else {
+      if (compiler.register_file.is_used(cca.reg)) {
+        compiler.evict_reg(cca.reg);
+      }
+      if (vp.can_salvage()) {
+        AsmReg vp_reg = vp.salvage(&compiler);
+        if (cca.sext || cca.zext) {
+          compiler.generate_raw_intext(cca.reg, vp_reg, cca.sext, 8 * size, 64);
+        } else {
+          compiler.mov(cca.reg, vp_reg, size);
+        }
+      } else {
+        vp.reload_into_specific_fixed(&compiler, cca.reg);
+        if (cca.sext || cca.zext) {
+          compiler.generate_raw_intext(
+              cca.reg, cca.reg, cca.sext, 8 * size, 64);
+        }
+      }
+    }
+    vp.reset(&compiler);
+    assert(!compiler.register_file.is_used(cca.reg));
+    compiler.register_file.mark_used(
+        cca.reg, CompilerBase::INVALID_VAL_LOCAL_IDX, 0);
+    compiler.register_file.mark_fixed(cca.reg);
+    compiler.register_file.mark_clobbered(cca.reg);
+    arg_regs |= (1ull << cca.reg.id());
+  }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+template <typename CBDerived>
+void CompilerBase<Adaptor, Derived, Config>::CallBuilderBase<
+    CBDerived>::add_arg(CallArg &&arg) noexcept {
+  ValueRef vr = compiler.val_ref(arg.value);
+  const u32 part_count = compiler.val_parts(arg.value).count();
+
+  if (arg.flag == CallArg::Flag::byval) {
+    assert(part_count == 1);
+    add_arg(vr.part(0),
+            CCAssignment{
+                .byval = true,
+                .byval_align = arg.byval_align,
+                .byval_size = arg.byval_size,
+            });
+    return;
+  }
+
+  u32 align = 1;
+  u32 consecutive = 0;
+  u32 consec_def = 0;
+  if (compiler.arg_is_int128(arg.value)) {
+    // TODO: this also applies to composites with 16-byte alignment
+    align = 16;
+    consecutive = 1;
+  } else if (part_count > 1 &&
+             !compiler.arg_allow_split_reg_stack_passing(arg.value)) {
+    consecutive = 1;
+    if (part_count > UINT8_MAX) {
+      // Must be completely passed on the stack.
+      consecutive = 0;
+      consec_def = -1;
+    }
+  }
+
+  for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
+    derived()->add_arg(
+        vr.part(part_idx),
+        CCAssignment{
+            .consecutive =
+                u8(consecutive ? part_count - part_idx - 1 : consec_def),
+            .sret = arg.flag == CallArg::Flag::sret,
+            .sext = arg.flag == CallArg::Flag::sext,
+            .zext = arg.flag == CallArg::Flag::zext,
+            .align = u8(part_idx == 0 ? align : 1),
+        });
+  }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+template <typename CBDerived>
+void CompilerBase<Adaptor, Derived, Config>::CallBuilderBase<CBDerived>::call(
+    std::variant<typename Assembler::SymRef, ValuePart> target) noexcept {
+  auto clobbered = ~assigner.get_ccinfo().callee_saved_regs;
+  for (auto reg_id : util::BitSetIterator<>{compiler.register_file.used &
+                                            clobbered & ~arg_regs}) {
+    compiler.evict_reg(AsmReg{reg_id});
+    compiler.register_file.mark_clobbered(Reg{reg_id});
+  }
+
+  derived()->call_impl(std::move(target));
+
+  for (auto reg_id : util::BitSetIterator<>{arg_regs}) {
+    compiler.register_file.unmark_fixed(Reg{reg_id});
+    compiler.register_file.unmark_used(Reg{reg_id});
+  }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+template <typename CBDerived>
+void CompilerBase<Adaptor, Derived, Config>::CallBuilderBase<
+    CBDerived>::add_ret(ValuePart &&vp, CCAssignment cca) noexcept {
+  cca.bank = vp.bank();
+  cca.size = vp.part_size();
+  assigner.assign_ret(cca);
+  assert(cca.reg.valid() && "return value must be in register");
+  vp.set_value_reg(&compiler, cca.reg);
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+template <typename CBDerived>
+void CompilerBase<Adaptor, Derived, Config>::CallBuilderBase<
+    CBDerived>::add_ret(ValueRef &vr) noexcept {
+  assert(vr.has_assignment());
+  u32 part_count = vr.assignment()->part_count;
+  for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
+    CCAssignment cca;
+    add_ret(vr.part(part_idx), cca);
+  }
+}
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile() {

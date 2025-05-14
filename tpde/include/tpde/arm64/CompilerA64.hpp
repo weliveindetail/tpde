@@ -169,6 +169,111 @@ struct PlatformConfig : CompilerConfigDefault {
   static constexpr u32 NUM_BANKS = 2;
 };
 
+class CCAssignerAAPCS : public CCAssigner {
+  static constexpr CCInfo Info{
+      // we reserve SP,FP,R16 and R17 for our special use cases
+      .allocatable_regs =
+          0xFFFF'FFFF'FFFF'FFFF &
+          ~create_bitmask({AsmReg::SP, AsmReg::FP, AsmReg::R16, AsmReg::R17}),
+      // callee-saved registers
+      .callee_saved_regs = create_bitmask({
+          AsmReg::R19,
+          AsmReg::R20,
+          AsmReg::R21,
+          AsmReg::R22,
+          AsmReg::R23,
+          AsmReg::R24,
+          AsmReg::R25,
+          AsmReg::R26,
+          AsmReg::R27,
+          AsmReg::R28,
+          AsmReg::V8,
+          AsmReg::V9,
+          AsmReg::V10,
+          AsmReg::V11,
+          AsmReg::V12,
+          AsmReg::V13,
+          AsmReg::V14,
+          AsmReg::V15,
+      }),
+  };
+
+  // NGRN = Next General-purpose Register Number
+  // NSRN = Next SIMD/FP Register Number
+  // NSAA = Next Stack Argument Address
+  u32 ngrn = 0, nsrn = 0, nsaa = 0;
+  u32 ret_ngrn = 0, ret_nsrn = 0;
+
+public:
+  const CCInfo &get_ccinfo() const noexcept override { return Info; }
+
+  void assign_arg(CCAssignment &arg) noexcept override {
+    if (arg.byval) {
+      nsaa = util::align_up(nsaa, arg.byval_align);
+      arg.stack_off = nsaa;
+      nsaa += arg.byval_size;
+      return;
+    }
+
+    if (arg.sret) {
+      arg.reg = AsmReg{AsmReg::R8};
+      return;
+    }
+
+    if (arg.bank == RegBank{0}) {
+      if (arg.align > 8) {
+        ngrn = util::align_up(ngrn, 2);
+      }
+      if (ngrn + arg.consecutive < 8) {
+        arg.reg = Reg{AsmReg::R0 + ngrn};
+        ngrn += 1;
+      } else {
+        ngrn = 8;
+        nsaa = util::align_up(nsaa, arg.align < 8 ? 8 : arg.align);
+        arg.stack_off = nsaa;
+        nsaa += 8;
+      }
+    } else {
+      // TODO: this is wrong, currently for compatibility with handle_func_args.
+      // This should be: nsrn + arg.consecutive < 8
+      if (nsrn < 8) {
+        arg.reg = Reg{AsmReg::V0 + nsrn};
+        nsrn += 1;
+      } else {
+        nsrn = 8;
+        u32 size = util::align_up(arg.size, 8);
+        nsaa = util::align_up(nsaa, size);
+        arg.stack_off = nsaa;
+        nsaa += size;
+      }
+    }
+  }
+
+  u32 get_stack_size() noexcept override { return nsaa; }
+
+  void assign_ret(CCAssignment &arg) noexcept override {
+    assert(!arg.byval && !arg.sret);
+    if (arg.bank == RegBank{0}) {
+      if (arg.align > 8) {
+        ret_ngrn = util::align_up(ret_ngrn, 2);
+      }
+      if (ret_ngrn + arg.consecutive < 8) {
+        arg.reg = Reg{AsmReg::R0 + ret_ngrn};
+        ret_ngrn += 1;
+      } else {
+        assert(false);
+      }
+    } else {
+      if (ret_nsrn + arg.consecutive < 8) {
+        arg.reg = Reg{AsmReg::V0 + ret_nsrn};
+        ret_nsrn += 1;
+      } else {
+        assert(false);
+      }
+    }
+  }
+};
+
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename> typename BaseTy =
@@ -362,8 +467,6 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   using RegisterFile = typename Base::RegisterFile;
 
   using CallArg = typename Base::CallArg;
-  using CCAssignment = typename Base::CCAssignment;
-  using CallInfo = typename Base::CallInfo;
 
   using Base::derived;
 
@@ -401,6 +504,24 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   u32 reg_save_frame_off = 0;
   u32 var_arg_stack_off = 0;
   util::SmallVector<u32, 8> func_ret_offs = {};
+
+  class CallBuilder : public Base::template CallBuilderBase<CallBuilder> {
+    u32 stack_adjust_off = 0;
+    u32 stack_size = 0;
+    u32 stack_sub = 0;
+
+    void set_stack_used() noexcept;
+
+  public:
+    CallBuilder(Derived &compiler, CCAssigner &assigner) noexcept
+        : Base::template CallBuilderBase<CallBuilder>(compiler, assigner) {}
+
+    void add_arg_byval(ValuePart &vp, CCAssignment &cca) noexcept;
+    void add_arg_stack(ValuePart &vp, CCAssignment &cca) noexcept;
+    void call_impl(
+        std::variant<typename Assembler::SymRef, ValuePart> &&) noexcept;
+    void reset_stack() noexcept;
+  };
 
   // for now, always generate an object
   explicit CompilerA64(Adaptor *adaptor,
@@ -530,14 +651,6 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
       AsmReg dst, AsmReg src, bool sign, u32 from, u32 to) noexcept;
 
   void spill_before_call(CallingConv calling_conv, u64 except_mask = 0);
-
-  /// Compute argument assignment, returns required stack size.
-  static u32 assign_aapcs_args(std::span<CCAssignment> assignment) noexcept;
-  /// Compute return value assignment, returns false on failure.
-  static bool assign_aapcs_ret(std::span<CCAssignment> assignment) noexcept;
-
-  void generate_call(std::variant<Assembler::SymRef, ValuePart> &&target,
-                     CallInfo ci) noexcept;
 
   /// Generate a function call
   ///
@@ -719,6 +832,115 @@ void CallingConv::handle_func_args(
          stack_reg,
          DA_GP(29),
          compiler->reg_save_frame_off + 192);
+  }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> class BaseTy,
+          typename Config>
+void CompilerA64<Adaptor, Derived, BaseTy, Config>::CallBuilder::
+    set_stack_used() noexcept {
+  if (stack_adjust_off == 0) {
+    this->compiler.text_writer.ensure_space(16);
+    stack_adjust_off = this->compiler.text_writer.offset();
+    this->compiler.text_writer.cur_ptr() += 4;
+  }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> class BaseTy,
+          typename Config>
+void CompilerA64<Adaptor, Derived, BaseTy, Config>::CallBuilder::add_arg_byval(
+    ValuePart &vp, CCAssignment &cca) noexcept {
+  AsmReg ptr_reg = vp.load_to_reg(&this->compiler);
+  AsmReg tmp_reg = AsmReg::R16;
+
+  auto size = cca.byval_size;
+  set_stack_used();
+  for (u32 off = 0; off < size;) {
+    if (size - off >= 8) {
+      ASMC(&this->compiler, LDRxu, tmp_reg, ptr_reg, off);
+      ASMC(&this->compiler, STRxu, tmp_reg, DA_SP, cca.stack_off + off);
+      off += 8;
+    } else if (size - off >= 4) {
+      ASMC(&this->compiler, LDRwu, tmp_reg, ptr_reg, off);
+      ASMC(&this->compiler, STRwu, tmp_reg, DA_SP, cca.stack_off + off);
+      off += 4;
+    } else if (size - off >= 2) {
+      ASMC(&this->compiler, LDRHu, tmp_reg, ptr_reg, off);
+      ASMC(&this->compiler, STRHu, tmp_reg, DA_SP, cca.stack_off + off);
+      off += 2;
+    } else {
+      ASMC(&this->compiler, LDRBu, tmp_reg, ptr_reg, off);
+      ASMC(&this->compiler, STRBu, tmp_reg, DA_SP, cca.stack_off + off);
+      off += 1;
+    }
+  }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> class BaseTy,
+          typename Config>
+void CompilerA64<Adaptor, Derived, BaseTy, Config>::CallBuilder::add_arg_stack(
+    ValuePart &vp, CCAssignment &cca) noexcept {
+  set_stack_used();
+
+  auto reg = vp.load_to_reg(&this->compiler);
+  if (this->compiler.register_file.reg_bank(reg) == Config::GP_BANK) {
+    switch (cca.size) {
+    case 1: ASMC(&this->compiler, STRBu, reg, DA_SP, cca.stack_off); break;
+    case 2: ASMC(&this->compiler, STRHu, reg, DA_SP, cca.stack_off); break;
+    case 4: ASMC(&this->compiler, STRwu, reg, DA_SP, cca.stack_off); break;
+    case 8: ASMC(&this->compiler, STRxu, reg, DA_SP, cca.stack_off); break;
+    default: TPDE_UNREACHABLE("invalid GP reg size");
+    }
+  } else {
+    assert(this->compiler.register_file.reg_bank(reg) == Config::FP_BANK);
+    switch (cca.size) {
+    case 1: ASMC(&this->compiler, STRbu, reg, DA_SP, cca.stack_off); break;
+    case 2: ASMC(&this->compiler, STRhu, reg, DA_SP, cca.stack_off); break;
+    case 4: ASMC(&this->compiler, STRsu, reg, DA_SP, cca.stack_off); break;
+    case 8: ASMC(&this->compiler, STRdu, reg, DA_SP, cca.stack_off); break;
+    case 16: ASMC(&this->compiler, STRqu, reg, DA_SP, cca.stack_off); break;
+    default: TPDE_UNREACHABLE("invalid GP reg size");
+    }
+  }
+}
+
+template <IRAdaptor Adaptor,
+          typename Derived,
+          template <typename, typename, typename> class BaseTy,
+          typename Config>
+void CompilerA64<Adaptor, Derived, BaseTy, Config>::CallBuilder::call_impl(
+    std::variant<typename Assembler::SymRef, ValuePart> &&target) noexcept {
+  u32 sub = 0;
+  if (stack_adjust_off != 0) {
+    auto *text_data = this->compiler.text_writer.begin_ptr();
+    u32 *write_ptr = reinterpret_cast<u32 *>(text_data + stack_adjust_off);
+    u32 stack_size = this->assigner.get_stack_size();
+    sub = util::align_up(stack_size, stack_size < 0x1000 ? 0x10 : 0x1000);
+    *write_ptr = de64_SUBxi(DA_SP, DA_SP, sub);
+  } else {
+    assert(this->assigner.get_stack_size() == 0);
+  }
+
+
+  if (auto *sym = std::get_if<typename Assembler::SymRef>(&target)) {
+    ASMC(&this->compiler, BL, 0);
+    this->compiler.reloc_text(
+        *sym, R_AARCH64_CALL26, this->compiler.text_writer.offset() - 4);
+  } else {
+    ValuePart &tvp = std::get<ValuePart>(target);
+    AsmReg tmp = tvp.reload_into_specific_fixed(&this->compiler, AsmReg::R16);
+    ASMC(&this->compiler, BLR, tmp);
+    tvp.reset(&this->compiler);
+  }
+
+  if (stack_adjust_off != 0) {
+    ASMC(&this->compiler, ADDxi, DA_SP, DA_SP, sub);
   }
 }
 
@@ -1884,290 +2106,22 @@ template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
-u32 CompilerA64<Adaptor, Derived, BaseTy, Config>::assign_aapcs_args(
-    std::span<CCAssignment> assignment) noexcept {
-  u32 ngrn = 0, nsrn = 0, nsaa = 0;
-  for (CCAssignment &arg : assignment) {
-    if (arg.byval) {
-      nsaa = util::align_up(nsaa, arg.byval_align);
-      arg.stack_off = nsaa;
-      nsaa += arg.byval_size;
-      continue;
-    }
-
-    if (arg.sret) {
-      arg.reg = AsmReg{AsmReg::R8};
-      continue;
-    }
-
-    if (arg.value.bank() == Config::GP_BANK) {
-      if (arg.align > 8) {
-        ngrn = util::align_up(ngrn, 2);
-      }
-      if (ngrn + arg.consecutive < 8) {
-        arg.reg = Reg{AsmReg::R0 + ngrn};
-        ngrn += 1;
-      } else {
-        ngrn = 8;
-        nsaa = util::align_up(nsaa, arg.align < 8 ? 8 : arg.align);
-        arg.stack_off = nsaa;
-        nsaa += 8;
-      }
-    } else {
-      // TODO: this is wrong, currently for compatibility with handle_func_args.
-      // This should be: nsrn + arg.consecutive < 8
-      if (nsrn < 8) {
-        arg.reg = Reg{AsmReg::V0 + nsrn};
-        nsrn += 1;
-      } else {
-        nsrn = 8;
-        u32 size = util::align_up(arg.value.part_size(), 8);
-        nsaa = util::align_up(nsaa, size);
-        arg.stack_off = nsaa;
-        nsaa += size;
-      }
-    }
-  }
-
-  return util::align_up(nsaa, 16);
-}
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename> typename BaseTy,
-          typename Config>
-bool CompilerA64<Adaptor, Derived, BaseTy, Config>::assign_aapcs_ret(
-    std::span<CCAssignment> assignment) noexcept {
-  u32 ngrn = 0, nsrn = 0;
-  for (CCAssignment &arg : assignment) {
-    assert(!arg.byval && !arg.sret);
-    if (arg.value.bank() == Config::GP_BANK) {
-      if (arg.align > 8) {
-        ngrn = util::align_up(ngrn, 2);
-      }
-      if (ngrn + arg.consecutive < 8) {
-        arg.reg = Reg{AsmReg::R0 + ngrn};
-        ngrn += 1;
-      } else {
-        return false;
-      }
-    } else {
-      if (nsrn + arg.consecutive < 8) {
-        arg.reg = Reg{AsmReg::V0 + nsrn};
-        nsrn += 1;
-      } else {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename> typename BaseTy,
-          typename Config>
-void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
-    std::variant<Assembler::SymRef, ValuePart> &&target, CallInfo ci) noexcept {
-  if (ci.stack_size != 0) {
-    ASM(SUBxi, DA_SP, DA_SP, ci.stack_size);
-  }
-
-  u64 arg_regs = 0;
-  for (CCAssignment &arg : ci.args) {
-    if (arg.byval) {
-      AsmReg ptr_reg = arg.value.load_to_reg(this);
-
-      AsmReg tmp_reg = AsmReg::R16;
-
-      auto size = arg.byval_size;
-
-      for (u32 off = 0; off < size;) {
-        if (size - off >= 8) {
-          ASM(LDRxu, tmp_reg, ptr_reg, off);
-          ASM(STRxu, tmp_reg, DA_SP, arg.stack_off + off);
-          off += 8;
-        } else if (size - off >= 4) {
-          ASM(LDRwu, tmp_reg, ptr_reg, off);
-          ASM(STRwu, tmp_reg, DA_SP, arg.stack_off + off);
-          off += 4;
-        } else if (size - off >= 2) {
-          ASM(LDRHu, tmp_reg, ptr_reg, off);
-          ASM(STRHu, tmp_reg, DA_SP, arg.stack_off + off);
-          off += 2;
-        } else {
-          ASM(LDRBu, tmp_reg, ptr_reg, off);
-          ASM(STRBu, tmp_reg, DA_SP, arg.stack_off + off);
-          off += 1;
-        }
-      }
-
-      arg.value.reset(this);
-      continue;
-    }
-
-    u32 size = arg.value.part_size();
-    if (arg.reg.valid()) {
-      if (arg.value.is_in_reg(arg.reg)) {
-        if (!arg.value.can_salvage()) {
-          this->evict_reg(arg.reg);
-        } else {
-          arg.value.salvage(this);
-        }
-        if (arg.sext || arg.zext) {
-          this->generate_raw_intext(arg.reg, arg.reg, arg.sext, 8 * size, 64);
-        }
-      } else {
-        if (this->register_file.is_used(arg.reg)) {
-          this->evict_reg(arg.reg);
-        }
-        if (arg.value.can_salvage()) {
-          AsmReg cur_reg = arg.value.salvage(this);
-          if (arg.sext || arg.zext) {
-            this->generate_raw_intext(arg.reg, cur_reg, arg.sext, 8 * size, 64);
-          } else {
-            this->mov(arg.reg, cur_reg, size);
-          }
-        } else {
-          arg.value.reload_into_specific_fixed(this, arg.reg);
-          if (arg.sext || arg.zext) {
-            this->generate_raw_intext(arg.reg, arg.reg, arg.sext, 8 * size, 64);
-          }
-        }
-      }
-      arg.value.reset(this);
-      assert(!this->register_file.is_used(arg.reg));
-      this->register_file.mark_used(arg.reg, Base::INVALID_VAL_LOCAL_IDX, 0);
-      this->register_file.mark_fixed(arg.reg);
-      this->register_file.mark_clobbered(arg.reg);
-      arg_regs |= (1ull << arg.reg.id());
-      continue;
-    }
-
-    auto reg = arg.value.load_to_reg(this);
-    if (this->register_file.reg_bank(reg) == Config::GP_BANK) {
-      switch (size) {
-      case 1: ASM(STRBu, reg, DA_SP, arg.stack_off); break;
-      case 2: ASM(STRHu, reg, DA_SP, arg.stack_off); break;
-      case 4: ASM(STRwu, reg, DA_SP, arg.stack_off); break;
-      case 8: ASM(STRxu, reg, DA_SP, arg.stack_off); break;
-      default: TPDE_UNREACHABLE("invalid GP reg size");
-      }
-    } else {
-      assert(this->register_file.reg_bank(reg) == Config::FP_BANK);
-      switch (size) {
-      case 1: ASM(STRbu, reg, DA_SP, arg.stack_off); break;
-      case 2: ASM(STRhu, reg, DA_SP, arg.stack_off); break;
-      case 4: ASM(STRsu, reg, DA_SP, arg.stack_off); break;
-      case 8: ASM(STRdu, reg, DA_SP, arg.stack_off); break;
-      case 16: ASM(STRqu, reg, DA_SP, arg.stack_off); break;
-      default: TPDE_UNREACHABLE("invalid GP reg size");
-      }
-    }
-    arg.value.reset(this);
-  }
-
-  for (auto reg_id : util::BitSetIterator<>{this->register_file.used &
-                                            ci.clobber_mask & ~arg_regs}) {
-    this->evict_reg(AsmReg{reg_id});
-    this->register_file.mark_clobbered(Reg{reg_id});
-  }
-
-  if (std::holds_alternative<Assembler::SymRef>(target)) {
-    ASM(BL, 0);
-    this->reloc_text(std::get<Assembler::SymRef>(target),
-                     R_AARCH64_CALL26,
-                     this->text_writer.offset() - 4);
-  } else {
-    auto &tvp = std::get<ValuePart>(target);
-    ASM(BLR, tvp.reload_into_specific_fixed(this, AsmReg::R16));
-  }
-
-  for (auto reg_id : util::BitSetIterator<>{arg_regs}) {
-    this->register_file.unmark_fixed(Reg{reg_id});
-    this->register_file.unmark_used(Reg{reg_id});
-  }
-
-  for (CCAssignment &ret : ci.ret) {
-    ret.value.set_value_reg(this, ret.reg);
-  }
-
-  if (ci.stack_size != 0) {
-    ASM(ADDxi, DA_SP, DA_SP, ci.stack_size);
-  }
-}
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename> typename BaseTy,
-          typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
     std::variant<Assembler::SymRef, ValuePart> &&target,
     std::span<CallArg> arguments,
     typename Base::ValueRef *result,
     CallingConv calling_conv,
     bool) {
-  util::SmallVector<CCAssignment> ca_args;
-  util::SmallVector<CCAssignment> ca_ret;
-  util::SmallVector<typename Base::ValueRef> value_refs;
-
+  (void)calling_conv;
+  CCAssignerAAPCS assigner;
+  CallBuilder cb{*derived(), assigner};
   for (auto &arg : arguments) {
-    value_refs.emplace_back(derived()->val_ref(arg.value));
-    const u32 part_count = derived()->val_parts(arg.value).count();
-
-    if (arg.flag == CallArg::Flag::byval) {
-      assert(part_count == 1);
-      ca_args.emplace_back(value_refs.back().part(0));
-      ca_args.back().byval = true;
-      ca_args.back().byval_size = arg.byval_size;
-      ca_args.back().byval_align = arg.byval_align;
-      continue;
-    }
-
-    u32 align = 1;
-    u32 consecutive = 0;
-    if (derived()->arg_is_int128(arg.value)) {
-      // TODO: this also applies to composites with 16-byte alignment
-      align = 16;
-      consecutive = 1;
-    } else if (part_count > 1 &&
-               !derived()->arg_allow_split_reg_stack_passing(arg.value)) {
-      consecutive = 1;
-    }
-
-    for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
-      ca_args.emplace_back(value_refs.back().part(part_idx));
-      ca_args.back().align = part_idx == 0 ? align : 1;
-      ca_args.back().zext = arg.flag == CallArg::Flag::zext;
-      ca_args.back().sext = arg.flag == CallArg::Flag::sext;
-      ca_args.back().consecutive = consecutive ? part_count - part_idx - 1 : 0;
-    }
-
-    if (arg.flag == CallArg::Flag::sret) {
-      assert(part_count == 1);
-      ca_args.back().sret = true;
-    }
+    cb.add_arg(std::move(arg));
   }
-
+  cb.call(std::move(target));
   if (result) {
-    assert(result->has_assignment());
-    u32 part_count = result->assignment()->part_count;
-    for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
-      ca_ret.emplace_back(result->part(part_idx));
-    }
-    assign_aapcs_ret(ca_ret);
+    cb.add_ret(*result);
   }
-
-  u32 stack_size = assign_aapcs_args(ca_args);
-
-  generate_call(std::move(target),
-                CallInfo{
-                    .stack_size = stack_size,
-                    .clobber_mask = ~calling_conv.callee_saved_mask(),
-                    .args = ca_args,
-                    .ret = ca_ret,
-                });
 }
 
 template <IRAdaptor Adaptor,
