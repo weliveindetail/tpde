@@ -6,9 +6,6 @@
 ; RUN: tpde-llc --target=x86_64 %s | %objdump | FileCheck %s -check-prefixes=X64
 ; RUN: tpde-llc --target=aarch64 %s | %objdump | FileCheck %s -check-prefixes=ARM64
 
-declare float @llvm.fmuladd.f32(float,float,float)
-declare double @llvm.fmuladd.f64(double,double,double)
-
 define float @fmuladdf32(float %0, float %1, float %2) {
 ; X64-LABEL: <fmuladdf32>:
 ; X64:         push rbp
@@ -30,9 +27,8 @@ define float @fmuladdf32(float %0, float %1, float %2) {
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = call float @llvm.fmuladd.f32(float %0, float %1, float %2)
-  ret float %3
+  %r = call float @llvm.fmuladd(float %0, float %1, float %2)
+  ret float %r
 }
 
 define double @fmuladdf64(double %0, double %1, double %2) {
@@ -56,7 +52,78 @@ define double @fmuladdf64(double %0, double %1, double %2) {
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
-entry:
-  %3 = call double @llvm.fmuladd.f64(double %0, double %1, double %2)
-  ret double %3
+  %r = call double @llvm.fmuladd(double %0, double %1, double %2)
+  ret double %r
+}
+
+define fp128 @fmuladdf128(fp128 %0, fp128 %1, fp128 %2) {
+; X64-LABEL: <fmuladdf128>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    movapd xmmword ptr [rbp - 0x40], xmm2
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 __multf3-0x4
+; X64-NEXT:    movapd xmm1, xmmword ptr [rbp - 0x40]
+; X64-NEXT:  <L1>:
+; X64-NEXT:    call <L1>
+; X64-NEXT:     R_X86_64_PLT32 __addtf3-0x4
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <fmuladdf128>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    str q2, [x29, #0xa0]
+; ARM64-NEXT:    bl 0x114 <fmuladdf128+0x14>
+; ARM64-NEXT:     R_AARCH64_CALL26 __multf3
+; ARM64-NEXT:    ldr q1, [x29, #0xa0]
+; ARM64-NEXT:    bl 0x11c <fmuladdf128+0x1c>
+; ARM64-NEXT:     R_AARCH64_CALL26 __addtf3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+  %r = call fp128 @llvm.fmuladd(fp128 %0, fp128 %1, fp128 %2)
+  ret fp128 %r
+}
+
+define void @fmuladdf128_nouse(fp128 %0, fp128 %1, fp128 %2) {
+; X64-LABEL: <fmuladdf128_nouse>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x40
+; X64-NEXT:    movapd xmmword ptr [rbp - 0x40], xmm2
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 __multf3-0x4
+; X64-NEXT:    movapd xmm1, xmmword ptr [rbp - 0x40]
+; X64-NEXT:  <L1>:
+; X64-NEXT:    call <L1>
+; X64-NEXT:     R_X86_64_PLT32 __addtf3-0x4
+; X64-NEXT:    add rsp, 0x40
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <fmuladdf128_nouse>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    str q2, [x29, #0xa0]
+; ARM64-NEXT:    bl 0x184 <fmuladdf128_nouse+0x14>
+; ARM64-NEXT:     R_AARCH64_CALL26 __multf3
+; ARM64-NEXT:    ldr q1, [x29, #0xa0]
+; ARM64-NEXT:    bl 0x18c <fmuladdf128_nouse+0x1c>
+; ARM64-NEXT:     R_AARCH64_CALL26 __addtf3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+  %r = call fp128 @llvm.fmuladd(fp128 %0, fp128 %1, fp128 %2)
+  ret void
 }

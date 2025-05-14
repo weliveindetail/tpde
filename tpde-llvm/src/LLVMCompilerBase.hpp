@@ -4357,6 +4357,23 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_intrin(
     auto op2_ref = this->val_ref(inst->getOperand(1));
     auto op3_ref = this->val_ref(inst->getOperand(2));
 
+    if (inst->getType()->isFP128Ty()) {
+      auto cb1 = derived()->create_call_builder();
+      cb1->add_arg(op1_ref.part(0), tpde::CCAssignment{});
+      cb1->add_arg(op2_ref.part(0), tpde::CCAssignment{});
+      cb1->call(get_libfunc_sym(LibFunc::multf3));
+      ValuePartRef tmp{this, Config::FP_BANK};
+      cb1->add_ret(tmp, tpde::CCAssignment{});
+
+      auto cb2 = derived()->create_call_builder();
+      cb2->add_arg(std::move(tmp), tpde::CCAssignment{});
+      cb2->add_arg(op3_ref.part(0), tpde::CCAssignment{});
+      cb2->call(get_libfunc_sym(LibFunc::addtf3));
+      auto res_vr2 = this->result_ref(inst);
+      cb2->add_ret(res_vr2);
+      return true;
+    }
+
     if (!inst->getType()->isFloatTy() && !inst->getType()->isDoubleTy()) {
       return false;
     }
