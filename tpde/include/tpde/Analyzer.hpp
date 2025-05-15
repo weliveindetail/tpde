@@ -221,9 +221,6 @@ void Analyzer<Adaptor>::print_liveness(std::ostream &os) const {
 
 template <IRAdaptor Adaptor>
 void Analyzer<Adaptor>::reset() {
-  block_layout.clear();
-  block_loop_map.clear();
-  loops.clear();
   liveness.clear();
 }
 
@@ -299,6 +296,7 @@ void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
   };
 
   // entry is always the head of the top-level loop
+  loops.clear();
   loops.push_back(Loop{.level = 0, .parent = 0, .num_blocks = 1});
   loop_blocks[0].loop_idx = 0;
 
@@ -346,6 +344,8 @@ void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
   // correspond 1:1 with the final layout, though they will still be tightly
   // packed and only the order inside a loop may change. note(ts): this could
   // be mitigated with another pass i think.
+  //
+  // NB: we don't clear block_layout/block_loop_map, all entries are overwritten
   block_layout.resize(block_rpo.size());
   // TODO(ts): merge this with block_layout for less malloc calls?
   // however, we will mostly need this in the liveness computation so it may
