@@ -1194,8 +1194,8 @@ define i32 @phi_gep_before_icmp(i32 %0) {
 ; ARM64-NEXT:    b 0xb3c <phi_gep_before_icmp+0x7c>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    mov x0, x0
-; ARM64-NEXT:    mov x1, #0x1200 // =4608
-; ARM64-NEXT:    add x0, x0, x1
+; ARM64-NEXT:    mov x16, #0x1200 // =4608
+; ARM64-NEXT:    add x0, x0, x16
 ; ARM64-NEXT:    mov w1, #0x0 // =0
 ; ARM64-NEXT:    cbnz w1, 0xb1c <phi_gep_before_icmp+0x5c>
 ; ARM64-NEXT:    mov w20, w19

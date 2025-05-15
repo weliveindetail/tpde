@@ -1486,8 +1486,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
       const auto shift = util::cnt_tz<u64>(expr.scale);
       ASM(LSLxi, dst, index_reg, shift);
     } else {
-      ScratchReg scratch2{derived()};
-      AsmReg tmp2 = scratch2.alloc_gp();
+      AsmReg tmp2 = permanent_scratch_reg;
       derived()->materialize_constant(expr.scale, Config::GP_BANK, 8, tmp2);
       ASM(MULx, dst, index_reg, tmp2);
     }
@@ -1506,8 +1505,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
       const auto shift = util::cnt_tz<u64>(expr.scale);
       ASM(ADDx_lsl, dst, base_reg, index_reg, shift);
     } else {
-      ScratchReg scratch2{derived()};
-      AsmReg tmp2 = scratch2.alloc_gp();
+      AsmReg tmp2 = permanent_scratch_reg;
       derived()->materialize_constant(expr.scale, Config::GP_BANK, 8, tmp2);
       ASM(MULx, tmp2, index_reg, tmp2);
       ASM(ADDx, dst, base_reg, tmp2);
@@ -1532,8 +1530,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
   AsmReg dst = scratch.cur_reg();
   if (expr.disp != 0) {
     if (!ASMIF(ADDxi, dst, dst, expr.disp)) {
-      ScratchReg scratch2{derived()};
-      AsmReg tmp2 = scratch2.alloc_gp();
+      AsmReg tmp2 = permanent_scratch_reg;
       derived()->materialize_constant(expr.disp, Config::GP_BANK, 8, tmp2);
       ASM(ADDx, dst, dst, tmp2);
     }
