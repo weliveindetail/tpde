@@ -85,12 +85,6 @@ struct LLVMCompilerBase : public LLVMCompiler,
     i64 displacement;
   };
 
-  struct VarRefInfo {
-    IRValueRef val;
-    bool alloca;
-    i32 alloca_frame_off;
-  };
-
   struct IntBinaryOp {
   private:
     static constexpr u32 index_mask = (1 << 4) - 1;
@@ -172,7 +166,6 @@ struct LLVMCompilerBase : public LLVMCompiler,
   /// Map from LLVM Comdat to the corresponding group section.
   llvm::DenseMap<const llvm::Comdat *, SecRef> group_secs;
 
-  tpde::util::SmallVector<VarRefInfo, 16> variable_refs{};
   tpde::util::SmallVector<std::pair<IRValueRef, SymRef>, 16> type_info_syms;
 
   enum class LibFunc {
@@ -391,7 +384,7 @@ public:
     return res;
   }
 
-  void setup_var_ref_assignments() noexcept;
+  void setup_var_ref_assignments() noexcept {}
 
   bool compile_func(IRFuncRef func, u32 idx) noexcept {
     // Reuse/release memory for stored constants from previous function
@@ -1311,42 +1304,6 @@ typename LLVMCompilerBase<Adaptor, Derived, Config>::SymRef
 }
 
 template <typename Adaptor, typename Derived, typename Config>
-void LLVMCompilerBase<Adaptor, Derived, Config>::
-    setup_var_ref_assignments() noexcept {
-  bool needs_globals = variable_refs.empty();
-
-  variable_refs.resize(this->adaptor->initial_stack_slot_indices.size() +
-                       this->adaptor->global_idx_end);
-
-  // Allocate regs for globals
-  if (needs_globals) {
-    for (auto entry : this->adaptor->global_lookup) {
-      variable_refs[entry.second].val = entry.first;
-      variable_refs[entry.second].alloca = false;
-      // assignments are initialized lazily in val_ref_special.
-    }
-  }
-
-  // Allocate registers for TPDE's stack slots
-  u32 cur_idx = this->adaptor->global_idx_end;
-  for (auto v : this->adaptor->cur_static_allocas()) {
-    // static allocas don't need to be compiled later
-    this->adaptor->inst_set_fused(v, true);
-
-    auto size = this->adaptor->val_alloca_size(v);
-    auto align = this->adaptor->val_alloca_align(v);
-    assert(align <= 16 && "over-aligned alloca not supported");
-    size = tpde::util::align_up(size, align);
-    const auto frame_off = this->allocate_stack_slot(size);
-
-    variable_refs[cur_idx].val = v;
-    variable_refs[cur_idx].alloca = true;
-    variable_refs[cur_idx].alloca_frame_off = frame_off;
-    this->init_variable_ref(v, cur_idx++);
-  }
-}
-
-template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile(
     llvm::Module &mod) noexcept {
   this->adaptor->switch_module(mod);
@@ -1677,12 +1634,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load(
     const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   const auto *load = llvm::cast<llvm::LoadInst>(inst);
   auto [_, ptr_ref] = this->val_ref_single(load->getPointerOperand());
-  if (ptr_ref.has_assignment() && ptr_ref.assignment().variable_ref()) {
-    const auto ref_idx = ptr_ref.assignment().variable_ref_data();
-    if (this->variable_refs[ref_idx].alloca) {
-      GenericValuePart addr = derived()->create_addr_for_alloca(ref_idx);
-      return compile_load_generic(load, std::move(addr));
-    }
+  if (ptr_ref.has_assignment() && ptr_ref.assignment().is_stack_variable()) {
+    GenericValuePart addr =
+        derived()->create_addr_for_alloca(ptr_ref.assignment());
+    return compile_load_generic(load, std::move(addr));
   }
 
   return compile_load_generic(load, std::move(ptr_ref));
@@ -1876,12 +1831,10 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store(
     const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   const auto *store = llvm::cast<llvm::StoreInst>(inst);
   auto [_, ptr_ref] = this->val_ref_single(store->getPointerOperand());
-  if (ptr_ref.has_assignment() && ptr_ref.assignment().variable_ref()) {
-    const auto ref_idx = ptr_ref.assignment().variable_ref_data();
-    if (this->variable_refs[ref_idx].alloca) {
-      GenericValuePart addr = derived()->create_addr_for_alloca(ref_idx);
-      return compile_store_generic(store, std::move(addr));
-    }
+  if (ptr_ref.has_assignment() && ptr_ref.assignment().is_stack_variable()) {
+    GenericValuePart addr =
+        derived()->create_addr_for_alloca(ptr_ref.assignment());
+    return compile_store_generic(store, std::move(addr));
   }
 
   return compile_store_generic(store, std::move(ptr_ref));

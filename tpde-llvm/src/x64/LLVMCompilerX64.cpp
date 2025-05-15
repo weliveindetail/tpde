@@ -106,7 +106,7 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
   void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
   void resolved_gep_to_base_reg(ResolvedGEP &resolved) noexcept;
-  GenericValuePart create_addr_for_alloca(u32 ref_idx) noexcept;
+  GenericValuePart create_addr_for_alloca(tpde::AssignmentPartRef ap) noexcept;
 
   void switch_emit_cmp(AsmReg cmp_reg,
                        AsmReg tmp_reg,
@@ -214,40 +214,33 @@ void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
 
 void LLVMCompilerX64::load_address_of_var_reference(
     AsmReg dst, tpde::AssignmentPartRef ap) noexcept {
-  const auto &info = variable_refs[ap.variable_ref_data()];
-  if (info.alloca) {
-    // default handling from CompilerX64
-    assert(info.alloca_frame_off <= 0);
-    ASM(LEA64rm, dst, FE_MEM(FE_BP, 0, FE_NOREG, info.alloca_frame_off));
+  auto *global = this->adaptor->global_list[ap.variable_ref_data()];
+  const auto sym = global_sym(global);
+  assert(sym.valid());
+  if (global->isThreadLocal()) {
+    // LLVM historically allowed TLS globals to be used as pointers and
+    // generate TLS access calls when the pointer is used. This caused
+    // problems with coroutines, leading to the addition of the intrinsic
+    // llvm.threadlocal.address in 2022; deprecation of the original behavior
+    // was considered. Clang now only generates the intrinsic, and other
+    // front-ends should do that, too.
+    //
+    // Here, generating a function call would be highly problematic. This
+    // method gets called when allocating/locking ValuePartRefs; it is quite
+    // likely that some registers are already fixed at this point. Doing a
+    // regular function call would require to spill/move all these values,
+    // adding fragile code for a somewhat-deprecated feature. Therefore, we
+    // only support access to thread-local variables through the intrinsic.
+    TPDE_FATAL("thread-local variable access without intrinsic");
+  }
+  if (!use_local_access(global)) {
+    // mov the ptr from the GOT
+    ASM(MOV64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
+    reloc_text(sym, R_X86_64_GOTPCREL, text_writer.offset() - 4, -4);
   } else {
-    auto *global = llvm::cast<llvm::GlobalValue>(info.val);
-    const auto sym = global_sym(global);
-    assert(sym.valid());
-    if (global->isThreadLocal()) {
-      // LLVM historically allowed TLS globals to be used as pointers and
-      // generate TLS access calls when the pointer is used. This caused
-      // problems with coroutines, leading to the addition of the intrinsic
-      // llvm.threadlocal.address in 2022; deprecation of the original behavior
-      // was considered. Clang now only generates the intrinsic, and other
-      // front-ends should do that, too.
-      //
-      // Here, generating a function call would be highly problematic. This
-      // method gets called when allocating/locking ValuePartRefs; it is quite
-      // likely that some registers are already fixed at this point. Doing a
-      // regular function call would require to spill/move all these values,
-      // adding fragile code for a somewhat-deprecated feature. Therefore, we
-      // only support access to thread-local variables through the intrinsic.
-      TPDE_FATAL("thread-local variable access without intrinsic");
-    }
-    if (!use_local_access(global)) {
-      // mov the ptr from the GOT
-      ASM(MOV64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
-      reloc_text(sym, R_X86_64_GOTPCREL, text_writer.offset() - 4, -4);
-    } else {
-      // emit lea with relocation
-      ASM(LEA64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
-      reloc_text(sym, R_X86_64_PC32, text_writer.offset() - 4, -4);
-    }
+    // emit lea with relocation
+    ASM(LEA64rm, dst, FE_MEM(FE_IP, 0, FE_NOREG, -1));
+    reloc_text(sym, R_X86_64_PC32, text_writer.offset() - 4, -4);
   }
 }
 
@@ -619,11 +612,9 @@ void LLVMCompilerX64::resolved_gep_to_base_reg(ResolvedGEP &gep) noexcept {
   gep.scale = 0;
 }
 
-LLVMCompilerX64::GenericValuePart
-    LLVMCompilerX64::create_addr_for_alloca(u32 ref_idx) noexcept {
-  const auto &info = this->variable_refs[ref_idx];
-  assert(info.alloca);
-  return GenericValuePart::Expr{AsmReg::BP, info.alloca_frame_off};
+LLVMCompilerX64::GenericValuePart LLVMCompilerX64::create_addr_for_alloca(
+    tpde::AssignmentPartRef ap) noexcept {
+  return GenericValuePart::Expr{AsmReg::BP, ap.variable_stack_off()};
 }
 
 void LLVMCompilerX64::switch_emit_cmp(const AsmReg cmp_reg,

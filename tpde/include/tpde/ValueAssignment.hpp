@@ -61,6 +61,10 @@ struct ValueAssignment {
       /// Whether the assignment is a single-part variable reference.
       bool variable_ref : 1;
 
+      /// Whether the variable reference refers to a stack slot. Otherwise, this
+      /// var_ref_custom_idx is used to identify the variable.
+      bool stack_variable : 1;
+
       /// Whether to delay the free when the reference count reaches zero.
       /// (This is liveness.last_full, copied here for faster access).
       bool delay_free : 1;

@@ -115,7 +115,7 @@ struct LLVMCompilerArm64 : tpde::a64::CompilerA64<LLVMAdaptor,
   void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
   void resolved_gep_to_base_reg(ResolvedGEP &gep) noexcept;
-  GenericValuePart create_addr_for_alloca(u32 ref_idx) noexcept;
+  GenericValuePart create_addr_for_alloca(tpde::AssignmentPartRef ap) noexcept;
 
   void switch_emit_cmp(AsmReg cmp_reg,
                        AsmReg tmp_reg,
@@ -220,40 +220,27 @@ void LLVMCompilerArm64::move_val_to_ret_regs(llvm::Value *val) noexcept {
 
 void LLVMCompilerArm64::load_address_of_var_reference(
     AsmReg dst, tpde::AssignmentPartRef ap) noexcept {
-  const auto &info = variable_refs[ap.variable_ref_data()];
-  if (info.alloca) {
-    // default handling from CompilerA64
-    assert(info.alloca_frame_off >= 0);
-    // per-default, variable references are only used by
-    // allocas
-    if (!ASMIF(ADDxi, dst, DA_GP(29), info.alloca_frame_off)) {
-      materialize_constant(
-          info.alloca_frame_off, CompilerConfig::GP_BANK, 4, dst);
-      ASM(ADDx_uxtw, dst, DA_GP(29), dst, 0);
-    }
+  auto *global = this->adaptor->global_list[ap.variable_ref_data()];
+  const auto sym = global_sym(global);
+  assert(sym.valid());
+  if (global->isThreadLocal()) {
+    // See LLVMCompilerX64 for a discussion on not supporting this case.
+    TPDE_FATAL("thread-local variable access without intrinsic");
+  }
+  // These pairs must be contiguous, avoid possible veneers in between.
+  this->text_writer.ensure_space(8);
+  if (!use_local_access(global)) {
+    // mov the ptr from the GOT
+    reloc_text(sym, R_AARCH64_ADR_GOT_PAGE, this->text_writer.offset());
+    ASMNC(ADRP, dst, 0, 0);
+    reloc_text(sym, R_AARCH64_LD64_GOT_LO12_NC, this->text_writer.offset());
+    ASMNC(LDRxu, dst, dst, 0);
   } else {
-    auto *global = llvm::cast<llvm::GlobalValue>(info.val);
-    const auto sym = global_sym(global);
-    assert(sym.valid());
-    if (global->isThreadLocal()) {
-      // See LLVMCompilerX64 for a discussion on not supporting this case.
-      TPDE_FATAL("thread-local variable access without intrinsic");
-    }
-    // These pairs must be contiguous, avoid possible veneers in between.
-    this->text_writer.ensure_space(8);
-    if (!use_local_access(global)) {
-      // mov the ptr from the GOT
-      reloc_text(sym, R_AARCH64_ADR_GOT_PAGE, this->text_writer.offset());
-      ASMNC(ADRP, dst, 0, 0);
-      reloc_text(sym, R_AARCH64_LD64_GOT_LO12_NC, this->text_writer.offset());
-      ASMNC(LDRxu, dst, dst, 0);
-    } else {
-      // emit lea with relocation
-      reloc_text(sym, R_AARCH64_ADR_PREL_PG_HI21, this->text_writer.offset());
-      ASMNC(ADRP, dst, 0, 0);
-      reloc_text(sym, R_AARCH64_ADD_ABS_LO12_NC, this->text_writer.offset());
-      ASMNC(ADDxi, dst, dst, 0);
-    }
+    // emit lea with relocation
+    reloc_text(sym, R_AARCH64_ADR_PREL_PG_HI21, this->text_writer.offset());
+    ASMNC(ADRP, dst, 0, 0);
+    reloc_text(sym, R_AARCH64_ADD_ABS_LO12_NC, this->text_writer.offset());
+    ASMNC(ADDxi, dst, dst, 0);
   }
 }
 
@@ -699,11 +686,9 @@ void LLVMCompilerArm64::resolved_gep_to_base_reg(ResolvedGEP &gep) noexcept {
   gep.scale = 0;
 }
 
-LLVMCompilerArm64::GenericValuePart
-    LLVMCompilerArm64::create_addr_for_alloca(u32 ref_idx) noexcept {
-  const auto &info = this->variable_refs[ref_idx];
-  assert(info.alloca);
-  return GenericValuePart::Expr{AsmReg::R29, info.alloca_frame_off};
+LLVMCompilerArm64::GenericValuePart LLVMCompilerArm64::create_addr_for_alloca(
+    tpde::AssignmentPartRef ap) noexcept {
+  return GenericValuePart::Expr{AsmReg::R29, ap.variable_stack_off()};
 }
 
 void LLVMCompilerArm64::switch_emit_cmp(const AsmReg cmp_reg,

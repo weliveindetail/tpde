@@ -5,6 +5,8 @@
 
 #include <ranges>
 
+#include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/LLVMContext.h>
@@ -152,6 +154,8 @@ struct LLVMAdaptor {
   /// Keep them separate so that we don't have to repeatedly insert them for
   /// every function.
   llvm::DenseMap<const llvm::GlobalValue *, u32> global_lookup;
+  /// Inverse of global_lookup.
+  llvm::SmallVector<const llvm::GlobalValue *, 0> global_list;
 #ifndef NDEBUG
   llvm::DenseMap<const llvm::Value *, u32> value_lookup;
   llvm::DenseMap<const llvm::BasicBlock *, u32> block_lookup;

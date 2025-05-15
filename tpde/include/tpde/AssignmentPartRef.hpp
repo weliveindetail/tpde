@@ -88,6 +88,10 @@ public:
 
   [[nodiscard]] bool variable_ref() const noexcept { return va->variable_ref; }
 
+  [[nodiscard]] bool is_stack_variable() const noexcept {
+    return va->stack_variable;
+  }
+
   [[nodiscard]] bool register_valid() const noexcept {
     return (va->parts[part] & (1u << 11)) != 0;
   }
@@ -125,8 +129,14 @@ public:
     return va->frame_off + part_off();
   }
 
+  [[nodiscard]] int32_t variable_stack_off() const noexcept {
+    assert(variable_ref() && va->stack_variable);
+    assert(part == 0);
+    return va->frame_off;
+  }
+
   [[nodiscard]] uint32_t variable_ref_data() const noexcept {
-    assert(variable_ref());
+    assert(variable_ref() && !va->stack_variable);
     assert(part == 0);
     return va->var_ref_custom_idx;
   }

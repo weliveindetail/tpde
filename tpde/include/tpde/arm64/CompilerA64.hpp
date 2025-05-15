@@ -554,7 +554,7 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
                        u32 size,
                        bool sign_extend = false) noexcept;
 
-  void load_address_of_var_reference(AsmReg dst, AssignmentPartRef ap) noexcept;
+  void load_address_of_stack_var(AsmReg dst, AssignmentPartRef ap) noexcept;
 
   void mov(AsmReg dst, AsmReg src, u32 size) noexcept;
 
@@ -1411,14 +1411,10 @@ template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
-void CompilerA64<Adaptor, Derived, BaseTy, Config>::
-    load_address_of_var_reference(const AsmReg dst,
-                                  const AssignmentPartRef ap) noexcept {
-  static_assert(Config::DEFAULT_VAR_REF_HANDLING);
-  auto frame_off = static_cast<i32>(ap.variable_ref_data());
-  assert(-frame_off < 0);
-  // per-default, variable references are only used by
-  // allocas
+void CompilerA64<Adaptor, Derived, BaseTy, Config>::load_address_of_stack_var(
+    const AsmReg dst, const AssignmentPartRef ap) noexcept {
+  auto frame_off = ap.variable_stack_off();
+  assert(frame_off >= 0);
   if (!ASMIF(ADDxi, dst, DA_GP(29), frame_off)) {
     materialize_constant(frame_off, Config::GP_BANK, 4, dst);
     ASM(ADDx_uxtw, dst, DA_GP(29), dst, 0);

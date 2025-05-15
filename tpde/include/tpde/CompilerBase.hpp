@@ -702,6 +702,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
   assignment->pending_free = false;
 #endif
   assignment->variable_ref = false;
+  assignment->stack_variable = false;
   assignment->delay_free = last_full;
   assignment->part_count = part_count;
   assignment->frame_off = 0;
@@ -765,6 +766,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_variable_ref(
 
   assignment->max_part_size = Config::PLATFORM_POINTER_SIZE;
   assignment->variable_ref = true;
+  assignment->stack_variable = false;
   assignment->part_count = 1;
   assignment->var_ref_custom_idx = var_ref_data;
   assignment->references_left = 0;
@@ -974,8 +976,12 @@ void CompilerBase<Adaptor, Derived, Config>::reload_to_reg(
   if (!ap.variable_ref()) {
     assert(ap.stack_valid());
     derived()->load_from_stack(dst, ap.frame_off(), ap.part_size());
-  } else {
+  } else if (ap.is_stack_variable()) {
+    derived()->load_address_of_stack_var(dst, ap);
+  } else if constexpr (!Config::DEFAULT_VAR_REF_HANDLING) {
     derived()->load_address_of_var_reference(dst, ap);
+  } else {
+    TPDE_UNREACHABLE("non-stack-variable needs custom var-ref handling");
   }
 }
 
@@ -1691,14 +1697,18 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     block_labels.push_back(assembler.label_create());
   }
 
-  if constexpr (Config::DEFAULT_VAR_REF_HANDLING) {
-    for (const IRValueRef alloca : adaptor->cur_static_allocas()) {
-      auto size = adaptor->val_alloca_size(alloca);
-      size = util::align_up(size, adaptor->val_alloca_align(alloca));
-      const auto frame_off = allocate_stack_slot(size);
-      init_variable_ref(adaptor->val_local_idx(alloca), frame_off);
-    }
-  } else {
+  for (const IRValueRef alloca : adaptor->cur_static_allocas()) {
+    auto size = adaptor->val_alloca_size(alloca);
+    size = util::align_up(size, adaptor->val_alloca_align(alloca));
+
+    ValLocalIdx local_idx = adaptor->val_local_idx(alloca);
+    init_variable_ref(local_idx, 0);
+    ValueAssignment *assignment = val_assignment(local_idx);
+    assignment->stack_variable = true;
+    assignment->frame_off = allocate_stack_slot(size);
+  }
+
+  if constexpr (!Config::DEFAULT_VAR_REF_HANDLING) {
     derived()->setup_var_ref_assignments();
   }
 

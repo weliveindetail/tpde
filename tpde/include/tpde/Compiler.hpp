@@ -62,12 +62,6 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
   // (dst_reg, frame_off, size)
   { a.load_from_stack(ARG(typename Config::AsmReg), ARG(u32), ARG(u32)) };
 
-  // (dst_reg, ap_ref)
-  {
-    a.load_address_of_var_reference(ARG(typename Config::AsmReg),
-                                    ARG(AssignmentPartRef))
-  };
-
   // (dst_reg, src_reg, size)
   {
     a.mov(ARG(typename Config::AsmReg), ARG(typename Config::AsmReg), ARG(u32))
@@ -129,6 +123,12 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
     /// This should initialize all variable references
     /// (even the ones from TPDE so static stack slots)
     { a.setup_var_ref_assignments() };
+
+    // (dst_reg, ap_ref)
+    {
+      a.load_address_of_var_reference(ARG(typename Config::AsmReg),
+                                      ARG(AssignmentPartRef))
+    };
   };
 
   {

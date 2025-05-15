@@ -238,8 +238,11 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
   if (!globals_init) {
     globals_init = true;
     global_lookup.reserve(512);
+    global_list.reserve(512);
     auto add_global = [&](llvm::GlobalValue *gv) {
       assert(global_lookup.find(gv) == global_lookup.end());
+      assert(global_list.size() == values.size());
+      global_list.push_back(gv);
       global_lookup.insert_or_assign(gv, values.size());
       values.push_back(ValInfo{.type = LLVMBasicValType::ptr,
                                .fused = false,
@@ -373,6 +376,7 @@ void LLVMAdaptor::reset() noexcept {
   mod = nullptr;
   values.clear();
   global_lookup.clear();
+  global_list.clear();
 #ifndef NDEBUG
   value_lookup.clear();
   block_lookup.clear();
