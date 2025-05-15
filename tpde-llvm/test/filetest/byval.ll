@@ -86,21 +86,17 @@ define i128 @fn_byval2(ptr byval({ptr, ptr}) %a, ptr byval(i64) %b, ptr byval(i1
 ; X64-LABEL: <fn_byval2>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
-; X64-NEXT:    push rbx
-; X64-NEXT:    nop dword ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x28
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x20]
+; X64-NEXT:    mov rcx, qword ptr [rbp + 0x10]
+; X64-NEXT:    mov qword ptr [rcx], rax
 ; X64-NEXT:    lea rax, [rbp + 0x10]
-; X64-NEXT:    lea rbx, [rbp + 0x20]
-; X64-NEXT:    lea r10, [rbp + 0x30]
-; X64-NEXT:    mov rbx, qword ptr [rbx]
-; X64-NEXT:    mov rcx, qword ptr [rax]
-; X64-NEXT:    mov qword ptr [rcx], rbx
 ; X64-NEXT:    mov qword ptr [rax + 0x8], rcx
-; X64-NEXT:    mov rax, qword ptr [r10]
-; X64-NEXT:    mov r10, qword ptr [r10 + 0x8]
-; X64-NEXT:    mov rdx, r10
-; X64-NEXT:    add rsp, 0x28
-; X64-NEXT:    pop rbx
+; X64-NEXT:    mov rcx, qword ptr [rbp + 0x30]
+; X64-NEXT:    mov rdx, qword ptr [rbp + 0x38]
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
@@ -189,20 +185,15 @@ define void @fn_byval3(ptr byval(i8) align 1 %a, ptr byval(i32) align 2 %b, ptr 
 ; X64-LABEL: <fn_byval3>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
-; X64-NEXT:    push rbx
-; X64-NEXT:    nop dword ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x28
-; X64-NEXT:    lea rax, [rbp + 0x10]
-; X64-NEXT:    lea rbx, [rbp + 0x18]
-; X64-NEXT:    lea r10, [rbp + 0x20]
-; X64-NEXT:    movzx eax, byte ptr [rax]
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    movzx eax, byte ptr [rbp + 0x10]
 ; X64-NEXT:    mov byte ptr [rdi], al
-; X64-NEXT:    mov ebx, dword ptr [rbx]
-; X64-NEXT:    mov dword ptr [rdi], ebx
-; X64-NEXT:    movzx r10d, byte ptr [r10]
-; X64-NEXT:    mov byte ptr [rdi], r10b
-; X64-NEXT:    add rsp, 0x28
-; X64-NEXT:    pop rbx
+; X64-NEXT:    mov eax, dword ptr [rbp + 0x18]
+; X64-NEXT:    mov dword ptr [rdi], eax
+; X64-NEXT:    movzx eax, byte ptr [rbp + 0x20]
+; X64-NEXT:    mov byte ptr [rdi], al
+; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;

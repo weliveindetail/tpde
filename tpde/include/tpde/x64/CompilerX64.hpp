@@ -5,6 +5,8 @@
 
 #include "AssemblerElfX64.hpp"
 #include "tpde/CompilerBase.hpp"
+#include "tpde/ValLocalIdx.hpp"
+#include "tpde/ValueAssignment.hpp"
 #include "tpde/base.hpp"
 
 #ifdef TPDE_ASSERTS
@@ -619,8 +621,6 @@ void CallingConv::handle_func_args(
 
   u32 arg_idx = 0;
   for (const IRValueRef arg : compiler->adaptor->cur_args()) {
-    auto arg_ref = compiler->result_ref(arg);
-
     if (compiler->adaptor->cur_arg_is_byval(arg_idx)) {
       const u32 size = compiler->adaptor->cur_arg_byval_size(arg_idx);
       const u32 align = compiler->adaptor->cur_arg_byval_align(arg_idx);
@@ -630,14 +630,20 @@ void CallingConv::handle_func_args(
         frame_off = util::align_up(frame_off, 16);
       }
 
-      auto arg_part = arg_ref.part(0);
-      const auto res_reg = arg_part.alloc_reg(arg_regs_mask());
-      ASMC(compiler, LEA64rm, res_reg, FE_MEM(FE_BP, 0, FE_NOREG, frame_off));
+      // We can use a stack variable ref
+      ValLocalIdx local_idx = compiler->val_idx(arg);
+      assert(compiler->val_assignment(local_idx) == nullptr);
+      compiler->init_variable_ref(local_idx, 0);
+      ValueAssignment *assignment = compiler->val_assignment(local_idx);
+      assignment->stack_variable = true;
+      assignment->frame_off = frame_off;
 
       frame_off += util::align_up(size, 8);
       ++arg_idx;
       continue;
     }
+
+    auto arg_ref = compiler->result_ref(arg);
 
     const u32 part_count = arg_ref.assignment()->part_count;
     auto must_pass_stack = false;
