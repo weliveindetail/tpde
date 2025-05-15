@@ -341,6 +341,7 @@ bool LLVMCompilerArm64::compile_alloca(const llvm::Instruction *inst,
   auto [size_vr, size_ref] = this->val_ref_single(alloca->getArraySize());
   auto [res_vr, res_ref] = this->result_ref_single(alloca);
 
+  auto align = alloca->getAlign().value();
   auto &layout = adaptor->mod->getDataLayout();
   if (auto opt = alloca->getAllocationSize(layout); opt) {
     AsmReg res_reg = res_ref.alloc_reg();
@@ -361,7 +362,8 @@ bool LLVMCompilerArm64::compile_alloca(const llvm::Instruction *inst,
       ASM(SUBxi, res_reg, DA_SP, size_val & 0xfff);
     }
 
-    if (u64 align = alloca->getAlign().value(); align >= 16) {
+    if (align > 16) {
+      // The stack pointer is always at least 16-byte aligned.
       ASM(ANDxi, res_reg, res_reg, ~(align - 1));
     }
 
@@ -397,16 +399,11 @@ bool LLVMCompilerArm64::compile_alloca(const llvm::Instruction *inst,
     ASM(SUBx_uxtx, res_reg, DA_SP, res_reg, 0);
   }
 
-  auto align = alloca->getAlign().value();
-  if (align < 16) {
-    align = 16;
+  align = align > 16 ? align : 16;
+  if (elem_size & (align - 1)) {
+    ASM(ANDxi, res_reg, res_reg, ~(align - 1));
   }
 
-  // need to keep the stack aligned
-  align = ~(align - 1);
-  assert(align >> 32 == 0xFFFF'FFFF);
-
-  ASM(ANDxi, res_reg, res_reg, align);
   ASM(MOV_SPx, DA_SP, res_reg);
   res_ref.set_modified();
   return true;

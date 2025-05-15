@@ -287,6 +287,12 @@ bool LLVMCompilerX64::compile_alloca(const llvm::Instruction *inst,
   auto [size_vr, size_ref] = this->val_ref_single(alloca->getArraySize());
   auto [res_vr, res_ref] = this->result_ref_single(alloca);
 
+  auto align = alloca->getAlign().value();
+  if (align >= (u64{1} << 31)) {
+    // We can't encode this as immediate and it doesn't happen in practice.
+    return false;
+  }
+
   auto &layout = adaptor->mod->getDataLayout();
   if (auto opt = alloca->getAllocationSize(layout); opt) {
     const auto size = *opt;
@@ -296,6 +302,10 @@ bool LLVMCompilerX64::compile_alloca(const llvm::Instruction *inst,
     if (size_val > 0) {
       assert(size < 0x8000'0000);
       ASM(SUB64ri, FE_SP, size_val);
+    }
+
+    if (align > 16) {
+      ASM(AND64ri, FE_SP, ~(align - 1));
     }
 
     res_ref.alloc_reg();
@@ -328,18 +338,13 @@ bool LLVMCompilerX64::compile_alloca(const llvm::Instruction *inst,
     if (!res_ref.has_reg()) {
       res_ref.lock();
     }
+
+    align = align > 16 ? align : 16;
+    if (elem_size & (align - 1)) {
+      ASM(AND64ri, FE_SP, ~(align - 1));
+    }
   }
 
-  auto align = alloca->getAlign().value();
-  if (align < 16) {
-    align = 16;
-  }
-
-  // need to keep the stack aligned
-  align = ~(align - 1);
-  assert(align >> 32 == 0xFFFF'FFFF);
-
-  ASM(AND64ri, FE_SP, align);
   ASM(MOV64rr, res_ref.cur_reg(), FE_SP);
   return true;
 }

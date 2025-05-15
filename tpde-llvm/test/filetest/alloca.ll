@@ -37,7 +37,6 @@ define ptr @dynalloca_empty() {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
 ; X64-NEXT:    mov rsp, rbp
 ; X64-NEXT:    pop rbp
@@ -67,7 +66,6 @@ define ptr @dynalloca_empty_array(i64 %0) {
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    xor edi, edi
 ; X64-NEXT:    sub rsp, rdi
-; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rdi, rsp
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    mov rsp, rbp
@@ -80,7 +78,6 @@ define ptr @dynalloca_empty_array(i64 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov w0, #0x0 // =0
-; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x0
 ; ARM64-NEXT:    mov sp, x29
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -97,7 +94,6 @@ define void @dyn_alloca_const() {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    sub rsp, 0x10
-; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
 ; X64-NEXT:    mov qword ptr [rax], rax
 ; X64-NEXT:    mov rsp, rbp
@@ -216,7 +212,6 @@ define void @dyn_alloca_dyn_cnt_i64(i64 %a) {
 ; X64-NEXT:    mov rax, rbx
 ; X64-NEXT:    shl rax, 0x4
 ; X64-NEXT:    sub rsp, rax
-; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
 ; X64-NEXT:    mov rax, rbx
 ; X64-NEXT:    imul rax, rax, 0x18
@@ -226,26 +221,21 @@ define void @dyn_alloca_dyn_cnt_i64(i64 %a) {
 ; X64-NEXT:    mov rax, rbx
 ; X64-NEXT:    shl rax, 0x5
 ; X64-NEXT:    sub rsp, rax
-; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
 ; X64-NEXT:    mov rax, rbx
 ; X64-NEXT:    imul rax, rax, 0x30
 ; X64-NEXT:    sub rsp, rax
-; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
 ; X64-NEXT:    mov rax, rbx
 ; X64-NEXT:    shl rax, 0x6
 ; X64-NEXT:    sub rsp, rax
-; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
 ; X64-NEXT:    mov rax, rbx
 ; X64-NEXT:    shl rax, 0xa
 ; X64-NEXT:    sub rsp, rax
-; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
 ; X64-NEXT:    imul rbx, rbx, 0x186a0
 ; X64-NEXT:    sub rsp, rbx
-; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rbx, rsp
 ; X64-NEXT:    lea rsp, [rbp - 0x8]
 ; X64-NEXT:    pop rbx
@@ -268,7 +258,6 @@ define void @dyn_alloca_dyn_cnt_i64(i64 %a) {
 ; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x0
 ; ARM64-NEXT:    sub x0, sp, x19, lsl #4
-; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x0
 ; ARM64-NEXT:    mov x1, #0x18 // =24
 ; ARM64-NEXT:    mul x0, x19, x1
@@ -277,26 +266,21 @@ define void @dyn_alloca_dyn_cnt_i64(i64 %a) {
 ; ARM64-NEXT:    mov sp, x0
 ; ARM64-NEXT:    lsl x0, x19, #5
 ; ARM64-NEXT:    sub x0, sp, x0
-; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x0
 ; ARM64-NEXT:    mov x1, #0x30 // =48
 ; ARM64-NEXT:    mul x0, x19, x1
 ; ARM64-NEXT:    sub x0, sp, x0
-; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x0
 ; ARM64-NEXT:    lsl x0, x19, #6
 ; ARM64-NEXT:    sub x0, sp, x0
-; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x0
 ; ARM64-NEXT:    lsl x0, x19, #10
 ; ARM64-NEXT:    sub x0, sp, x0
-; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x0
 ; ARM64-NEXT:    mov x0, #0x86a0 // =34464
 ; ARM64-NEXT:    movk x0, #0x1, lsl #16
 ; ARM64-NEXT:    mul x19, x19, x0
 ; ARM64-NEXT:    sub x19, sp, x19
-; ARM64-NEXT:    and x19, x19, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x19
 ; ARM64-NEXT:    mov sp, x29
 ; ARM64-NEXT:    ldr x19, [x29, #0x10]
@@ -1122,7 +1106,7 @@ define void @f2(ptr %0, ptr %1, ptr %2, ptr %3, ptr %4, ptr %5, ptr %6, ptr %7, 
 ; ARM64-NEXT:    str x8, [sp, #0x100]
 ; ARM64-NEXT:    str x28, [sp, #0x108]
 ; ARM64-NEXT:    str x30, [sp, #0x110]
-; ARM64-NEXT:    bl 0xc00 <f2+0x1d0>
+; ARM64-NEXT:    bl 0xbe0 <f2+0x1d0>
 ; ARM64-NEXT:     R_AARCH64_CALL26 f1
 ; ARM64-NEXT:    add sp, sp, #0x120
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -1469,7 +1453,7 @@ define void @alloca_manyregs(i32 %0, ptr %1, ptr %2, ptr %3, i64 %4, i32 %5, ptr
 ; ARM64-NEXT:    orr w30, w30, w0
 ; ARM64-NEXT:    add x16, x29, #0x40, lsl #12 // =0x40000
 ; ARM64-NEXT:    str w14, [x16, #0x898]
-; ARM64-NEXT:    b 0xda4 <alloca_manyregs+0x154>
+; ARM64-NEXT:    b 0xd84 <alloca_manyregs+0x154>
   %23 = alloca [66000 x i32], align 4
   br label %24
 
