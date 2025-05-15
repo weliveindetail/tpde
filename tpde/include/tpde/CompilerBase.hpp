@@ -606,7 +606,6 @@ bool CompilerBase<Adaptor, Derived, Config>::compile() {
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::reset() {
-  analyzer.reset();
   adaptor->reset();
 
   for (auto &e : stack.fixed_free_lists) {
@@ -1640,9 +1639,6 @@ typename CompilerBase<Adaptor, Derived, Config>::Assembler::SymRef
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     const IRFuncRef func, const u32 func_idx) noexcept {
-  // reset per-func data
-  analyzer.reset();
-
   if (!adaptor->switch_func(func)) {
     return false;
   }
@@ -1683,19 +1679,10 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
 
   if constexpr (Config::DEFAULT_VAR_REF_HANDLING) {
     for (const IRValueRef alloca : adaptor->cur_static_allocas()) {
-      // TODO(ts): add a flag in the adaptor to not do this if it is
-      // unnecessary?
-      const auto local_idx = adaptor->val_local_idx(alloca);
-      if (const auto &info = analyzer.liveness_info(local_idx);
-          info.ref_count == 1) {
-        // the value is ref-counted and not used, so skip it
-        continue;
-      }
-
       auto size = adaptor->val_alloca_size(alloca);
       size = util::align_up(size, adaptor->val_alloca_align(alloca));
       const auto frame_off = allocate_stack_slot(size);
-      init_variable_ref(local_idx, frame_off);
+      init_variable_ref(adaptor->val_local_idx(alloca), frame_off);
     }
   } else {
     derived()->setup_var_ref_assignments();

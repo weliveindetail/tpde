@@ -72,20 +72,23 @@ struct Analyzer {
     /// The value may not be deallocated until the last block is finished
     /// even if the reference count hits 0
     bool last_full;
+
+    u16 epoch = 0;
   };
 
   util::SmallVector<LivenessInfo, SMALL_VALUE_NUM> liveness = {};
+  /// Epoch of liveness information, entries with a value not equal to this
+  /// epoch are invalid. This is an optimization to avoid clearing the entire
+  /// liveness vector for every function, which is important for functions with
+  /// many values that are ignored for the liveness analysis (e.g., var refs).
+  u16 liveness_epoch = 0;
+  u32 liveness_max_value;
 
   explicit Analyzer(Adaptor *adaptor) : adaptor(adaptor) {}
 
   /// Start the compilation of a new function and build the loop tree and
-  /// liveness information.
-  /// This assumes that the adaptor was already switched to the new function
-  /// and the analyzer was reset
+  /// liveness information. Previous information is discarded.
   void switch_func(IRFuncRef func);
-
-  /// Resets the analyzer state
-  void reset();
 
   IRBlockRef block_ref(const BlockIndex idx) const noexcept {
     assert(static_cast<u32>(idx) <= block_layout.size());
@@ -103,6 +106,8 @@ struct Analyzer {
 
   const LivenessInfo &liveness_info(const ValLocalIdx val_idx) const noexcept {
     assert(static_cast<u32>(val_idx) < liveness.size());
+    assert(liveness[static_cast<u32>(val_idx)].epoch == liveness_epoch &&
+           "access to liveness of ignored value");
     return liveness[static_cast<u32>(val_idx)];
   }
 
@@ -206,7 +211,12 @@ void Analyzer<Adaptor>::print_loops(std::ostream &os) const {
 
 template <IRAdaptor Adaptor>
 void Analyzer<Adaptor>::print_liveness(std::ostream &os) const {
-  for (u32 i = 0; i < liveness.size(); ++i) {
+  for (u32 i = 0; i <= liveness_max_value; ++i) {
+    if (liveness[i].epoch != liveness_epoch) {
+      os << std::format("  {}: ignored\n", i);
+      continue;
+    }
+
     const auto &info = liveness[i];
     os << std::format("  {}: {} refs, {}->{} ({}->{}), lf: {}\n",
                       i,
@@ -220,11 +230,6 @@ void Analyzer<Adaptor>::print_liveness(std::ostream &os) const {
 }
 
 template <IRAdaptor Adaptor>
-void Analyzer<Adaptor>::reset() {
-  liveness.clear();
-}
-
-template <IRAdaptor Adaptor>
 typename Analyzer<Adaptor>::LivenessInfo &
     Analyzer<Adaptor>::liveness_maybe(const IRValueRef val) noexcept {
   const ValLocalIdx val_idx = adaptor->val_local_idx(val);
@@ -232,10 +237,12 @@ typename Analyzer<Adaptor>::LivenessInfo &
     assert(liveness.size() > static_cast<u32>(val_idx));
     return liveness[static_cast<u32>(val_idx)];
   } else {
-    if (liveness.size() <= static_cast<u32>(val_idx)) {
-      // TODO(ts): add a check if liveness.size() == val_idx and then do
-      // push_back?
-      liveness.resize(static_cast<u32>(val_idx) + 1);
+    if (liveness_max_value <= static_cast<u32>(val_idx)) {
+      liveness_max_value = static_cast<u32>(val_idx);
+      if (liveness.size() <= liveness_max_value) {
+        // TODO: better growth strategy?
+        liveness.resize(liveness_max_value + 0x100);
+      }
     }
     return liveness[static_cast<u32>(val_idx)];
   }
@@ -753,8 +760,20 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
   // TODO(ts): also expose the two-pass liveness algo as an option
 
   TPDE_LOG_TRACE("Starting Liveness Analysis");
+
+  // Bump epoch. On overflow, we must clear all liveness info entries.
+  if (++liveness_epoch == 0) {
+    liveness.clear();
+    liveness_epoch = 1;
+  }
+
   if constexpr (Adaptor::TPDE_PROVIDES_HIGHEST_VAL_IDX) {
-    liveness.resize(adaptor->cur_highest_val_idx() + 1);
+    liveness_max_value = adaptor->cur_highest_val_idx();
+    if (liveness_max_value >= liveness.size()) {
+      liveness.resize(liveness_max_value + 1);
+    }
+  } else {
+    liveness_max_value = 0;
   }
 
   const auto visit = [this](const IRValueRef value, const u32 block_idx) {
@@ -767,16 +786,21 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
     }
 
     auto &liveness = liveness_maybe(value);
-    assert(liveness.ref_count != ~0u && "used value without definition");
-
-    if (liveness.ref_count == 0) {
+    if (liveness.epoch != liveness_epoch) {
       TPDE_LOG_TRACE("    initializing liveness info, lcl is {}",
                      block_loop_map[block_idx]);
-      liveness.first = liveness.last = static_cast<BlockIndex>(block_idx);
-      liveness.ref_count = 1;
-      liveness.lowest_common_loop = block_loop_map[block_idx];
+      liveness = LivenessInfo{
+          .first = static_cast<BlockIndex>(block_idx),
+          .last = static_cast<BlockIndex>(block_idx),
+          .ref_count = 1,
+          .lowest_common_loop = block_loop_map[block_idx],
+          .last_full = false,
+          .epoch = liveness_epoch,
+      };
       return;
     }
+
+    assert(liveness.ref_count != ~0u && "used value without definition");
 
     ++liveness.ref_count;
     TPDE_LOG_TRACE("    increasing ref_count to {}", liveness.ref_count);

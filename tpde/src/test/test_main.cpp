@@ -211,8 +211,6 @@ int main(int argc, char *argv[]) {
         analyzer.print_liveness(std::cout);
         std::cout << "End Liveness\n";
       }
-
-      analyzer.reset();
     }
 
     return 0;
