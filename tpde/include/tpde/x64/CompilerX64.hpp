@@ -1843,7 +1843,9 @@ template <IRAdaptor Adaptor,
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::CallBuilder::call_impl(
     std::variant<typename Assembler::SymRef, ValuePart> &&target) noexcept {
   if (this->assigner.is_vararg()) {
-    assert(!this->compiler.register_file.is_used(Reg{AsmReg::AX}));
+    if (this->compiler.register_file.is_used(Reg{AsmReg::AX})) {
+      this->compiler.evict_reg(Reg{AsmReg::AX});
+    }
     Reg next_xmm = this->compiler.register_file.find_first_free_excluding(
         Config::FP_BANK, 0);
     unsigned xmm_cnt = 8;
@@ -1869,8 +1871,16 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::CallBuilder::call_impl(
         *sym, R_X86_64_PLT32, this->compiler.text_writer.offset() - 4, -4);
   } else {
     ValuePart &tvp = std::get<ValuePart>(target);
-    AsmReg tmp = tvp.reload_into_specific_fixed(&this->compiler, AsmReg::R10);
-    ASMC(&this->compiler, CALLr, tmp);
+    if (AsmReg reg = tvp.cur_reg_unlocked(); reg.valid()) {
+      ASMC(&this->compiler, CALLr, reg);
+    } else if (tvp.has_assignment() && tvp.assignment().stack_valid()) {
+      auto off = tvp.assignment().frame_off();
+      ASMC(&this->compiler, CALLm, FE_MEM(FE_BP, 0, FE_NOREG, off));
+    } else {
+      assert(!this->compiler.register_file.is_used(Reg{AsmReg::R10}));
+      AsmReg reg = tvp.reload_into_specific_fixed(&this->compiler, AsmReg::R10);
+      ASMC(&this->compiler, CALLr, reg);
+    }
     tvp.reset(&this->compiler);
   }
 

@@ -500,9 +500,16 @@ template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 template <typename CBDerived>
 void CompilerBase<Adaptor, Derived, Config>::CallBuilderBase<CBDerived>::call(
     std::variant<typename Assembler::SymRef, ValuePart> target) noexcept {
+  typename RegisterFile::RegBitSet skip_evict = arg_regs;
+  if (auto *vp = std::get_if<ValuePart>(&target); vp && vp->can_salvage()) {
+    // call_impl will reset vp, thereby unlock+free the register.
+    assert(vp->cur_reg_unlocked().valid() && "can_salvage implies register");
+    skip_evict |= (1ull << vp->cur_reg_unlocked().id());
+  }
+
   auto clobbered = ~assigner.get_ccinfo().callee_saved_regs;
   for (auto reg_id : util::BitSetIterator<>{compiler.register_file.used &
-                                            clobbered & ~arg_regs}) {
+                                            clobbered & ~skip_evict}) {
     compiler.evict_reg(AsmReg{reg_id});
     compiler.register_file.mark_clobbered(Reg{reg_id});
   }

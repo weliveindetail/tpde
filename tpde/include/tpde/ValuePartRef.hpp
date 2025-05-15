@@ -132,6 +132,20 @@ public:
     return state.v.reg;
   }
 
+  /// Current register or none, even if the value is unlocked and could be
+  /// evicted by any other operation.
+  AsmReg cur_reg_unlocked() const noexcept {
+    if (state.v.reg.valid()) {
+      return state.v.reg;
+    }
+    if (has_assignment()) {
+      if (auto ap = assignment(); ap.register_valid()) {
+        return ap.get_reg();
+      }
+    }
+    return AsmReg::make_invalid();
+  }
+
   /// Is the value part currently in the specified register?
   bool is_in_reg(AsmReg reg) const noexcept {
     if (has_reg()) {
