@@ -284,7 +284,7 @@ public:
 
   void assign_arg(CCAssignment &arg) noexcept override {
     if (arg.byval) {
-      stack = util::align_up(stack, arg.byval_align);
+      stack = util::align_up(stack, arg.byval_align < 8 ? 8 : arg.byval_align);
       arg.stack_off = stack;
       stack += arg.byval_size;
       return;

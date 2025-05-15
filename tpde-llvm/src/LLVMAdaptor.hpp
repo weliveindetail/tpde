@@ -411,7 +411,15 @@ public:
   }
 
   u32 cur_arg_byval_align(const u32 idx) const noexcept {
-    return cur_func->getParamAlign(idx)->value();
+    if (auto param_align = cur_func->getParamStackAlign(idx)) {
+      return param_align->value();
+    }
+    if (auto param_align = cur_func->getParamAlign(idx)) {
+      return param_align->value();
+    }
+    return mod->getDataLayout()
+        .getABITypeAlign(cur_func->getParamByValType(idx))
+        .value();
   }
 
   u32 cur_arg_byval_size(const u32 idx) const noexcept {

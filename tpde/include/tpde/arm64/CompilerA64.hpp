@@ -209,7 +209,7 @@ public:
 
   void assign_arg(CCAssignment &arg) noexcept override {
     if (arg.byval) {
-      nsaa = util::align_up(nsaa, arg.byval_align);
+      nsaa = util::align_up(nsaa, arg.byval_align < 8 ? 8 : arg.byval_align);
       arg.stack_off = nsaa;
       nsaa += arg.byval_size;
       return;

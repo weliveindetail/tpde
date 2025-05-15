@@ -3279,9 +3279,17 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_call(
       flag = CallArg::Flag::sext;
     } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::ByVal)) {
       flag = CallArg::Flag::byval;
-      byval_align = call->getParamAlign(i).valueOrOne().value();
-      byval_size = this->adaptor->mod->getDataLayout().getTypeAllocSize(
-          call->getParamByValType(i));
+      auto &data_layout = this->adaptor->mod->getDataLayout();
+      llvm::Type *byval_ty = call->getParamByValType(i);
+      byval_size = data_layout.getTypeAllocSize(byval_ty);
+
+      if (auto param_align = call->getParamStackAlign(i)) {
+        byval_align = param_align->value();
+      } else if (auto param_align = call->getParamAlign(i)) {
+        byval_align = param_align->value();
+      } else {
+        byval_align = data_layout.getABITypeAlign(byval_ty).value();
+      }
     } else if (call->paramHasAttr(i, llvm::Attribute::AttrKind::StructRet)) {
       flag = CallArg::Flag::sret;
     }
