@@ -45,7 +45,7 @@ define void @call_take_12_fp128() {
 ; ARM64-NEXT:    str d8, [sp, #0x20]
 ; ARM64-NEXT:    movi v8.16b, #0x0
 ; ARM64-NEXT:    str q8, [sp, #0x30]
-; ARM64-NEXT:    bl 0xe4 <call_take_12_fp128+0x54>
+; ARM64-NEXT:    bl 0xb4 <call_take_12_fp128+0x54>
 ; ARM64-NEXT:     R_AARCH64_CALL26 take_double_fp128
 ; ARM64-NEXT:    add sp, sp, #0x40
 ; ARM64-NEXT:    ldp x29, x30, [sp]

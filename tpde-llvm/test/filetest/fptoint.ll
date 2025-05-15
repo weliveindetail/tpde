@@ -241,7 +241,7 @@ define i64 @f128toi64(fp128 %p) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x3b0 <f128toi64+0x10>
+; ARM64-NEXT:    bl 0x230 <f128toi64+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __fixtfdi
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -268,7 +268,7 @@ define i64 @f128tou64(fp128 %p) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x420 <f128tou64+0x10>
+; ARM64-NEXT:    bl 0x270 <f128tou64+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __fixunstfdi
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0

@@ -57,7 +57,7 @@ define double @powif64(double %0, i32 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0xa0 <powif64+0x10>
+; ARM64-NEXT:    bl 0x80 <powif64+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __powidf2
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0

@@ -314,7 +314,7 @@ define fp128 @fmul_f128(fp128 %a, fp128 %b) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x4a0 <fmul_f128+0x10>
+; ARM64-NEXT:    bl 0x340 <fmul_f128+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __multf3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -343,7 +343,7 @@ define fp128 @fmul_f128_const(fp128 %a) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    movi v1.16b, #0x0
-; ARM64-NEXT:    bl 0x514 <fmul_f128_const+0x14>
+; ARM64-NEXT:    bl 0x384 <fmul_f128_const+0x14>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __multf3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0

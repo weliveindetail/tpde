@@ -489,8 +489,7 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   // prevent issues with exception handling
   u64 fixed_assignment_nonallocatable_mask =
       create_bitmask({AsmReg::R0, AsmReg::R1});
-  u32 func_start_off = 0u, func_prologue_alloc = 0u,
-      func_reg_restore_alloc = 0u;
+  u32 func_start_off = 0u, func_prologue_alloc = 0u, func_epilogue_alloc = 0u;
   /// Offset to the `add sp, sp, XXX` instruction that the argument handling
   /// uses to access stack arguments if needed
   u32 func_arg_stack_add_off = ~0u;
@@ -1022,7 +1021,10 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::
     this->text_writer.ensure_space(func_prologue_alloc);
     this->text_writer.cur_ptr() += func_prologue_alloc;
     // ldp needs the same number of instructions as stp
-    func_reg_restore_alloc = reg_save_size;
+    // additionally, there's an add sp, ldp x29/x30, ret (+12)
+    func_epilogue_alloc = reg_save_size + 12;
+    // extra mov sp, fp
+    func_epilogue_alloc += this->adaptor->cur_has_dynamic_alloca() ? 4 : 0;
   }
 
   // TODO(ts): support larger stack alignments?
@@ -1170,12 +1172,12 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
   // TODO(ts): honor cur_needs_unwind_info
   auto func_sym = this->func_syms[func_idx];
   auto func_sec = this->text_writer.get_sec_ref();
-  auto func_size = this->text_writer.offset() - func_start_off;
-  this->assembler.sym_def(func_sym, func_sec, func_start_off, func_size);
-  this->assembler.eh_end_fde(fde_off, func_sym);
-  this->assembler.except_encode_func(func_sym);
 
   if (func_ret_offs.empty()) {
+    auto func_size = this->text_writer.offset() - func_start_off;
+    this->assembler.sym_def(func_sym, func_sec, func_start_off, func_size);
+    this->assembler.eh_end_fde(fde_off, func_sym);
+    this->assembler.except_encode_func(func_sym);
     return;
   }
 
@@ -1241,6 +1243,16 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     std::memcpy(
         text_data + func_ret_offs[i], text_data + first_ret_off, ret_size);
   }
+
+  u32 func_end_ret_off = this->text_writer.offset() - func_epilogue_alloc;
+  if (func_ret_offs.back() == func_end_ret_off) {
+    this->text_writer.cur_ptr() -= func_epilogue_alloc - ret_size;
+  }
+
+  auto func_size = this->text_writer.offset() - func_start_off;
+  this->assembler.sym_def(func_sym, func_sec, func_start_off, func_size);
+  this->assembler.eh_end_fde(fde_off, func_sym);
+  this->assembler.except_encode_func(func_sym);
 }
 
 template <IRAdaptor Adaptor,
@@ -1297,15 +1309,8 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::gen_func_epilog() noexcept {
   // reserve the space for now
 
   func_ret_offs.push_back(this->text_writer.offset());
-
-  u32 epilogue_size = 4 + func_reg_restore_alloc + 4 +
-                      4; // ldp + size of reg restore + add + ret
-  if (this->adaptor->cur_has_dynamic_alloca()) {
-    epilogue_size += 4; // extra mov sp, fp
-  }
-
-  this->text_writer.ensure_space(epilogue_size);
-  this->text_writer.cur_ptr() += epilogue_size;
+  this->text_writer.ensure_space(func_epilogue_alloc);
+  this->text_writer.cur_ptr() += func_epilogue_alloc;
 }
 
 template <IRAdaptor Adaptor,
@@ -1507,8 +1512,7 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
     } else {
       AsmReg tmp2 = permanent_scratch_reg;
       derived()->materialize_constant(expr.scale, Config::GP_BANK, 8, tmp2);
-      ASM(MULx, tmp2, index_reg, tmp2);
-      ASM(ADDx, dst, base_reg, tmp2);
+      ASM(MADDx, dst, index_reg, tmp2, base_reg);
     }
   } else if (expr.has_base() && !expr.has_index()) {
     AsmReg base_reg = expr.base_reg();

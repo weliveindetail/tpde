@@ -1125,7 +1125,7 @@ define i64 @sub_memory(i64 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str x0, [x29, #0xa0]
-; ARM64-NEXT:    bl 0x1234 <sub_memory+0x14>
+; ARM64-NEXT:    bl 0xbe4 <sub_memory+0x14>
 ; ARM64-NEXT:     R_AARCH64_CALL26 f
 ; ARM64-NEXT:    ldr x1, [x29, #0xa0]
 ; ARM64-NEXT:    sub x0, x0, x1

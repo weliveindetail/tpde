@@ -103,9 +103,9 @@ define void @fcmp_oeq_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0xe4 <fcmp_oeq_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0xc4 <fcmp_oeq_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0xe8 <fcmp_oeq_f32_br+0x48>
+; ARM64-NEXT:    b 0xc8 <fcmp_oeq_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -164,9 +164,9 @@ define void @fcmp_ogt_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, gt
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x174 <fcmp_ogt_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0x134 <fcmp_ogt_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x178 <fcmp_ogt_f32_br+0x48>
+; ARM64-NEXT:    b 0x138 <fcmp_ogt_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -225,9 +225,9 @@ define void @fcmp_oge_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, ge
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x204 <fcmp_oge_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0x1a4 <fcmp_oge_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x208 <fcmp_oge_f32_br+0x48>
+; ARM64-NEXT:    b 0x1a8 <fcmp_oge_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -286,9 +286,9 @@ define void @fcmp_olt_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, mi
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x294 <fcmp_olt_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0x214 <fcmp_olt_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x298 <fcmp_olt_f32_br+0x48>
+; ARM64-NEXT:    b 0x218 <fcmp_olt_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -347,9 +347,9 @@ define void @fcmp_ole_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, ls
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x324 <fcmp_ole_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0x284 <fcmp_ole_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x328 <fcmp_ole_f32_br+0x48>
+; ARM64-NEXT:    b 0x288 <fcmp_ole_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -409,9 +409,9 @@ define void @fcmp_one_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    cset w0, mi
 ; ARM64-NEXT:    csinc w1, w0, wzr, le
 ; ARM64-NEXT:    tst w1, #0x1
-; ARM64-NEXT:    b.eq 0x3b8 <fcmp_one_f32_br+0x48>
+; ARM64-NEXT:    b.eq 0x2f8 <fcmp_one_f32_br+0x48>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x3bc <fcmp_one_f32_br+0x4c>
+; ARM64-NEXT:    b 0x2fc <fcmp_one_f32_br+0x4c>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -470,9 +470,9 @@ define void @fcmp_ord_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, vc
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x444 <fcmp_ord_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0x364 <fcmp_ord_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x448 <fcmp_ord_f32_br+0x48>
+; ARM64-NEXT:    b 0x368 <fcmp_ord_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -532,9 +532,9 @@ define void @fcmp_ueq_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    csinc w1, w0, wzr, vc
 ; ARM64-NEXT:    tst w1, #0x1
-; ARM64-NEXT:    b.eq 0x4d8 <fcmp_ueq_f32_br+0x48>
+; ARM64-NEXT:    b.eq 0x3d8 <fcmp_ueq_f32_br+0x48>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x4dc <fcmp_ueq_f32_br+0x4c>
+; ARM64-NEXT:    b 0x3dc <fcmp_ueq_f32_br+0x4c>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -593,9 +593,9 @@ define void @fcmp_ugt_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, hi
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x564 <fcmp_ugt_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0x444 <fcmp_ugt_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x568 <fcmp_ugt_f32_br+0x48>
+; ARM64-NEXT:    b 0x448 <fcmp_ugt_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -654,9 +654,9 @@ define void @fcmp_uge_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, pl
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x5f4 <fcmp_uge_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0x4b4 <fcmp_uge_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x5f8 <fcmp_uge_f32_br+0x48>
+; ARM64-NEXT:    b 0x4b8 <fcmp_uge_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -715,9 +715,9 @@ define void @fcmp_ult_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, lt
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x684 <fcmp_ult_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0x524 <fcmp_ult_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x688 <fcmp_ult_f32_br+0x48>
+; ARM64-NEXT:    b 0x528 <fcmp_ult_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -776,9 +776,9 @@ define void @fcmp_ule_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, le
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x714 <fcmp_ule_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0x594 <fcmp_ule_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x718 <fcmp_ule_f32_br+0x48>
+; ARM64-NEXT:    b 0x598 <fcmp_ule_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -838,9 +838,9 @@ define void @fcmp_une_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, ne
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x7a4 <fcmp_une_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0x604 <fcmp_une_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x7a8 <fcmp_une_f32_br+0x48>
+; ARM64-NEXT:    b 0x608 <fcmp_une_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -899,9 +899,9 @@ define void @fcmp_uno_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    fcmp s8, s9
 ; ARM64-NEXT:    cset w0, vs
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x834 <fcmp_uno_f32_br+0x44>
+; ARM64-NEXT:    b.eq 0x674 <fcmp_uno_f32_br+0x44>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x838 <fcmp_uno_f32_br+0x48>
+; ARM64-NEXT:    b 0x678 <fcmp_uno_f32_br+0x48>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -957,9 +957,9 @@ define void @fcmp_true_f32_br(float, float, ptr %p) {
 ; ARM64-NEXT:    mov x19, x0
 ; ARM64-NEXT:    mov x0, #0x1 // =1
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x8c0 <fcmp_true_f32_br+0x40>
+; ARM64-NEXT:    b.eq 0x6e0 <fcmp_true_f32_br+0x40>
 ; ARM64-NEXT:    str s8, [x19]
-; ARM64-NEXT:    b 0x8c4 <fcmp_true_f32_br+0x44>
+; ARM64-NEXT:    b 0x6e4 <fcmp_true_f32_br+0x44>
 ; ARM64-NEXT:    str s9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1016,9 +1016,9 @@ define void @fcmp_false_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    mov x19, x0
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x950 <fcmp_false_f64_br+0x40>
+; ARM64-NEXT:    b.eq 0x750 <fcmp_false_f64_br+0x40>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0x954 <fcmp_false_f64_br+0x44>
+; ARM64-NEXT:    b 0x754 <fcmp_false_f64_br+0x44>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1078,9 +1078,9 @@ define void @fcmp_oeq_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x9e4 <fcmp_oeq_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0x7c4 <fcmp_oeq_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0x9e8 <fcmp_oeq_f64_br+0x48>
+; ARM64-NEXT:    b 0x7c8 <fcmp_oeq_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1139,9 +1139,9 @@ define void @fcmp_ogt_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, gt
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0xa74 <fcmp_ogt_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0x834 <fcmp_ogt_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0xa78 <fcmp_ogt_f64_br+0x48>
+; ARM64-NEXT:    b 0x838 <fcmp_ogt_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1200,9 +1200,9 @@ define void @fcmp_oge_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, ge
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0xb04 <fcmp_oge_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0x8a4 <fcmp_oge_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0xb08 <fcmp_oge_f64_br+0x48>
+; ARM64-NEXT:    b 0x8a8 <fcmp_oge_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1261,9 +1261,9 @@ define void @fcmp_olt_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, mi
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0xb94 <fcmp_olt_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0x914 <fcmp_olt_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0xb98 <fcmp_olt_f64_br+0x48>
+; ARM64-NEXT:    b 0x918 <fcmp_olt_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1322,9 +1322,9 @@ define void @fcmp_ole_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, ls
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0xc24 <fcmp_ole_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0x984 <fcmp_ole_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0xc28 <fcmp_ole_f64_br+0x48>
+; ARM64-NEXT:    b 0x988 <fcmp_ole_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1384,9 +1384,9 @@ define void @fcmp_one_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    cset w0, mi
 ; ARM64-NEXT:    csinc w1, w0, wzr, le
 ; ARM64-NEXT:    tst w1, #0x1
-; ARM64-NEXT:    b.eq 0xcb8 <fcmp_one_f64_br+0x48>
+; ARM64-NEXT:    b.eq 0x9f8 <fcmp_one_f64_br+0x48>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0xcbc <fcmp_one_f64_br+0x4c>
+; ARM64-NEXT:    b 0x9fc <fcmp_one_f64_br+0x4c>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1445,9 +1445,9 @@ define void @fcmp_ord_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, vc
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0xd44 <fcmp_ord_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0xa64 <fcmp_ord_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0xd48 <fcmp_ord_f64_br+0x48>
+; ARM64-NEXT:    b 0xa68 <fcmp_ord_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1507,9 +1507,9 @@ define void @fcmp_ueq_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    cset w0, eq
 ; ARM64-NEXT:    csinc w1, w0, wzr, vc
 ; ARM64-NEXT:    tst w1, #0x1
-; ARM64-NEXT:    b.eq 0xdd8 <fcmp_ueq_f64_br+0x48>
+; ARM64-NEXT:    b.eq 0xad8 <fcmp_ueq_f64_br+0x48>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0xddc <fcmp_ueq_f64_br+0x4c>
+; ARM64-NEXT:    b 0xadc <fcmp_ueq_f64_br+0x4c>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1568,9 +1568,9 @@ define void @fcmp_ugt_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, hi
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0xe64 <fcmp_ugt_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0xb44 <fcmp_ugt_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0xe68 <fcmp_ugt_f64_br+0x48>
+; ARM64-NEXT:    b 0xb48 <fcmp_ugt_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1629,9 +1629,9 @@ define void @fcmp_uge_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, pl
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0xef4 <fcmp_uge_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0xbb4 <fcmp_uge_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0xef8 <fcmp_uge_f64_br+0x48>
+; ARM64-NEXT:    b 0xbb8 <fcmp_uge_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1690,9 +1690,9 @@ define void @fcmp_ult_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, lt
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0xf84 <fcmp_ult_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0xc24 <fcmp_ult_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0xf88 <fcmp_ult_f64_br+0x48>
+; ARM64-NEXT:    b 0xc28 <fcmp_ult_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1751,9 +1751,9 @@ define void @fcmp_ule_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, le
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x1014 <fcmp_ule_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0xc94 <fcmp_ule_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0x1018 <fcmp_ule_f64_br+0x48>
+; ARM64-NEXT:    b 0xc98 <fcmp_ule_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1813,9 +1813,9 @@ define void @fcmp_une_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, ne
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x10a4 <fcmp_une_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0xd04 <fcmp_une_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0x10a8 <fcmp_une_f64_br+0x48>
+; ARM64-NEXT:    b 0xd08 <fcmp_une_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1874,9 +1874,9 @@ define void @fcmp_uno_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    fcmp d8, d9
 ; ARM64-NEXT:    cset w0, vs
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x1134 <fcmp_uno_f64_br+0x44>
+; ARM64-NEXT:    b.eq 0xd74 <fcmp_uno_f64_br+0x44>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0x1138 <fcmp_uno_f64_br+0x48>
+; ARM64-NEXT:    b 0xd78 <fcmp_uno_f64_br+0x48>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]
@@ -1932,9 +1932,9 @@ define void @fcmp_true_f64_br(double, double, ptr %p) {
 ; ARM64-NEXT:    mov x19, x0
 ; ARM64-NEXT:    mov x0, #0x1 // =1
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.eq 0x11c0 <fcmp_true_f64_br+0x40>
+; ARM64-NEXT:    b.eq 0xde0 <fcmp_true_f64_br+0x40>
 ; ARM64-NEXT:    str d8, [x19]
-; ARM64-NEXT:    b 0x11c4 <fcmp_true_f64_br+0x44>
+; ARM64-NEXT:    b 0xde4 <fcmp_true_f64_br+0x44>
 ; ARM64-NEXT:    str d9, [x19]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    ldr x19, [sp, #0x10]

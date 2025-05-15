@@ -389,7 +389,7 @@ define fp128 @i32tof128(i32 %p) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x570 <i32tof128+0x10>
+; ARM64-NEXT:    bl 0x3b0 <i32tof128+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __floatunsitf
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -416,7 +416,7 @@ define fp128 @i64tof128(i64 %p) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x5e0 <i64tof128+0x10>
+; ARM64-NEXT:    bl 0x3f0 <i64tof128+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __floatunditf
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0

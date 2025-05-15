@@ -70,7 +70,7 @@ define i32 @call_byval(i32 %0) {
 ; ARM64-NEXT:    str x16, [sp]
 ; ARM64-NEXT:    ldr x16, [x1, #0x8]
 ; ARM64-NEXT:    str x16, [sp, #0x8]
-; ARM64-NEXT:    bl 0xb8 <call_byval+0x28>
+; ARM64-NEXT:    bl 0x98 <call_byval+0x28>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_i32_byval_ptr_i32_i32
 ; ARM64-NEXT:    add sp, sp, #0x10
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -170,7 +170,7 @@ define void @call_byval2(ptr %a, ptr %b, ptr %c) {
 ; ARM64-NEXT:    str x16, [sp, #0x20]
 ; ARM64-NEXT:    ldr x16, [x2, #0x8]
 ; ARM64-NEXT:    str x16, [sp, #0x28]
-; ARM64-NEXT:    bl 0x1dc <call_byval2+0x3c>
+; ARM64-NEXT:    bl 0x17c <call_byval2+0x3c>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_byval2
 ; ARM64-NEXT:    add sp, sp, #0x30
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -259,7 +259,7 @@ define void @call_byval3(ptr %a, ptr %b, ptr %c, ptr %d) {
 ; ARM64-NEXT:    ldrb w16, [x2]
 ; ARM64-NEXT:    strb w16, [sp, #0x10]
 ; ARM64-NEXT:    mov x0, x3
-; ARM64-NEXT:    bl 0x300 <call_byval3+0x30>
+; ARM64-NEXT:    bl 0x250 <call_byval3+0x30>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_byval3
 ; ARM64-NEXT:    add sp, sp, #0x20
 ; ARM64-NEXT:    ldp x29, x30, [sp]

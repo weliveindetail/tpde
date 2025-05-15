@@ -82,7 +82,7 @@ define <2 x float> @fadd_v2f32_f32_spill(<2 x float> %0, <2 x float> %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str d0, [x29, #0xa0]
 ; ARM64-NEXT:    str d1, [x29, #0xa8]
-; ARM64-NEXT:    bl 0x118 <fadd_v2f32_f32_spill+0x18>
+; ARM64-NEXT:    bl 0xc8 <fadd_v2f32_f32_spill+0x18>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fadd_v2f32_f32_spill
 ; ARM64-NEXT:    ldr d1, [x29, #0xa0]
 ; ARM64-NEXT:    fadd v1.2s, v0.2s, v1.2s

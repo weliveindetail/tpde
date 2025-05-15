@@ -326,10 +326,10 @@ define i32 @main(ptr %0, i64 %1) personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    mov x19, x0
 ; ARM64-NEXT:    mov x20, x1
 ; ARM64-NEXT:    mov w0, #0x0 // =0
-; ARM64-NEXT:    bl 0x23c <main+0x1c>
+; ARM64-NEXT:    bl 0x20c <main+0x1c>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fn_ptr_i64
 ; ARM64-NEXT:    str x0, [x29, #0xa0]
-; ARM64-NEXT:    b 0x280 <main+0x60>
+; ARM64-NEXT:    b 0x250 <main+0x60>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    mov sp, x29
 ; ARM64-NEXT:    ldp x19, x20, [x29, #0x10]
@@ -342,7 +342,7 @@ define i32 @main(ptr %0, i64 %1) personality ptr @__gxx_personality_v0 {
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    add x0, x19, x20
 ; ARM64-NEXT:    ldrb w0, [x0]
-; ARM64-NEXT:    b 0x288 <main+0x68>
+; ARM64-NEXT:    b 0x258 <main+0x68>
   %3 = invoke ptr @fn_ptr_i64(i64 0)
           to label %6 unwind label %4
 

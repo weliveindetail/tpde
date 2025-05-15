@@ -138,7 +138,7 @@ define void @legacy_use() {
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    ldr x1, [x29, #0xa8]
 ; ARM64-NEXT:    ldr x2, [x29, #0xa0]
-; ARM64-NEXT:    bl 0x174 <legacy_use+0x54>
+; ARM64-NEXT:    bl 0x134 <legacy_use+0x54>
 ; ARM64-NEXT:     R_AARCH64_CALL26 call_target
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0

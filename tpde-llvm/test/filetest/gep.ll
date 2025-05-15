@@ -1260,8 +1260,7 @@ define ptr @gep_stf_varoff_i8_zero(ptr %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxtb x1, w1
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
@@ -1347,8 +1346,7 @@ define ptr @gep_stf_varoff_i16_zero(ptr %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxth x1, w1
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
@@ -1407,8 +1405,7 @@ define ptr @gep_stf_varoff_i32_zero(ptr %0, i32 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxtw x1, w1
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
@@ -1436,8 +1433,7 @@ define ptr @gep_stf_varoff_i64_zero(ptr %0, i64 %1) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
@@ -1468,8 +1464,7 @@ define ptr @gep_stf_varoff_i8_one(ptr %0, i8 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxtb x1, w1
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    add x0, x0, #0x4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -1500,8 +1495,7 @@ define ptr @gep_stf_varoff_i16_one(ptr %0, i16 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxth x1, w1
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    add x0, x0, #0x4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -1532,8 +1526,7 @@ define ptr @gep_stf_varoff_i32_one(ptr %0, i32 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    sxtw x1, w1
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    add x0, x0, #0x4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -1562,8 +1555,7 @@ define ptr @gep_stf_varoff_i64_one(ptr %0, i64 %1) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    add x0, x0, #0x4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -1999,8 +1991,7 @@ define ptr @gep_fuse_diff_type_2(ptr %p, i64 %n) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    add x0, x0, #0xc
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -2111,8 +2102,7 @@ define ptr @gep_stf_varoff_fuse_zero(ptr %0, i64 %1) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
@@ -2141,8 +2131,7 @@ define ptr @gep_stf_varoff_zero_fuse_zero(ptr %0, i64 %1) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
@@ -2171,8 +2160,7 @@ define ptr @gep_stf_varoff_zero_fuse_one(ptr %0, i64 %1) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    add x0, x0, #0x4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -2204,12 +2192,10 @@ define ptr @gep_stf_varoff_zero_fuse_one_no_salvage(ptr %0, i64 %1) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x2, x0, x16
+; ARM64-NEXT:    madd x2, x1, x16, x0
 ; ARM64-NEXT:    add x2, x2, #0x4
 ; ARM64-NEXT:    mov x16, #0xc // =12
-; ARM64-NEXT:    mul x16, x1, x16
-; ARM64-NEXT:    add x0, x0, x16
+; ARM64-NEXT:    madd x0, x1, x16, x0
 ; ARM64-NEXT:    add x0, x0, #0x4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0

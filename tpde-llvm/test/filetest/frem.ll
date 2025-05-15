@@ -60,7 +60,7 @@ define float @frem_f32_5_32(float %0) {
 ; ARM64-NEXT:    mov x16, #0x3d71 // =15729
 ; ARM64-NEXT:    movk x16, #0x40aa, lsl #16
 ; ARM64-NEXT:    fmov s1, w16
-; ARM64-NEXT:    bl 0xac <frem_f32_5_32+0x1c>
+; ARM64-NEXT:    bl 0x8c <frem_f32_5_32+0x1c>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmodf
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -88,7 +88,7 @@ define float @frem_f32_f32(float %0, float %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x110 <frem_f32_f32+0x10>
+; ARM64-NEXT:    bl 0xd0 <frem_f32_f32+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmodf
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -119,7 +119,7 @@ define double @frem_f64_1(double %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    fmov d1, #1.00000000
-; ARM64-NEXT:    bl 0x184 <frem_f64_1+0x14>
+; ARM64-NEXT:    bl 0x114 <frem_f64_1+0x14>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmod
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -154,7 +154,7 @@ define double @frem_f64_5_32(double %0) {
 ; ARM64-NEXT:    movk x16, #0x47ae, lsl #32
 ; ARM64-NEXT:    movk x16, #0x4015, lsl #48
 ; ARM64-NEXT:    fmov d1, x16
-; ARM64-NEXT:    bl 0x204 <frem_f64_5_32+0x24>
+; ARM64-NEXT:    bl 0x174 <frem_f64_5_32+0x24>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmod
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -182,7 +182,7 @@ define double @frem_f64_f64(double %0, double %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x270 <frem_f64_f64+0x10>
+; ARM64-NEXT:    bl 0x1c0 <frem_f64_f64+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmod
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -221,12 +221,12 @@ define float @frem_f32_no_salvage_imm(float %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str s0, [x29, #0xa0]
 ; ARM64-NEXT:    fmov s1, #1.00000000
-; ARM64-NEXT:    bl 0x2e8 <frem_f32_no_salvage_imm+0x18>
+; ARM64-NEXT:    bl 0x208 <frem_f32_no_salvage_imm+0x18>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmodf
 ; ARM64-NEXT:    str s0, [x29, #0xa4]
 ; ARM64-NEXT:    ldr s0, [x29, #0xa0]
 ; ARM64-NEXT:    ldr s1, [x29, #0xa4]
-; ARM64-NEXT:    bl 0x2f8 <frem_f32_no_salvage_imm+0x28>
+; ARM64-NEXT:    bl 0x218 <frem_f32_no_salvage_imm+0x28>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmodf
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -263,12 +263,12 @@ define float @frem_f32_no_salvage_reg(float %0, float %1) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str s0, [x29, #0xa0]
-; ARM64-NEXT:    bl 0x364 <frem_f32_no_salvage_reg+0x14>
+; ARM64-NEXT:    bl 0x264 <frem_f32_no_salvage_reg+0x14>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmodf
 ; ARM64-NEXT:    str s0, [x29, #0xa4]
 ; ARM64-NEXT:    ldr s0, [x29, #0xa0]
 ; ARM64-NEXT:    ldr s1, [x29, #0xa4]
-; ARM64-NEXT:    bl 0x374 <frem_f32_no_salvage_reg+0x24>
+; ARM64-NEXT:    bl 0x274 <frem_f32_no_salvage_reg+0x24>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmodf
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -308,12 +308,12 @@ define double @frem_f64_no_salvage_imm(double %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str d0, [x29, #0xa0]
 ; ARM64-NEXT:    fmov d1, #1.00000000
-; ARM64-NEXT:    bl 0x3e8 <frem_f64_no_salvage_imm+0x18>
+; ARM64-NEXT:    bl 0x2c8 <frem_f64_no_salvage_imm+0x18>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmod
 ; ARM64-NEXT:    str d0, [x29, #0xa8]
 ; ARM64-NEXT:    ldr d0, [x29, #0xa0]
 ; ARM64-NEXT:    ldr d1, [x29, #0xa8]
-; ARM64-NEXT:    bl 0x3f8 <frem_f64_no_salvage_imm+0x28>
+; ARM64-NEXT:    bl 0x2d8 <frem_f64_no_salvage_imm+0x28>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmod
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0
@@ -350,12 +350,12 @@ define double @frem_f64_no_salvage_reg(double %0, double %1) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    str d0, [x29, #0xa0]
-; ARM64-NEXT:    bl 0x464 <frem_f64_no_salvage_reg+0x14>
+; ARM64-NEXT:    bl 0x324 <frem_f64_no_salvage_reg+0x14>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmod
 ; ARM64-NEXT:    str d0, [x29, #0xa8]
 ; ARM64-NEXT:    ldr d0, [x29, #0xa0]
 ; ARM64-NEXT:    ldr d1, [x29, #0xa8]
-; ARM64-NEXT:    bl 0x474 <frem_f64_no_salvage_reg+0x24>
+; ARM64-NEXT:    bl 0x334 <frem_f64_no_salvage_reg+0x24>
 ; ARM64-NEXT:     R_AARCH64_CALL26 fmod
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xb0

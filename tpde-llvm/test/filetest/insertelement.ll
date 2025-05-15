@@ -348,7 +348,7 @@ define <2 x float> @ins_v2f32_const_nosalvage(<2 x float> %v) {
 ; ARM64-NEXT:    mov v0.16b, v8.16b
 ; ARM64-NEXT:    movi v1.8b, #0x0
 ; ARM64-NEXT:    mov v0.s[0], v1.s[0]
-; ARM64-NEXT:    b 0x544 <ins_v2f32_const_nosalvage+0x14>
+; ARM64-NEXT:    b 0x344 <ins_v2f32_const_nosalvage+0x14>
   br label %loop
 
 loop:

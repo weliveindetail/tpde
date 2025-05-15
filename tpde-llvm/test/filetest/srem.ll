@@ -974,7 +974,7 @@ define i128 @srem_i128(i128 %0, i128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0xd90 <srem_i128+0x10>
+; ARM64-NEXT:    bl 0x910 <srem_i128+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __modti3
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0

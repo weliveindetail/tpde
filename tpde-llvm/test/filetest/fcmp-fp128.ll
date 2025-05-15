@@ -75,7 +75,7 @@ define i1 @fcmp_f128_oge(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x110 <fcmp_f128_oge+0x10>
+; ARM64-NEXT:    bl 0xb0 <fcmp_f128_oge+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __getf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, ge
@@ -107,7 +107,7 @@ define i1 @fcmp_f128_ord(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x180 <fcmp_f128_ord+0x10>
+; ARM64-NEXT:    bl 0x100 <fcmp_f128_ord+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __unordtf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, eq
@@ -139,7 +139,7 @@ define i1 @fcmp_f128_oeq(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x1f0 <fcmp_f128_oeq+0x10>
+; ARM64-NEXT:    bl 0x150 <fcmp_f128_oeq+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __eqtf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, eq
@@ -171,7 +171,7 @@ define i1 @fcmp_f128_ogt(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x260 <fcmp_f128_ogt+0x10>
+; ARM64-NEXT:    bl 0x1a0 <fcmp_f128_ogt+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __gttf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, gt
@@ -203,7 +203,7 @@ define i1 @fcmp_f128_olt(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x2d0 <fcmp_f128_olt+0x10>
+; ARM64-NEXT:    bl 0x1f0 <fcmp_f128_olt+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __lttf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, lt
@@ -235,7 +235,7 @@ define i1 @fcmp_f128_ole(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x340 <fcmp_f128_ole+0x10>
+; ARM64-NEXT:    bl 0x240 <fcmp_f128_ole+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __letf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, le
@@ -267,7 +267,7 @@ define i1 @fcmp_f128_uno(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x3b0 <fcmp_f128_uno+0x10>
+; ARM64-NEXT:    bl 0x290 <fcmp_f128_uno+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __unordtf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, ne
@@ -299,7 +299,7 @@ define i1 @fcmp_f128_ugt(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x420 <fcmp_f128_ugt+0x10>
+; ARM64-NEXT:    bl 0x2e0 <fcmp_f128_ugt+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __letf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, gt
@@ -331,7 +331,7 @@ define i1 @fcmp_f128_uge(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x490 <fcmp_f128_uge+0x10>
+; ARM64-NEXT:    bl 0x330 <fcmp_f128_uge+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __lttf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, ge
@@ -363,7 +363,7 @@ define i1 @fcmp_f128_ult(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x500 <fcmp_f128_ult+0x10>
+; ARM64-NEXT:    bl 0x380 <fcmp_f128_ult+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __getf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, lt
@@ -395,7 +395,7 @@ define i1 @fcmp_f128_ule(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x570 <fcmp_f128_ule+0x10>
+; ARM64-NEXT:    bl 0x3d0 <fcmp_f128_ule+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __gttf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, le
@@ -427,7 +427,7 @@ define i1 @fcmp_f128_une(fp128 %0, fp128 %1) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    bl 0x5e0 <fcmp_f128_une+0x10>
+; ARM64-NEXT:    bl 0x420 <fcmp_f128_une+0x10>
 ; ARM64-NEXT:     R_AARCH64_CALL26 __netf2
 ; ARM64-NEXT:    cmp w0, #0x0
 ; ARM64-NEXT:    cset w0, ne
