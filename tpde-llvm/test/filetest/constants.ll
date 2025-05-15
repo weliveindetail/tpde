@@ -1191,22 +1191,21 @@ define i32 @phi_gep_before_icmp(i32 %0) {
 ; ARM64-NEXT:    b.ne 0xafc <phi_gep_before_icmp+0x3c>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    mov w20, w0
-; ARM64-NEXT:    b 0xb3c <phi_gep_before_icmp+0x7c>
+; ARM64-NEXT:    b 0xb38 <phi_gep_before_icmp+0x78>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
-; ARM64-NEXT:    mov x0, x0
 ; ARM64-NEXT:    mov x16, #0x1200 // =4608
 ; ARM64-NEXT:    add x0, x0, x16
 ; ARM64-NEXT:    mov w1, #0x0 // =0
-; ARM64-NEXT:    cbnz w1, 0xb1c <phi_gep_before_icmp+0x5c>
+; ARM64-NEXT:    cbnz w1, 0xb18 <phi_gep_before_icmp+0x58>
 ; ARM64-NEXT:    mov w20, w19
-; ARM64-NEXT:    b 0xb3c <phi_gep_before_icmp+0x7c>
+; ARM64-NEXT:    b 0xb38 <phi_gep_before_icmp+0x78>
 ; ARM64-NEXT:    mov x21, x0
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    tst w0, #0x1
-; ARM64-NEXT:    b.ne 0xb38 <phi_gep_before_icmp+0x78>
+; ARM64-NEXT:    b.ne 0xb34 <phi_gep_before_icmp+0x74>
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    mov x21, x0
-; ARM64-NEXT:    b 0xb20 <phi_gep_before_icmp+0x60>
+; ARM64-NEXT:    b 0xb1c <phi_gep_before_icmp+0x5c>
 ; ARM64-NEXT:    mov w20, w19
 ; ARM64-NEXT:    mov w0, #0x0 // =0
 ; ARM64-NEXT:    ldp x29, x30, [sp]

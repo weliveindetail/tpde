@@ -704,7 +704,6 @@ define ptr @gep_i16_ffff(ptr %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    mov x0, x0
 ; ARM64-NEXT:    mov x16, #0x1fffe // =131070
 ; ARM64-NEXT:    add x0, x0, x16
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -736,7 +735,6 @@ define ptr @gep_i16_ffff_no_salvage(ptr %0) {
 ; ARM64-NEXT:    mov x1, x0
 ; ARM64-NEXT:    mov x16, #0x1fffe // =131070
 ; ARM64-NEXT:    add x1, x1, x16
-; ARM64-NEXT:    mov x0, x0
 ; ARM64-NEXT:    mov x16, #0x1fffe // =131070
 ; ARM64-NEXT:    add x0, x0, x16
 ; ARM64-NEXT:    ldp x29, x30, [sp]

@@ -1518,9 +1518,9 @@ AsmReg CompilerA64<Adaptor, Derived, BaseTy, Config>::gval_expr_as_reg(
       (void)scratch.alloc_gp();
     }
     AsmReg dst = scratch.cur_reg();
-    if (ASMIF(ADDxi, dst, base_reg, expr.disp)) {
+    if (expr.disp != 0 && ASMIF(ADDxi, dst, base_reg, expr.disp)) {
       expr.disp = 0;
-    } else {
+    } else if (dst != base_reg) {
       ASM(MOVx, dst, base_reg);
     }
   } else {
