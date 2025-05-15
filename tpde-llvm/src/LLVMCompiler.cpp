@@ -14,13 +14,9 @@ LLVMCompiler::~LLVMCompiler() = default;
 
 std::unique_ptr<LLVMCompiler>
     LLVMCompiler::create(const llvm::Triple &triple) noexcept {
-  if (!triple.isOSBinFormatELF()) {
-    return nullptr;
-  }
-
   switch (triple.getArch()) {
-  case llvm::Triple::x86_64: return x64::create_compiler();
-  case llvm::Triple::aarch64: return arm64::create_compiler();
+  case llvm::Triple::x86_64: return x64::create_compiler(triple);
+  case llvm::Triple::aarch64: return arm64::create_compiler(triple);
   default: return nullptr;
   }
 }

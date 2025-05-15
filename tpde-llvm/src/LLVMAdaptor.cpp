@@ -369,6 +369,7 @@ void LLVMAdaptor::switch_module(llvm::Module &mod) noexcept {
   }
   this->context = &mod.getContext();
   this->mod = &mod;
+  this->mod->setDataLayout(data_layout);
 }
 
 void LLVMAdaptor::reset() noexcept {

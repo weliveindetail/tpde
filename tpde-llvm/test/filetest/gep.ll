@@ -2012,6 +2012,31 @@ define ptr @gep_fuse_diff_type_2(ptr %p, i64 %n) {
   ret ptr %gep2
 }
 
+define ptr @gep_si64i128(ptr %p) {
+; X64-LABEL: <gep_si64i128>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    lea rdi, [rdi + 0x10]
+; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <gep_si64i128>:
+; ARM64:         sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x0, x0, #0x10
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+  %r = getelementptr {i64, i128}, ptr %p, i64 0, i32 1
+  ret ptr %r
+}
+
 
 
 define ptr @gep_ptr_varoff_fuse_zero(ptr %0, i64 %1) {

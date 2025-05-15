@@ -6,6 +6,7 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IntrinsicsX86.h>
+#include <llvm/TargetParser/Triple.h>
 
 #include "LLVMAdaptor.hpp"
 #include "LLVMCompilerBase.hpp"
@@ -861,8 +862,15 @@ bool LLVMCompilerX64::handle_overflow_intrin_128(OverflowOp op,
                             res_of);
 }
 
-std::unique_ptr<LLVMCompiler> create_compiler() noexcept {
-  auto adaptor = std::make_unique<LLVMAdaptor>();
+std::unique_ptr<LLVMCompiler>
+    create_compiler(const llvm::Triple &triple) noexcept {
+  if (!triple.isOSBinFormatELF()) {
+    return nullptr;
+  }
+
+  llvm::StringRef dl_str = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64"
+                           "-i128:128-f80:128-n8:16:32:64-S128";
+  auto adaptor = std::make_unique<LLVMAdaptor>(llvm::DataLayout(dl_str));
   return std::make_unique<LLVMCompilerX64>(std::move(adaptor));
 }
 

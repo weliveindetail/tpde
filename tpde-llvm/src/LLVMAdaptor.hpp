@@ -6,6 +6,7 @@
 #include <ranges>
 
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/DataLayout.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
@@ -125,6 +126,7 @@ struct LLVMAdaptor {
   static constexpr IRFuncRef INVALID_FUNC_REF =
       nullptr; // NOLINT(*-misplaced-const)
 
+  const llvm::DataLayout data_layout;
   llvm::LLVMContext *context = nullptr;
   llvm::Module *mod = nullptr;
 
@@ -178,7 +180,7 @@ struct LLVMAdaptor {
   tpde::util::SmallVector<u32, 256> block_succ_indices;
   tpde::util::SmallVector<std::pair<u32, u32>, 128> block_succ_ranges;
 
-  LLVMAdaptor() = default;
+  LLVMAdaptor(llvm::DataLayout dl) noexcept : data_layout(dl) {}
 
   static constexpr bool TPDE_PROVIDES_HIGHEST_VAL_IDX = true;
   static constexpr bool TPDE_LIVENESS_VISIT_ARGS = true;
