@@ -420,13 +420,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     lock(compiler);
 
     if (reload) {
-      if (ap.variable_ref()) {
-        compiler->derived()->load_address_of_var_reference(reg, ap);
-      } else {
-        assert(ap.stack_valid());
-        compiler->derived()->load_from_stack(
-            reg, ap.frame_off(), ap.part_size());
-      }
+      compiler->derived()->reload_to_reg(reg, ap);
     } else {
       assert(!ap.stack_valid() && "alloc_reg called on initialized value");
     }
@@ -489,12 +483,8 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
       if (old_reg.valid()) {
         compiler->derived()->mov(reg, old_reg, ap.part_size());
         reg_file.unmark_used(old_reg);
-      } else if (ap.variable_ref()) {
-        compiler->derived()->load_address_of_var_reference(reg, ap);
       } else {
-        assert(ap.stack_valid());
-        compiler->derived()->load_from_stack(
-            reg, ap.frame_off(), ap.part_size());
+        compiler->derived()->reload_to_reg(reg, ap);
       }
     } else {
       assert(!ap.stack_valid() && "alloc_reg with valid stack slot");
@@ -559,12 +549,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     compiler->derived()->mov(reg, ap.get_reg(), ap.part_size());
   } else {
     assert(!ap.fixed_assignment());
-    if (ap.variable_ref()) {
-      compiler->derived()->load_address_of_var_reference(reg, ap);
-    } else {
-      assert(ap.stack_valid());
-      compiler->derived()->load_from_stack(reg, ap.frame_off(), ap.part_size());
-    }
+    compiler->derived()->reload_to_reg(reg, ap);
   }
 
   compiler->register_file.mark_clobbered(reg);
@@ -601,12 +586,7 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     compiler->derived()->mov(reg, ap.get_reg(), ap.part_size());
   } else {
     assert(!ap.fixed_assignment());
-    if (ap.variable_ref()) {
-      compiler->derived()->load_address_of_var_reference(reg, ap);
-    } else {
-      assert(ap.stack_valid());
-      compiler->derived()->load_from_stack(reg, ap.frame_off(), ap.part_size());
-    }
+    compiler->derived()->reload_to_reg(reg, ap);
   }
 
   compiler->register_file.mark_clobbered(reg);

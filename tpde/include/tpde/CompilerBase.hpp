@@ -295,6 +295,9 @@ struct CompilerBase {
   /// ValuePartRef), store it in dst.
   AsmReg gval_as_reg_reuse(GenericValuePart &gv, ScratchReg &dst) noexcept;
 
+  /// Reload a value part from memory or recompute variable address.
+  void reload_to_reg(AsmReg dst, AssignmentPartRef ap) noexcept;
+
   void allocate_spill_slot(AssignmentPartRef ap) noexcept;
 
   /// Ensure the value is spilled in its stack slot (except variable refs).
@@ -963,6 +966,17 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     }
   }
   return reg;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::reload_to_reg(
+    AsmReg dst, AssignmentPartRef ap) noexcept {
+  if (!ap.variable_ref()) {
+    assert(ap.stack_valid());
+    derived()->load_from_stack(dst, ap.frame_off(), ap.part_size());
+  } else {
+    derived()->load_address_of_var_reference(dst, ap);
+  }
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
