@@ -191,14 +191,59 @@ bb1:
     ret void
 }
 
-define void @dyn_alloca_dyn_i8_cnt_i64(i64 %0) {
-; X64-LABEL: <dyn_alloca_dyn_i8_cnt_i64>:
+define void @dyn_alloca_dyn_cnt_i64(i64 %a) {
+; X64-LABEL: <dyn_alloca_dyn_cnt_i64>:
 ; X64:         push rbp
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    push rbx
 ; X64-NEXT:    nop dword ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x28
 ; X64-NEXT:    mov rbx, rdi
+; X64-NEXT:    mov rax, rbx
+; X64-NEXT:    sub rsp, rax
+; X64-NEXT:    and rsp, -0x10
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    mov rax, rbx
+; X64-NEXT:    shl rax, 0x2
+; X64-NEXT:    sub rsp, rax
+; X64-NEXT:    and rsp, -0x10
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    mov rax, rbx
+; X64-NEXT:    shl rax, 0x3
+; X64-NEXT:    sub rsp, rax
+; X64-NEXT:    and rsp, -0x10
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    mov rax, rbx
+; X64-NEXT:    shl rax, 0x4
+; X64-NEXT:    sub rsp, rax
+; X64-NEXT:    and rsp, -0x10
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    mov rax, rbx
+; X64-NEXT:    imul rax, rax, 0x18
+; X64-NEXT:    sub rsp, rax
+; X64-NEXT:    and rsp, -0x10
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    mov rax, rbx
+; X64-NEXT:    shl rax, 0x5
+; X64-NEXT:    sub rsp, rax
+; X64-NEXT:    and rsp, -0x10
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    mov rax, rbx
+; X64-NEXT:    imul rax, rax, 0x30
+; X64-NEXT:    sub rsp, rax
+; X64-NEXT:    and rsp, -0x10
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    mov rax, rbx
+; X64-NEXT:    shl rax, 0x6
+; X64-NEXT:    sub rsp, rax
+; X64-NEXT:    and rsp, -0x10
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    mov rax, rbx
+; X64-NEXT:    shl rax, 0xa
+; X64-NEXT:    sub rsp, rax
+; X64-NEXT:    and rsp, -0x10
+; X64-NEXT:    mov rax, rsp
+; X64-NEXT:    imul rbx, rbx, 0x186a0
 ; X64-NEXT:    sub rsp, rbx
 ; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rbx, rsp
@@ -207,12 +252,49 @@ define void @dyn_alloca_dyn_i8_cnt_i64(i64 %0) {
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
 ;
-; ARM64-LABEL: <dyn_alloca_dyn_i8_cnt_i64>:
+; ARM64-LABEL: <dyn_alloca_dyn_cnt_i64>:
 ; ARM64:         sub sp, sp, #0xa0
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str x19, [x29, #0x10]
 ; ARM64-NEXT:    mov x19, x0
+; ARM64-NEXT:    sub x0, sp, x19
+; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
+; ARM64-NEXT:    mov sp, x0
+; ARM64-NEXT:    sub x0, sp, x19, lsl #2
+; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
+; ARM64-NEXT:    mov sp, x0
+; ARM64-NEXT:    sub x0, sp, x19, lsl #3
+; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
+; ARM64-NEXT:    mov sp, x0
+; ARM64-NEXT:    sub x0, sp, x19, lsl #4
+; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
+; ARM64-NEXT:    mov sp, x0
+; ARM64-NEXT:    mov x1, #0x18 // =24
+; ARM64-NEXT:    mul x0, x19, x1
+; ARM64-NEXT:    sub x0, sp, x0
+; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
+; ARM64-NEXT:    mov sp, x0
+; ARM64-NEXT:    lsl x0, x19, #5
+; ARM64-NEXT:    sub x0, sp, x0
+; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
+; ARM64-NEXT:    mov sp, x0
+; ARM64-NEXT:    mov x1, #0x30 // =48
+; ARM64-NEXT:    mul x0, x19, x1
+; ARM64-NEXT:    sub x0, sp, x0
+; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
+; ARM64-NEXT:    mov sp, x0
+; ARM64-NEXT:    lsl x0, x19, #6
+; ARM64-NEXT:    sub x0, sp, x0
+; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
+; ARM64-NEXT:    mov sp, x0
+; ARM64-NEXT:    lsl x0, x19, #10
+; ARM64-NEXT:    sub x0, sp, x0
+; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
+; ARM64-NEXT:    mov sp, x0
+; ARM64-NEXT:    mov x0, #0x86a0 // =34464
+; ARM64-NEXT:    movk x0, #0x1, lsl #16
+; ARM64-NEXT:    mul x19, x19, x0
 ; ARM64-NEXT:    sub x19, sp, x19
 ; ARM64-NEXT:    and x19, x19, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x19
@@ -221,10 +303,18 @@ define void @dyn_alloca_dyn_i8_cnt_i64(i64 %0) {
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
-entry:
     br label %bb1
 bb1:
-    %1 = alloca i8, i64 %0
+    %a1 = alloca i8, i64 %a
+    %a2 = alloca i32, i64 %a
+    %a3 = alloca i64, i64 %a
+    %a4 = alloca [16 x i8], i64 %a
+    %a5 = alloca [24 x i8], i64 %a
+    %a6 = alloca [32 x i8], i64 %a
+    %a7 = alloca [48 x i8], i64 %a
+    %a8 = alloca [64 x i8], i64 %a
+    %a9 = alloca [1024 x i8], i64 %a
+    %a10 = alloca [100000 x i8], i64 %a
     ret void
 }
 
@@ -262,45 +352,6 @@ entry:
     br label %bb1
 bb1:
     %1 = alloca i8, i32 %0
-    ret void
-}
-
-
-define void @dyn_alloca_dyn_i32_cnt_i64(i64 %0) {
-; X64-LABEL: <dyn_alloca_dyn_i32_cnt_i64>:
-; X64:         push rbp
-; X64-NEXT:    mov rbp, rsp
-; X64-NEXT:    push rbx
-; X64-NEXT:    nop dword ptr [rax + rax]
-; X64-NEXT:    sub rsp, 0x28
-; X64-NEXT:    mov rbx, rdi
-; X64-NEXT:    shl rbx, 0x2
-; X64-NEXT:    sub rsp, rbx
-; X64-NEXT:    and rsp, -0x10
-; X64-NEXT:    mov rbx, rsp
-; X64-NEXT:    lea rsp, [rbp - 0x8]
-; X64-NEXT:    pop rbx
-; X64-NEXT:    pop rbp
-; X64-NEXT:    ret
-;
-; ARM64-LABEL: <dyn_alloca_dyn_i32_cnt_i64>:
-; ARM64:         sub sp, sp, #0xa0
-; ARM64-NEXT:    stp x29, x30, [sp]
-; ARM64-NEXT:    mov x29, sp
-; ARM64-NEXT:    str x19, [x29, #0x10]
-; ARM64-NEXT:    mov x19, x0
-; ARM64-NEXT:    sub x19, sp, x19, lsl #2
-; ARM64-NEXT:    and x19, x19, #0xfffffffffffffff0
-; ARM64-NEXT:    mov sp, x19
-; ARM64-NEXT:    mov sp, x29
-; ARM64-NEXT:    ldr x19, [x29, #0x10]
-; ARM64-NEXT:    ldp x29, x30, [sp]
-; ARM64-NEXT:    add sp, sp, #0xa0
-; ARM64-NEXT:    ret
-entry:
-    br label %bb1
-bb1:
-    %1 = alloca i32, i64 %0
     ret void
 }
 
@@ -1071,7 +1122,7 @@ define void @f2(ptr %0, ptr %1, ptr %2, ptr %3, ptr %4, ptr %5, ptr %6, ptr %7, 
 ; ARM64-NEXT:    str x8, [sp, #0x100]
 ; ARM64-NEXT:    str x28, [sp, #0x108]
 ; ARM64-NEXT:    str x30, [sp, #0x110]
-; ARM64-NEXT:    bl 0xbf0 <f2+0x1d0>
+; ARM64-NEXT:    bl 0xc00 <f2+0x1d0>
 ; ARM64-NEXT:     R_AARCH64_CALL26 f1
 ; ARM64-NEXT:    add sp, sp, #0x120
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -1418,7 +1469,7 @@ define void @alloca_manyregs(i32 %0, ptr %1, ptr %2, ptr %3, i64 %4, i32 %5, ptr
 ; ARM64-NEXT:    orr w30, w30, w0
 ; ARM64-NEXT:    add x16, x29, #0x40, lsl #12 // =0x40000
 ; ARM64-NEXT:    str w14, [x16, #0x898]
-; ARM64-NEXT:    b 0xd94 <alloca_manyregs+0x154>
+; ARM64-NEXT:    b 0xda4 <alloca_manyregs+0x154>
   %23 = alloca [66000 x i32], align 4
   br label %24
 
