@@ -1689,6 +1689,11 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   generating_branch = false;
 #endif
 
+  // Simple heuristic for initial allocation size
+  u32 expected_code_size = 0x8 * analyzer.num_insts + 0x40;
+  this->text_writer.growth_size = expected_code_size;
+  this->text_writer.ensure_space(expected_code_size);
+
   derived()->start_func(func_idx);
 
   block_labels.clear();

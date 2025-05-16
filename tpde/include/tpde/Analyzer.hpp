@@ -84,6 +84,8 @@ struct Analyzer {
   u16 liveness_epoch = 0;
   u32 liveness_max_value;
 
+  u32 num_insts;
+
   explicit Analyzer(Adaptor *adaptor) : adaptor(adaptor) {}
 
   /// Start the compilation of a new function and build the loop tree and
@@ -776,6 +778,8 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
     liveness_max_value = 0;
   }
 
+  num_insts = 0;
+
   const auto visit = [this](const IRValueRef value, const u32 block_idx) {
     TPDE_LOG_TRACE("  Visiting value {} in block {}",
                    adaptor->value_fmt_ref(value),
@@ -1007,6 +1011,8 @@ void Analyzer<Adaptor>::compute_liveness() noexcept {
       for (const IRValueRef operand : adaptor->inst_operands(inst)) {
         visit(operand, block_idx);
       }
+
+      num_insts += 1;
     }
   }
 

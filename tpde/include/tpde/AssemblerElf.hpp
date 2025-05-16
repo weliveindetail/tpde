@@ -256,6 +256,9 @@ struct AssemblerElfBase {
     u8 *data_reserve_end = nullptr;
 
   public:
+    /// Growth size for more_space; adjusted exponentially after every grow.
+    u32 growth_size = 0x10000;
+
     SectionWriterBase() noexcept = default;
 
     ~SectionWriterBase() {
@@ -742,9 +745,21 @@ public:
 template <typename Derived>
 void AssemblerElfBase::SectionWriterBase<Derived>::more_space(
     size_t size) noexcept {
-  size = util::align_up(size, 16 * 1024);
+  size_t cur_size = section->data.size();
+  size_t new_size;
+  if (cur_size + size <= section->data.capacity()) {
+    new_size = section->data.capacity();
+  } else {
+    new_size = cur_size + (size <= growth_size ? growth_size : size);
+
+    // Grow by factor 1.5
+    growth_size = growth_size + (growth_size >> 1);
+    // Max 16 MiB per grow.
+    growth_size = growth_size < 0x1000000 ? growth_size : 0x1000000;
+  }
+
   const size_t off = offset();
-  section->data.resize(section->data.size() + size);
+  section->data.resize(new_size);
 #ifndef NDEBUG
   section->locked = true;
 #endif
