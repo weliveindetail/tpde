@@ -2391,6 +2391,162 @@ define dso_local ptr @gep_array(ptr noundef %0) #0 {
   ret ptr %gep
 }
 
+define ptr @gep_array_constoff(ptr noundef %0) {
+; X64-LABEL: <gep_array_constoff>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x1d0
+; X64-NEXT:    lea rax, [rbp - 0x1d0]
+; X64-NEXT:    lea rcx, [rax + 0x40]
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    add rsp, 0x1d0
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <gep_array_constoff>:
+; ARM64:         sub sp, sp, #0x250
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x0, x29, #0xb0
+; ARM64-NEXT:    add x1, x0, #0x40
+; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0x250
+; ARM64-NEXT:    ret
+  %dummy = alloca i64, align 8
+  %array = alloca [201 x i16], align 1
+  %gep = getelementptr inbounds [201 x i16], ptr %array, i64 0, i64 32
+  ret ptr %gep
+}
+
+define ptr @gep_array_dynoff(ptr noundef %0, i64 %off) {
+; X64-LABEL: <gep_array_dynoff>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x1d0
+; X64-NEXT:    lea rax, [rbp - 0x1d0]
+; X64-NEXT:    lea rcx, [rax + 2*rsi]
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    add rsp, 0x1d0
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <gep_array_dynoff>:
+; ARM64:         sub sp, sp, #0x250
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x0, x29, #0xb0
+; ARM64-NEXT:    add x2, x0, x1, lsl #1
+; ARM64-NEXT:    mov x0, x2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0x250
+; ARM64-NEXT:    ret
+  %dummy = alloca i64, align 8
+  %array = alloca [201 x i16], align 1
+  %gep = getelementptr inbounds [201 x i16], ptr %array, i64 0, i64 %off
+  ret ptr %gep
+}
+
+define ptr @gep_array_dynoff2(i64 %off1, i64 %off2) {
+; X64-LABEL: <gep_array_dynoff2>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x1d0
+; X64-NEXT:    lea rax, [rbp - 0x1d0]
+; X64-NEXT:    lea rcx, [rax + 8*rdi]
+; X64-NEXT:    lea rcx, [rcx + 2*rsi]
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    add rsp, 0x1d0
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <gep_array_dynoff2>:
+; ARM64:         sub sp, sp, #0x240
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x2, x29, #0xa0
+; ARM64-NEXT:    add x3, x2, x0, lsl #3
+; ARM64-NEXT:    add x3, x3, x1, lsl #1
+; ARM64-NEXT:    mov x0, x3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0x240
+; ARM64-NEXT:    ret
+  %array = alloca [201 x i16], align 1
+  %gep = getelementptr [4 x [4 x i16]], ptr %array, i64 0, i64 %off1, i64 %off2
+  ret ptr %gep
+}
+
+define ptr @gep_array_dynoff3(i64 %off1, i32 %off2) {
+; X64-LABEL: <gep_array_dynoff3>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x1d0
+; X64-NEXT:    lea rax, [rbp - 0x1d0]
+; X64-NEXT:    lea rcx, [rax + 8*rdi]
+; X64-NEXT:    movsxd rsi, esi
+; X64-NEXT:    lea rcx, [rcx + 2*rsi]
+; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    add rsp, 0x1d0
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <gep_array_dynoff3>:
+; ARM64:         sub sp, sp, #0x240
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    add x2, x29, #0xa0
+; ARM64-NEXT:    add x3, x2, x0, lsl #3
+; ARM64-NEXT:    sxtw x1, w1
+; ARM64-NEXT:    add x3, x3, x1, lsl #1
+; ARM64-NEXT:    mov x0, x3
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0x240
+; ARM64-NEXT:    ret
+  %array = alloca [201 x i16], align 1
+  %gep = getelementptr [4 x [4 x i16]], ptr %array, i64 0, i64 %off1, i32 %off2
+  ret ptr %gep
+}
+
+define ptr @gep_dynoff_mult(ptr %base, i64 %off1, i32 %off2) {
+; X64-LABEL: <gep_dynoff_mult>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    imul rax, rsi, 0x24
+; X64-NEXT:    lea rdi, [rdi + rax + 0x4]
+; X64-NEXT:    movsxd rdx, edx
+; X64-NEXT:    lea rdi, [rdi + 4*rdx]
+; X64-NEXT:    mov rax, rdi
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <gep_dynoff_mult>:
+; ARM64:         sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    mov x16, #0x24 // =36
+; ARM64-NEXT:    madd x0, x1, x16, x0
+; ARM64-NEXT:    add x0, x0, #0x4
+; ARM64-NEXT:    sxtw x2, w2
+; ARM64-NEXT:    add x0, x0, x2, lsl #2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+  %gep = getelementptr [4 x {i16, [8 x i32]}], ptr %base, i64 0, i64 %off1, i32 1, i32 %off2
+  ret ptr %gep
+}
+
 
 define ptr @gep_ptr_i21(ptr %0, i21 %1) {
 ; X64-LABEL: <gep_ptr_i21>:
