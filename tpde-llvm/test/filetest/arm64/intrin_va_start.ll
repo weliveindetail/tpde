@@ -27,16 +27,16 @@ define void @f(i64 %0, i64 %1, i64 %2, i64 %3, i64 %4, i64 %5, i64 %6, i64 %7, i
 ; ARM64-NEXT:    add x8, x8, #0x8
 ; ARM64-NEXT:    str x8, [x29, #0x160]
 ; ARM64-NEXT:    add x0, x29, #0x170
-; ARM64-NEXT:    ldr x1, [x29, #0x160]
-; ARM64-NEXT:    str x1, [x0]
-; ARM64-NEXT:    add x1, x29, #0xe0
-; ARM64-NEXT:    str x1, [x0, #0x8]
-; ARM64-NEXT:    add x1, x29, #0x160
-; ARM64-NEXT:    str x1, [x0, #0x10]
-; ARM64-NEXT:    mov w1, #0x0 // =0
-; ARM64-NEXT:    str w1, [x0, #0x18]
-; ARM64-NEXT:    mov x1, #0xffffff80 // =4294967168
-; ARM64-NEXT:    str w1, [x0, #0x1c]
+; ARM64-NEXT:    ldr x16, [x29, #0x160]
+; ARM64-NEXT:    str x16, [x0]
+; ARM64-NEXT:    add x16, x29, #0xe0
+; ARM64-NEXT:    str x16, [x0, #0x8]
+; ARM64-NEXT:    add x16, x29, #0x160
+; ARM64-NEXT:    str x16, [x0, #0x10]
+; ARM64-NEXT:    mov w16, #0x0 // =0
+; ARM64-NEXT:    str w16, [x0, #0x18]
+; ARM64-NEXT:    mov x16, #0xffffff80 // =4294967168
+; ARM64-NEXT:    str w16, [x0, #0x1c]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x190
 ; ARM64-NEXT:    ret

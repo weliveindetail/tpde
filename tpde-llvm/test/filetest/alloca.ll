@@ -259,16 +259,16 @@ define void @dyn_alloca_dyn_cnt_i64(i64 %a) {
 ; ARM64-NEXT:    mov sp, x0
 ; ARM64-NEXT:    sub x0, sp, x19, lsl #4
 ; ARM64-NEXT:    mov sp, x0
-; ARM64-NEXT:    mov x1, #0x18 // =24
-; ARM64-NEXT:    mul x0, x19, x1
+; ARM64-NEXT:    mov x16, #0x18 // =24
+; ARM64-NEXT:    mul x0, x19, x16
 ; ARM64-NEXT:    sub x0, sp, x0
 ; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x0
 ; ARM64-NEXT:    lsl x0, x19, #5
 ; ARM64-NEXT:    sub x0, sp, x0
 ; ARM64-NEXT:    mov sp, x0
-; ARM64-NEXT:    mov x1, #0x30 // =48
-; ARM64-NEXT:    mul x0, x19, x1
+; ARM64-NEXT:    mov x16, #0x30 // =48
+; ARM64-NEXT:    mul x0, x19, x16
 ; ARM64-NEXT:    sub x0, sp, x0
 ; ARM64-NEXT:    mov sp, x0
 ; ARM64-NEXT:    lsl x0, x19, #6
@@ -277,9 +277,9 @@ define void @dyn_alloca_dyn_cnt_i64(i64 %a) {
 ; ARM64-NEXT:    lsl x0, x19, #10
 ; ARM64-NEXT:    sub x0, sp, x0
 ; ARM64-NEXT:    mov sp, x0
-; ARM64-NEXT:    mov x0, #0x86a0 // =34464
-; ARM64-NEXT:    movk x0, #0x1, lsl #16
-; ARM64-NEXT:    mul x19, x19, x0
+; ARM64-NEXT:    mov x16, #0x86a0 // =34464
+; ARM64-NEXT:    movk x16, #0x1, lsl #16
+; ARM64-NEXT:    mul x19, x19, x16
 ; ARM64-NEXT:    sub x19, sp, x19
 ; ARM64-NEXT:    mov sp, x19
 ; ARM64-NEXT:    mov sp, x29
@@ -403,8 +403,8 @@ define void @dyn_alloca_dyn_si3_cnt_i64(i64 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str x19, [x29, #0x10]
 ; ARM64-NEXT:    mov x19, x0
-; ARM64-NEXT:    mov x0, #0xc // =12
-; ARM64-NEXT:    mul x19, x19, x0
+; ARM64-NEXT:    mov x16, #0xc // =12
+; ARM64-NEXT:    mul x19, x19, x16
 ; ARM64-NEXT:    sub x19, sp, x19
 ; ARM64-NEXT:    and x19, x19, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x19
@@ -443,8 +443,8 @@ define void @dyn_alloca_dyn_si3_cnt_i32(i32 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str x19, [x29, #0x10]
 ; ARM64-NEXT:    mov w19, w0
-; ARM64-NEXT:    mov x0, #0xc // =12
-; ARM64-NEXT:    mul x19, x19, x0
+; ARM64-NEXT:    mov x16, #0xc // =12
+; ARM64-NEXT:    mul x19, x19, x16
 ; ARM64-NEXT:    sub x19, sp, x19
 ; ARM64-NEXT:    and x19, x19, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x19
@@ -485,8 +485,8 @@ define void @dyn_alloca_dyn_si3_cnt_i16(i16 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str x19, [x29, #0x10]
 ; ARM64-NEXT:    mov w19, w0
-; ARM64-NEXT:    mov x0, #0xc // =12
-; ARM64-NEXT:    mul x19, x19, x0
+; ARM64-NEXT:    mov x16, #0xc // =12
+; ARM64-NEXT:    mul x19, x19, x16
 ; ARM64-NEXT:    sub x19, sp, x19
 ; ARM64-NEXT:    and x19, x19, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x19
@@ -610,8 +610,8 @@ define i64 @dyn_alloca_dyn_si3_cnt_i64_no_salvage(i64 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str x19, [x29, #0x10]
 ; ARM64-NEXT:    mov x19, x0
-; ARM64-NEXT:    mov x1, #0xc // =12
-; ARM64-NEXT:    mul x0, x19, x1
+; ARM64-NEXT:    mov x16, #0xc // =12
+; ARM64-NEXT:    mul x0, x19, x16
 ; ARM64-NEXT:    sub x0, sp, x0
 ; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x0
@@ -653,8 +653,8 @@ define i32 @dyn_alloca_dyn_si3_cnt_i32_no_salvage(i32 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str x19, [x29, #0x10]
 ; ARM64-NEXT:    mov w19, w0
-; ARM64-NEXT:    mov x1, #0xc // =12
-; ARM64-NEXT:    mul x0, x19, x1
+; ARM64-NEXT:    mov x16, #0xc // =12
+; ARM64-NEXT:    mul x0, x19, x16
 ; ARM64-NEXT:    sub x0, sp, x0
 ; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x0
@@ -696,8 +696,8 @@ define i16 @dyn_alloca_dyn_si3_cnt_i16_no_salvage(i16 %0) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    str x19, [x29, #0x10]
 ; ARM64-NEXT:    mov w19, w0
-; ARM64-NEXT:    mov x1, #0xc // =12
-; ARM64-NEXT:    mul x0, x19, x1
+; ARM64-NEXT:    mov x16, #0xc // =12
+; ARM64-NEXT:    mul x0, x19, x16
 ; ARM64-NEXT:    sub x0, sp, x0
 ; ARM64-NEXT:    and x0, x0, #0xfffffffffffffff0
 ; ARM64-NEXT:    mov sp, x0

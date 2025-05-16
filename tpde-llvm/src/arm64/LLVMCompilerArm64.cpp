@@ -339,8 +339,7 @@ bool LLVMCompilerArm64::compile_alloca(const llvm::Instruction *inst,
     auto size_val = size.getFixedValue();
     size_val = tpde::util::align_up(size_val, 16);
     if (size_val >= 0x10'0000) {
-      ScratchReg scratch{this};
-      auto tmp = scratch.alloc_gp();
+      auto tmp = permanent_scratch_reg;
       materialize_constant(size_val, CompilerConfig::GP_BANK, 8, tmp);
       ASM(SUBx_uxtx, res_reg, DA_SP, tmp, 0);
     } else if (size_val >= 0x1000) {
@@ -364,7 +363,6 @@ bool LLVMCompilerArm64::compile_alloca(const llvm::Instruction *inst,
   }
 
   const auto elem_size = layout.getTypeAllocSize(alloca->getAllocatedType());
-  ScratchReg scratch{this};
 
   AsmReg size_reg = size_ref.load_to_reg();
   AsmReg res_reg = res_ref.alloc_try_reuse(size_ref);
@@ -380,8 +378,7 @@ bool LLVMCompilerArm64::compile_alloca(const llvm::Instruction *inst,
       ASM(SUBx_uxtx, res_reg, DA_SP, res_reg, 0);
     }
   } else {
-    ScratchReg scratch{this};
-    auto tmp = scratch.alloc_gp();
+    auto tmp = permanent_scratch_reg;
     materialize_constant(elem_size, CompilerConfig::GP_BANK, 8, tmp);
     ASM(MULx, res_reg, size_reg, tmp);
     ASM(SUBx_uxtx, res_reg, DA_SP, res_reg, 0);
@@ -600,18 +597,16 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::Instruction *inst,
         return true;
       }
 
-      ScratchReg rhs_tmp{this};
+      AsmReg tmp = permanent_scratch_reg;
       if (int_width <= 32) {
         if (!ASMIF(CMPwi, lhs_reg, imm)) {
-          this->materialize_constant(
-              imm, CompilerConfig::GP_BANK, 4, rhs_tmp.alloc_gp());
-          ASM(CMPw, lhs_reg, rhs_tmp.cur_reg());
+          this->materialize_constant(imm, CompilerConfig::GP_BANK, 4, tmp);
+          ASM(CMPw, lhs_reg, tmp);
         }
       } else {
         if (!ASMIF(CMPxi, lhs_reg, imm)) {
-          this->materialize_constant(
-              imm, CompilerConfig::GP_BANK, 4, rhs_tmp.alloc_gp());
-          ASM(CMPx, lhs_reg, rhs_tmp.cur_reg());
+          this->materialize_constant(imm, CompilerConfig::GP_BANK, 4, tmp);
+          ASM(CMPx, lhs_reg, tmp);
         }
       }
     } else {
@@ -797,9 +792,8 @@ bool LLVMCompilerArm64::handle_intrin(
   switch (intrin_id) {
   case llvm::Intrinsic::vastart: {
     auto [_, list_ref] = this->val_ref_single(inst->getOperand(0));
-    ScratchReg scratch{this};
     auto list_reg = list_ref.load_to_reg();
-    auto tmp_reg = scratch.alloc_gp();
+    auto tmp_reg = permanent_scratch_reg;
 
     // next stack param
     ASM(LDRxu, tmp_reg, DA_GP(29), reg_save_frame_off + 192);
@@ -838,9 +832,8 @@ bool LLVMCompilerArm64::handle_intrin(
     return true;
   }
   case llvm::Intrinsic::stacksave: {
-    ValuePartRef res{this, CompilerConfig::GP_BANK};
-    ASM(MOV_SPx, res.alloc_reg(), DA_SP);
-    this->result_ref(inst).part(0).set_value(std::move(res));
+    auto [_, res_vr] = this->result_ref_single(inst);
+    ASM(MOV_SPx, res_vr.alloc_reg(), DA_SP);
     return true;
   }
   case llvm::Intrinsic::stackrestore: {
@@ -850,21 +843,19 @@ bool LLVMCompilerArm64::handle_intrin(
     return true;
   }
   case llvm::Intrinsic::returnaddress: {
-    ValuePartRef res{this, CompilerConfig::GP_BANK};
+    auto [_, res_vr] = this->result_ref_single(inst);
     auto op = llvm::cast<llvm::ConstantInt>(inst->getOperand(0));
     if (op->isZero()) {
-      ASM(LDRxu, res.alloc_reg(), DA_GP(29), 8);
+      ASM(LDRxu, res_vr.alloc_reg(), DA_GP(29), 8);
     } else {
-      ASM(MOVZx, res.alloc_reg(), 0);
+      ASM(MOVZx, res_vr.alloc_reg(), 0);
     }
-    this->result_ref(inst).part(0).set_value(std::move(res));
     return true;
   }
   case llvm::Intrinsic::frameaddress: {
-    ValuePartRef res{this, CompilerConfig::GP_BANK};
+    auto [_, res_vr] = this->result_ref_single(inst);
     auto op = llvm::cast<llvm::ConstantInt>(inst->getOperand(0));
-    ASM(MOVx, res.alloc_reg(), op->isZeroValue() ? DA_GP(29) : DA_ZR);
-    this->result_ref(inst).part(0).set_value(std::move(res));
+    ASM(MOVx, res_vr.alloc_reg(), op->isZeroValue() ? DA_GP(29) : DA_ZR);
     return true;
   }
   case llvm::Intrinsic::trap: ASM(BRK, 1); return true;
