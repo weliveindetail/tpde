@@ -393,7 +393,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   // for now, always generate an object
   explicit CompilerX64(Adaptor *adaptor,
                        const CPU_FEATURES cpu_features = CPU_BASELINE)
-      : Base{adaptor, true}, cpu_feats(cpu_features) {
+      : Base{adaptor}, cpu_feats(cpu_features) {
     static_assert(std::is_base_of_v<CompilerX64, Derived>);
     static_assert(concepts::Compiler<Derived, PlatformConfig>);
   }

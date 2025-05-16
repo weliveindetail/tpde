@@ -236,8 +236,7 @@ struct LLVMCompilerBase : public LLVMCompiler,
 
   llvm::TimeTraceProfilerEntry *time_entry;
 
-  LLVMCompilerBase(LLVMAdaptor *adaptor, const bool generate_obj)
-      : Base{adaptor, generate_obj} {
+  LLVMCompilerBase(LLVMAdaptor *adaptor) : Base{adaptor} {
     static_assert(tpde::Compiler<Derived, Config>);
     static_assert(std::is_same_v<Adaptor, LLVMAdaptor>);
     libfunc_syms.fill({});

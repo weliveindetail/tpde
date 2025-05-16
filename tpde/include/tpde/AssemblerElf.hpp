@@ -424,15 +424,12 @@ private:
   u32 eh_cur_cie_off = 0u;
   u32 eh_first_fde_off = 0;
 
-  /// Is the objective(heh) to generate an object file or to map into memory?
-  bool generating_object;
   /// The current function
   SymRef cur_func;
 
 public:
-  explicit AssemblerElfBase(const TargetInfo &target_info,
-                            bool generating_object)
-      : target_info(target_info), generating_object(generating_object) {
+  explicit AssemblerElfBase(const TargetInfo &target_info)
+      : target_info(target_info) {
     strtab.push_back('\0');
 
     local_symbols.resize(1); // First symbol must be null.
@@ -765,8 +762,7 @@ void AssemblerElfBase::SectionWriterBase<Derived>::more_space(
 template <typename Derived>
 struct AssemblerElf : public AssemblerElfBase {
   /// The current write pointer for the text section
-  explicit AssemblerElf(const bool generating_object)
-      : AssemblerElfBase(Derived::TARGET_INFO, generating_object) {
+  explicit AssemblerElf() : AssemblerElfBase(Derived::TARGET_INFO) {
     static_assert(std::is_base_of_v<AssemblerElf, Derived>);
   }
 

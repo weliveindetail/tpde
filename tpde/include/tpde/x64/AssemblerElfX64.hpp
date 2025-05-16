@@ -24,7 +24,7 @@ struct AssemblerElfX64 : AssemblerElf<AssemblerElfX64> {
     JUMP_TABLE,
   };
 
-  explicit AssemblerElfX64(const bool gen_obj) : Base{gen_obj} {}
+  explicit AssemblerElfX64() = default;
 
   void add_unresolved_entry(Label label,
                             SecRef sec,

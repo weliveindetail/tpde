@@ -38,7 +38,7 @@ struct AssemblerElfA64 : AssemblerElf<AssemblerElfA64> {
 
   util::SegmentedVector<VeneerInfo> veneer_infos;
 
-  explicit AssemblerElfA64(const bool gen_obj) : Base{gen_obj} {}
+  explicit AssemblerElfA64() = default;
 
 private:
   VeneerInfo &get_veneer_info(DataSection &section) noexcept {

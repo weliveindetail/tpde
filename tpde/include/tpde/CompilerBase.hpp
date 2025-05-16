@@ -125,8 +125,8 @@ struct CompilerBase {
   };
 
   /// Initialize a CompilerBase, should be called by the derived classes
-  explicit CompilerBase(Adaptor *adaptor, const bool generate_object)
-      : adaptor(adaptor), analyzer(adaptor), assembler(generate_object) {
+  explicit CompilerBase(Adaptor *adaptor)
+      : adaptor(adaptor), analyzer(adaptor), assembler() {
     static_assert(std::is_base_of_v<CompilerBase, Derived>);
     static_assert(Compiler<Derived, Config>);
   }
