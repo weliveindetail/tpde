@@ -486,7 +486,6 @@ public:
   bool compile_freeze(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   bool compile_call(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   bool compile_select(const llvm::Instruction *, const ValInfo &, u64) noexcept;
-  GenericValuePart resolved_gep_to_addr(ResolvedGEP &gep) noexcept;
   bool compile_gep(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   bool compile_fcmp(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   bool compile_switch(const llvm::Instruction *, const ValInfo &, u64) noexcept;
@@ -3391,59 +3390,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_select(
 }
 
 template <typename Adaptor, typename Derived, typename Config>
-typename LLVMCompilerBase<Adaptor, Derived, Config>::GenericValuePart
-    LLVMCompilerBase<Adaptor, Derived, Config>::resolved_gep_to_addr(
-        ResolvedGEP &gep) noexcept {
-  typename GenericValuePart::Expr addr{};
-  if (std::holds_alternative<ScratchReg>(gep.base)) {
-    addr.base = std::move(std::get<ScratchReg>(gep.base));
-  } else {
-    auto &ref = std::get<ValuePartRef>(gep.base);
-    auto reg = ref.load_to_reg();
-    if (ref.can_salvage()) {
-      ScratchReg scratch{this};
-      scratch.alloc_specific(ref.salvage());
-      addr.base = std::move(scratch);
-    } else {
-      addr.base = reg;
-    }
-  }
-
-  if (gep.scale) {
-    assert(gep.index);
-    if (std::holds_alternative<ScratchReg>(*gep.index)) {
-      assert(gep.idx_size_bits == 64);
-      addr.index = std::move(std::get<ScratchReg>(*gep.index));
-    } else {
-      // check for sign-extension
-      auto &ref = std::get<ValuePartRef>(*gep.index);
-      const auto idx_size_bits = gep.idx_size_bits;
-      if (idx_size_bits < 64) {
-        AsmReg src_reg = ref.load_to_reg();
-        AsmReg dst_reg;
-        ScratchReg scratch{this};
-        if (ref.can_salvage()) {
-          dst_reg = scratch.alloc_specific(ref.salvage());
-        } else {
-          dst_reg = scratch.alloc_gp();
-        }
-        derived()->generate_raw_intext(
-            dst_reg, src_reg, /*sign=*/true, idx_size_bits, 64);
-        addr.index = std::move(scratch);
-      } else {
-        assert(idx_size_bits == 64);
-        addr.index = ref.load_to_reg();
-      }
-    }
-  }
-
-  addr.scale = gep.scale;
-  addr.disp = gep.displacement;
-
-  return addr;
-}
-
-template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   auto *gep = llvm::cast<llvm::GetElementPtrInst>(inst);
@@ -3451,15 +3397,24 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     return false;
   }
 
+  ValueRef index_vr{this};
+  ValuePartRef index_vp{this};
+
+  GenericValuePart addr = typename GenericValuePart::Expr{};
+  auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
+
+  // Kept separate, we don't want to fold the displacement whenever we add an
+  // index. GEP components are sign-extended, but we must use an unsigned
+  // integer here to correctly handle overflows.
+  u64 displacement = 0;
+
   ValueRef ptr_ref = this->val_ref(gep->getPointerOperand());
-  ValueRef idx_ref{this};
-  auto resolved = ResolvedGEP{
-      .base = ptr_ref.part(0),
-      .index = std::nullopt,
-      .scale = 0,
-      .idx_size_bits = 0,
-      .displacement = 0,
-  };
+  ValuePartRef base = ptr_ref.part(0);
+  expr.base = base.load_to_reg();
+  if (base.can_salvage()) {
+    expr.base = ScratchReg{this};
+    std::get<ScratchReg>(expr.base).alloc_specific(base.salvage());
+  }
 
   auto &data_layout = this->adaptor->mod->getDataLayout();
 
@@ -3476,7 +3431,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
       }
 
       if (auto *Const = llvm::dyn_cast<llvm::ConstantInt>(idx)) {
-        i64 off_disp = 0;
+        u64 off_disp = 0;
         if (first_idx) {
           // array index
           if (i64 idx_val = Const->getSExtValue(); idx_val != 0) {
@@ -3496,7 +3451,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
             off_disp = data_layout.getTypeAllocSize(cur_ty) * idx_val;
           }
         }
-        resolved.displacement += off_disp;
+        displacement += off_disp;
       } else {
         // A non-constant GEP. This must either be an offset calculation (for
         // index == 0) or an array traversal
@@ -3504,15 +3459,32 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
           cur_ty = cur_ty->getArrayElementType();
         }
 
-        if (resolved.scale) {
-          // need to convert to simple base register
-          derived()->resolved_gep_to_base_reg(resolved);
+        if (expr.scale) {
+          derived()->gval_expr_as_reg(addr);
+          index_vp.reset();
+          index_vr.reset();
+          base.reset();
+          ptr_ref.reset();
+
+          ScratchReg new_base = std::move(std::get<ScratchReg>(addr.state));
+          addr = typename GenericValuePart::Expr{};
+          expr.base = std::move(new_base);
         }
 
-        idx_ref = this->val_ref(idx);
-        resolved.idx_size_bits = idx_width;
-        resolved.index = idx_ref.part(0);
-        resolved.scale = data_layout.getTypeAllocSize(cur_ty);
+        index_vr = this->val_ref(idx);
+        if (idx_width != 64) {
+          index_vp = index_vr.part(0).into_extended(true, idx_width, 64);
+        } else {
+          index_vp = index_vr.part(0);
+        }
+        if (index_vp.can_salvage()) {
+          expr.index = ScratchReg{this};
+          std::get<ScratchReg>(expr.index).alloc_specific(index_vp.salvage());
+        } else {
+          expr.index = index_vp.load_to_reg();
+        }
+
+        expr.scale = data_layout.getTypeAllocSize(cur_ty);
       }
 
       first_idx = false;
@@ -3540,7 +3512,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
     gep = next_gep;
   } while (true);
 
-  GenericValuePart addr = this->resolved_gep_to_addr(resolved);
+  expr.disp = displacement;
 
   if (auto *store = llvm::dyn_cast_if_present<llvm::StoreInst>(next_val);
       store && store->getPointerOperand() == gep) {
@@ -3555,7 +3527,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
   auto [res_vr, res_ref] = this->result_ref_single(gep);
 
-  AsmReg res_reg = derived()->gval_as_reg(addr);
+  AsmReg res_reg = derived()->gval_expr_as_reg(addr);
   if (auto *op_reg = std::get_if<ScratchReg>(&addr.state)) {
     ScratchReg res_scratch = std::move(*op_reg);
     this->set_value(res_ref, res_scratch);

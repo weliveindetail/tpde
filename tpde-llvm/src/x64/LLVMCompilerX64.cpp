@@ -106,7 +106,6 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
   bool compile_icmp(const llvm::Instruction *, const ValInfo &, u64) noexcept;
   void compile_i32_cmp_zero(AsmReg reg, llvm::CmpInst::Predicate p) noexcept;
 
-  void resolved_gep_to_base_reg(ResolvedGEP &resolved) noexcept;
   GenericValuePart create_addr_for_alloca(tpde::AssignmentPartRef ap) noexcept;
 
   void switch_emit_cmp(AsmReg cmp_reg,
@@ -592,25 +591,6 @@ void LLVMCompilerX64::compile_i32_cmp_zero(
   default: TPDE_UNREACHABLE("invalid icmp_zero predicate");
   }
   ASM(MOVZXr32r8, reg, reg);
-}
-
-void LLVMCompilerX64::resolved_gep_to_base_reg(ResolvedGEP &gep) noexcept {
-  GenericValuePart operand = resolved_gep_to_addr(gep);
-  AsmReg res_reg = gval_as_reg(operand);
-
-  if (auto *op_reg = std::get_if<ScratchReg>(&operand.state)) {
-    gep.base = std::move(*op_reg);
-  } else {
-    ScratchReg result{this};
-    AsmReg copy_reg = result.alloc_gp();
-    ASM(MOV64rr, copy_reg, res_reg);
-    gep.base = std::move(result);
-  }
-
-  gep.index = std::nullopt;
-  gep.displacement = 0;
-  gep.idx_size_bits = 0;
-  gep.scale = 0;
 }
 
 LLVMCompilerX64::GenericValuePart LLVMCompilerX64::create_addr_for_alloca(

@@ -1127,9 +1127,8 @@ define ptr @gep_i2048_varoff_i64(ptr %0, i64 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    mov rax, rsi
-; X64-NEXT:    shl rax, 0x8
-; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    shl rsi, 0x8
+; X64-NEXT:    lea rdi, [rdi + rsi]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -1420,8 +1419,8 @@ define ptr @gep_stf_varoff_i64_zero(ptr %0, i64 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    imul rsi, rsi, 0xc
+; X64-NEXT:    lea rdi, [rdi + rsi]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -1542,8 +1541,8 @@ define ptr @gep_stf_varoff_i64_one(ptr %0, i64 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rdi, [rdi + rax + 0x4]
+; X64-NEXT:    imul rsi, rsi, 0xc
+; X64-NEXT:    lea rdi, [rdi + rsi + 0x4]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -1978,8 +1977,8 @@ define ptr @gep_fuse_diff_type_2(ptr %p, i64 %n) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rdi, [rdi + rax + 0xc]
+; X64-NEXT:    imul rsi, rsi, 0xc
+; X64-NEXT:    lea rdi, [rdi + rsi + 0xc]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -2089,8 +2088,8 @@ define ptr @gep_stf_varoff_fuse_zero(ptr %0, i64 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    imul rsi, rsi, 0xc
+; X64-NEXT:    lea rdi, [rdi + rsi]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -2118,8 +2117,8 @@ define ptr @gep_stf_varoff_zero_fuse_zero(ptr %0, i64 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rdi, [rdi + rax]
+; X64-NEXT:    imul rsi, rsi, 0xc
+; X64-NEXT:    lea rdi, [rdi + rsi]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -2147,8 +2146,8 @@ define ptr @gep_stf_varoff_zero_fuse_one(ptr %0, i64 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rdi, [rdi + rax + 0x4]
+; X64-NEXT:    imul rsi, rsi, 0xc
+; X64-NEXT:    lea rdi, [rdi + rsi + 0x4]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -2179,8 +2178,8 @@ define ptr @gep_stf_varoff_zero_fuse_one_no_salvage(ptr %0, i64 %1) {
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    imul rax, rsi, 0xc
 ; X64-NEXT:    lea rax, [rdi + rax + 0x4]
-; X64-NEXT:    imul rax, rsi, 0xc
-; X64-NEXT:    lea rdi, [rdi + rax + 0x4]
+; X64-NEXT:    imul rsi, rsi, 0xc
+; X64-NEXT:    lea rdi, [rdi + rsi + 0x4]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -2428,8 +2427,8 @@ define ptr @gep_array_dynoff(ptr noundef %0, i64 %off) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x1d0
 ; X64-NEXT:    lea rax, [rbp - 0x1d0]
-; X64-NEXT:    lea rcx, [rax + 2*rsi]
-; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    lea rsi, [rax + 2*rsi]
+; X64-NEXT:    mov rax, rsi
 ; X64-NEXT:    add rsp, 0x1d0
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -2440,8 +2439,8 @@ define ptr @gep_array_dynoff(ptr noundef %0, i64 %off) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    add x0, x29, #0xb0
-; ARM64-NEXT:    add x2, x0, x1, lsl #1
-; ARM64-NEXT:    mov x0, x2
+; ARM64-NEXT:    add x1, x0, x1, lsl #1
+; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x250
 ; ARM64-NEXT:    ret
@@ -2458,9 +2457,9 @@ define ptr @gep_array_dynoff2(i64 %off1, i64 %off2) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x1d0
 ; X64-NEXT:    lea rax, [rbp - 0x1d0]
-; X64-NEXT:    lea rcx, [rax + 8*rdi]
-; X64-NEXT:    lea rcx, [rcx + 2*rsi]
-; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    lea rdi, [rax + 8*rdi]
+; X64-NEXT:    lea rdi, [rdi + 2*rsi]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x1d0
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -2471,9 +2470,8 @@ define ptr @gep_array_dynoff2(i64 %off1, i64 %off2) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    add x2, x29, #0xa0
-; ARM64-NEXT:    add x3, x2, x0, lsl #3
-; ARM64-NEXT:    add x3, x3, x1, lsl #1
-; ARM64-NEXT:    mov x0, x3
+; ARM64-NEXT:    add x0, x2, x0, lsl #3
+; ARM64-NEXT:    add x0, x0, x1, lsl #1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x240
 ; ARM64-NEXT:    ret
@@ -2489,10 +2487,10 @@ define ptr @gep_array_dynoff3(i64 %off1, i32 %off2) {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x1d0
 ; X64-NEXT:    lea rax, [rbp - 0x1d0]
-; X64-NEXT:    lea rcx, [rax + 8*rdi]
+; X64-NEXT:    lea rdi, [rax + 8*rdi]
 ; X64-NEXT:    movsxd rsi, esi
-; X64-NEXT:    lea rcx, [rcx + 2*rsi]
-; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    lea rdi, [rdi + 2*rsi]
+; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x1d0
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -2503,10 +2501,9 @@ define ptr @gep_array_dynoff3(i64 %off1, i32 %off2) {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    add x2, x29, #0xa0
-; ARM64-NEXT:    add x3, x2, x0, lsl #3
+; ARM64-NEXT:    add x0, x2, x0, lsl #3
 ; ARM64-NEXT:    sxtw x1, w1
-; ARM64-NEXT:    add x3, x3, x1, lsl #1
-; ARM64-NEXT:    mov x0, x3
+; ARM64-NEXT:    add x0, x0, x1, lsl #1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x240
 ; ARM64-NEXT:    ret
@@ -2521,10 +2518,10 @@ define ptr @gep_dynoff_mult(ptr %base, i64 %off1, i32 %off2) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    imul rax, rsi, 0x24
-; X64-NEXT:    lea rdi, [rdi + rax + 0x4]
+; X64-NEXT:    imul rsi, rsi, 0x24
+; X64-NEXT:    lea rdi, [rdi + rsi]
 ; X64-NEXT:    movsxd rdx, edx
-; X64-NEXT:    lea rdi, [rdi + 4*rdx]
+; X64-NEXT:    lea rdi, [rdi + 4*rdx + 0x4]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
@@ -2537,9 +2534,9 @@ define ptr @gep_dynoff_mult(ptr %base, i64 %off1, i32 %off2) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x16, #0x24 // =36
 ; ARM64-NEXT:    madd x0, x1, x16, x0
-; ARM64-NEXT:    add x0, x0, #0x4
 ; ARM64-NEXT:    sxtw x2, w2
 ; ARM64-NEXT:    add x0, x0, x2, lsl #2
+; ARM64-NEXT:    add x0, x0, #0x4
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
