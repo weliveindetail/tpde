@@ -3399,7 +3399,6 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
 
   ValueRef index_vr{this};
   ValuePartRef index_vp{this};
-
   GenericValuePart addr = typename GenericValuePart::Expr{};
   auto &expr = std::get<typename GenericValuePart::Expr>(addr.state);
 
@@ -3408,12 +3407,18 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_gep(
   // integer here to correctly handle overflows.
   u64 displacement = 0;
 
-  ValueRef ptr_ref = this->val_ref(gep->getPointerOperand());
-  ValuePartRef base = ptr_ref.part(0);
-  expr.base = base.load_to_reg();
-  if (base.can_salvage()) {
-    expr.base = ScratchReg{this};
-    std::get<ScratchReg>(expr.base).alloc_specific(base.salvage());
+  auto [ptr_ref, base] = this->val_ref_single(gep->getPointerOperand());
+  if (base.has_assignment() && base.assignment().is_stack_variable()) {
+    addr = derived()->create_addr_for_alloca(base.assignment());
+    assert(addr.is_expr());
+    displacement = expr.disp;
+    expr.disp = 0;
+  } else {
+    expr.base = base.load_to_reg();
+    if (base.can_salvage()) {
+      expr.base = ScratchReg{this};
+      std::get<ScratchReg>(expr.base).alloc_specific(base.salvage());
+    }
   }
 
   auto &data_layout = this->adaptor->mod->getDataLayout();

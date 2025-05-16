@@ -12,10 +12,8 @@ define i32 @fn_i32_byval_ptr_i32_i32(ptr byval(%struct.ptr_i32) align 8 %0, i32 
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    lea rax, [rbp + 0x10]
-; X64-NEXT:    mov ecx, dword ptr [rax + 0x8]
-; X64-NEXT:    lea ecx, [rcx + rdi]
-; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    mov eax, dword ptr [rbp + 0x18]
+; X64-NEXT:    lea eax, [rax + rdi]
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -91,11 +89,10 @@ define i128 @fn_byval2(ptr byval({ptr, ptr}) %a, ptr byval(i64) %b, ptr byval(i1
 ; X64-NEXT:    mov rax, qword ptr [rbp + 0x20]
 ; X64-NEXT:    mov rcx, qword ptr [rbp + 0x10]
 ; X64-NEXT:    mov qword ptr [rcx], rax
-; X64-NEXT:    lea rax, [rbp + 0x10]
-; X64-NEXT:    mov qword ptr [rax + 0x8], rcx
-; X64-NEXT:    mov rcx, qword ptr [rbp + 0x30]
-; X64-NEXT:    mov rdx, qword ptr [rbp + 0x38]
-; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    mov qword ptr [rbp + 0x18], rcx
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x30]
+; X64-NEXT:    mov rcx, qword ptr [rbp + 0x38]
+; X64-NEXT:    mov rdx, rcx
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret

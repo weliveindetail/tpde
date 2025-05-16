@@ -2367,8 +2367,6 @@ define dso_local ptr @gep_array(ptr noundef %0) #0 {
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x100
 ; X64-NEXT:    lea rax, [rbp - 0x100]
-; X64-NEXT:    mov rcx, rax
-; X64-NEXT:    mov rax, rcx
 ; X64-NEXT:    add rsp, 0x100
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -2379,8 +2377,6 @@ define dso_local ptr @gep_array(ptr noundef %0) #0 {
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    add x0, x29, #0xb0
-; ARM64-NEXT:    mov x1, x0
-; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x180
 ; ARM64-NEXT:    ret
@@ -2396,9 +2392,7 @@ define ptr @gep_array_constoff(ptr noundef %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x1d0
-; X64-NEXT:    lea rax, [rbp - 0x1d0]
-; X64-NEXT:    lea rcx, [rax + 0x40]
-; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    lea rax, [rbp - 0x190]
 ; X64-NEXT:    add rsp, 0x1d0
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -2408,9 +2402,7 @@ define ptr @gep_array_constoff(ptr noundef %0) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x0, x29, #0xb0
-; ARM64-NEXT:    add x1, x0, #0x40
-; ARM64-NEXT:    mov x0, x1
+; ARM64-NEXT:    add x0, x29, #0xf0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x250
 ; ARM64-NEXT:    ret
@@ -2426,8 +2418,7 @@ define ptr @gep_array_dynoff(ptr noundef %0, i64 %off) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x1d0
-; X64-NEXT:    lea rax, [rbp - 0x1d0]
-; X64-NEXT:    lea rsi, [rax + 2*rsi]
+; X64-NEXT:    lea rsi, [rbp + 2*rsi - 0x1d0]
 ; X64-NEXT:    mov rax, rsi
 ; X64-NEXT:    add rsp, 0x1d0
 ; X64-NEXT:    pop rbp
@@ -2438,8 +2429,8 @@ define ptr @gep_array_dynoff(ptr noundef %0, i64 %off) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x0, x29, #0xb0
-; ARM64-NEXT:    add x1, x0, x1, lsl #1
+; ARM64-NEXT:    add x1, x29, x1, lsl #1
+; ARM64-NEXT:    add x1, x1, #0xb0
 ; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x250
@@ -2456,9 +2447,8 @@ define ptr @gep_array_dynoff2(i64 %off1, i64 %off2) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x1d0
-; X64-NEXT:    lea rax, [rbp - 0x1d0]
-; X64-NEXT:    lea rdi, [rax + 8*rdi]
-; X64-NEXT:    lea rdi, [rdi + 2*rsi]
+; X64-NEXT:    lea rdi, [rbp + 8*rdi]
+; X64-NEXT:    lea rdi, [rdi + 2*rsi - 0x1d0]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x1d0
 ; X64-NEXT:    pop rbp
@@ -2469,9 +2459,9 @@ define ptr @gep_array_dynoff2(i64 %off1, i64 %off2) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x2, x29, #0xa0
-; ARM64-NEXT:    add x0, x2, x0, lsl #3
+; ARM64-NEXT:    add x0, x29, x0, lsl #3
 ; ARM64-NEXT:    add x0, x0, x1, lsl #1
+; ARM64-NEXT:    add x0, x0, #0xa0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x240
 ; ARM64-NEXT:    ret
@@ -2486,10 +2476,9 @@ define ptr @gep_array_dynoff3(i64 %off1, i32 %off2) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x1d0
-; X64-NEXT:    lea rax, [rbp - 0x1d0]
-; X64-NEXT:    lea rdi, [rax + 8*rdi]
+; X64-NEXT:    lea rdi, [rbp + 8*rdi]
 ; X64-NEXT:    movsxd rsi, esi
-; X64-NEXT:    lea rdi, [rdi + 2*rsi]
+; X64-NEXT:    lea rdi, [rdi + 2*rsi - 0x1d0]
 ; X64-NEXT:    mov rax, rdi
 ; X64-NEXT:    add rsp, 0x1d0
 ; X64-NEXT:    pop rbp
@@ -2500,10 +2489,10 @@ define ptr @gep_array_dynoff3(i64 %off1, i32 %off2) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x2, x29, #0xa0
-; ARM64-NEXT:    add x0, x2, x0, lsl #3
+; ARM64-NEXT:    add x0, x29, x0, lsl #3
 ; ARM64-NEXT:    sxtw x1, w1
 ; ARM64-NEXT:    add x0, x0, x1, lsl #1
+; ARM64-NEXT:    add x0, x0, #0xa0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x240
 ; ARM64-NEXT:    ret
