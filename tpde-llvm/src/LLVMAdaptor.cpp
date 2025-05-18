@@ -17,6 +17,8 @@
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TimeProfiler.h>
 #include <llvm/Support/raw_ostream.h>
+
+#include <algorithm>
 #include <utility>
 
 #include "base.hpp"
@@ -24,6 +26,45 @@
 #include "tpde/util/misc.hpp"
 
 namespace tpde_llvm {
+
+static void sort_phi_entries(llvm::PHINode *phi) {
+  unsigned count = phi->getNumIncomingValues();
+  auto blocks = phi->block_begin();
+  auto values = phi->op_begin();
+  auto swap = [phi, blocks, values](unsigned a, unsigned b) {
+    values[a].swap(values[b]);
+    llvm::BasicBlock *tmp = blocks[a];
+    phi->setIncomingBlock(a, blocks[b]);
+    phi->setIncomingBlock(b, tmp);
+  };
+
+  // Simple heap sort
+  unsigned start = count / 2;
+  unsigned end = count;
+  while (end > 1) {
+    if (start) {
+      --start;
+    } else {
+      --end;
+      swap(0, end);
+    }
+    unsigned root = start;
+    while (2 * root + 1 < end) {
+      unsigned child = 2 * root + 1;
+      if (child + 1 < end && blocks[child] < blocks[child + 1]) {
+        child = child + 1;
+      }
+      if (blocks[root] < blocks[child]) {
+        swap(root, child);
+        root = child;
+      } else {
+        break;
+      }
+    }
+  }
+
+  assert(std::is_sorted(blocks, blocks + count));
+}
 
 std::pair<llvm::Value *, llvm::Instruction *>
     LLVMAdaptor::fixup_constant(llvm::Constant *cst,
@@ -308,6 +349,11 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
           }
         }
       }
+
+      if (num_incoming >= PHINodeSortThreshold) [[unlikely]] {
+        sort_phi_entries(&phi);
+      }
+
       ++it;
     }
 

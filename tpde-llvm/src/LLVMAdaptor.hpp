@@ -5,6 +5,7 @@
 
 #include <ranges>
 
+#include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/GlobalValue.h>
@@ -125,6 +126,11 @@ struct LLVMAdaptor {
   static constexpr IRBlockRef INVALID_BLOCK_REF = static_cast<IRBlockRef>(~0u);
   static constexpr IRFuncRef INVALID_FUNC_REF =
       nullptr; // NOLINT(*-misplaced-const)
+
+  /// Threshold when PHI node operands are sorted. This allows O(log n) access
+  /// to the incoming value for a given block, as opposed to O(n). This
+  /// threshold is quite large, given that sorting llvm::Use-s is expensive.
+  static constexpr unsigned PHINodeSortThreshold = 1024;
 
   const llvm::DataLayout data_layout;
   llvm::LLVMContext *context = nullptr;
@@ -370,7 +376,18 @@ struct LLVMAdaptor {
 
       [[nodiscard]] IRValueRef
           incoming_val_for_block(const IRBlockRef block) const noexcept {
-        return phi->getIncomingValueForBlock(self->blocks[block].block);
+        llvm::BasicBlock *bb = self->blocks[block].block;
+        u32 idx;
+        if (incoming_count() < PHINodeSortThreshold) [[likely]] {
+          idx = phi->getBasicBlockIndex(bb); // linear search
+        } else {
+          idx = llvm::lower_bound(phi->blocks(), bb) - phi->block_begin();
+          // NB: indices might differ, a PHI node might have the same incoming
+          // pair multiple times for multi-edges.
+          assert(phi->getIncomingValue(idx) ==
+                 phi->getIncomingValueForBlock(bb));
+        }
+        return phi->getIncomingValue(idx);
       }
     };
 
