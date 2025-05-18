@@ -326,3 +326,63 @@ define void @phi_cycle_multipart(i1 %c, [4 x i64] %v1, [4 x i64] %v2) {
   %3 = phi [4 x i64] [ %v2, %0 ], [ %2, %1 ]
   br label %1
 }
+
+define i32 @phi_last_use(i1 %c, i32 %a, i32 %b) {
+; X64-LABEL: <phi_last_use>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    push r12
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x20
+; X64-NEXT:    mov ebx, esi
+; X64-NEXT:    test edi, 0x1
+; X64-NEXT:    je <L0>
+; X64-NEXT:    mov eax, 0x0
+; X64-NEXT:    mov r12d, eax
+; X64-NEXT:    jmp <L1>
+; X64-NEXT:  <L0>:
+; X64-NEXT:    lea eax, [rbx + 0x1]
+; X64-NEXT:    cmp eax, 0x0
+; X64-NEXT:    mov dword ptr [rbp - 0x2c], eax
+; X64-NEXT:    jne <L0>
+; X64-NEXT:    mov r12d, eax
+; X64-NEXT:  <L1>:
+; X64-NEXT:    mov eax, r12d
+; X64-NEXT:    add rsp, 0x20
+; X64-NEXT:    pop r12
+; X64-NEXT:    pop rbx
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <phi_last_use>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    stp x19, x20, [sp, #0x10]
+; ARM64-NEXT:    mov w19, w1
+; ARM64-NEXT:    tst w0, #0x1
+; ARM64-NEXT:    b.eq 0x2f8 <phi_last_use+0x28>
+; ARM64-NEXT:    mov w0, #0x0 // =0
+; ARM64-NEXT:    mov w20, w0
+; ARM64-NEXT:    b 0x30c <phi_last_use+0x3c>
+; ARM64-NEXT:    add w0, w19, #0x1
+; ARM64-NEXT:    mov w1, w0
+; ARM64-NEXT:    str w0, [x29, #0xa0]
+; ARM64-NEXT:    cbnz w1, 0x2f8 <phi_last_use+0x28>
+; ARM64-NEXT:    mov w20, w0
+; ARM64-NEXT:    mov w0, w20
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    ldp x19, x20, [sp, #0x10]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+entry:
+  br i1 %c, label %ret, label %loop
+loop:
+  %add = add i32 %a, 1
+  %cmp = icmp eq i32 %add, 0
+  br i1 %cmp, label %ret, label %loop
+ret:
+  %rv = phi i32 [ 0, %entry ], [ %add, %loop ]
+  ret i32 %rv
+}
