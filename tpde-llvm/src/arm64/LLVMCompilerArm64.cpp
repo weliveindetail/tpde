@@ -583,9 +583,13 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::Instruction *inst,
           AsmReg src_reg = lhs_reg;
           lhs_reg = res_scratch.alloc_gp();
           this->mov(lhs_reg, src_reg, int_width <= 32 ? 4 : 8);
-          lhs_op.reset();
+        } else {
+          res_scratch.alloc_specific(lhs_op.salvage());
         }
+        lhs_op.reset();
         rhs_op.reset();
+        lhs.reset();
+        rhs.reset();
 
         auto jump_kind = jump == Jump::Jeq ? Jump::Cbz : Jump::Cbnz;
         Jump cbz{jump_kind, lhs_reg, int_width <= 32};
@@ -618,6 +622,10 @@ bool LLVMCompilerArm64::compile_icmp(const llvm::Instruction *inst,
       }
     }
   }
+
+  // ref-count, otherwise phi assignment will think that value is still used
+  lhs.reset();
+  rhs.reset();
 
   if (fuse_br) {
     auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));

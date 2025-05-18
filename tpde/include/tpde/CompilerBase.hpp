@@ -1125,29 +1125,6 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
       return spilled;
   }*/
 
-  u16 phi_ref_count[RegisterFile::NumRegs] = {};
-  for (const IRBlockRef succ : adaptor->block_succs(cur_block_ref)) {
-    for (const IRValueRef phi_val : adaptor->block_phis(succ)) {
-      const auto phi_ref = adaptor->val_as_phi(phi_val);
-      const IRValueRef inc_val = phi_ref.incoming_val_for_block(cur_block_ref);
-      if (derived()->val_ref_special(inc_val)) {
-        continue;
-      }
-      ValLocalIdx local_idx = analyzer.adaptor->val_local_idx(inc_val);
-      auto *assignment = this->val_assignment(local_idx);
-      if (!assignment) {
-        continue;
-      }
-      u32 part_count = assignment->part_count;
-      for (u32 i = 0; i < part_count; ++i) {
-        auto ap = AssignmentPartRef{assignment, i};
-        if (ap.register_valid()) {
-          ++phi_ref_count[ap.get_reg().id()];
-        }
-      }
-    }
-  }
-
   const auto spill_reg_if_needed = [&](const auto reg) {
     auto local_idx = register_file.reg_local_idx(AsmReg{reg});
     auto part = register_file.reg_part(AsmReg{reg});
@@ -1172,8 +1149,8 @@ typename CompilerBase<Adaptor, Derived, Config>::RegisterFile::RegBitSet
     }
 
     const auto &liveness = analyzer.liveness_info(local_idx);
-    if (assignment->references_left <= phi_ref_count[reg] &&
-        liveness.last <= cur_block_idx) {
+    if (liveness.last <= cur_block_idx) {
+      // no need to spill value if it dies immediately after the block
       return false;
     }
 

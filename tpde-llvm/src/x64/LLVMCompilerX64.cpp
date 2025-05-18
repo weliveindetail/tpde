@@ -551,6 +551,10 @@ bool LLVMCompilerX64::compile_icmp(const llvm::Instruction *inst,
     }
   }
 
+  // ref-count, otherwise phi assignment will think that value is still used
+  lhs.reset();
+  rhs.reset();
+
   if (fuse_br) {
     auto true_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(0));
     auto false_block = adaptor->block_lookup_idx(fuse_br->getSuccessor(1));
