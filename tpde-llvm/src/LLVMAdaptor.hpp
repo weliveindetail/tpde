@@ -444,8 +444,7 @@ private:
 
   /// Handle instruction during switch_func.
   /// retval = restart from instruction, or nullptr to continue
-  llvm::Instruction *handle_inst_in_block(llvm::BasicBlock *block,
-                                          llvm::Instruction *inst);
+  llvm::Instruction *handle_inst_in_block(llvm::Instruction *inst);
 
 public:
   bool switch_func(const IRFuncRef function) noexcept;

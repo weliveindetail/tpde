@@ -117,52 +117,12 @@ std::pair<llvm::Value *, llvm::Instruction *>
   return {nullptr, nullptr};
 }
 
-llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::BasicBlock *block,
-                                                     llvm::Instruction *inst) {
+llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::Instruction *inst) {
   llvm::Instruction *restart_from = nullptr;
 
-  if (inst->isTerminator()) {
-    // TODO: remove this hack, see compile_invoke.
-    if (llvm::isa<llvm::InvokeInst>(inst)) {
-      func_has_dynamic_alloca = true;
-    }
-
-    auto *ins_before = inst;
-    if (block->begin().getNodePtr() != ins_before) {
-      auto *prev_inst = ins_before->getPrevNonDebugInstruction();
-      if (prev_inst && llvm::isa<llvm::CmpInst>(prev_inst)) {
-        // make sure fusing can still happen
-        ins_before = prev_inst;
-      }
-    }
-
-    for (llvm::BasicBlock *succ : llvm::successors(inst->getParent())) {
-      for (llvm::PHINode &phi : succ->phis()) {
-        auto *val = phi.getIncomingValueForBlock(inst->getParent());
-        auto *cst = llvm::dyn_cast<llvm::Constant>(val);
-        if (!cst || llvm::isa<llvm::GlobalValue>(cst)) {
-          continue;
-        }
-        auto [repl, ins_begin] = fixup_constant(cst, ins_before);
-        if (repl) {
-          phi.setIncomingValueForBlock(inst->getParent(), repl);
-          if (!restart_from) {
-            restart_from = ins_begin;
-          }
-        }
-      }
-    }
-
-    // We might have inserted before the cmp, which would get compiled twice
-    // now. Therefore, remove the assigned value number.
-    if (restart_from && ins_before != inst) {
-      auto ins_before_idx = inst_lookup_idx(ins_before);
-      assert(values.size() == ins_before_idx + 1);
-      values.resize(ins_before_idx);
-#ifndef NDEBUG
-      value_lookup.erase(ins_before);
-#endif
-    }
+  // TODO: remove this hack, see compile_invoke.
+  if (llvm::isa<llvm::InvokeInst>(inst)) {
+    func_has_dynamic_alloca = true;
   }
 
   // Check operands for constants; PHI nodes are handled by predecessors.
@@ -321,29 +281,49 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
   check_type_compatibility(function->getReturnType());
 
   for (llvm::BasicBlock &block : *function) {
-    std::optional<llvm::BasicBlock::iterator> last_phi;
+    auto it = block.begin(), end = block.end();
+    // In the first pass, fixup all constants in phis. This might insert
+    // instructions into all predecessors.
+    while (it != end && llvm::isa<llvm::PHINode>(*it)) {
+      llvm::PHINode &phi = llvm::cast<llvm::PHINode>(*it);
+      auto blocks = phi.block_begin();
+      auto values = phi.op_begin();
+      unsigned num_incoming = phi.getNumIncomingValues();
+      for (unsigned i = 0; i < num_incoming; ++i) {
+        llvm::Value *val = values[i];
+        llvm::BasicBlock *block = blocks[i];
+        if (llvm::isa<llvm::ConstantAggregate, llvm::ConstantExpr>(val)) {
+          auto *ins_before = block->getTerminator();
+          if (block->begin().getNodePtr() != ins_before) {
+            auto *prev_inst = ins_before->getPrevNonDebugInstruction();
+            if (prev_inst && llvm::isa<llvm::CmpInst>(prev_inst)) {
+              // make sure fusing can still happen
+              ins_before = prev_inst;
+            }
+          }
 
-    for (auto it = block.begin(), end = block.end(); it != end;) {
-      auto *restart_from = handle_inst_in_block(&block, &*it);
-      if (restart_from) {
-        it = restart_from->getIterator();
-      } else {
-        if (llvm::isa<llvm::PHINode>(&*it)) {
-          last_phi = it;
+          auto *cst = llvm::cast<llvm::Constant>(val);
+          if (auto [repl, _] = fixup_constant(cst, ins_before); repl) {
+            values[i] = repl;
+          }
         }
-        ++it;
       }
-    }
-
-    llvm::BasicBlock::iterator phi_end = block.begin();
-    if (last_phi) {
-      phi_end = ++*last_phi;
+      ++it;
     }
 
     const auto block_idx = blocks.size();
 
+    // Here, store iterator of last phi (if any). We cannot store an iterator of
+    // the next instruction, as another block's phi node might cause
+    // instructions to be inserted immediately after the last phi node.
+    if (it != block.begin()) {
+      --it;
+    } else {
+      it = block.end();
+    }
+
     blocks.push_back(
-        BlockInfo{.block = &block, .aux = BlockAux{.phi_end = phi_end}});
+        BlockInfo{.block = &block, .aux = BlockAux{.phi_end = it}});
 
 #ifndef NDEBUG
     block_lookup[&block] = block_idx;
@@ -351,7 +331,26 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
     block_embedded_idx(&block) = block_idx;
   }
 
-  for (const auto &info : blocks) {
+  for (BlockInfo &info : blocks) {
+    llvm::BasicBlock *block = info.block;
+    for (auto it = block->begin(), end = block->end(); it != end;) {
+      auto *restart_from = handle_inst_in_block(&*it);
+      if (restart_from) {
+        it = restart_from->getIterator();
+      } else {
+        ++it;
+      }
+    }
+
+    // phi_end must point to the instruction *after* the last phi (so that begin
+    // ()..phi_end described all phis). We need these hacks, as we might insert
+    // instructions immediately after the phi node.
+    if (info.aux.phi_end == block->end()) {
+      info.aux.phi_end = block->begin();
+    } else {
+      ++info.aux.phi_end; // phi_end points to the instr after the phi again
+    }
+
     const u32 start_idx = block_succ_indices.size();
     for (auto *succ : llvm::successors(info.block)) {
       block_succ_indices.push_back(block_embedded_idx(succ));
