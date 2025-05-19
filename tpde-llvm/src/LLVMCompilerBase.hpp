@@ -3702,62 +3702,27 @@ template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_switch(
     const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
   const auto *switch_inst = llvm::cast<llvm::SwitchInst>(inst);
-  ScratchReg scratch{this};
+  ValuePartRef cmp_ref{this};
   AsmReg cmp_reg;
   bool width_is_32 = false;
   {
-    auto [_, arg_ref] = this->val_ref_single(switch_inst->getCondition());
-    auto *arg_ty = switch_inst->getCondition()->getType();
-    assert(arg_ty->isIntegerTy() || arg_ty->isPointerTy());
-    u32 width = 64;
-    if (arg_ty->isIntegerTy()) {
-      width = arg_ty->getIntegerBitWidth();
-      assert(width <= 64);
+    llvm::Value *cond = switch_inst->getCondition();
+    u32 width = cond->getType()->getIntegerBitWidth();
+    if (width > 64) {
+      return false;
     }
 
-    if (width < 32) {
-      width_is_32 = true;
-      if (width == 8) {
-        derived()->encode_zext_8_to_32(std::move(arg_ref), scratch);
-      } else if (width == 16) {
-        derived()->encode_zext_16_to_32(std::move(arg_ref), scratch);
-      } else {
-        u64 mask = (1ull << width) - 1;
-        derived()->encode_landi32(std::move(arg_ref),
-                                  ValuePartRef{this, mask, 4, Config::GP_BANK},
-                                  scratch);
-      }
-      cmp_reg = scratch.cur_reg();
-    } else if (width == 32) {
-      width_is_32 = true;
-      cmp_reg = arg_ref.load_to_reg();
-      // make sure we can overwrite the register when we generate a jump
-      // table
-      if (arg_ref.can_salvage()) {
-        scratch.alloc_specific(arg_ref.salvage());
-      } else if (arg_ref.has_assignment()) {
-        arg_ref.unlock();
-        arg_ref.reload_into_specific_fixed(this, scratch.alloc_gp());
-        cmp_reg = scratch.cur_reg();
-      }
-    } else if (width < 64) {
-      u64 mask = (1ull << width) - 1;
-      derived()->encode_landi64(std::move(arg_ref),
-                                ValuePartRef{this, mask, 8, Config::GP_BANK},
-                                scratch);
-      cmp_reg = scratch.cur_reg();
+    auto [_, arg_ref] = this->val_ref_single(cond);
+
+    width_is_32 = width <= 32;
+    if (u32 dst_width = tpde::util::align_up(width, 32); width != dst_width) {
+      cmp_ref = std::move(arg_ref).into_extended(false, width, dst_width);
+    } else if (arg_ref.has_assignment()) {
+      cmp_ref = std::move(arg_ref).into_temporary();
     } else {
-      cmp_reg = arg_ref.load_to_reg();
-      // make sure we can overwrite the register when we generate a jump
-      // table
-      if (arg_ref.can_salvage()) {
-        scratch.alloc_specific(arg_ref.salvage());
-      } else if (arg_ref.has_assignment()) {
-        arg_ref.unlock();
-        arg_ref.reload_into_specific_fixed(this, scratch.alloc_gp());
-        cmp_reg = scratch.cur_reg();
-      }
+      cmp_ref = std::move(arg_ref);
     }
+    cmp_reg = cmp_ref.has_reg() ? cmp_ref.cur_reg() : cmp_ref.load_to_reg();
   }
 
   // We must not evict any registers in the branching code, as we don't track

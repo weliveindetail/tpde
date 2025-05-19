@@ -552,19 +552,7 @@ double TARGET_V1 u64tof64(i64 a) { return (double)(u64)a; }
 // extensions
 // --------------------------
 
-i32 TARGET_V1 sext_8_to_32(u8 a) { return (i32)(i8)a; }
-i64 TARGET_V1 sext_8_to_64(u8 a) { return (i64)(i8)a; }
-i32 TARGET_V1 sext_16_to_32(u16 a) { return (i32)(i16)a; }
-i64 TARGET_V1 sext_16_to_64(u16 a) { return (i64)(i16)a; }
-i64 TARGET_V1 sext_32_to_64(u32 a) { return (i64)(i32)a; }
-i32 TARGET_V1 sext_arbitrary_to_32(u32 a, u32 shift) { return ((i32)(a << shift)) >> shift; }
-i64 TARGET_V1 sext_arbitrary_to_64(u64 a, u32 shift) { return ((i64)(a << shift)) >> shift; }
-
 i64 TARGET_V1 fill_with_sign64(i64 a) { return (a >> 63); }
-
-u32 TARGET_V1 zext_8_to_32(i8 a) { return (u32)(u8)a; }
-u32 TARGET_V1 zext_16_to_32(i16 a) { return (u32)(u16)a; }
-u64 TARGET_V1 zext_32_to_64(i32 a) { return (u64)(u32)a; }
 
 // --------------------------
 // atomics
