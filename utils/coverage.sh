@@ -27,10 +27,10 @@ LLVM_PROFILE_FILE="${TPDE_COVERAGE_DIR}/%4m-%p.profraw" \
   -output-dir="${TPDE_BUILD_DIR}/coverage-html" \
   -object "${TPDE_BUILD_DIR}/tpde-llvm/tpde-llc" \
   -object "${TPDE_BUILD_DIR}/tpde-llvm/tpde-lli" \
-  -object "${TPDE_BUILD_DIR}/tpde-llvm/tpde/tpde_test" \
+  -object "${TPDE_BUILD_DIR}/tpde/tpde_test" \
   -instr-profile="${TPDE_COVERAGE_DIR}/coverage.profdata"
 "${LLVM_COV}" report -ignore-filename-regex=/deps/ \
   -object "${TPDE_BUILD_DIR}/tpde-llvm/tpde-llc" \
   -object "${TPDE_BUILD_DIR}/tpde-llvm/tpde-lli" \
-  -object "${TPDE_BUILD_DIR}/tpde-llvm/tpde/tpde_test" \
+  -object "${TPDE_BUILD_DIR}/tpde/tpde_test" \
   -instr-profile="${TPDE_COVERAGE_DIR}/coverage.profdata"

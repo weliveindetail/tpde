@@ -9,15 +9,16 @@ project(tpde_llvm)
 
 # tpde_llvm library
 
+if (NOT TPDE_ENABLE_ENCODEGEN)
+    message(FATAL_ERROR "TPDE_ENABLE_LLVM needs TPDE_ENABLE_ENCODEGEN")
+endif()
+
 add_library(tpde_llvm)
 add_library(tpde::tpde_llvm ALIAS tpde_llvm)
 set_target_properties(tpde_llvm PROPERTIES
     VERSION 0.1.0
     LINKER_LANGUAGE CXX
 )
-
-add_subdirectory(../tpde ${PROJECT_BINARY_DIR}/tpde)
-add_subdirectory(../tpde-encodegen ${PROJECT_BINARY_DIR}/tpde-encodegen)
 
 target_link_libraries(tpde_llvm PRIVATE tpde)
 
