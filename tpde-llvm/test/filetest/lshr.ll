@@ -430,6 +430,55 @@ entry:
     ret i128 %1
 }
 
+define i128 @lshr_i128_i128(i128 %v, i128 %s) {
+; X64-LABEL: <lshr_i128_i128>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x38
+; X64-NEXT:    mov qword ptr [rbp - 0x38], rcx
+; X64-NEXT:    mov ecx, edx
+; X64-NEXT:    shr rdi, cl
+; X64-NEXT:    lea rax, [rsi + rsi]
+; X64-NEXT:    mov ecx, edx
+; X64-NEXT:    not cl
+; X64-NEXT:    shl rax, cl
+; X64-NEXT:    or rax, rdi
+; X64-NEXT:    mov ecx, edx
+; X64-NEXT:    shr rsi, cl
+; X64-NEXT:    xor ebx, ebx
+; X64-NEXT:    test dl, 0x40
+; X64-NEXT:    cmovne rax, rsi
+; X64-NEXT:    cmove rbx, rsi
+; X64-NEXT:    mov rdx, rbx
+; X64-NEXT:    add rsp, 0x38
+; X64-NEXT:    pop rbx
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <lshr_i128_i128>:
+; ARM64:         sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    lsl x4, x1, #1
+; ARM64-NEXT:    mvn w5, w2
+; ARM64-NEXT:    lsr x0, x0, x2
+; ARM64-NEXT:    tst x2, #0x40
+; ARM64-NEXT:    lsl x4, x4, x5
+; ARM64-NEXT:    lsr x5, x1, x2
+; ARM64-NEXT:    orr x4, x4, x0
+; ARM64-NEXT:    csel x1, xzr, x5, ne
+; ARM64-NEXT:    csel x2, x5, x4, ne
+; ARM64-NEXT:    mov x0, x2
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+  %r = lshr i128 %v, %s
+  ret i128 %r
+}
+
 
 define void @lshr_i64_no_salvage_imm(i64 %0) {
 ; X64-LABEL: <lshr_i64_no_salvage_imm>:
