@@ -47,9 +47,6 @@ struct CompilerBase<Adaptor, Derived, Config>::ValueRef {
         assert(liveness.last == compiler->cur_block_idx &&
                "liveness of non-last-full value must end at last use");
       }
-    } else {
-      assert(state.a.assignment->references_left == 0 &&
-             "variable ref with non-zero ref-count");
     }
 #endif
 

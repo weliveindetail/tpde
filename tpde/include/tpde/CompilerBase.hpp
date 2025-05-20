@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <algorithm>
+#include <functional>
 #include <unordered_map>
 
 #include "Analyzer.hpp"
@@ -127,6 +129,7 @@ struct CompilerBase {
     util::SmallVector<ValueAssignment *, Analyzer<Adaptor>::SMALL_VALUE_NUM>
         value_ptrs;
 
+    ValLocalIdx variable_ref_list;
     util::SmallVector<ValLocalIdx, Analyzer<Adaptor>::SMALL_BLOCK_NUM>
         delayed_free_lists;
   } assignments = {};
@@ -769,7 +772,9 @@ void CompilerBase<Adaptor, Derived, Config>::init_variable_ref(
   assignment->stack_variable = false;
   assignment->part_count = 1;
   assignment->var_ref_custom_idx = var_ref_data;
-  assignment->references_left = 0;
+  assignment->next_delayed_free_entry = assignments.variable_ref_list;
+
+  assignments.variable_ref_list = local_idx;
 
   AssignmentPartRef ap{assignment, 0};
   ap.reset();
@@ -1455,9 +1460,6 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
   ScratchWrapper tmp_reg1{derived()}, tmp_reg2{derived()};
 
   const auto move_from_tmp_phi = [&](IRValueRef target_phi) {
-    // ref-count the source val
-    (void)val_ref(cur_tmp_val).part(0);
-
     auto phi_vr = val_ref(target_phi);
     if (cur_tmp_part_count <= 2) {
       AssignmentPartRef ap{phi_vr.assignment(), 0};
@@ -1475,7 +1477,6 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
         derived()->spill_reg(
             tmp_reg2.cur_reg, ap_high.frame_off(), ap_high.part_size());
       }
-      (void)phi_vr.part(0); // ref-count
       return;
     }
 
@@ -1488,7 +1489,6 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       derived()->load_from_stack(reg, slot_off, phi_ap.part_size());
       derived()->spill_reg(reg, phi_ap.frame_off(), phi_ap.part_size());
     }
-    (void)phi_vr.part(0); // ref-count
   };
 
   while (handled_count != nodes.size()) {
@@ -1501,7 +1501,8 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       assert(cur_tmp_val == Adaptor::INVALID_VALUE_REF);
 
       auto phi_val = nodes[cur_idx].phi;
-      auto *assignment = val_assignment(nodes[cur_idx].phi_local_idx);
+      auto phi_vr = this->val_ref(phi_val);
+      auto *assignment = phi_vr.assignment();
       cur_tmp_part_count = assignment->part_count;
       cur_tmp_val = phi_val;
 
@@ -1528,8 +1529,6 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       } else {
         // TODO(ts): if the PHI is not fixed, then we can just reuse its
         // register if it has one
-        auto phi_vr = this->val_ref(phi_val);
-        phi_vr.disown();
         auto phi_vpr = phi_vr.part(0);
         auto reg = tmp_reg1.alloc_from_bank(phi_vpr.bank());
         phi_vpr.reload_into_specific_fixed(this, reg);
@@ -1553,7 +1552,9 @@ void CompilerBase<Adaptor, Derived, Config>::move_to_phi_nodes_impl(
       auto phi_val = nodes[cur_idx].phi;
       IRValueRef incoming_val = nodes[cur_idx].incoming_val;
       if (incoming_val == phi_val) {
-        // no need to do anything
+        // no need to do anything, except ref-counting
+        (void)val_ref(incoming_val);
+        (void)val_ref(phi_val);
         continue;
       }
 
@@ -1650,10 +1651,13 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   stack.dynamic_free_lists.clear();
 
   assignments.cur_fixed_assignment_count = {};
-  assignments.value_ptrs.clear();
-  assignments.value_ptrs.resize(analyzer.liveness.size());
+  assert(std::ranges::none_of(assignments.value_ptrs, std::identity{}));
+  if (assignments.value_ptrs.size() < analyzer.liveness.size()) {
+    assignments.value_ptrs.resize(analyzer.liveness.size());
+  }
 
   assignments.allocator.reset();
+  assignments.variable_ref_list = INVALID_VAL_LOCAL_IDX;
   assignments.delayed_free_lists.clear();
   assignments.delayed_free_lists.resize(analyzer.block_layout.size(),
                                         INVALID_VAL_LOCAL_IDX);
@@ -1707,9 +1711,23 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
       TPDE_LOG_ERR("Failed to compile block {} ({})",
                    i,
                    adaptor->block_fmt_ref(block_ref));
+      // Ensure invariant that value_ptrs only contains nullptr at the end.
+      assignments.value_ptrs.clear();
       return false;
     }
   }
+
+  // Reset all variable-ref assignment pointers to nullptr.
+  ValLocalIdx variable_ref_list = assignments.variable_ref_list;
+  while (variable_ref_list != INVALID_VAL_LOCAL_IDX) {
+    u32 idx = u32(variable_ref_list);
+    ValLocalIdx next = assignments.value_ptrs[idx]->next_delayed_free_entry;
+    assignments.value_ptrs[idx] = nullptr;
+    variable_ref_list = next;
+  }
+
+  assert(std::ranges::none_of(assignments.value_ptrs, std::identity{}) &&
+         "found non-freed ValueAssignment, maybe missing ref-count?");
 
   derived()->finish_func(func_idx);
 
