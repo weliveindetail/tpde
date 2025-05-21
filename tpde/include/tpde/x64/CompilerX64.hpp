@@ -122,24 +122,6 @@ constexpr static u64 create_bitmask(const std::array<AsmReg, N> regs) {
   return set;
 }
 
-struct PlatformConfig : CompilerConfigDefault {
-  using Assembler = AssemblerElfX64;
-  using AsmReg = tpde::x64::AsmReg;
-
-  static constexpr RegBank GP_BANK{0};
-  static constexpr RegBank FP_BANK{1};
-  static constexpr bool FRAME_INDEXING_NEGATIVE = true;
-  static constexpr u32 PLATFORM_POINTER_SIZE = 8;
-  static constexpr u32 NUM_BANKS = 2;
-};
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename> typename BaseTy =
-              CompilerBase,
-          typename Config = PlatformConfig>
-struct CompilerX64;
-
 struct CallingConv {
   enum TYPE {
     SYSV_CC
@@ -296,6 +278,13 @@ public:
   CCAssignerSysV(bool vararg = false) noexcept
       : CCAssigner(Info), vararg(vararg) {}
 
+  void reset() noexcept override {
+    gp_cnt = xmm_cnt = stack = 0;
+    must_assign_stack = 0;
+    vararg = false;
+    ret_gp_cnt = ret_xmm_cnt = 0;
+  }
+
   void assign_arg(CCAssignment &arg) noexcept override {
     if (arg.byval) {
       stack = util::align_up(stack, arg.byval_align < 8 ? 8 : arg.byval_align);
@@ -368,6 +357,18 @@ public:
   }
 };
 
+struct PlatformConfig : CompilerConfigDefault {
+  using Assembler = AssemblerElfX64;
+  using AsmReg = tpde::x64::AsmReg;
+  using DefaultCCAssigner = CCAssignerSysV;
+
+  static constexpr RegBank GP_BANK{0};
+  static constexpr RegBank FP_BANK{1};
+  static constexpr bool FRAME_INDEXING_NEGATIVE = true;
+  static constexpr u32 PLATFORM_POINTER_SIZE = 8;
+  static constexpr u32 NUM_BANKS = 2;
+};
+
 namespace concepts {
 template <typename T, typename Config>
 concept Compiler = tpde::Compiler<T, Config> && requires(T a) {
@@ -378,15 +379,14 @@ concept Compiler = tpde::Compiler<T, Config> && requires(T a) {
   {
     a.arg_allow_split_reg_stack_passing(std::declval<typename T::IRValueRef>())
   } -> std::convertible_to<bool>;
-
-  { a.cur_calling_convention() } -> SameBaseAs<CallingConv>;
 };
 } // namespace concepts
 
 template <IRAdaptor Adaptor,
           typename Derived,
-          template <typename, typename, typename> typename BaseTy,
-          typename Config>
+          template <typename, typename, typename> typename BaseTy =
+              CompilerBase,
+          typename Config = PlatformConfig>
 struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   using Base = BaseTy<Adaptor, Derived, Config>;
 
@@ -406,8 +406,6 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
   using Base::derived;
 
-
-  using DefaultCCAssigner = CCAssignerSysV;
 
   // TODO(ts): make this dependent on the number of callee-saved regs of the
   // current function or if there is a call in the function?
@@ -782,8 +780,6 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
     u32 func_idx) noexcept {
-  const CallingConv conv = Base::derived()->cur_calling_convention();
-
   // NB: code alignment factor 1, data alignment factor -8.
   auto fde_off = this->assembler.eh_begin_fde(this->get_personality_sym());
   // push rbp
@@ -801,8 +797,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
   this->assembler.eh_write_inst(dwarf::DW_CFA_advance_loc, 0);
 
   auto *write_ptr = this->text_writer.begin_ptr() + func_reg_save_off;
-  const u64 saved_regs =
-      this->register_file.clobbered & conv.callee_saved_mask();
+  auto csr = derived()->cur_cc_assigner()->get_ccinfo().callee_saved_regs;
+  u64 saved_regs = this->register_file.clobbered & csr;
   u32 num_saved_regs = 0u;
   for (auto reg : util::BitSetIterator{saved_regs}) {
     assert(reg <= AsmReg::R15);
@@ -904,8 +900,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
     } else {
       write_ptr += fe64_ADD64ri(write_ptr, 0, FE_SP, final_frame_size);
     }
-    for (auto reg : util::BitSetIterator<true>{this->register_file.clobbered &
-                                               conv.callee_saved_mask()}) {
+    for (auto reg : util::BitSetIterator<true>{saved_regs}) {
       assert(reg <= AsmReg::R15);
       write_ptr +=
           fe64_POPr(write_ptr, 0, AsmReg{static_cast<AsmReg::REG>(reg)});
@@ -1361,21 +1356,17 @@ AsmReg
   };
 
   u64 possible_regs;
-  const auto call_conv = derived()->cur_calling_convention();
+  auto csr = derived()->cur_cc_assigner()->get_ccinfo().callee_saved_regs;
   if (derived()->cur_func_may_emit_calls()) {
     // we can only allocated fixed assignments from the callee-saved regs
-    const u64 preferred_regs = call_conv.callee_saved_mask();
-    possible_regs = find_possible_regs(preferred_regs);
+    possible_regs = find_possible_regs(csr);
   } else {
     // try allocating any non-callee saved register first, except the result
     // registers
-    u64 preferred_regs =
-        ~call_conv.result_regs_mask() & ~call_conv.callee_saved_mask();
-    possible_regs = find_possible_regs(preferred_regs);
+    possible_regs = find_possible_regs(~csr);
     if (possible_regs == 0) {
       // otherwise fallback to callee-saved regs
-      preferred_regs = derived()->cur_calling_convention().callee_saved_mask();
-      possible_regs = find_possible_regs(preferred_regs);
+      possible_regs = find_possible_regs(csr);
     }
   }
 

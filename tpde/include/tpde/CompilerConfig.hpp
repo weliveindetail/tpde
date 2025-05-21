@@ -3,11 +3,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #pragma once
 
+#include <concepts>
 #include <type_traits>
 
 #include "base.hpp"
 
 namespace tpde {
+
+class CCAssigner;
 
 template <typename T, typename Base>
 concept SameBaseAs =
@@ -19,6 +22,9 @@ concept CompilerConfig = requires {
   { T::PLATFORM_POINTER_SIZE } -> SameBaseAs<u32>;
   { T::NUM_BANKS } -> SameBaseAs<u32>;
   { T::DEFAULT_VAR_REF_HANDLING } -> SameBaseAs<bool>;
+
+  typename T::DefaultCCAssigner;
+  requires std::derived_from<typename T::DefaultCCAssigner, CCAssigner>;
 
   typename T::Assembler;
   typename T::AsmReg;

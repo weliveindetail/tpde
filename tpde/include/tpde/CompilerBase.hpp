@@ -67,6 +67,8 @@ public:
   CCAssigner(const CCInfo &ccinfo) noexcept : ccinfo(&ccinfo) {}
   virtual ~CCAssigner() noexcept {}
 
+  virtual void reset() noexcept = 0;
+
   const CCInfo &get_ccinfo() const noexcept { return *ccinfo; }
 
   virtual void assign_arg(CCAssignment &cca) noexcept = 0;
@@ -150,6 +152,11 @@ struct CompilerBase {
   bool generating_branch = false;
 #endif
 
+private:
+  /// Default CCAssigner if the implementation doesn't override cur_cc_assigner.
+  typename Config::DefaultCCAssigner default_cc_assigner;
+
+public:
   Assembler assembler;
   Assembler::SectionWriter text_writer;
   // TODO(ts): smallvector?
@@ -267,6 +274,9 @@ struct CompilerBase {
   /// Reset any leftover data from the previous compilation such that it will
   /// not affect the next compilation
   void reset();
+
+  /// Get CCAssigner for current function.
+  CCAssigner *cur_cc_assigner() noexcept { return &default_cc_assigner; }
 
   void init_assignment(IRValueRef value, ValLocalIdx local_idx) noexcept;
 
@@ -1752,20 +1762,15 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   // TODO(ts): place function label
   // TODO(ts): make function labels optional?
 
-  {
-    typename Derived::DefaultCCAssigner default_assigner;
-    CCAssigner *cc_assigner = &default_assigner;
-    if constexpr (requires { derived()->cur_cc_assigner(); }) {
-      cc_assigner = derived()->cur_cc_assigner();
-      assert(cc_assigner != nullptr);
-    }
+  CCAssigner *cc_assigner = derived()->cur_cc_assigner();
+  assert(cc_assigner != nullptr);
 
-    register_file.allocatable = cc_assigner->get_ccinfo().allocatable_regs;
+  register_file.allocatable = cc_assigner->get_ccinfo().allocatable_regs;
 
-    // This initializes the stack frame, which must reserve space for
-    // callee-saved registers, vararg save area, etc.
-    derived()->gen_func_prolog_and_args(cc_assigner);
-  }
+  // This initializes the stack frame, which must reserve space for
+  // callee-saved registers, vararg save area, etc.
+  cc_assigner->reset();
+  derived()->gen_func_prolog_and_args(cc_assigner);
 
   for (const IRValueRef alloca : adaptor->cur_static_allocas()) {
     auto size = adaptor->val_alloca_size(alloca);

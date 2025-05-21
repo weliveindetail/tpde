@@ -88,12 +88,10 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
     a.cur_personality_func()
   } -> std::same_as<typename Config::Assembler::SymRef>;
 
-  requires true || requires {
-    /// Provides a calling convention assigner for the current function.
-    /// Optional, if not implemented, the default C calling convention will be
-    /// used.
-    { a.cur_cc_assigner() } -> std::same_as<CCAssigner *>;
-  };
+  /// Provides a calling convention assigner for the current function.
+  /// Optional, if not implemented, the default C calling convention will be
+  /// used.
+  { a.cur_cc_assigner() } -> std::convertible_to<CCAssigner *>;
 
   {
     a.try_force_fixed_assignment(ARG(typename T::IRValueRef))

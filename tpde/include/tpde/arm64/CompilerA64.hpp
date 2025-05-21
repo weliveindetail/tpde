@@ -159,17 +159,6 @@ constexpr static u64 create_bitmask(const std::array<AsmReg, N> regs) {
   return set;
 }
 
-struct PlatformConfig : CompilerConfigDefault {
-  using Assembler = AssemblerElfA64;
-  using AsmReg = tpde::a64::AsmReg;
-
-  static constexpr RegBank GP_BANK{0};
-  static constexpr RegBank FP_BANK{1};
-  static constexpr bool FRAME_INDEXING_NEGATIVE = false;
-  static constexpr u32 PLATFORM_POINTER_SIZE = 8;
-  static constexpr u32 NUM_BANKS = 2;
-};
-
 class CCAssignerAAPCS : public CCAssigner {
   static constexpr CCInfo Info{
       // we reserve SP,FP,R16 and R17 for our special use cases
@@ -226,6 +215,10 @@ class CCAssignerAAPCS : public CCAssigner {
 
 public:
   CCAssignerAAPCS() noexcept : CCAssigner(Info) {}
+
+  void reset() noexcept override {
+    ngrn = nsrn = nsaa = ret_ngrn = ret_nsrn = 0;
+  }
 
   void assign_arg(CCAssignment &arg) noexcept override {
     if (arg.byval) [[unlikely]] {
@@ -293,13 +286,6 @@ public:
     }
   }
 };
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename> typename BaseTy =
-              CompilerBase,
-          typename Config = PlatformConfig>
-struct CompilerA64;
 
 struct CallingConv {
   enum TYPE {
@@ -445,6 +431,18 @@ struct CallingConv {
   };
 };
 
+struct PlatformConfig : CompilerConfigDefault {
+  using Assembler = AssemblerElfA64;
+  using AsmReg = tpde::a64::AsmReg;
+  using DefaultCCAssigner = CCAssignerAAPCS;
+
+  static constexpr RegBank GP_BANK{0};
+  static constexpr RegBank FP_BANK{1};
+  static constexpr bool FRAME_INDEXING_NEGATIVE = false;
+  static constexpr u32 PLATFORM_POINTER_SIZE = 8;
+  static constexpr u32 NUM_BANKS = 2;
+};
+
 namespace concepts {
 template <typename T, typename Config>
 concept Compiler = tpde::Compiler<T, Config> && requires(T a) {
@@ -455,15 +453,14 @@ concept Compiler = tpde::Compiler<T, Config> && requires(T a) {
   {
     a.arg_allow_split_reg_stack_passing(std::declval<typename T::IRValueRef>())
   } -> std::convertible_to<bool>;
-
-  { a.cur_calling_convention() } -> SameBaseAs<CallingConv>;
 };
 } // namespace concepts
 
 template <IRAdaptor Adaptor,
           typename Derived,
-          template <typename, typename, typename> typename BaseTy,
-          typename Config>
+          template <typename, typename, typename> typename BaseTy =
+              CompilerBase,
+          typename Config = PlatformConfig>
 struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   using Base = BaseTy<Adaptor, Derived, Config>;
 
@@ -483,8 +480,6 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
 
   using Base::derived;
 
-
-  using DefaultCCAssigner = CCAssignerAAPCS;
 
   // TODO(ts): make this dependent on the number of callee-saved regs of the
   // current function or if there is a call in the function?
@@ -983,10 +978,8 @@ template <IRAdaptor Adaptor,
           typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     u32 func_idx) noexcept {
-  const CallingConv conv = Base::derived()->cur_calling_convention();
-
-  const u64 saved_regs =
-      this->register_file.clobbered & conv.callee_saved_mask();
+  auto csr = derived()->cur_cc_assigner()->get_ccinfo().callee_saved_regs;
+  u64 saved_regs = this->register_file.clobbered & csr;
 
   const auto dyn_alloca = this->adaptor->cur_has_dynamic_alloca();
   auto stack_reg = DA_SP;
@@ -1558,21 +1551,17 @@ AsmReg
   };
 
   u64 possible_regs;
-  const auto call_conv = derived()->cur_calling_convention();
+  auto csr = derived()->cur_cc_assigner()->get_ccinfo().callee_saved_regs;
   if (derived()->cur_func_may_emit_calls()) {
     // we can only allocated fixed assignments from the callee-saved regs
-    const u64 preferred_regs = call_conv.callee_saved_mask();
-    possible_regs = find_possible_regs(preferred_regs);
+    possible_regs = find_possible_regs(csr);
   } else {
     // try allocating any non-callee saved register first, except the result
     // registers
-    u64 preferred_regs =
-        ~call_conv.result_regs_mask() & ~call_conv.callee_saved_mask();
-    possible_regs = find_possible_regs(preferred_regs);
+    possible_regs = find_possible_regs(~csr);
     if (possible_regs == 0) {
       // otherwise fallback to callee-saved regs
-      preferred_regs = derived()->cur_calling_convention().callee_saved_mask();
-      possible_regs = find_possible_regs(preferred_regs);
+      possible_regs = find_possible_regs(csr);
     }
   }
 
