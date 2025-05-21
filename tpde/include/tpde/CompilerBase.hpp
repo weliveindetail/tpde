@@ -822,6 +822,9 @@ i32 CompilerBase<Adaptor, Derived, Config>::allocate_stack_slot(
     }
   }
 
+  assert(stack.frame_size != ~0u &&
+         "cannot allocate stack slot before stack frame is initialized");
+
   // Align frame_size to align_bits
   for (u32 list_idx = util::cnt_tz(stack.frame_size); list_idx < align_bits;
        list_idx = util::cnt_tz(stack.frame_size)) {
@@ -1705,7 +1708,9 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   analyzer.switch_func(func);
   derived()->analysis_end();
 
-  stack.frame_size = derived()->func_reserved_frame_size();
+#ifndef NDEBUG
+  stack.frame_size = ~0u;
+#endif
   for (auto &e : stack.fixed_free_lists) {
     e.clear();
   }
@@ -1744,6 +1749,24 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
     block_labels.push_back(assembler.label_create());
   }
 
+  // TODO(ts): place function label
+  // TODO(ts): make function labels optional?
+
+  {
+    typename Derived::DefaultCCAssigner default_assigner;
+    CCAssigner *cc_assigner = &default_assigner;
+    if constexpr (requires { derived()->cur_cc_assigner(); }) {
+      cc_assigner = derived()->cur_cc_assigner();
+      assert(cc_assigner != nullptr);
+    }
+
+    register_file.allocatable = cc_assigner->get_ccinfo().allocatable_regs;
+
+    // This initializes the stack frame, which must reserve space for
+    // callee-saved registers, vararg save area, etc.
+    derived()->gen_func_prolog_and_args(cc_assigner);
+  }
+
   for (const IRValueRef alloca : adaptor->cur_static_allocas()) {
     auto size = adaptor->val_alloca_size(alloca);
     size = util::align_up(size, adaptor->val_alloca_align(alloca));
@@ -1758,23 +1781,6 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   if constexpr (!Config::DEFAULT_VAR_REF_HANDLING) {
     derived()->setup_var_ref_assignments();
   }
-
-  // TODO(ts): place function label
-  // TODO(ts): make function labels optional?
-
-  {
-    typename Derived::DefaultCCAssigner default_assigner;
-    CCAssigner *cc_assigner = &default_assigner;
-    if constexpr (requires { derived()->cur_cc_assigner(); }) {
-      cc_assigner = derived()->cur_cc_assigner();
-      assert(cc_assigner != nullptr);
-    }
-
-    register_file.allocatable = cc_assigner->get_ccinfo().allocatable_regs;
-
-    derived()->gen_func_prolog_and_args(cc_assigner);
-  }
-
 
   for (u32 i = 0; i < analyzer.block_layout.size(); ++i) {
     const auto block_ref = analyzer.block_layout[i];

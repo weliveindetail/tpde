@@ -516,8 +516,6 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
   void finish_func(u32 func_idx) noexcept;
 
-  u32 func_reserved_frame_size() noexcept;
-
   void reset() noexcept;
 
   // helpers
@@ -662,7 +660,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
   u32 csr_higp = std::popcount((csr >> AsmReg::R8) & 0xff);
   // R8 and higher need a REX prefix.
   u32 reg_save_size = 1 * csr_logp + 2 * csr_higp;
-  u32 reg_save_alloc = 8 * (csr_logp + csr_higp);
+  this->stack.frame_size = 8 * (csr_logp + csr_higp);
 
   this->text_writer.ensure_space(reg_save_size);
   this->text_writer.cur_ptr() += reg_save_size;
@@ -680,7 +678,8 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
 #endif
 
   if (this->adaptor->cur_is_vararg()) {
-    reg_save_frame_off = reg_save_alloc + 6 * 8 + 8 * 16;
+    this->stack.frame_size += 6 * 8 + 8 * 16;
+    reg_save_frame_off = this->stack.frame_size;
     auto mem = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)reg_save_frame_off);
     ASM(MOV64mr, mem, FE_DI);
     mem.off += 8;
@@ -940,22 +939,6 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::finish_func(
   this->assembler.sym_def(func_sym, func_sec, func_start_off, func_size);
   this->assembler.eh_end_fde(fde_off, func_sym);
   this->assembler.except_encode_func(func_sym);
-}
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename> class BaseTy,
-          typename Config>
-u32 CompilerX64<Adaptor, Derived, BaseTy, Config>::
-    func_reserved_frame_size() noexcept {
-  const CallingConv call_conv = derived()->cur_calling_convention();
-  // when indexing into the stack frame, the code needs to skip over the saved
-  // registers and the reg-save area if it exists
-  u32 reserved_size = call_conv.callee_saved_regs().size() * 8;
-  if (this->adaptor->cur_is_vararg()) {
-    reserved_size += 176;
-  }
-  return reserved_size;
 }
 
 template <IRAdaptor Adaptor,

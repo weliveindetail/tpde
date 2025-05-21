@@ -551,8 +551,6 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   // note: this has to call assembler->end_func
   void finish_func(u32 func_idx) noexcept;
 
-  u32 func_reserved_frame_size() noexcept;
-
   void reset() noexcept;
 
   // helpers
@@ -842,7 +840,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
   // used. While we could pad with nops, we later move the beginning of the
   // function so that small functions don't have to execute 9 nops.
   // See finish_func.
-  u32 reg_save_alloc = 16; // FP, LR
+  this->stack.frame_size = 16; // FP, LR
   {
     auto csr = cc_info.callee_saved_regs;
     auto csr_gp = csr & this->register_file.bank_regs(Config::GP_BANK);
@@ -852,7 +850,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
     // LDP/STP can handle two registers of the same bank.
     u32 reg_save_size = 4 * ((gp_saves + 1) / 2 + (fp_saves + 1) / 2);
     // TODO: support CSR of Qx/Vx registers, not just Dx
-    reg_save_alloc += util::align_up(gp_saves * 8 + fp_saves * 8, 16);
+    this->stack.frame_size += util::align_up(gp_saves * 8 + fp_saves * 8, 16);
 
     // Reserve space for sub sp, stp x29/x30, and mov x29, sp.
     func_prologue_alloc = reg_save_size + 12;
@@ -868,7 +866,11 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
   // TODO(ts): support larger stack alignments?
 
   if (this->adaptor->cur_is_vararg()) [[unlikely]] {
-    reg_save_frame_off = reg_save_alloc;
+    reg_save_frame_off = this->stack.frame_size;
+    // We additionally store a pointer to the stack area, which we can't compute
+    // with a constant offset from the frame pointer. Add 16 bytes to maintain
+    // alignment.
+    this->stack.frame_size += 8 * 8 + 8 * 16 + 16;
     this->text_writer.ensure_space(4 * 8);
     ASMNC(STPx, DA_GP(0), DA_GP(1), DA_SP, reg_save_frame_off);
     ASMNC(STPx, DA_GP(2), DA_GP(3), DA_SP, reg_save_frame_off + 16);
@@ -1182,27 +1184,6 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
   this->assembler.sym_def(func_sym, func_sec, func_start_off, func_size);
   this->assembler.eh_end_fde(fde_off, func_sym);
   this->assembler.except_encode_func(func_sym);
-}
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename> class BaseTy,
-          typename Config>
-u32 CompilerA64<Adaptor, Derived, BaseTy, Config>::
-    func_reserved_frame_size() noexcept {
-  const CallingConv call_conv = derived()->cur_calling_convention();
-  // when indexing into the stack frame, the code needs to skip over the saved
-  // registers and the reg-save area if it exists
-  // (+16 for FP/LR)
-  u32 reserved_size =
-      util::align_up(call_conv.callee_saved_regs().size() * 8, 16) + 16;
-  if (this->adaptor->cur_is_vararg()) {
-    // varargs size: 8 GP regs (64), 8 vector regs (128) = 192
-    // We add 8 bytes top ptr, because we don't know the frame size while
-    // compiling, and 8 bytes padding for alignment.
-    reserved_size += 192 + 16;
-  }
-  return reserved_size;
 }
 
 template <IRAdaptor Adaptor,
