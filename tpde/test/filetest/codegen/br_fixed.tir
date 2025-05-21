@@ -17,7 +17,7 @@ entry:
 ; X64: sub rsp
 ; COM: a bit unfortunate, maybe need special handling for args at some point
 ; X64-NEXT: mov r10,rdi
-; X64-NEXT: mov r11,rsi
+; X64-NEXT: mov rdi,rsi
 ; X64-NEXT: cmp r10,0
 ; X64-NEXT: je
   condbr %a, ^ret1, ^ret2
@@ -26,7 +26,7 @@ ret1:
 ; X64-NEXT: add rsp
   ret %a
 ret2:
-; X64: mov rax,r11
+; X64: mov rax,rdi
 ; X64-NEXT: add rsp
   ret %b
 }
@@ -37,12 +37,12 @@ entry:
 ; X64: sub rsp
 ; COM: spill
 ; X64-NEXT: mov r10,rdi
-; X64-NEXT: mov r11,rsi
+; X64-NEXT: mov rdi,rsi
 ; X64-NEXT: cmp r10,0x0
 ; X64-NEXT: jne
   condbr %a, ^ret1, ^ret2
 ret2:
-; X64-NEXT: mov rax,r11
+; X64-NEXT: mov rax,rdi
 ; X64-NEXT: add rsp
   ret %b
 ret1:
@@ -56,22 +56,22 @@ condbr3(%a, %b, %c) {
 entry:
 ; X64: sub rsp
 ; X64-NEXT: mov r10,rsi
-; X64-NEXT: mov r11,rdx
+; X64-NEXT: mov rsi,rdx
 ; X64-NEXT: cmp rdi,0
 ; X64-NEXT: jne
 ; COM: PHI-resolution for f
-; X64-NEXT: mov rcx,r10
+; X64-NEXT: mov r8,r10
 ; X64-NEXT: jmp
   condbr %a, ^t, ^f
 t:
-; X64-NEXT: add r10,r11
-; X64-NEXT: mov rcx,r10
+; X64-NEXT: add r10,rsi
+; X64-NEXT: mov r8,r10
   %d = add %b, %c
   br ^f
 f:
   %e = phi [^entry, %b], [^t, %d]
-; X64-NEXT: sub r11,rcx
-; X64-NEXT: mov rax,r11
+; X64-NEXT: sub rsi,r8
+; X64-NEXT: mov rax,rsi
   %f = sub %c, %e
 ; X64-NEXT: add rsp
   ret %f
@@ -84,18 +84,18 @@ entry:
 ; X64: sub rsp
 ; X64-NEXT: mov r10,rsi
 ; COM: move of %a into %p
-; X64-NEXT: mov rcx,rdi
+; X64-NEXT: mov rsi,rdi
   br ^loop_head
 loop_head:
   %p = phi [^entry, %a], [^loop_body, %c]
-; X64-NEXT: cmp rcx,0x0
+; X64-NEXT: cmp rsi,0x0
 ; X64-NEXT: je
   condbr %p, ^loop_body, ^ret
 loop_body:
-; X64-NEXT: mov rax,rcx
+; X64-NEXT: mov rax,rsi
 ; X64-NEXT: sub rax,r10
   %c = sub %p, %b
-; X64-NEXT: mov rcx,rax
+; X64-NEXT: mov rsi,rax
 ; X64-NEXT: jmp
   br ^loop_head
 ret:
@@ -108,22 +108,22 @@ phi_chain1(%a) {
 entry:
 ; X64: sub rsp
 ; COM: move into p1
-; X64-NEXT: mov rcx,rdi
-; COM: move into p2
 ; X64-NEXT: mov rsi,rdi
+; COM: move into p2
+; X64-NEXT: mov r8,rdi
   br ^loop_head
 loop_head:
   %p1 = phi [^entry, %a], [^loop_body, %c]
   %p2 = phi [^entry, %a], [^loop_body, %p1]
-; X64-NEXT: cmp rsi,0x0
+; X64-NEXT: cmp r8,0x0
 ; X64-NEXT: je
   condbr %p2, ^loop_body, ^ret
 loop_body:
-; X64-NEXT: lea rax,[rcx+rsi*1]
+; X64-NEXT: lea rax,[rsi+r8*1]
   %c = add %p1, %p2
 ; COM: move first into p2
-; X64-NEXT: mov rsi,rcx
-; X64-NEXT: mov rcx,rax
+; X64-NEXT: mov r8,rsi
+; X64-NEXT: mov rsi,rax
 ; X64-NEXT: jmp
   br ^loop_head
 ret:
@@ -136,23 +136,23 @@ phi_cycle1(%a) {
 entry:
 ; X64: sub rsp
 ; COM: move into p1
-; X64-NEXT: mov rcx,rdi
-; COM: move into p2
 ; X64-NEXT: mov rsi,rdi
+; COM: move into p2
+; X64-NEXT: mov r8,rdi
   br ^loop_head
 loop_head:
   %p1 = phi [^entry, %a], [^loop_body, %p2]
   %p2 = phi [^entry, %a], [^loop_body, %p1]
-; X64-NEXT: cmp rsi,0x0
+; X64-NEXT: cmp r8,0x0
 ; X64-NEXT: je
   condbr %p2, ^loop_body, ^ret
 loop_body:
-; X64-NEXT: lea rax,[rcx+rsi*1]
+; X64-NEXT: lea rax,[rsi+r8*1]
   %c = add %p1, %p2
 ; COM: break cycle by moving p1 into temporary
-; X64-NEXT: mov rax,rcx
-; X64-NEXT: mov rcx,rsi
-; X64-NEXT: mov rsi,rax
+; X64-NEXT: mov rax,rsi
+; X64-NEXT: mov rsi,r8
+; X64-NEXT: mov r8,rax
 ; X64-NEXT: jmp
   br ^loop_head
 ret:

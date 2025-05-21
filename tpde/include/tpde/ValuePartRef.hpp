@@ -120,6 +120,11 @@ public:
     return !state.c.has_assignment && state.c.is_const;
   }
 
+  bool is_owned() const noexcept {
+    assert(has_assignment());
+    return state.c.owned;
+  }
+
   [[nodiscard]] AssignmentPartRef assignment() const noexcept {
     assert(has_assignment());
     return AssignmentPartRef{state.v.assignment, state.v.part};

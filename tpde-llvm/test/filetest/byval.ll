@@ -265,3 +265,80 @@ define void @call_byval3(ptr %a, ptr %b, ptr %c, ptr %d) {
   call void @fn_byval3(ptr %a, ptr %b, ptr %c, ptr %d)
   ret void
 }
+
+define void @fn_byval4(ptr byval({ i64, i64 }) %a, ...) {
+; X64-LABEL: <fn_byval4>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0xe0
+; X64-NEXT:    mov qword ptr [rbp - 0xd8], rdi
+; X64-NEXT:    mov qword ptr [rbp - 0xd0], rsi
+; X64-NEXT:    mov qword ptr [rbp - 0xc8], rdx
+; X64-NEXT:    mov qword ptr [rbp - 0xc0], rcx
+; X64-NEXT:    mov qword ptr [rbp - 0xb8], r8
+; X64-NEXT:    mov qword ptr [rbp - 0xb0], r9
+; X64-NEXT:    test al, al
+; X64-NEXT:    je <L0>
+; X64-NEXT:    movdqu xmmword ptr [rbp - 0xa8], xmm0
+; X64-NEXT:    movdqu xmmword ptr [rbp - 0x98], xmm1
+; X64-NEXT:    movdqu xmmword ptr [rbp - 0x88], xmm2
+; X64-NEXT:    movdqu xmmword ptr [rbp - 0x78], xmm3
+; X64-NEXT:    movdqu xmmword ptr [rbp - 0x68], xmm4
+; X64-NEXT:    movdqu xmmword ptr [rbp - 0x58], xmm5
+; X64-NEXT:    movdqu xmmword ptr [rbp - 0x48], xmm6
+; X64-NEXT:    movdqu xmmword ptr [rbp - 0x38], xmm7
+; X64-NEXT:  <L0>:
+; X64-NEXT:    add rsp, 0xe0
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <fn_byval4>:
+; ARM64:         sub sp, sp, #0x170
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    stp x0, x1, [sp, #0xa0]
+; ARM64-NEXT:    stp x2, x3, [sp, #0xb0]
+; ARM64-NEXT:    stp x4, x5, [sp, #0xc0]
+; ARM64-NEXT:    stp x6, x7, [sp, #0xd0]
+; ARM64-NEXT:    stp q0, q1, [sp, #0xe0]
+; ARM64-NEXT:    stp q2, q3, [sp, #0x100]
+; ARM64-NEXT:    stp q4, q5, [sp, #0x120]
+; ARM64-NEXT:    stp q6, q7, [sp, #0x140]
+; ARM64-NEXT:    add x16, sp, #0x170
+; ARM64-NEXT:    add x9, x16, #0x0
+; ARM64-NEXT:    add x16, x16, #0x10
+; ARM64-NEXT:    str x16, [x29, #0x160]
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0x170
+; ARM64-NEXT:    ret
+  ret void
+}
+
+define void @call_byval4(ptr %a, ptr %b) {
+; X64-LABEL: <call_byval4>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 fn_byval4-0x4
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <call_byval4>:
+; ARM64:         sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    bl 0x310 <call_byval4+0x10>
+; ARM64-NEXT:     R_AARCH64_CALL26 fn_byval4
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+  call void @fn_byval4(ptr %a, ptr %b)
+  ret void
+}

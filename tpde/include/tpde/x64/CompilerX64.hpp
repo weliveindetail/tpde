@@ -9,6 +9,8 @@
 #include "tpde/ValueAssignment.hpp"
 #include "tpde/base.hpp"
 
+#include <bit>
+
 #ifdef TPDE_ASSERTS
   #include <fadec.h>
 #endif
@@ -213,13 +215,6 @@ struct CallingConv {
     }
   }
 
-  template <typename Adaptor,
-            typename Derived,
-            template <typename, typename, typename> typename BaseTy,
-            typename Config>
-  void handle_func_args(
-      CompilerX64<Adaptor, Derived, BaseTy, Config> *) const noexcept;
-
   struct SysV {
     constexpr static std::array<AsmReg, 6> arg_regs_gp{
         AsmReg::DI, AsmReg::SI, AsmReg::DX, AsmReg::CX, AsmReg::R8, AsmReg::R9};
@@ -270,6 +265,22 @@ class CCAssignerSysV : public CCAssigner {
           AsmReg::R13,
           AsmReg::R14,
           AsmReg::R15,
+      }),
+      .arg_regs = create_bitmask({
+          AsmReg::DI,
+          AsmReg::SI,
+          AsmReg::DX,
+          AsmReg::CX,
+          AsmReg::R8,
+          AsmReg::R9,
+          AsmReg::XMM0,
+          AsmReg::XMM1,
+          AsmReg::XMM2,
+          AsmReg::XMM3,
+          AsmReg::XMM4,
+          AsmReg::XMM5,
+          AsmReg::XMM6,
+          AsmReg::XMM7,
       }),
   };
 
@@ -446,6 +457,8 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
       func_reg_restore_alloc = 0u;
   /// Offset to the `sub rsp, XXX` instruction that sets up the frame
   u32 frame_size_setup_offset = 0u;
+  /// For vararg functions only: number of scalar and xmm registers used.
+  // TODO: this information should be obtained from the CCAssigner.
   u32 scalar_arg_count = 0xFFFF'FFFF, vec_arg_count = 0xFFFF'FFFF;
   u32 reg_save_frame_off = 0;
   u32 var_arg_stack_off = 0;
@@ -599,107 +612,6 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   }
 };
 
-template <typename Adaptor,
-          typename Derived,
-          template <typename, typename, typename> typename BaseTy,
-          typename Config>
-void CallingConv::handle_func_args(
-    CompilerX64<Adaptor, Derived, BaseTy, Config> *compiler) const noexcept {
-  using IRValueRef = typename Adaptor::IRValueRef;
-
-  u32 scalar_reg_count = 0, xmm_reg_count = 0;
-  i32 frame_off = 16;
-
-  const auto gp_regs = arg_regs_gp();
-  const auto xmm_regs = arg_regs_vec();
-
-  // not the most prettiest but it's okay for now
-  // TODO(ts): we definitely want to see if writing some custom machinery to
-  // give arguments their own register as a fixed assignment (if there are no
-  // calls) gives perf benefits on C/C++ codebases with a lot of smaller
-  // getters
-  compiler->fixed_assignment_nonallocatable_mask |= arg_regs_mask();
-
-  u32 arg_idx = 0;
-  for (const IRValueRef arg : compiler->adaptor->cur_args()) {
-    if (compiler->adaptor->cur_arg_is_byval(arg_idx)) {
-      const u32 size = compiler->adaptor->cur_arg_byval_size(arg_idx);
-      const u32 align = compiler->adaptor->cur_arg_byval_align(arg_idx);
-      assert(align <= 16);
-      assert((align & (align - 1)) == 0);
-      if (align == 16) {
-        frame_off = util::align_up(frame_off, 16);
-      }
-
-      // We can use a stack variable ref
-      ValLocalIdx local_idx = compiler->val_idx(arg);
-      assert(compiler->val_assignment(local_idx) == nullptr);
-      compiler->init_variable_ref(local_idx, 0);
-      ValueAssignment *assignment = compiler->val_assignment(local_idx);
-      assignment->stack_variable = true;
-      assignment->frame_off = frame_off;
-
-      frame_off += util::align_up(size, 8);
-      ++arg_idx;
-      continue;
-    }
-
-    auto arg_ref = compiler->result_ref(arg);
-
-    const u32 part_count = arg_ref.assignment()->part_count;
-    auto must_pass_stack = false;
-    if (compiler->derived()->arg_is_int128(arg)) {
-      if (scalar_reg_count + 1 >= gp_regs.size()) {
-        must_pass_stack = true;
-        frame_off = util::align_up(frame_off, 16);
-      }
-    } else if (part_count > 1 &&
-               !compiler->derived()->arg_allow_split_reg_stack_passing(arg)) {
-      if (scalar_reg_count + part_count - 1 >= gp_regs.size()) {
-        must_pass_stack = true;
-        // TODO(ts): alignment?
-      }
-    }
-
-    for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
-      auto part_ref = arg_ref.part(part_idx);
-      RegBank bank = part_ref.bank();
-      unsigned size = part_ref.part_size();
-
-      if (bank == Config::GP_BANK) {
-        if (!must_pass_stack && scalar_reg_count < gp_regs.size()) {
-          part_ref.set_value_reg(gp_regs[scalar_reg_count++]);
-        } else {
-          //  TODO(ts): maybe allow negative frame offsets for value
-          //  assignments so we can simply reference this?
-          //  but this probably doesn't work with multi-part values
-          //  since the offsets are different
-          compiler->load_from_stack(part_ref.alloc_reg(), frame_off, size);
-          frame_off += 8;
-        }
-      } else {
-        assert(bank == Config::FP_BANK);
-        if (!must_pass_stack && xmm_reg_count < xmm_regs.size()) {
-          part_ref.set_value_reg(xmm_regs[xmm_reg_count++]);
-        } else {
-          assert(size <= 16);
-          uint64_t aligned_size = size <= 8 ? 8 : 16;
-          frame_off = util::align_up(frame_off, aligned_size);
-          compiler->load_from_stack(part_ref.alloc_reg(), frame_off, size);
-          frame_off += aligned_size;
-        }
-      }
-    }
-
-    ++arg_idx;
-  }
-
-  compiler->fixed_assignment_nonallocatable_mask &= ~arg_regs_mask();
-  compiler->scalar_arg_count = scalar_reg_count;
-  compiler->vec_arg_count = xmm_reg_count;
-  compiler->var_arg_stack_off = frame_off;
-}
-
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename> class BaseTy,
@@ -715,7 +627,7 @@ template <IRAdaptor Adaptor,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
-    CCAssigner *) noexcept {
+    CCAssigner *cc_assigner) noexcept {
   // prologue:
   // push rbp
   // mov rbp, rsp
@@ -734,26 +646,29 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
   func_ret_offs.clear();
   func_start_off = this->text_writer.offset();
   scalar_arg_count = vec_arg_count = 0xFFFF'FFFF;
+
+  const CCInfo &cc_info = cc_assigner->get_ccinfo();
+
   ASM(PUSHr, FE_BP);
   ASM(MOV64rr, FE_BP, FE_SP);
 
-  const CallingConv call_conv = derived()->cur_calling_convention();
-  {
-    func_reg_save_off = this->text_writer.offset();
+  func_reg_save_off = this->text_writer.offset();
 
-    u32 reg_save_size = 0u;
-    for (const auto reg : call_conv.callee_saved_regs()) {
-      // need special handling for xmm saves if
-      // they are needed
-      assert(reg.id() <= AsmReg::R15);
-      reg_save_size += (reg.id() < AsmReg::R8) ? 1 : 2;
-    }
-    this->text_writer.ensure_space(reg_save_size);
-    this->text_writer.cur_ptr() += reg_save_size;
-    func_reg_save_alloc = reg_save_size;
-    // pop uses the same amount of bytes as push
-    func_reg_restore_alloc = reg_save_size;
-  }
+  auto csr = cc_info.callee_saved_regs;
+  assert(!(csr & ~this->register_file.bank_regs(Config::GP_BANK)) &&
+         "non-gp callee-saved registers not implemented");
+
+  u32 csr_logp = std::popcount((csr >> AsmReg::AX) & 0xff);
+  u32 csr_higp = std::popcount((csr >> AsmReg::R8) & 0xff);
+  // R8 and higher need a REX prefix.
+  u32 reg_save_size = 1 * csr_logp + 2 * csr_higp;
+  u32 reg_save_alloc = 8 * (csr_logp + csr_higp);
+
+  this->text_writer.ensure_space(reg_save_size);
+  this->text_writer.cur_ptr() += reg_save_size;
+  func_reg_save_alloc = reg_save_size;
+  // pop uses the same amount of bytes as push
+  func_reg_restore_alloc = reg_save_size;
 
   // TODO(ts): support larger stack alignments?
 
@@ -765,7 +680,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
 #endif
 
   if (this->adaptor->cur_is_vararg()) {
-    reg_save_frame_off = 8u * call_conv.callee_saved_regs().size() + 176;
+    reg_save_frame_off = reg_save_alloc + 6 * 8 + 8 * 16;
     auto mem = FE_MEM(FE_BP, 0, FE_NOREG, -(i32)reg_save_frame_off);
     ASM(MOV64mr, mem, FE_DI);
     mem.off += 8;
@@ -800,7 +715,66 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
     this->label_place(skip_fp);
   }
 
-  call_conv.handle_func_args(this);
+  // Temporarily prevent argument registers from being assigned.
+  assert((cc_info.allocatable_regs & cc_info.arg_regs) == cc_info.arg_regs &&
+         "argument registers must also be allocatable");
+  this->register_file.allocatable &= ~cc_info.arg_regs;
+
+  u32 arg_idx = 0;
+  for (const IRValueRef arg : this->adaptor->cur_args()) {
+    derived()->handle_func_arg(
+        arg_idx, arg, [&](ValuePart &&vp, CCAssignment cca) {
+          cca.bank = vp.bank();
+          cca.size = vp.part_size();
+
+          cc_assigner->assign_arg(cca);
+
+          if (cca.reg.valid()) [[likely]] {
+            vp.set_value_reg(this, cca.reg);
+            // Mark register as allocatable as soon as it is assigned. If the
+            // argument is unused, the register will be freed immediately and
+            // can be used for later stack arguments.
+            this->register_file.allocatable |= u64{1} << cca.reg.id();
+            return;
+          }
+
+          if (vp.is_owned()) {
+            // no need to handle unused arguments
+            return;
+          }
+
+          if (cca.byval) {
+            ValLocalIdx local_idx = this->val_idx(arg);
+            // Ugly hack, we shouldn't create the assignment in the first place.
+            this->assignments.value_ptrs[u32(local_idx)] = nullptr;
+            this->init_variable_ref(local_idx, 0);
+            ValueAssignment *assignment = this->val_assignment(local_idx);
+            assignment->stack_variable = true;
+            assignment->frame_off = 0x10 + cca.stack_off;
+          } else {
+            //  TODO(ts): maybe allow negative frame offsets for value
+            //  assignments so we can simply reference this?
+            //  but this probably doesn't work with multi-part values
+            //  since the offsets are different
+            AsmReg dst = vp.alloc_reg(this);
+            this->load_from_stack(dst, 0x10 + cca.stack_off, cca.size);
+          }
+        });
+
+    arg_idx += 1;
+  }
+
+  if (this->adaptor->cur_is_vararg()) [[unlikely]] {
+    // TODO: get this from CCAssigner?
+    auto arg_regs = this->register_file.allocatable & cc_info.arg_regs;
+    u64 gp_regs = arg_regs & this->register_file.bank_regs(Config::GP_BANK);
+    u64 xmm_regs = arg_regs & this->register_file.bank_regs(Config::FP_BANK);
+    this->scalar_arg_count = std::popcount(gp_regs);
+    this->vec_arg_count = std::popcount(xmm_regs);
+    this->var_arg_stack_off = 0x10 + cc_assigner->get_stack_size();
+  }
+
+  this->register_file.allocatable |= cc_info.arg_regs;
 }
 
 template <IRAdaptor Adaptor,
