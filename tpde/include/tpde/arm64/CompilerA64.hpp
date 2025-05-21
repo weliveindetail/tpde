@@ -663,8 +663,6 @@ struct CompilerA64 : BaseTy<Adaptor, Derived, Config> {
   void generate_raw_intext(
       AsmReg dst, AsmReg src, bool sign, u32 from, u32 to) noexcept;
 
-  void spill_before_call(CallingConv calling_conv, u64 except_mask = 0);
-
   /// Generate a function call
   ///
   /// This will get the arguments into the correct registers according to the
@@ -2022,21 +2020,6 @@ template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
-void CompilerA64<Adaptor, Derived, BaseTy, Config>::spill_before_call(
-    const CallingConv calling_conv, const u64 except_mask) {
-  // TODO FIXME: need to make sure that the upper 64bit of vector registers
-  // are not treated as callee-saved
-  for (auto reg_id : util::BitSetIterator<>{this->register_file.used &
-                                            ~calling_conv.callee_saved_mask() &
-                                            ~except_mask}) {
-    this->evict_reg(AsmReg{reg_id});
-  }
-}
-
-template <IRAdaptor Adaptor,
-          typename Derived,
-          template <typename, typename, typename> typename BaseTy,
-          typename Config>
 void CompilerA64<Adaptor, Derived, BaseTy, Config>::generate_call(
     std::variant<Assembler::SymRef, ValuePart> &&target,
     std::span<CallArg> arguments,
@@ -2071,7 +2054,9 @@ CompilerA64<Adaptor, Derived, BaseTy, Config>::ScratchReg
     AsmReg r1 = r1_scratch.alloc_specific(AsmReg::R1);
     // The call only clobbers flags, x0, x1, and lr. x0 and x1 are already fixed
     // in the scratch registers, so only make sure that lr isn't used otherwise.
-    spill_before_call(CallingConv::SYSV_CC, ~(1ull << AsmReg{AsmReg::LR}.id()));
+    if (this->register_file.is_used(Reg{AsmReg::LR})) {
+      this->evict_reg(Reg{AsmReg::LR});
+    }
 
     this->text_writer.ensure_space(0x18);
     this->reloc_text(

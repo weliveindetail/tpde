@@ -256,6 +256,7 @@ struct CallingConv {
 };
 
 class CCAssignerSysV : public CCAssigner {
+public:
   static constexpr CCInfo Info{
       .allocatable_regs =
           0xFFFF'0000'FFFF & ~create_bitmask({AsmReg::BP, AsmReg::SP}),
@@ -284,6 +285,7 @@ class CCAssignerSysV : public CCAssigner {
       }),
   };
 
+private:
   u32 gp_cnt = 0, xmm_cnt = 0, stack = 0;
   // The next N assignments must go to the stack.
   unsigned must_assign_stack = 0;
@@ -584,8 +586,6 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
   void generate_raw_intext(
       AsmReg dst, AsmReg src, bool sign, u32 from, u32 to) noexcept;
-
-  void spill_before_call(CallingConv calling_conv, u64 except_mask = 0);
 
   /// Generate a function call
   ///
@@ -1671,19 +1671,6 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_raw_intext(
 
 template <IRAdaptor Adaptor,
           typename Derived,
-          template <typename, typename, typename> typename BaseTy,
-          typename Config>
-void CompilerX64<Adaptor, Derived, BaseTy, Config>::spill_before_call(
-    const CallingConv calling_conv, const u64 except_mask) {
-  for (auto reg_id : util::BitSetIterator<>{this->register_file.used &
-                                            ~calling_conv.callee_saved_mask() &
-                                            ~except_mask}) {
-    this->evict_reg(AsmReg{reg_id});
-  }
-}
-
-template <IRAdaptor Adaptor,
-          typename Derived,
           template <typename, typename, typename> class BaseTy,
           typename Config>
 void CompilerX64<Adaptor, Derived, BaseTy, Config>::CallBuilder::
@@ -1895,9 +1882,12 @@ CompilerX64<Adaptor, Derived, BaseTy, Config>::ScratchReg
   case TLSModel::GlobalDynamic: {
     // Generate function call to __tls_get_addr; on x86-64, this takes a single
     // parameter in rdi.
+    auto csr = CCAssignerSysV::Info.callee_saved_regs;
+    for (auto reg : util::BitSetIterator<>{this->register_file.used & ~csr}) {
+      this->evict_reg(Reg{reg});
+    }
     ScratchReg arg{this};
     AsmReg arg_reg = arg.alloc_specific(AsmReg::DI);
-    spill_before_call(CallingConv::SYSV_CC, 1ull << arg_reg.id());
 
     // Call sequence with extra prefixes for linker relaxation. Code sequence
     // taken from "ELF Handling For Thread-Local Storage".
