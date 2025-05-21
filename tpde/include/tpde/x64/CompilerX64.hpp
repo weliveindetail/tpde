@@ -395,6 +395,8 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   using Base::derived;
 
 
+  using DefaultCCAssigner = CCAssignerSysV;
+
   // TODO(ts): make this dependent on the number of callee-saved regs of the
   // current function or if there is a call in the function?
   static constexpr u32 NUM_FIXED_ASSIGNMENTS[PlatformConfig::NUM_BANKS] = {5,
@@ -496,7 +498,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
 
   void start_func(u32 func_idx) noexcept;
 
-  void gen_func_prolog_and_args() noexcept;
+  void gen_func_prolog_and_args(CCAssigner *) noexcept;
 
   void finish_func(u32 func_idx) noexcept;
 
@@ -707,17 +709,14 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::start_func(
     const u32 /*func_idx*/) noexcept {
   this->text_writer.align(16);
   this->assembler.except_begin_func();
-
-  const CallingConv conv = derived()->cur_calling_convention();
-  this->register_file.allocatable = conv.initial_free_regs();
 }
 
 template <IRAdaptor Adaptor,
           typename Derived,
           template <typename, typename, typename> typename BaseTy,
           typename Config>
-void CompilerX64<Adaptor, Derived, BaseTy, Config>::
-    gen_func_prolog_and_args() noexcept {
+void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
+    CCAssigner *) noexcept {
   // prologue:
   // push rbp
   // mov rbp, rsp

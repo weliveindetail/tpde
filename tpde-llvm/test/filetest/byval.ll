@@ -23,8 +23,8 @@ define i32 @fn_i32_byval_ptr_i32_i32(ptr byval(%struct.ptr_i32) align 8 %0, i32 
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x8, sp, #0xa0
-; ARM64-NEXT:    add x9, x8, #0x0
+; ARM64-NEXT:    add x17, sp, #0xa0
+; ARM64-NEXT:    add x9, x17, #0x0
 ; ARM64-NEXT:    ldr w1, [x9, #0x8]
 ; ARM64-NEXT:    add w0, w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -102,10 +102,10 @@ define i128 @fn_byval2(ptr byval({ptr, ptr}) %a, ptr byval(i64) %b, ptr byval(i1
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x8, sp, #0xb0
-; ARM64-NEXT:    add x9, x8, #0x0
-; ARM64-NEXT:    add x10, x8, #0x10
-; ARM64-NEXT:    add x11, x8, #0x20
+; ARM64-NEXT:    add x17, sp, #0xb0
+; ARM64-NEXT:    add x9, x17, #0x0
+; ARM64-NEXT:    add x10, x17, #0x10
+; ARM64-NEXT:    add x11, x17, #0x20
 ; ARM64-NEXT:    ldr x10, [x10]
 ; ARM64-NEXT:    ldr x0, [x9]
 ; ARM64-NEXT:    str x10, [x0]
@@ -199,10 +199,10 @@ define void @fn_byval3(ptr byval(i8) align 1 %a, ptr byval(i32) align 2 %b, ptr 
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x8, sp, #0xa0
-; ARM64-NEXT:    add x9, x8, #0x0
-; ARM64-NEXT:    add x10, x8, #0x8
-; ARM64-NEXT:    add x11, x8, #0x10
+; ARM64-NEXT:    add x17, sp, #0xa0
+; ARM64-NEXT:    add x9, x17, #0x0
+; ARM64-NEXT:    add x10, x17, #0x8
+; ARM64-NEXT:    add x11, x17, #0x10
 ; ARM64-NEXT:    ldrb w9, [x9]
 ; ARM64-NEXT:    strb w9, [x0]
 ; ARM64-NEXT:    ldr w10, [x10]

@@ -22,10 +22,10 @@ define void @f(i64 %0, i64 %1, i64 %2, i64 %3, i64 %4, i64 %5, i64 %6, i64 %7, i
 ; ARM64-NEXT:    stp q2, q3, [sp, #0x100]
 ; ARM64-NEXT:    stp q4, q5, [sp, #0x120]
 ; ARM64-NEXT:    stp q6, q7, [sp, #0x140]
-; ARM64-NEXT:    add x8, sp, #0x190
-; ARM64-NEXT:    ldr x0, [x8]
-; ARM64-NEXT:    add x8, x8, #0x8
-; ARM64-NEXT:    str x8, [x29, #0x160]
+; ARM64-NEXT:    add x17, sp, #0x190
+; ARM64-NEXT:    ldr x0, [x17]
+; ARM64-NEXT:    add x17, x17, #0x8
+; ARM64-NEXT:    str x17, [x29, #0x160]
 ; ARM64-NEXT:    add x0, x29, #0x170
 ; ARM64-NEXT:    ldr x16, [x29, #0x160]
 ; ARM64-NEXT:    str x16, [x0]

@@ -608,27 +608,27 @@ define i64 @params({i8, {i8, i8}, i8} %s, i64, [2 x i64] %a, [2 x i64] %b) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x8, sp, #0xa0
-; ARM64-NEXT:    ldr x4, [x8]
-; ARM64-NEXT:    ldr x7, [x8, #0x8]
-; ARM64-NEXT:    mov w8, w0
-; ARM64-NEXT:    ubfx x8, x8, #0, #8
-; ARM64-NEXT:    mov w9, w1
+; ARM64-NEXT:    add x17, sp, #0xa0
+; ARM64-NEXT:    ldr x4, [x17]
+; ARM64-NEXT:    ldr x9, [x17, #0x8]
+; ARM64-NEXT:    mov w7, w0
+; ARM64-NEXT:    ubfx x7, x7, #0, #8
+; ARM64-NEXT:    mov w8, w1
 ; ARM64-NEXT:    mov w10, w2
-; ARM64-NEXT:    mov w11, w9
+; ARM64-NEXT:    mov w11, w8
 ; ARM64-NEXT:    ubfx x11, x11, #0, #8
 ; ARM64-NEXT:    ubfx x10, x10, #0, #8
 ; ARM64-NEXT:    ubfx x3, x3, #0, #8
 ; ARM64-NEXT:    mov x0, x5
 ; ARM64-NEXT:    mov x1, x4
-; ARM64-NEXT:    add x11, x11, x8
+; ARM64-NEXT:    add x11, x11, x7
 ; ARM64-NEXT:    add x10, x10, x11
 ; ARM64-NEXT:    add x3, x3, x10
 ; ARM64-NEXT:    add x0, x0, x3
 ; ARM64-NEXT:    add x6, x6, x0
 ; ARM64-NEXT:    add x1, x1, x6
-; ARM64-NEXT:    add x7, x7, x1
-; ARM64-NEXT:    mov x0, x7
+; ARM64-NEXT:    add x9, x9, x1
+; ARM64-NEXT:    mov x0, x9
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret

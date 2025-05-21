@@ -281,19 +281,19 @@ define void @phi_cycle_multipart(i1 %c, [4 x i64] %v1, [4 x i64] %v2) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    add x8, sp, #0x100
-; ARM64-NEXT:    ldr x0, [x8]
-; ARM64-NEXT:    ldr x5, [x8, #0x8]
-; ARM64-NEXT:    ldr x6, [x8, #0x10]
-; ARM64-NEXT:    ldr x7, [x8, #0x18]
+; ARM64-NEXT:    add x17, sp, #0x100
+; ARM64-NEXT:    ldr x0, [x17]
+; ARM64-NEXT:    ldr x9, [x17, #0x8]
+; ARM64-NEXT:    ldr x10, [x17, #0x10]
+; ARM64-NEXT:    ldr x11, [x17, #0x18]
 ; ARM64-NEXT:    str x1, [x29, #0xa0]
 ; ARM64-NEXT:    str x2, [x29, #0xa8]
 ; ARM64-NEXT:    str x3, [x29, #0xb0]
 ; ARM64-NEXT:    str x4, [x29, #0xb8]
 ; ARM64-NEXT:    str x0, [x29, #0xc0]
-; ARM64-NEXT:    str x5, [x29, #0xc8]
-; ARM64-NEXT:    str x6, [x29, #0xd0]
-; ARM64-NEXT:    str x7, [x29, #0xd8]
+; ARM64-NEXT:    str x9, [x29, #0xc8]
+; ARM64-NEXT:    str x10, [x29, #0xd0]
+; ARM64-NEXT:    str x11, [x29, #0xd8]
 ; ARM64-NEXT:    ldr x0, [x29, #0xa0]
 ; ARM64-NEXT:    str x0, [x29, #0xe0]
 ; ARM64-NEXT:    ldr x0, [x29, #0xa8]

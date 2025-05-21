@@ -16,6 +16,7 @@
 #include "tpde/ValLocalIdx.hpp"
 #include "tpde/ValueAssignment.hpp"
 #include "tpde/base.hpp"
+#include "tpde/util/function_ref.hpp"
 #include "tpde/util/misc.hpp"
 
 namespace tpde {
@@ -54,6 +55,9 @@ struct CCInfo {
   // TODO: use RegBitSet
   const u64 allocatable_regs;
   const u64 callee_saved_regs;
+  /// Possible argument registers; these registers will not be allocated until
+  /// all arguments have been assigned.
+  const u64 arg_regs;
 };
 
 class CCAssigner {
@@ -274,6 +278,9 @@ struct CompilerBase {
   i32 allocate_stack_slot(u32 size) noexcept;
   void free_stack_slot(u32 slot, u32 size) noexcept;
 
+  template <typename Fn>
+  void handle_func_arg(u32 arg_idx, IRValueRef arg, Fn add_arg) noexcept;
+
   ValueRef val_ref(IRValueRef value) noexcept;
 
   std::pair<ValueRef, ValuePartRef> val_ref_single(IRValueRef value) noexcept;
@@ -472,18 +479,18 @@ void CompilerBase<Adaptor, Derived, Config>::CallBuilderBase<
   }
 
   u32 align = 1;
-  u32 consecutive = 0;
+  bool consecutive = false;
   u32 consec_def = 0;
   if (compiler.arg_is_int128(arg.value)) {
     // TODO: this also applies to composites with 16-byte alignment
     align = 16;
-    consecutive = 1;
+    consecutive = true;
   } else if (part_count > 1 &&
              !compiler.arg_allow_split_reg_stack_passing(arg.value)) {
-    consecutive = 1;
+    consecutive = true;
     if (part_count > UINT8_MAX) {
       // Must be completely passed on the stack.
-      consecutive = 0;
+      consecutive = false;
       consec_def = -1;
     }
   }
@@ -843,6 +850,55 @@ void CompilerBase<Adaptor, Derived, Config>::free_stack_slot(
   } else {
     size = util::align_up(size, 16);
     stack.dynamic_free_lists[size].push_back(slot);
+  }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+template <typename Fn>
+void CompilerBase<Adaptor, Derived, Config>::handle_func_arg(
+    u32 arg_idx, IRValueRef arg, Fn add_arg) noexcept {
+  ValueRef vr = derived()->result_ref(arg);
+  if (adaptor->cur_arg_is_byval(arg_idx)) {
+    add_arg(vr.part(0),
+            CCAssignment{
+                .byval = true,
+                .byval_align = adaptor->cur_arg_byval_align(arg_idx),
+                .byval_size = adaptor->cur_arg_byval_size(arg_idx),
+            });
+    return;
+  }
+
+  if (adaptor->cur_arg_is_sret(arg_idx)) {
+    add_arg(vr.part(0), CCAssignment{.sret = true});
+    return;
+  }
+
+  const u32 part_count = derived()->val_parts(arg).count();
+
+  u32 align = 1;
+  u32 consecutive = 0;
+  u32 consec_def = 0;
+  if (derived()->arg_is_int128(arg)) {
+    // TODO: this also applies to composites with 16-byte alignment
+    align = 16;
+    consecutive = 1;
+  } else if (part_count > 1 &&
+             !derived()->arg_allow_split_reg_stack_passing(arg)) {
+    consecutive = 1;
+    if (part_count > UINT8_MAX) {
+      // Must be completely passed on the stack.
+      consecutive = 0;
+      consec_def = -1;
+    }
+  }
+
+  for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
+    add_arg(vr.part(part_idx),
+            CCAssignment{
+                .consecutive =
+                    u8(consecutive ? part_count - part_idx - 1 : consec_def),
+                .align = u8(part_idx == 0 ? align : 1),
+            });
   }
 }
 
@@ -1701,7 +1757,19 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   // TODO(ts): place function label
   // TODO(ts): make function labels optional?
 
-  derived()->gen_func_prolog_and_args();
+  {
+    typename Derived::DefaultCCAssigner default_assigner;
+    CCAssigner *cc_assigner = &default_assigner;
+    if constexpr (requires { derived()->cur_cc_assigner(); }) {
+      cc_assigner = derived()->cur_cc_assigner();
+      assert(cc_assigner != nullptr);
+    }
+
+    register_file.allocatable = cc_assigner->get_ccinfo().allocatable_regs;
+
+    derived()->gen_func_prolog_and_args(cc_assigner);
+  }
+
 
   for (u32 i = 0; i < analyzer.block_layout.size(); ++i) {
     const auto block_ref = analyzer.block_layout[i];

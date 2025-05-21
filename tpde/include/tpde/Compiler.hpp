@@ -17,6 +17,7 @@
 namespace tpde {
 
 class AssignmentPartRef;
+class CCAssigner;
 struct RegBank;
 
 template <bool B>
@@ -50,7 +51,7 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
   // (func_idx)
   { a.start_func(ARG(u32)) };
 
-  { a.gen_func_prolog_and_args() };
+  { a.gen_func_prolog_and_args(ARG(CCAssigner *)) };
 
   // This has to call assembler->finish_func
   // (func_idx)
@@ -86,6 +87,13 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
   {
     a.cur_personality_func()
   } -> std::same_as<typename Config::Assembler::SymRef>;
+
+  requires true || requires {
+    /// Provides a calling convention assigner for the current function.
+    /// Optional, if not implemented, the default C calling convention will be
+    /// used.
+    { a.cur_cc_assigner() } -> std::same_as<CCAssigner *>;
+  };
 
   {
     a.try_force_fixed_assignment(ARG(typename T::IRValueRef))

@@ -8,11 +8,11 @@
 
 tbz(%a) {
 ; CHECK-LABEL: tbz
-; CHECK:      30: mov x8, x0
-; CHECK-NEXT: 34: tbnz x8, #0x2f, 0x40
-; CHECK-NEXT: 38: sub x0, x8, x8
+; CHECK:      30: mov x9, x0
+; CHECK-NEXT: 34: tbnz x9, #0x2f, 0x40
+; CHECK-NEXT: 38: sub x0, x9, x9
 ; CHECK-NEXT: 3c: b 0x44
-; CHECK-NEXT: 40: add x0, x8, x8
+; CHECK-NEXT: 40: add x0, x9, x9
 ; CHECK-NEXT: 44: ldp
 entry:
   tbz %a, ^tgt1, ^tgt2, 47
@@ -28,12 +28,12 @@ ret:
 
 tbz_small(%a) {
 ; CHECK-LABEL: tbz_small
-; CHECK:      80: mov x8, x0
-; CHECK-NEXT: 84: tbnz x8, #0x2f, 0x880
+; CHECK:      80: mov x9, x0
+; CHECK-NEXT: 84: tbnz x9, #0x2f, 0x880
 ; CHECK-NEXT: 88: b 0x878
-; CHECK:      878: sub x0, x8, x8
+; CHECK:      878: sub x0, x9, x9
 ; CHECK-NEXT: 87c: b 0x884
-; CHECK-NEXT: 880: add x0, x8, x8
+; CHECK-NEXT: 880: add x0, x9, x9
 ; CHECK-NEXT: 884: ldp
 entry:
   tbz %a, ^tgt1, ^tgt2, 47
@@ -51,13 +51,13 @@ ret:
 ; Medium-sized tbz; veener space is allocated but not used
 tbz_medium(%a) {
 ; CHECK-LABEL: tbz_medium
-; CHECK:      8c0: mov x8, x0
-; CHECK-NEXT: 8c4: tbnz x8, #0x2f, 0x87d8
+; CHECK:      8c0: mov x9, x0
+; CHECK-NEXT: 8c4: tbnz x9, #0x2f, 0x87d8
 ; CHECK-NEXT: 8c8: b 0x8d0
 ; CHECK:      8d0: b 0x87d0
-; CHECK:      87d0: sub x0, x8, x8
+; CHECK:      87d0: sub x0, x9, x9
 ; CHECK-NEXT: 87d4: b 0x87dc
-; CHECK-NEXT: 87d8: add x0, x8, x8
+; CHECK-NEXT: 87d8: add x0, x9, x9
 ; CHECK-NEXT: 87dc: ldp
 entry:
   tbz %a, ^tgt1, ^tgt2, 47
@@ -75,14 +75,14 @@ ret:
 ; Large-sized tbz; veener must be used
 tbz_large(%a) {
 ; CHECK-LABEL: tbz_large
-; CHECK:      8820: mov x8, x0
-; CHECK-NEXT: 8824: tbnz x8, #0x2f, 0x882c
+; CHECK:      8820: mov x9, x0
+; CHECK-NEXT: 8824: tbnz x9, #0x2f, 0x882c
 ; CHECK-NEXT: 8828: b 0x8830
 ; CHECK-NEXT: 882c: b 0x10838
 ; CHECK-NEXT: 8830: b 0x10830
-; CHECK:      10830: sub x0, x8, x8
+; CHECK:      10830: sub x0, x9, x9
 ; CHECK-NEXT: 10834: b 0x1083c
-; CHECK-NEXT: 10838: add x0, x8, x8
+; CHECK-NEXT: 10838: add x0, x9, x9
 ; CHECK-NEXT: 1083c: ldp
 entry:
   tbz %a, ^tgt1, ^tgt2, 47
