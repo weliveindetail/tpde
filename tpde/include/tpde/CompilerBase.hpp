@@ -62,8 +62,13 @@ struct CCInfo {
 
 class CCAssigner {
 public:
+  const CCInfo *ccinfo;
+
+  CCAssigner(const CCInfo &ccinfo) noexcept : ccinfo(&ccinfo) {}
   virtual ~CCAssigner() noexcept {}
-  virtual const CCInfo &get_ccinfo() const noexcept = 0;
+
+  const CCInfo &get_ccinfo() const noexcept { return *ccinfo; }
+
   virtual void assign_arg(CCAssignment &cca) noexcept = 0;
   virtual u32 get_stack_size() noexcept = 0;
   /// Some calling conventions need different call behavior when calling a

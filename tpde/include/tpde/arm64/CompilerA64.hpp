@@ -225,7 +225,7 @@ class CCAssignerAAPCS : public CCAssigner {
   u32 ret_ngrn = 0, ret_nsrn = 0;
 
 public:
-  const CCInfo &get_ccinfo() const noexcept override { return Info; }
+  CCAssignerAAPCS() noexcept : CCAssigner(Info) {}
 
   void assign_arg(CCAssignment &arg) noexcept override {
     if (arg.byval) [[unlikely]] {

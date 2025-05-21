@@ -280,9 +280,8 @@ class CCAssignerSysV : public CCAssigner {
   u32 ret_gp_cnt = 0, ret_xmm_cnt = 0;
 
 public:
-  CCAssignerSysV(bool vararg = false) noexcept : vararg(vararg) {}
-
-  const CCInfo &get_ccinfo() const noexcept override { return Info; }
+  CCAssignerSysV(bool vararg = false) noexcept
+      : CCAssigner(Info), vararg(vararg) {}
 
   void assign_arg(CCAssignment &arg) noexcept override {
     if (arg.byval) {
