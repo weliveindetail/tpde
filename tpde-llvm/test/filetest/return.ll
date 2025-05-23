@@ -153,6 +153,92 @@ entry:
   ret i8 -1
 }
 
+declare i8 @fn_i8()
+
+define i8 @ret_i8_call() {
+; X64-LABEL: <ret_i8_call>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 fn_i8-0x4
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <ret_i8_call>:
+; ARM64:         sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    bl 0x1c0 <ret_i8_call+0x10>
+; ARM64-NEXT:     R_AARCH64_CALL26 fn_i8
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+  %r = call i8 @fn_i8()
+  ret i8 %r
+}
+
+define zeroext i8 @ret_i8_call_zext() {
+; X64-LABEL: <ret_i8_call_zext>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 fn_i8-0x4
+; X64-NEXT:    movzx eax, al
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <ret_i8_call_zext>:
+; ARM64:         sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    bl 0x200 <ret_i8_call_zext+0x10>
+; ARM64-NEXT:     R_AARCH64_CALL26 fn_i8
+; ARM64-NEXT:    ubfx x0, x0, #0, #8
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+  %r = call i8 @fn_i8()
+  ret i8 %r
+}
+
+define signext i8 @ret_i8_call_sext() {
+; X64-LABEL: <ret_i8_call_sext>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 fn_i8-0x4
+; X64-NEXT:    movsx eax, al
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <ret_i8_call_sext>:
+; ARM64:         sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    bl 0x250 <ret_i8_call_sext+0x10>
+; ARM64-NEXT:     R_AARCH64_CALL26 fn_i8
+; ARM64-NEXT:    sxtb x0, w0
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+  %r = call i8 @fn_i8()
+  ret i8 %r
+}
 
 define i16 @ret_i16(i16 %a) {
 ; X64-LABEL: <ret_i16>:
@@ -1200,3 +1286,38 @@ define {i8, {i8, double}} @ret_i8_i8_double_const(ptr %0) {
   ret {i8, {i8, double}} { i8 123, {i8, double} { i8 32, double 10.0 } }
 }
 
+define signext i1 @ret_i1_sext(i1 %v) {
+; X64-LABEL: <ret_i1_sext>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    nop word ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x30
+; X64-NEXT:    mov byte ptr [rbp - 0x29], dil
+; X64-NEXT:  <L0>:
+; X64-NEXT:    call <L0>
+; X64-NEXT:     R_X86_64_PLT32 fn_i8-0x4
+; X64-NEXT:    movzx eax, byte ptr [rbp - 0x29]
+; X64-NEXT:    shl eax, 0x1f
+; X64-NEXT:    sar eax, 0x1f
+; X64-NEXT:    add rsp, 0x30
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <ret_i1_sext>:
+; ARM64:         sub sp, sp, #0xb0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    nop
+; ARM64-NEXT:    strb w0, [x29, #0xa0]
+; ARM64-NEXT:    bl 0xdc4 <ret_i1_sext+0x14>
+; ARM64-NEXT:     R_AARCH64_CALL26 fn_i8
+; ARM64-NEXT:    ldrb w0, [x29, #0xa0]
+; ARM64-NEXT:    sbfx x0, x0, #0, #1
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    add sp, sp, #0xb0
+; ARM64-NEXT:    ret
+  %x = call i8 @fn_i8() ; this causes %v to be spilled
+  ; %v will be reloaded from the stack into the first free register, which also
+  ; happens to be the return register.
+  ret i1 %v
+}
