@@ -44,6 +44,7 @@ target_sources(tpde PRIVATE
     src/base.cpp
     src/ElfMapper.cpp
     src/ValueAssignment.cpp
+    src/util/SmallVector.cpp
 
     PUBLIC
     FILE_SET HEADERS

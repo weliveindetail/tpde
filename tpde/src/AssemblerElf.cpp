@@ -374,7 +374,7 @@ void AssemblerElfBase::sym_def_predef_data(SecRef sec_ref,
   sym_def(sym_ref, sec_ref, pos, data.size());
   assert(sec.hdr.sh_type != SHT_NOBITS && "cannot add data to SHT_NOBITS");
   sec.data.resize(pos);
-  sec.data.insert(sec.data.end(), data.begin(), data.end());
+  sec.data.append(data.begin(), data.end());
 
   if (off) {
     *off = pos;
