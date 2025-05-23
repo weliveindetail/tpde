@@ -247,9 +247,7 @@ public:
         nsaa += 8;
       }
     } else {
-      // TODO: this is wrong, currently for compatibility with handle_func_args.
-      // This should be: nsrn + arg.consecutive < 8
-      if (nsrn < 8) {
+      if (nsrn + arg.consecutive < 8) {
         arg.reg = Reg{AsmReg::V0 + nsrn};
         nsrn += 1;
       } else {

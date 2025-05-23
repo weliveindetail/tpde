@@ -306,10 +306,10 @@ define void @fn_byval4(ptr byval({ i64, i64 }) %a, ...) {
 ; ARM64-NEXT:    stp q2, q3, [sp, #0x100]
 ; ARM64-NEXT:    stp q4, q5, [sp, #0x120]
 ; ARM64-NEXT:    stp q6, q7, [sp, #0x140]
-; ARM64-NEXT:    add x16, sp, #0x170
-; ARM64-NEXT:    add x9, x16, #0x0
-; ARM64-NEXT:    add x16, x16, #0x10
-; ARM64-NEXT:    str x16, [x29, #0x160]
+; ARM64-NEXT:    add x17, sp, #0x170
+; ARM64-NEXT:    add x9, x17, #0x0
+; ARM64-NEXT:    add x17, x17, #0x10
+; ARM64-NEXT:    str x17, [x29, #0x160]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0x170
 ; ARM64-NEXT:    ret
