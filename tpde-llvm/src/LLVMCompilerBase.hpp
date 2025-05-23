@@ -1432,12 +1432,34 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_inst(
 template <typename Adaptor, typename Derived, typename Config>
 bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_ret(
     const llvm::Instruction *inst, const ValInfo &, u64) noexcept {
+  typename Derived::RetBuilder rb{*derived(), *derived()->cur_cc_assigner()};
   if (inst->getNumOperands() != 0) {
-    derived()->move_val_to_ret_regs(inst->getOperand(0));
+    llvm::Value *retval = inst->getOperand(0);
+    bool handled = false;
+    if (auto ret_ty = retval->getType(); ret_ty->isIntegerTy()) {
+      if (unsigned width = ret_ty->getIntegerBitWidth(); width % 32 != 0) {
+        assert(width < 64 && "non-i128 multi-word int should be illegal");
+        unsigned dst_width = width < 32 ? 32 : 64;
+        llvm::AttributeList attrs = this->adaptor->cur_func->getAttributes();
+        llvm::AttributeSet ret_attrs = attrs.getRetAttrs();
+        if (ret_attrs.hasAttribute(llvm::Attribute::ZExt)) {
+          auto [vr, vpr] = this->val_ref_single(retval);
+          rb.add(std::move(vpr).into_extended(false, width, dst_width), {});
+          handled = true;
+        } else if (ret_attrs.hasAttribute(llvm::Attribute::SExt)) {
+          auto [vr, vpr] = this->val_ref_single(retval);
+          rb.add(std::move(vpr).into_extended(true, width, dst_width), {});
+          handled = true;
+        }
+      }
+    }
+
+    if (!handled) {
+      rb.add(retval);
+    }
   }
 
-  derived()->gen_func_epilog();
-  this->release_regs_after_return();
+  rb.ret();
   return true;
 }
 

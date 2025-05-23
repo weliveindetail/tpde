@@ -102,27 +102,18 @@ bool TestIRCompilerA64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
     using enum TestIR::Value::Op;
   case add: return compile_add(inst_idx);
   case sub: return compile_sub(inst_idx);
+  case terminate:
   case ret: {
+    RetBuilder rb{*derived(), *cur_cc_assigner()};
     if (value.op_count == 1) {
       const auto op = static_cast<IRValueRef>(
           this->adaptor->ir->value_operands[value.op_begin_idx]);
 
-      auto [_, val_ref] = this->val_ref_single(op);
-      const auto call_conv = this->cur_calling_convention();
-      if (val_ref.assignment().fixed_assignment()) {
-        val_ref.reload_into_specific(this, call_conv.ret_regs_gp()[0]);
-      } else {
-        val_ref.move_into_specific(call_conv.ret_regs_gp()[0]);
-      }
-    } else {
-      assert(value.op_count == 0);
+      rb.add(op);
     }
-    [[fallthrough]];
-  }
-  case terminate:
-    this->gen_func_epilog();
-    this->release_regs_after_return();
+    rb.ret();
     return true;
+  }
   case alloca: return true;
   case br: {
     auto block_idx = ir()->value_operands[value.op_begin_idx];

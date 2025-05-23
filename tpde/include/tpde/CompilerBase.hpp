@@ -241,6 +241,24 @@ public:
     void add_ret(ValueRef &vr) noexcept;
   };
 
+  class RetBuilder {
+    Derived &compiler;
+    CCAssigner &assigner;
+
+    RegisterFile::RegBitSet ret_regs{};
+
+  public:
+    RetBuilder(Derived &compiler, CCAssigner &assigner) noexcept
+        : compiler(compiler), assigner(assigner) {
+      assigner.reset();
+    }
+
+    void add(ValuePart &&vp, CCAssignment cca) noexcept;
+    void add(IRValueRef val, CallArg::Flag flag = CallArg::Flag::none) noexcept;
+
+    void ret() noexcept;
+  };
+
   /// Initialize a CompilerBase, should be called by the derived classes
   explicit CompilerBase(Adaptor *adaptor)
       : adaptor(adaptor), analyzer(adaptor), assembler() {
@@ -571,6 +589,75 @@ void CompilerBase<Adaptor, Derived, Config>::CallBuilderBase<
     CCAssignment cca;
     add_ret(vr.part(part_idx), cca);
   }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::RetBuilder::add(
+    ValuePart &&vp, CCAssignment cca) noexcept {
+  cca.bank = vp.bank();
+  u32 size = cca.size = vp.part_size();
+  assigner.assign_ret(cca);
+  assert(cca.reg.valid() && "indirect return value must use sret argument");
+
+  if (vp.is_in_reg(cca.reg)) {
+    if (!vp.can_salvage()) {
+      compiler.evict_reg(cca.reg);
+    } else {
+      vp.salvage(&compiler);
+    }
+    if (cca.sext || cca.zext) {
+      compiler.generate_raw_intext(cca.reg, cca.reg, cca.sext, 8 * size, 64);
+    }
+  } else {
+    if (compiler.register_file.is_used(cca.reg)) {
+      compiler.evict_reg(cca.reg);
+    }
+    if (vp.can_salvage()) {
+      AsmReg vp_reg = vp.salvage(&compiler);
+      if (cca.sext || cca.zext) {
+        compiler.generate_raw_intext(cca.reg, vp_reg, cca.sext, 8 * size, 64);
+      } else {
+        compiler.mov(cca.reg, vp_reg, size);
+      }
+    } else {
+      vp.reload_into_specific_fixed(&compiler, cca.reg);
+      if (cca.sext || cca.zext) {
+        compiler.generate_raw_intext(cca.reg, cca.reg, cca.sext, 8 * size, 64);
+      }
+    }
+  }
+  vp.reset(&compiler);
+  assert(!compiler.register_file.is_used(cca.reg));
+  compiler.register_file.mark_used(
+      cca.reg, CompilerBase::INVALID_VAL_LOCAL_IDX, 0);
+  compiler.register_file.mark_fixed(cca.reg);
+  compiler.register_file.mark_clobbered(cca.reg);
+  ret_regs |= (1ull << cca.reg.id());
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::RetBuilder::add(
+    IRValueRef val, CallArg::Flag flag) noexcept {
+  u32 part_count = compiler.val_parts(val).count();
+  ValueRef vr = compiler.val_ref(val);
+  for (u32 part_idx = 0; part_idx < part_count; ++part_idx) {
+    add(vr.part(part_idx),
+        CCAssignment{
+            .sext = flag == CallArg::Flag::sext,
+            .zext = flag == CallArg::Flag::zext,
+        });
+  }
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+void CompilerBase<Adaptor, Derived, Config>::RetBuilder::ret() noexcept {
+  for (auto reg_id : util::BitSetIterator<>{ret_regs}) {
+    compiler.register_file.unmark_fixed(Reg{reg_id});
+    compiler.register_file.unmark_used(Reg{reg_id});
+  }
+
+  compiler.gen_func_epilog();
+  compiler.release_regs_after_return();
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

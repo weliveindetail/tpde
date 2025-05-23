@@ -86,8 +86,6 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
 
   void finish_func(u32 func_idx) noexcept;
 
-  void move_val_to_ret_regs(llvm::Value *) noexcept;
-
   void load_address_of_var_reference(AsmReg dst,
                                      tpde::AssignmentPartRef ap) noexcept;
 
@@ -153,62 +151,6 @@ void LLVMCompilerX64::finish_func(u32 func_idx) noexcept {
   if (llvm::timeTraceProfilerEnabled()) {
     llvm::timeTraceProfilerEnd(time_entry);
     time_entry = nullptr;
-  }
-}
-
-void LLVMCompilerX64::move_val_to_ret_regs(llvm::Value *val) noexcept {
-  unsigned zext_width = 0;
-  unsigned sext_width = 0;
-  unsigned ext_width = 0;
-  auto *fn = this->adaptor->cur_func;
-  if (auto *ret_ty = fn->getReturnType(); ret_ty->isIntegerTy()) {
-    auto bit_width = ret_ty->getIntegerBitWidth();
-    ext_width = tpde::util::align_up(bit_width, 32);
-    if (bit_width != ext_width) {
-      if (fn->hasRetAttribute(llvm::Attribute::ZExt)) {
-        zext_width = bit_width % 64;
-      } else if (fn->hasRetAttribute(llvm::Attribute::SExt)) {
-        sext_width = bit_width % 64;
-      }
-    }
-  }
-
-  unsigned gp_reg_idx = 0;
-  unsigned xmm_reg_idx = 0;
-  unsigned cnt = this->adaptor->val_part_count(val);
-  auto vr = this->val_ref(val);
-  for (unsigned i = 0; i != cnt; i++) {
-    auto val_ref = vr.part(i);
-
-    const auto call_conv = this->cur_calling_convention();
-    AsmReg reg;
-    // TODO: handle out-of-register case
-    if (val_ref.bank() == CompilerConfig::GP_BANK) {
-      reg = call_conv.ret_regs_gp()[gp_reg_idx++];
-    } else {
-      reg = call_conv.ret_regs_vec()[xmm_reg_idx++];
-    }
-
-    // TODO: fix registers to ensure results are not clobbered by following part
-    if (val_ref.is_const()) {
-      val_ref.reload_into_specific_fixed(reg);
-      if (i == cnt - 1 && sext_width) {
-        generate_raw_intext(reg, reg, /*sign=*/true, sext_width, ext_width);
-      }
-    } else {
-      if (val_ref.assignment().fixed_assignment()) {
-        val_ref.reload_into_specific(this, reg);
-      } else {
-        val_ref.move_into_specific(reg);
-      }
-      if (i == cnt - 1) {
-        if (sext_width) {
-          generate_raw_intext(reg, reg, /*sign=*/true, sext_width, ext_width);
-        } else if (zext_width) {
-          generate_raw_intext(reg, reg, /*sign=*/false, zext_width, ext_width);
-        }
-      }
-    }
   }
 }
 

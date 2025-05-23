@@ -294,12 +294,11 @@ public:
       return ValuePart{extended, (to + 7) / 8, state.c.bank};
     }
     ValuePart res{bank()};
-    Reg src_reg = Reg::make_invalid();
+    Reg src_reg = has_reg() ? cur_reg() : load_to_reg(compiler);
     if (can_salvage()) {
       res.set_value(compiler, std::move(*this));
-      src_reg = res.cur_reg();
+      assert(src_reg == res.cur_reg());
     } else {
-      src_reg = has_reg() ? cur_reg() : load_to_reg(compiler);
       res.alloc_reg(compiler);
     }
     compiler->derived()->generate_raw_intext(
