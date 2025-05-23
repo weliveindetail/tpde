@@ -237,23 +237,7 @@ public:
     alloc_specific_impl(compiler, reg, true);
   }
 
-  void move_into_specific(CompilerBase *compiler, AsmReg reg) noexcept {
-    load_to_specific(compiler, reg);
-  }
-
-  /// Load the value into the specific register *without* updating the
-  /// assignment (or freeing the assignment if the value is in the target
-  /// register) meaning you are free to overwrite the register if desired
-  ///
-  /// \note The target register may not be fixed and will be free'd by this
-  /// function
-  ///
-  /// \note This will spill the register if the value is currently in the
-  /// specified register
-  AsmReg reload_into_specific(CompilerBase *compiler, AsmReg reg) noexcept;
-
-  /// This works similarily to reload_into_specific but will not free
-  /// the target register
+  /// Copy value into a different register.
   AsmReg reload_into_specific_fixed(CompilerBase *compiler,
                                     AsmReg reg,
                                     unsigned size = 0) noexcept;
@@ -514,49 +498,6 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     state.c.owned = true;
   }
 
-  return reg;
-}
-
-template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
-typename CompilerBase<Adaptor, Derived, Config>::AsmReg
-    CompilerBase<Adaptor, Derived, Config>::ValuePart::reload_into_specific(
-        CompilerBase *compiler, const AsmReg reg) noexcept {
-  assert(compiler->may_change_value_state());
-  if (is_const()) {
-    // TODO(ts): store a compiler* in the constant data?
-    // make sure the register is free
-    ScratchReg tmp{compiler};
-    tmp.alloc_specific(reg);
-
-    compiler->derived()->materialize_constant(
-        const_data().data(), state.c.bank, state.c.size, reg);
-    return reg;
-  }
-
-  assert(!state.v.reg.valid());
-  auto &reg_file = compiler->register_file;
-
-  // Free the register if there is anything else in there
-  if (reg_file.is_used(reg) &&
-      (reg_file.reg_local_idx(reg) != state.v.local_idx ||
-       reg_file.reg_part(reg) != state.v.part)) {
-    compiler->evict_reg(reg);
-  }
-
-  auto ap = assignment();
-  if (ap.register_valid()) {
-    if (ap.get_reg() == reg) {
-      compiler->evict_reg(reg);
-      return reg;
-    }
-
-    compiler->derived()->mov(reg, ap.get_reg(), ap.part_size());
-  } else {
-    assert(!ap.fixed_assignment());
-    compiler->derived()->reload_to_reg(reg, ap);
-  }
-
-  compiler->register_file.mark_clobbered(reg);
   return reg;
 }
 
@@ -840,14 +781,6 @@ struct CompilerBase<Adaptor, Derived, Config>::ValuePartRef : ValuePart {
 
   void load_to_specific(AsmReg reg) noexcept {
     ValuePart::load_to_specific(compiler, reg);
-  }
-
-  void move_into_specific(AsmReg reg) noexcept {
-    ValuePart::move_into_specific(compiler, reg);
-  }
-
-  AsmReg reload_into_specific(CompilerBase *compiler, AsmReg reg) noexcept {
-    return ValuePart::reload_into_specific(compiler, reg);
   }
 
   AsmReg reload_into_specific_fixed(AsmReg reg, unsigned size = 0) noexcept {
