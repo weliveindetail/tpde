@@ -28,10 +28,6 @@ struct TestIRCompilerA64 : a64::CompilerA64<TestIRAdaptor, TestIRCompilerA64> {
   explicit TestIRCompilerA64(TestIRAdaptor *adaptor, bool no_fixed_assignments)
       : Base{adaptor}, no_fixed_assignments(no_fixed_assignments) {}
 
-  [[nodiscard]] static a64::CallingConv cur_calling_convention() noexcept {
-    return a64::CallingConv::SYSV_CC;
-  }
-
   a64::PlatformConfig::Assembler::SymRef cur_personality_func() const noexcept {
     return {};
   }
@@ -194,11 +190,7 @@ bool TestIRCompilerA64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
       arguments.push_back(CallArg{op});
     }
 
-    this->generate_call(this->func_syms[func_idx],
-                        arguments,
-                        &res_ref,
-                        a64::CallingConv::SYSV_CC,
-                        false);
+    this->generate_call(this->func_syms[func_idx], arguments, &res_ref);
     return true;
   }
   default: return false;

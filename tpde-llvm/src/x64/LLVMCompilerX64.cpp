@@ -68,11 +68,6 @@ struct LLVMCompilerX64 : tpde::x64::CompilerX64<LLVMAdaptor,
     EncCompiler::reset();
   }
 
-  [[nodiscard]] static tpde::x64::CallingConv
-      cur_calling_convention() noexcept {
-    return tpde::x64::CallingConv::SYSV_CC;
-  }
-
   bool arg_is_int128(const IRValueRef value) const noexcept {
     return value->getType()->isIntegerTy(128);
   }
@@ -650,7 +645,7 @@ void LLVMCompilerX64::create_helper_call(std::span<IRValueRef> args,
     arg_vec.push_back(CallArg{arg});
   }
 
-  generate_call(sym, arg_vec, result, tpde::x64::CallingConv::SYSV_CC, false);
+  generate_call(sym, arg_vec, result);
 }
 
 bool LLVMCompilerX64::handle_intrin(const llvm::IntrinsicInst *inst) noexcept {

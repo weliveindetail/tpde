@@ -92,11 +92,7 @@ bool TestIRCompilerX64::compile_inst(IRInstRef inst_idx, InstRange) noexcept {
       arguments.push_back(CallArg{op});
     }
 
-    this->generate_call(this->func_syms[func_idx],
-                        arguments,
-                        &res_ref,
-                        CallingConv::SYSV_CC,
-                        false);
+    this->generate_call(this->func_syms[func_idx], arguments, &res_ref);
     return true;
   }
   default: return false;

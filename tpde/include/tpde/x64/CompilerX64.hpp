@@ -122,121 +122,6 @@ constexpr static u64 create_bitmask(const std::array<AsmReg, N> regs) {
   return set;
 }
 
-struct CallingConv {
-  enum TYPE {
-    SYSV_CC
-  };
-
-  TYPE ty;
-
-  constexpr CallingConv(const TYPE ty) : ty(ty) {}
-
-  [[nodiscard]] constexpr std::span<const AsmReg> arg_regs_gp() const noexcept {
-    switch (ty) {
-    case SYSV_CC: return SysV::arg_regs_gp;
-    default: TPDE_UNREACHABLE("invalid calling convention");
-    }
-  }
-
-  [[nodiscard]] constexpr std::span<const AsmReg>
-      arg_regs_vec() const noexcept {
-    switch (ty) {
-    case SYSV_CC: return SysV::arg_regs_vec;
-    default: TPDE_UNREACHABLE("invalid calling convention");
-    }
-  }
-
-  [[nodiscard]] constexpr std::span<const AsmReg> ret_regs_gp() const noexcept {
-    switch (ty) {
-    case SYSV_CC: return SysV::ret_regs_gp;
-    default: TPDE_UNREACHABLE("invalid calling convention");
-    }
-  }
-
-  [[nodiscard]] constexpr std::span<const AsmReg>
-      ret_regs_vec() const noexcept {
-    switch (ty) {
-    case SYSV_CC: return SysV::ret_regs_vec;
-    default: TPDE_UNREACHABLE("invalid calling convention");
-    }
-  }
-
-  [[nodiscard]] constexpr std::span<const AsmReg>
-      callee_saved_regs() const noexcept {
-    switch (ty) {
-    case SYSV_CC: return SysV::callee_saved_regs;
-    default: TPDE_UNREACHABLE("invalid calling convention");
-    }
-  }
-
-  [[nodiscard]] constexpr u64 callee_saved_mask() const noexcept {
-    switch (ty) {
-    case SYSV_CC: return SysV::callee_saved_mask;
-    default: TPDE_UNREACHABLE("invalid calling convention");
-    }
-  }
-
-  [[nodiscard]] constexpr u64 arg_regs_mask() const noexcept {
-    switch (ty) {
-    case SYSV_CC: return SysV::arg_regs_mask;
-    default: TPDE_UNREACHABLE("invalid calling convention");
-    }
-  }
-
-  [[nodiscard]] constexpr u64 result_regs_mask() const noexcept {
-    switch (ty) {
-    case SYSV_CC: return SysV::result_regs_mask;
-    default: TPDE_UNREACHABLE("invalid calling convention");
-    }
-  }
-
-  [[nodiscard]] constexpr u64 initial_free_regs() const noexcept {
-    switch (ty) {
-    case SYSV_CC: return SysV::initial_free_regs;
-    default: TPDE_UNREACHABLE("invalid calling convention");
-    }
-  }
-
-  struct SysV {
-    constexpr static std::array<AsmReg, 6> arg_regs_gp{
-        AsmReg::DI, AsmReg::SI, AsmReg::DX, AsmReg::CX, AsmReg::R8, AsmReg::R9};
-
-    constexpr static std::array<AsmReg, 8> arg_regs_vec{AsmReg::XMM0,
-                                                        AsmReg::XMM1,
-                                                        AsmReg::XMM2,
-                                                        AsmReg::XMM3,
-                                                        AsmReg::XMM4,
-                                                        AsmReg::XMM5,
-                                                        AsmReg::XMM6,
-                                                        AsmReg::XMM7};
-
-    constexpr static std::array<AsmReg, 2> ret_regs_gp{AsmReg::AX, AsmReg::DX};
-
-    constexpr static std::array<AsmReg, 2> ret_regs_vec{AsmReg::XMM0,
-                                                        AsmReg::XMM1};
-
-    constexpr static std::array<AsmReg, 5> callee_saved_regs{
-        AsmReg::BX,
-        AsmReg::R12,
-        AsmReg::R13,
-        AsmReg::R14,
-        AsmReg::R15,
-    };
-
-    // all XMM and normal regs (except bp/sp) are available
-    constexpr static u64 initial_free_regs =
-        0xFFFF'0000'FFFF & ~create_bitmask({AsmReg::BP, AsmReg::SP});
-
-    constexpr static u64 callee_saved_mask = create_bitmask(callee_saved_regs);
-
-    constexpr static u64 arg_regs_mask =
-        create_bitmask(arg_regs_gp) | create_bitmask(arg_regs_vec);
-
-    constexpr static u64 result_regs_mask =
-        create_bitmask(ret_regs_gp) | create_bitmask(ret_regs_vec);
-  };
-};
-
 class CCAssignerSysV : public CCAssigner {
 public:
   static constexpr CCInfo Info{
@@ -596,8 +481,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   void generate_call(std::variant<Assembler::SymRef, ValuePart> &&target,
                      std::span<CallArg> arguments,
                      typename Base::ValueRef *result,
-                     CallingConv calling_conv,
-                     bool variable_args);
+                     bool variable_args = false);
 
   /// Generate code sequence to load address of sym into a register. This will
   /// generate a function call for dynamic TLS access models.
@@ -1830,9 +1714,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::generate_call(
     std::variant<Assembler::SymRef, ValuePart> &&target,
     std::span<CallArg> arguments,
     typename Base::ValueRef *result,
-    CallingConv calling_conv,
     const bool variable_args) {
-  (void)calling_conv;
   CCAssignerSysV assigner{variable_args};
   CallBuilder cb{*derived(), assigner};
   for (auto &arg : arguments) {

@@ -23,10 +23,6 @@ struct TestIRCompilerX64 : x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64> {
   explicit TestIRCompilerX64(TestIRAdaptor *adaptor, bool no_fixed_assignments)
       : Base{adaptor}, no_fixed_assignments(no_fixed_assignments) {}
 
-  [[nodiscard]] static x64::CallingConv cur_calling_convention() noexcept {
-    return x64::CallingConv::SYSV_CC;
-  }
-
   static bool arg_is_int128(IRValueRef) noexcept { return false; }
   static bool arg_allow_split_reg_stack_passing(IRValueRef) noexcept {
     return false;
