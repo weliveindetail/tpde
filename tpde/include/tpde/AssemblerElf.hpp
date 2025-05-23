@@ -242,7 +242,7 @@ struct AssemblerElfBase {
       assert(!locked);
       assert(hdr.sh_type != SHT_NOBITS);
       size_t off = data.size();
-      data.resize(data.size() + sizeof(T));
+      data.resize_uninitialized(data.size() + sizeof(T));
       memcpy(data.data() + off, &t, sizeof(T));
     }
   };
@@ -339,6 +339,8 @@ struct AssemblerElfBase {
     void align(size_t align) noexcept {
       assert(align > 0 && (align & (align - 1)) == 0);
       ensure_space(align);
+      // permit optimization when align is a constant.
+      std::memset(cur_ptr(), 0, align);
       data_cur = data_begin + util::align_up(offset(), align);
       section->hdr.sh_addralign = std::max(section->hdr.sh_addralign, align);
     }
@@ -759,8 +761,10 @@ void AssemblerElfBase::SectionWriterBase<Derived>::more_space(
   }
 
   const size_t off = offset();
-  section->data.resize(new_size);
+  section->data.resize_uninitialized(new_size);
 #ifndef NDEBUG
+  thread_local uint8_t rand = 1;
+  std::memset(section->data.data() + off, rand += 2, new_size - off);
   section->locked = true;
 #endif
 

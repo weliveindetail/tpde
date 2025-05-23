@@ -279,9 +279,9 @@ void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
   };
 
   util::SmallVector<BlockLoopInfo, SMALL_BLOCK_NUM> loop_blocks;
-  loop_blocks.reserve(block_rpo.size());
+  loop_blocks.resize_uninitialized(block_rpo.size());
   for (u32 i = 0; i < block_rpo.size(); ++i) {
-    loop_blocks.push_back(BlockLoopInfo{~0u, i});
+    loop_blocks[i] = BlockLoopInfo{~0u, i};
   }
 
   // if we have not seen the parent loop before, we need to recursively insert
@@ -355,11 +355,11 @@ void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
   // be mitigated with another pass i think.
   //
   // NB: we don't clear block_layout/block_loop_map, all entries are overwritten
-  block_layout.resize(block_rpo.size());
+  block_layout.resize_uninitialized(block_rpo.size());
   // TODO(ts): merge this with block_layout for less malloc calls?
   // however, we will mostly need this in the liveness computation so it may
   // be better for cache utilization to keep them separate
-  block_loop_map.resize(block_rpo.size());
+  block_loop_map.resize_uninitialized(block_rpo.size());
 
   loops[0].begin = loops[0].end = static_cast<BlockIndex>(0);
 
@@ -452,7 +452,7 @@ void Analyzer<Adaptor>::build_rpo_block_order(
     }
     num_blocks = idx;
   }
-  out.resize(num_blocks);
+  out.resize_uninitialized(num_blocks);
 
   // implement the RPO generation using a simple stack that also walks in
   // post-order and then reverse at the end. However, consider the following

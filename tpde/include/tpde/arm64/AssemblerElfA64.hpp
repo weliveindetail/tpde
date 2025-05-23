@@ -179,6 +179,7 @@ inline void AssemblerElfA64::SectionWriter::more_space(u32 size) noexcept {
   vi->unresolved_test_brs = vi->unresolved_cond_brs = 0;
 
   *reinterpret_cast<u32 *>(data_begin + cur_off) = de64_B(veneer_size / 4 + 1);
+  std::memset(data_begin + cur_off + 4, 0, veneer_size);
   cur_ptr() += veneer_size + 4;
 }
 

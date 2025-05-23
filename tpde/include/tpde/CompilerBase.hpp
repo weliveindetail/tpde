@@ -1841,9 +1841,9 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_func(
   derived()->start_func(func_idx);
 
   block_labels.clear();
-  block_labels.reserve(analyzer.block_layout.size());
+  block_labels.resize_uninitialized(analyzer.block_layout.size());
   for (u32 i = 0; i < analyzer.block_layout.size(); ++i) {
-    block_labels.push_back(assembler.label_create());
+    block_labels[i] = assembler.label_create();
   }
 
   // TODO(ts): place function label

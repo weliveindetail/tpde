@@ -932,8 +932,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     }
 
     // Shrink function at the beginning
-    func_start_off +=
-        util::align_down(func_prologue_alloc - prologue.size() * 4, 16);
+    u32 skip = util::align_down(func_prologue_alloc - prologue.size() * 4, 16);
+    std::memset(this->text_writer.begin_ptr() + func_start_off, 0, skip);
+    func_start_off += skip;
     this->assembler.sym_set_value(this->func_syms[func_idx], func_start_off);
     std::memcpy(this->text_writer.begin_ptr() + func_start_off,
                 prologue.data(),
@@ -1014,11 +1015,14 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::finish_func(
     *write_ptr++ = de64_RET(DA_GP(30));
 
     ret_size = (write_ptr - ret_start) * 4;
+    assert(ret_size <= func_epilogue_alloc);
+    std::memset(write_ptr, 0, func_epilogue_alloc - ret_size);
   }
 
   for (u32 i = 1; i < func_ret_offs.size(); ++i) {
-    std::memcpy(
-        text_data + func_ret_offs[i], text_data + first_ret_off, ret_size);
+    std::memcpy(text_data + func_ret_offs[i],
+                text_data + first_ret_off,
+                func_epilogue_alloc);
   }
 
   u32 func_end_ret_off = this->text_writer.offset() - func_epilogue_alloc;
