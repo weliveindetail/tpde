@@ -49,7 +49,7 @@ The reference starts by explaining the basic class hierarchy used in the compile
 - most interesting option is `DEFAULT_VAR_REF_HANDLING`, which, when turned off, allows to setup custom variable refs, e.g. for globals (see later).
 
 ## Required functions to implement
-- concept described in Compiler.hpp/CompilerX64.hpp/CompilerA64.hpp
+- concept described in Compiler.hpp / CompilerX64.hpp / CompilerA64.hpp
 
 ### General
 
@@ -137,6 +137,14 @@ void load_address_of_var_reference(AsmReg dst, AssignmentPartRef ap) noexcept;
 This function is called whenever the `ValuePartRef` of a value which is marked as being a custom variable reference is needed in a register.
 This function is only needed when `DEFAULT_VAR_REF_HANDLING` is `false`.
 The details of this mechanism are explained further down below.
+
+#### cur_cc_assigner
+```cpp
+CCAssigner* cur_cc_assigner() noexcept;
+```
+This function provides a calling convention assigner for the current function. It is optional to implement but can be used
+if different calling conventions than the default C calling convention should be used. Note that the pointer returned
+is non-owning so you need to allocate storage that is live throughout the function for the assigner.
 
 #### compile_inst
 ```cpp
@@ -411,29 +419,28 @@ bool compile_loadi8(IRInstRef inst, InstRange remaining) {
 ```
 
 ## Return
-- you only need to move result values into registers
-- i.e. get the result register for the current calling convention, move the values there
-- afterwards, call `gen_func_epilog` from the architecture compiler and then [release_regs_after_return](@ref CompilerBase::release_regs_after_return)
+- use [RetBuilder](@ref CompilerBase::RetBuilder) to assign returned ValueParts or IRValueRefs to their corresponding return registers
+- ValueParts may be used if you need to do some processing before returning them, e.g. zero-/sign-extension with non-power-of-two bitwidths
+- afterwards, call [RetBuilder::ret](@ref CompilerBase::RetBuilder::ret) to generate the return
+- this will internally move the results into the return registers and then call `gen_func_epilog` and `release_regs_after_return`
+- if you do not need to return anything, you can skipp the RetBuilder and call these two functions yourself
 
 > [!warning]
 > you *always* need to call `release_regs_after_return` if you compile an instruction that terminates a basic block and does not branch to another block
 
 ```cpp
 bool compile_ret(IRInstRef inst) {
+    // Create the RetBuilder
+    RetBuilder rb{this, *this->cur_cc_assigner()};
+
     if (/* IR-specific way to check if return should return a value */) {
         IRValueRef ret_val = /* IR-specific way to get return value */;
-        // we assume that we only ever return a single integer register
-        auto [ret_ref, ret_part] = this->result_ref_single(ret_val);
-        // get the current calling convention
-        x64::CallingConv call_conv = this->cur_calling_convention();
-        // move the value into the result register
-        ret_part.reload_into_specific_fixed(call_conv.ret_regs_gp()[0]);
+        // add the returned value to the returns
+        rb.add(ret_val);
     }
 
-    // generate the epilogue
-    this->gen_func_epilog();
-    // make sure the framework knows this instruction terminates the block
-    this->release_regs_after_return();
+    // generate the return
+    rb.ret();
     return true;
 }
 ```
@@ -543,15 +550,17 @@ bool compile_condbr(IRInstRef inst) {
 ```
 
 ## Emitting function calls
-- helper function `generate_call` in architecture compiler
-- API subject to change since it is suboptimal atm
-- three types of target:
+- calls emitted using [CallBuilder](@ref CompilerBase::CallBuilder) helper or `generate_call` helper function in architecture compiler
+- two types of target:
   - direct call to symbol
-  - indirect call to ptr in temporary register in ScratchReg
   - indirect call to ptr in ValuePartRef
+
+### generate_call
+- simpler API
 - arguments given by their IRValueRef + flags for sign/zero-extension or passed as byval
-- results returned in [ValuePart](@ref ValuePart)s
+- results returned in [ValueRef](@ref ValueRef)
 - supports calling vararg functions
+- will always use the default C calling convention
 
 ```cpp
 bool compile_call_direct(IRInstRef inst) {
@@ -565,19 +574,61 @@ bool compile_call_direct(IRInstRef inst) {
         args.push_back(CallArg{call_arg});
     }
 
-    // assume only one result register
-    ValuePart res_part{};
-    CallingConv call_conv = /* IR-specific way to decide which calling convention to use */;
-    this->generate_call(target_sym, args, std::span{&res_part, 1}, call_conv, /* variable_args = */ false);
+    // only one result value
+    ValueRef res_ref = this->result_ref(res_val);
 
-    // assign result
-    this->result_ref(res_val).part(0).set_value(std::move(res_part));
+    this->generate_call(target_sym, args, &res_ref, /* variable_args = */ false);
     return true;
 }
 ```
 
 - other ways to get symbols, you can create your own, e.g. LLVM back-end does this
-- calling convention is architecture-specific, explained later
+
+### CallBuilder
+- more complex but more flexible API
+- defined in architecture compiler
+- takes a reference to a [CCAssigner](@ref CompilerBase::CCAssigner) to allocate argument and result register
+- vararg configured in CCAssigner
+- if a custom CCAssigner is used (e.g. `tpde::x64::CCAssignerSysV`), storage for it needs to be allocated and held live as long as the CallBuilder is live
+- for each argument call [add_arg](@ref CompilerBase::CallBuilder::add_arg) with a [CallArg](@ref CompilerBase::CallArg) (IRValueRef + flags) or with a ValuePart and a [CCAssignment](@ref tpde::CCAssignment) which contains more fine-grained information
+- then use [call](@ref CompilerBase::CallBuilder::call) to generate the call
+- use [add_ret](@ref CompilerBase::CallBuilder::add_ret) to collect the result values
+
+
+```cpp
+bool compile_call_direct(IRInstRef inst) {
+    IRValueRef res_val = /* IR-specific way to get result value */;
+    u32 target_idx = /* implementation-specific way to get index passed to define_func_idx for the target function */;
+    SymRef target_sym = this->func_syms[target_idx];
+
+    // use the current calling convention for the call
+    CallBuilder cb{*this, *this->cur_cc_assigner()};
+
+    for (IRValueRef call_arg : /* IR-specific */) {
+        // not needed here, we could just call
+        // cb.add_arg(CallArg{call_arg});
+
+        ValueRef vr = this->val_ref(call_arg);
+        // assume that value has only one part
+        CCAssignment cca;
+        cb.add_arg(vr.part(0), cca);
+    }
+
+    // generate the call
+    cb.call(target_sym);
+
+    // only one result value
+    ValueRef res_ref = this->result_ref(res_val);
+    
+    // we could also just call
+    // cb.add_ret(res_ref)
+    CCAssignment cca;
+    // assume only one part
+    cb.add_ret(res_ref.part(0));
+
+    return true;
+}
+```
 
 ## Manual stack allocations
 - manual allocation of stack slots sometimes needed, e.g. when an instruction needs too many temporaries or manual handling of static allocations
@@ -620,11 +671,12 @@ this->free_stack_slot(slot, /* size_bytes = */ 8);
 ## Architecture-specific
 
 ### Calling Conventions
-- each architecture defines a class that implements functionality that depends on calling convention, i.e. function argument, call argument and call result handling
-- provides lists and masks of argument, result and callee-saved registers for each bank
-- your compiler has to implement the `cur_call_conv` function that returns the calling convention for the current function
-- `generate_call` allows passing the calling convention to use
-- currently, only SysV is supported
+- each architecture defines a set of CCAssigners which handle register/stack allocation for argument and return registers
+  for a calling convention
+- your compiler may implement the `cur_cc_assigner` function that returns the assigner for the current function
+- `generate_call` always uses the default C calling convention
+- CallBuilders take a CCAssigner as a constructor argument to specify the calling convention to use
+- currently, only SysV/AAPCS is supported
 
 ## Assembler
 - manages data structures for code and data sections, their relocations, symbols and Labels (i.e. function-local symbols)

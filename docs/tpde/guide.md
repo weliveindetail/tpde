@@ -646,22 +646,12 @@ ourselves.
         const TestIR::Value &value = this->analyzer.adaptor->ir->values[inst_idx];
         IRValueRef ret_op = this->ir()->value_operands[value.op_begin_idx];
 
-        // get a reference to the operand
-        auto [op_ref, op_part] = this->val_ref_single(ret_op);
+        // Create the RetBuilder
+        RetBuilder rb{this, *this->cur_cc_assigner()};
+        rb.add(ret_op);
 
-        // now we simply move the operand into the return register
-        auto call_conv = derived()->cur_calling_convention();
-
-        if (op_part.assignment().fixed_assignment()) {
-            // fixed assignments need to use a move that doesn't update their assignment
-            op_part.reload_into_specific(this, call_conv.ret_regs_gp()[0]);
-        } else {
-            op_part.move_into_specific(call_conv.ret_regs_gp()[0]);
-        }
-
-        // then we do a normal return
-        derived()->gen_func_epilog();
-        this->release_regs_after_return();
+        // generate the return
+        rb.ret();
         return true;
     }
 };
@@ -669,15 +659,9 @@ ourselves.
 
 ## x86-64 class
 
-In `TestIRCompilerX64`, the only required function by the framework is `cur_call_conv`
-which in our case can simply return `SysV` always.
-
+In `TestIRCompilerX64`, currently no function is required by the framework. 
 ```cpp
 struct TestIRCompilerX64 // ...
-
-    static tpde::x64::CallingConv cur_call_conv() {
-        return tpde::x64::CallingConv::SYSV_CC;
-    }
 
 };
 ```
@@ -908,7 +892,6 @@ bool compile_call(IRInstRef inst) noexcept {
     this->generate_call(this->func_syms[func_idx], // we checked that this holds earlier
                         arguments,
                         std::span{static_cast<ValuePart *>(&res_part), 1}, // cast needed as ValuePartRef : ValuePart
-                        tpde::x64::CallingConv::SYSV_CC,
                         /* vararg */false);
     return true;
 }
