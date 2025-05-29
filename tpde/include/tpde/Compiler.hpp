@@ -126,10 +126,12 @@ concept Compiler = CompilerConfig<Config> && requires(T a) {
   /// implementation has to provide a few helpers to tell us what to do
   requires IsTrue<Config::DEFAULT_VAR_REF_HANDLING> || requires {
     /// Called when starting to compile a func.
-    /// This should initialize all variable references
-    /// (even the ones from TPDE so static stack slots)
+    /// This may initialize variable reference assignments
+    /// which should be live at the beginning of the function
     { a.setup_var_ref_assignments() };
 
+    /// Load the address of a variable reference referred to
+    /// by the AssignmentPartRef into a register
     // (dst_reg, ap_ref)
     {
       a.load_address_of_var_reference(ARG(typename Config::AsmReg),
