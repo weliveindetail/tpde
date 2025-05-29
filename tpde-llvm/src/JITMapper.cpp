@@ -20,14 +20,9 @@ JITMapper::JITMapper(std::unique_ptr<JITMapperImpl> impl) noexcept
     : impl(std::move(impl)) {}
 
 JITMapper::~JITMapper() = default;
-JITMapper::JITMapper(JITMapper &&other) noexcept {
-  impl = std::move(other.impl);
-}
 
-JITMapper &JITMapper::operator=(JITMapper &&other) noexcept {
-  impl = std::move(other.impl);
-  return *this;
-}
+JITMapper::JITMapper(JITMapper &&other) noexcept = default;
+JITMapper &JITMapper::operator=(JITMapper &&other) noexcept = default;
 
 void *JITMapper::lookup_global(llvm::GlobalValue *gv) noexcept {
   return impl ? impl->lookup_global(gv) : nullptr;
