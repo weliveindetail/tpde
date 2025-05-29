@@ -442,9 +442,8 @@ bool compile_ret(IRInstRef inst) {
 - branching mostly handled by the compiler
 - use `generate_branch_to_block` from the architecture compiler to emit an (un)conditional branch, arguments are architecture-specific
 - before calling it, need to call [spill_before_branch](@ref CompilerBase::spill_before_branch) so that values which live across blocks
-  can be spilled
-- after all branches are generated, call [release_spilled_regs](@ref CompilerBase::release_spilled_regs) so the register allocator can free values which can no longer be assumed to be in registers
-  after the branch
+  can be spilled and [begin_branch_region](@ref CompilerBase::begin_branch_region) which asserts that no value assignments are changed during branching
+- after all branches are generated, call [end_branch_region](@ref CompilerBase::end_branch_region) to end code generation for branches and [release_spilled_regs](@ref CompilerBase::release_spilled_regs) so the register allocator can free values which can no longer be assumed to be in registers after the branch
 
 > [!warning]
 > Never emit a branch to a block other than using `generate_branch_to_block`
@@ -457,7 +456,11 @@ bool compile_br(IRInstRef inst) {
     IRBlockRef target = /* IR-specific way to get target block ref */;
 
     const auto spilled = this->spill_before_branch();
+    this->begin_branch_region();
+
     this->generate_branch_to_block(Jump::jmp, target, /* needs_split = */ false, /* last_inst = */ true);
+
+    this->end_branch_region();
     this->release_spilled_regs(spilled);
 
     return true;
@@ -484,6 +487,7 @@ bool compile_condbr(IRInstRef inst) {
     
     // let the framework spill
     const auto spilled = this->spill_before_branch();
+    this->begin_branch_region();
 
     // actually generate the branches
     this->generate_branch_to_block(Jump::jne, true_target, true_needs_split, /* last_inst = */ false);
@@ -492,6 +496,7 @@ bool compile_condbr(IRInstRef inst) {
     this->generate_branch_to_block(Jump::jmp, false_target, /* needs_split = */ false, /* last_inst = */ true);
 
     // framework register handling
+    this->end_branch_region();
     this->release_spilled_regs(spilled);
     return true;
 }
@@ -516,6 +521,7 @@ bool compile_condbr(IRInstRef inst) {
     
     // let the framework spill
     const auto spilled = this->spill_before_branch();
+    this->begin_branch_region();
 
     if (next_block == true_target || (next_block != false_target && true_needs_split)) {
         // if the following block is the true target or if we have to always emit a branch but a branch to the true block
@@ -530,6 +536,7 @@ bool compile_condbr(IRInstRef inst) {
     } 
 
     // framework register handling
+    this->end_branch_region();
     this->release_spilled_regs(spilled);
     return true;
 }

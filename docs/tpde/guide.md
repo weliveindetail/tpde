@@ -797,7 +797,11 @@ bool compile_br(IRInstRef inst) noexcept {
     IRBlockRef target = this->ir()->value_operands[value.op_begin_idx];
     
     const auto spilled = this->spill_before_branch();
+    this->begin_branch_region();
+
     this->generate_branch_to_block(Jump::jmp, target, /* needs_split = */ false, /* last_inst = */ true);
+
+    this->end_branch_region();
     this->release_spilled_regs(spilled);
  
     return true;
@@ -819,6 +823,7 @@ void generate_condbr(tpde::x64::CompilerX64::Jump cc,
 
     // let the framework spill
     const auto spilled = this->spill_before_branch();
+    this->begin_branch_region();
 
     if (next_block == true_target || (next_block != false_target && true_needs_split)) {
         // if the following block is the true target or if we have to always emit a branch but a branch to the true block
@@ -832,6 +837,7 @@ void generate_condbr(tpde::x64::CompilerX64::Jump cc,
         this->generate_branch_to_block(Jump::jmp, false_target, /* needs_split = */ false, /* last_inst = */ true);
     }
 
+    this->end_branch_region();
     this->release_spilled_regs(spilled);
 }
 
