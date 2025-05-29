@@ -345,7 +345,8 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
 
           auto *cst = llvm::cast<llvm::Constant>(val);
           if (auto [repl, _] = fixup_constant(cst, ins_before); repl) {
-            values[i] = repl;
+            // This replaces *all* values for multi-edges.
+            phi.setIncomingValueForBlock(block, repl);
           }
         }
       }
