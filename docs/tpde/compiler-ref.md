@@ -608,14 +608,14 @@ this->free_stack_slot(slot, /* size_bytes = */ 8);
 - ValueRefs can be marked as being "variable references"
 - i.e. this means that these values are pointers that are easy to calculate on-demand and are not spilled when their registers are evicted
 - by default, ValueRefs for static stack allocations are classified as variable references
-- compiler has option to defer handling of variable references to user
-- puts the burden of allocating assignments and stack slots for static allocations to the user but allows to add other cheaply generated references, e.g. global value pointers
+- these also have the `stack_variable` bit set in the ValueAssignment
+- compiler has option to allow user to add custom kinds of variable references, e.g. global value pointers
 - set `DEFAULT_VAR_REF_HANDLING` to `false`
 - then your compiler will need to implement `setup_var_ref_assignments` and `load_address_of_var_reference`:
-  - `setup_var_ref_assignments` can initialize the assignments of values which need to be valid at the beginning of the function, e.g. static stack allocations
+  - `setup_var_ref_assignments` can initialize the assignments of values which need to be valid at the beginning of the function
   - `load_address_of_var_reference` will need to calculate the address of the value the variable reference points to and load it into a register
-- user can use `var_ref_custom_idx` in [ValueAssignment](@ref CompilerBase::ValueAssignment) to store custom information about the value, e.g. an index
-  into a custom data structure
+- user can use `variable_ref_data` in the [AssignmentPartRef](@ref tpde::AssignmentPartRef) of the first part to store custom information about the value, e.g. an index into a custom data structure
+- An implementation of this can be found in TPDE-LLVM
 
 ## Architecture-specific
 
