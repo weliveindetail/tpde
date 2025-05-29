@@ -46,8 +46,7 @@ The reference starts by explaining the basic class hierarchy used in the compile
 - type which provides typedefs and constants used to configure the compiler
 - mostly internal or currently not useful (defined in CompilerConfig.hpp/CompilerX64.hpp/CompilerA64.hpp)
 - e.g. provides typedef `Assembler` which tells the compiler which assembler to use, but currently only one assembler supported for each architecture
-- most interesting option is `DEFAULT_VAR_REF_HANDLING` which tells the compiler whether or not it should setup
-  the assignments for static stack allocs or whether you will do that. This is handy when implementing support for global values, see later
+- most interesting option is `DEFAULT_VAR_REF_HANDLING`, which, when turned off, allows to setup custom variable refs, e.g. for globals (see later).
 
 ## Required functions to implement
 - concept described in Compiler.hpp/CompilerX64.hpp/CompilerA64.hpp
@@ -128,14 +127,15 @@ function symbols. This function is optional to implement.
 ```cpp
 void setup_var_ref_assignments() noexcept;
 ```
-This function is called when you set `DEFAULT_VAR_REF_HANDLING` to `false` in the config, before the prologue of the function is written,
+This function is called when you set `DEFAULT_VAR_REF_HANDLING` to `false` in the config,
 asking you to setup assignments for values which are marked to be "variable references". The details of this are explained further down below.
 
 #### load_address_of_var_reference
 ```cpp
 void load_address_of_var_reference(AsmReg dst, AssignmentPartRef ap) noexcept;
 ```
-This function is called whenever the `ValuePartRef` of a value which is marked as being a variable reference is needed in a register.
+This function is called whenever the `ValuePartRef` of a value which is marked as being a custom variable reference is needed in a register.
+This function is only needed when `DEFAULT_VAR_REF_HANDLING` is `false`.
 The details of this mechanism are explained further down below.
 
 #### compile_inst
@@ -147,22 +147,6 @@ and update the value assignments for the result values of the instruction.
 The return value indicates whether compilation of the instruction failed.
 
 How to implement this function is explained in the next section
-
-### x86-64
-
-#### cur_call_conv
-```cpp
-tpde::x64::CallingConv cur_call_conv() noexcept;
-```
-Returns the calling convention of the function currently being compiled
-
-### AArch64
-
-#### cur_call_conv
-```cpp
-tpde::a64::CallingConv cur_call_conv() noexcept;
-```
-Returns the calling convention of the function currently being compiled
 
 ## How to compile instructions
 

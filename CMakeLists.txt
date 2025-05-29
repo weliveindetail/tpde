@@ -119,3 +119,4 @@ endif()
 
 if (TPDE_BUILD_DOCS)
     add_subdirectory(docs)
+endif()

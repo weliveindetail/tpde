@@ -62,7 +62,7 @@ Framework divides back-end into 7 components:
 - then proceeds in a per-function manner:
   - notify Adaptor that a new function is being compiled
   - ask analyzer to compute block layout and liveness information
-  - setup of static stack slots (this may optionally be deferred to the user)
+  - setup of static stack slots
   - ask architecture-specific implementation to generate the function prologue and set-up assignments
     for arguments
   - iterate over each block in the order specified by the analyzer:
@@ -79,7 +79,7 @@ Framework divides back-end into 7 components:
 ## Assembler:
 - architecture- and platform-specific; currently only x86-64/AArch64 Linux ELF
 - keeps track of symbols and section contents as well as relocations
-- also houses unwind information
+- also houses unwind and C++ exception table information
 - at the end, produces a finished object file or may also be able to map the code 
   directly into memory and do all fixup required to make it executable
  
