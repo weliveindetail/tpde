@@ -663,9 +663,12 @@ this->free_stack_slot(slot, /* size_bytes = */ 8);
 - compiler has option to allow user to add custom kinds of variable references, e.g. global value pointers
 - set `DEFAULT_VAR_REF_HANDLING` to `false`
 - then your compiler will need to implement `setup_var_ref_assignments` and `load_address_of_var_reference`:
-  - `setup_var_ref_assignments` can initialize the assignments of values which need to be valid at the beginning of the function
+  - `setup_var_ref_assignments` can initialize the assignments of values which need to be valid at the beginning of the function using [init_variable_ref](@ref CompilerBase::init_variable_ref)
   - `load_address_of_var_reference` will need to calculate the address of the value the variable reference points to and load it into a register
 - user can use `variable_ref_data` in the [AssignmentPartRef](@ref tpde::AssignmentPartRef) of the first part to store custom information about the value, e.g. an index into a custom data structure
+- you will need to handle access to a custom variable ref assignment in `val_ref_special`/`val_part_ref_special` and initialize it
+  using [init_variable_ref](@ref CompilerBase::init_variable_ref) if necessary
+- this can then return a normal [ValuePartRef](@ref CompilerBase::ValuePartRef) referencing this assignment
 - An implementation of this can be found in TPDE-LLVM
 
 ## Architecture-specific
