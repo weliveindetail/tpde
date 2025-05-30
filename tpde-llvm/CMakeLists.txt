@@ -60,7 +60,7 @@ target_sources(tpde_llvm PRIVATE
         src/LLVMCompilerBase.hpp
 )
 
-find_program(clang NAMES clang clang-17 clang-18 clang-19)
+find_program(clang NAMES clang-20 clang-19 clang-18 clang-17 clang)
 
 if(TPDE_X64)
     add_custom_command(
