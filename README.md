@@ -8,9 +8,9 @@ This repository contains:
 
 - TPDE: the core compiler framework.
 - TPDE-Encodegen: a utility for easing the use of TPDE by deriving code generators through LLVM's Machine IR.
-- TPDE-LLVM: a standalone back-end for LLVM-IR, which compiles 10--20x faster than LLVM -O0 with similar code quality, usable as library (JIT or object file) and as tool (`tpde-llc`). We provide a [patch](llvm.ab51eccf88f5.patch) for integrating into Clang/Flang 19.1 (adds `-ftpde`).
+- TPDE-LLVM: a standalone back-end for LLVM-IR, which compiles 10--20x faster than LLVM -O0 with similar code quality, usable as library (e.g., for JIT), as tool (`tpde-llc`), and integrated in Clang/Flang (with a patch).
 
-Consult the [documentation](docs/) for more information.
+For more information and getting started, consult the [documentation](docs/).
 
 ### Publications
 
@@ -18,4 +18,4 @@ Consult the [documentation](docs/) for more information.
 
 ### License
 
-Generally: Apache-2.0 WITH LLVM-exception. (Detailed license information is attached to every file.)
+Generally: Apache-2.0 WITH LLVM-exception. (Detailed license information is attached to every file. Dependencies may have different licenses.)
