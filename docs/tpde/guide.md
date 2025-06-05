@@ -172,7 +172,7 @@ First, providing access to the list of functions:
   }
 
   auto funcs() const noexcept {
-    // needs to provide an iterator over IRFuncRef which in our case are indices
+    // needs to provide a range over IRFuncRef's which in our case are indices
     // so we construct that using the ranges api
     return std::views::iota(0u, u32(ir->functions.size()));
   }
@@ -319,7 +319,7 @@ First is the local index for values. Since it should be dense and start at zero,
 index in the `values` vector but subtract the index of the first value in the function
 from it.
 ```cpp
-  u32 val_local_idx(IRValueRef val) const noexcept {
+  ValLocalIdx val_local_idx(IRValueRef val) const noexcept {
     return val - ir->functions[cur_func].arg_begin_index;
   }
 
@@ -518,6 +518,8 @@ struct CompilerConfig : tpde::x64::PlatformConfig {};
 struct TestIRCompilerX64 : tpde::x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64, TestIRCompilerBase, CompilerConfig> {
     using Base = tpde::x64::CompilerX64<TestIRAdaptor, TestIRCompilerX64, TestIRCompilerBase, CompilerConfig>;
 
+    using IRValueRef = Base::IRValueRef;
+
     explicit TestIRCompilerX64(TestIRAdaptor *adaptor)
         : Base{adaptor} {
       static_assert(tpde::Compiler<TestIRCompilerX64, tpde::x64::PlatformConfig>);
@@ -538,11 +540,11 @@ Since we only want to compile for x86-64 and AArch64, we can implement a few fun
 
 
 ```cpp
-struct TestIRCompilerBase // ...
+struct TestIRCompilerBase /* ... */ {
 
     bool cur_func_may_emit_calls() {
         // we can grab this directly from the IR
-        this->ir()->functions[this->adaptor->cur_func].has_call;
+        return this->ir()->functions[this->adaptor->cur_func].has_call;
     }
 
     static typename CompilerConfig::Assembler::SymRef cur_personality_func() {
@@ -597,7 +599,7 @@ struct TestIRCompilerBase // ...
         // we implement this function in TestIRCompilerBase and call into the derived
         // class for the actual code generation if necessary
 
-        const TestIR::Value &value = this->analyzer.adaptor->ir->values[inst_idx];
+        const TestIR::Value &value = this->analyzer.adaptor->ir->values[u32(inst)];
         // arguments and PHIs should not show up in the block_insts range
         assert(value.type == TestIR::Value::Type::normal ||
           value.type == TestIR::Value::Type::terminator);
