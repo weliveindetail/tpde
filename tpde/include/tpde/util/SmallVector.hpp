@@ -24,12 +24,12 @@ protected:
   size_type cap;
 
   SmallVectorUntypedBase() = delete;
-  SmallVectorUntypedBase(size_type cap)
-      : ptr(reinterpret_cast<void *>(this + 1)), sz(0), cap(cap) {}
+  SmallVectorUntypedBase(size_type cap) : ptr(small_ptr()), sz(0), cap(cap) {}
 
-  bool is_small() const {
-    return ptr == reinterpret_cast<const void *>(this + 1);
-  }
+  void *small_ptr() { return static_cast<void *>(this + 1); }
+  const void *small_ptr() const { return static_cast<const void *>(this + 1); }
+
+  bool is_small() const { return ptr == small_ptr(); }
 
   void *grow_malloc(size_type min_size, size_type elem_sz, size_type &new_cap);
   void grow_trivial(size_type min_size, size_type elem_sz);
@@ -69,6 +69,25 @@ protected:
     if (!is_small()) {
       free(ptr);
     }
+  }
+
+  SmallVectorBase &operator=(SmallVectorBase &&other) {
+    clear();
+    if (!other.is_small()) {
+      ptr = other.ptr;
+      sz = other.sz;
+      cap = other.cap;
+      other.ptr = other.small_ptr();
+      other.sz = 0;
+      other.cap = 0;
+    } else {
+      reserve(other.size());
+      unpoison_memory_region(begin(), other.size() * sizeof(T));
+      std::uninitialized_move(other.begin(), other.end(), begin());
+      sz = other.size();
+      other.clear();
+    }
+    return *this;
   }
 
 public:
@@ -247,9 +266,7 @@ public:
   SmallVector() : SmallVectorBase<T>(N) {}
 
   SmallVector(const SmallVector &) = delete;
-  SmallVector(SmallVector &&) = delete;
   SmallVector &operator=(const SmallVector &) = delete;
-  SmallVector &operator=(SmallVector &&) = delete;
   // TODO: Implement this if required.
 #if 0
   SmallVector(SmallVector &other) : SmallVectorBase<T>(N) {
@@ -258,6 +275,7 @@ public:
   SmallVector(SmallVectorBase<T> &other) : SmallVectorBase<T>(N) {
     SmallVectorBase<T>::operator=(other);
   }
+#endif
 
   SmallVector(SmallVector &&other) : SmallVectorBase<T>(N) {
     SmallVectorBase<T>::operator=(std::move(other));
@@ -266,6 +284,7 @@ public:
     SmallVectorBase<T>::operator=(std::move(other));
   }
 
+#if 0
   SmallVector &operator=(SmallVector &other) {
     SmallVectorBase<T>::operator=(other);
     return *this;
@@ -274,6 +293,7 @@ public:
     SmallVectorBase<T>::operator=(other);
     return *this;
   }
+#endif
 
   SmallVector &operator=(SmallVector &&other) {
     SmallVectorBase<T>::operator=(std::move(other));
@@ -283,7 +303,6 @@ public:
     SmallVectorBase<T>::operator=(std::move(other));
     return *this;
   }
-#endif
 };
 
 } // end namespace tpde::util
