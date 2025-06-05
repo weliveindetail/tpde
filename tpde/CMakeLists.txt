@@ -43,6 +43,7 @@ target_sources(tpde PRIVATE
     src/AssemblerElf.cpp
     src/base.cpp
     src/ElfMapper.cpp
+    src/StringTable.cpp
     src/ValueAssignment.cpp
     src/util/SmallVector.cpp
 
@@ -60,6 +61,7 @@ target_sources(tpde PRIVATE
         include/tpde/IRAdaptor.hpp
         include/tpde/RegisterFile.hpp
         include/tpde/ScratchReg.hpp
+        include/tpde/StringTable.hpp
         include/tpde/AssignmentPartRef.hpp
         include/tpde/ValuePartRef.hpp
         include/tpde/util/SmallBitSet.hpp
