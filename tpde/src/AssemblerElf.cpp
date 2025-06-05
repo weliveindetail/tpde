@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 #include "tpde/AssemblerElf.hpp"
+#include "tpde/StringTable.hpp"
 #include "tpde/util/VectorWriter.hpp"
 #include "tpde/util/misc.hpp"
 
@@ -108,8 +109,8 @@ void AssemblerElfBase::reset() noexcept {
   temp_symbols.clear();
   temp_symbol_fixups.clear();
   next_free_tsfixup = ~0u;
-  strtab.resize(1); // must begin with null byte
-  shstrtab_extra.clear();
+  strtab = StringTable();
+  shstrtab_extra = StringTable();
   secref_text = INVALID_SEC_REF;
   secref_rodata = INVALID_SEC_REF;
   secref_relro = INVALID_SEC_REF;
@@ -146,9 +147,7 @@ AssemblerElfBase::SecRef AssemblerElfBase::create_rela_section(
 AssemblerElfBase::SymRef
     AssemblerElfBase::create_section_symbol(SecRef ref,
                                             std::string_view name) noexcept {
-  const auto str_off = strtab.size();
-  strtab.insert(strtab.end(), name.begin(), name.end());
-  strtab.push_back('\0');
+  const auto str_off = strtab.add(name);
 
   unsigned shndx = sec_is_xindex(ref) ? SHN_XINDEX : static_cast<uint32_t>(ref);
 
@@ -252,13 +251,8 @@ AssemblerElfBase::SecRef
 
   assert(name.find('\0') == std::string_view::npos &&
          "name must not contain null-bytes");
-  size_t rela_name = shstrtab_extra.size() + elf::SHSTRTAB.size();
-  shstrtab_extra.reserve(shstrtab_extra.size() + name.size() + 6);
-  if (with_rela) {
-    shstrtab_extra += ".rela";
-  }
-  shstrtab_extra += name;
-  shstrtab_extra.push_back('\0');
+  size_t rela_name = elf::SHSTRTAB.size();
+  rela_name += shstrtab_extra.add_prefix(with_rela ? ".rela" : "", name);
 
   assert(!(flags & SHF_GROUP) && "SHF_GROUP is added by assembler");
   DataSection *group_sec = nullptr;
@@ -331,12 +325,7 @@ void AssemblerElfBase::sym_copy(SymRef dst, SymRef src) noexcept {
 AssemblerElfBase::SymRef AssemblerElfBase::sym_add(const std::string_view name,
                                                    SymBinding binding,
                                                    u32 type) noexcept {
-  size_t str_off = 0;
-  if (!name.empty()) {
-    str_off = strtab.size();
-    strtab.insert(strtab.end(), name.begin(), name.end());
-    strtab.emplace_back('\0');
-  }
+  size_t str_off = strtab.add(name);
 
   u8 info;
   switch (binding) {
@@ -934,8 +923,8 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
     const auto pad = size - strtab.size();
     const auto sh_off = out.size();
     out.insert(out.end(),
-               reinterpret_cast<uint8_t *>(strtab.data()),
-               reinterpret_cast<uint8_t *>(strtab.data() + strtab.size()));
+               reinterpret_cast<const u8 *>(strtab.data()),
+               reinterpret_cast<const u8 *>(strtab.data() + strtab.size()));
     out.resize(out.size() + pad);
 
     auto *hdr = sec_hdr(sec_idx(".strtab"));
@@ -951,14 +940,13 @@ std::vector<u8> AssemblerElfBase::build_object_file() noexcept {
     const auto size = SHSTRTAB.size() + shstrtab_extra.size();
     const auto pad = util::align_up(size, 8) - size;
     const auto sh_off = out.size();
-    out.insert(
-        out.end(),
-        reinterpret_cast<const uint8_t *>(SHSTRTAB.data()),
-        reinterpret_cast<const uint8_t *>(SHSTRTAB.data() + SHSTRTAB.size()));
     out.insert(out.end(),
-               reinterpret_cast<const uint8_t *>(shstrtab_extra.data()),
-               reinterpret_cast<const uint8_t *>(shstrtab_extra.data() +
-                                                 shstrtab_extra.size()));
+               reinterpret_cast<const u8 *>(SHSTRTAB.data()),
+               reinterpret_cast<const u8 *>(SHSTRTAB.data() + SHSTRTAB.size()));
+    out.insert(out.end(),
+               reinterpret_cast<const u8 *>(shstrtab_extra.data()),
+               reinterpret_cast<const u8 *>(shstrtab_extra.data() +
+                                            shstrtab_extra.size()));
     out.resize(out.size() + pad);
 
     auto *hdr = sec_hdr(sec_idx(".shstrtab"));

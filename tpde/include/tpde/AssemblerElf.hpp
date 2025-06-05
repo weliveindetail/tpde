@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base.hpp"
+#include "tpde/StringTable.hpp"
 #include "tpde/util/BumpAllocator.hpp"
 #include "tpde/util/VectorWriter.hpp"
 #include "util/SmallVector.hpp"
@@ -379,9 +380,9 @@ private:
   std::vector<TempSymbolFixup> temp_symbol_fixups;
   u32 next_free_tsfixup = ~0u;
 
-  std::vector<char> strtab;
+  StringTable strtab;
   /// Storage for extra user-provided section names.
-  std::string shstrtab_extra;
+  StringTable shstrtab_extra;
 
 protected:
   SecRef secref_text = INVALID_SEC_REF;
@@ -432,8 +433,6 @@ private:
 public:
   explicit AssemblerElfBase(const TargetInfo &target_info)
       : target_info(target_info) {
-    strtab.push_back('\0');
-
     local_symbols.resize(1); // First symbol must be null.
     init_sections();
     eh_init_cie();
