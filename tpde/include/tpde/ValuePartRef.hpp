@@ -253,6 +253,18 @@ public:
 
   /// Move into a temporary register, reuse an existing register if possible.
   ValuePart into_temporary(CompilerBase *compiler) && noexcept {
+    if (is_const()) {
+      if (state.c.const_inline) {
+        ValuePart res{state.c.inline_data, state.c.size, state.c.bank};
+        res.load_to_reg(compiler);
+        return res;
+      } else {
+        ValuePart res{state.c.data, state.c.size, state.c.bank};
+        res.load_to_reg(compiler);
+        return res;
+      }
+    }
+
     // TODO: implement this. This needs size information to copy the value.
     assert((has_assignment() || state.c.owned) &&
            "into_temporary from unowned ValuePart not implemented");
