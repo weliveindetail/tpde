@@ -215,7 +215,8 @@ bool LLVMCompilerX64::compile_alloca(const llvm::Instruction *inst,
   assert(this->adaptor->cur_has_dynamic_alloca());
 
   // refcount
-  auto [size_vr, size_ref] = this->val_ref_single(alloca->getArraySize());
+  const llvm::Value *size_val = alloca->getArraySize();
+  auto [size_vr, size_ref] = this->val_ref_single(size_val);
   auto [res_vr, res_ref] = this->result_ref_single(alloca);
 
   auto align = alloca->getAlign().value();
@@ -245,6 +246,14 @@ bool LLVMCompilerX64::compile_alloca(const llvm::Instruction *inst,
     ScratchReg scratch{this};
 
     AsmReg size_reg = size_ref.load_to_reg();
+    if (auto width = size_val->getType()->getIntegerBitWidth(); width != 64) {
+      if (width > 64) {
+        // Don't support alloca array sizes beyond i64...
+        return false;
+      }
+      size_ref = std::move(size_ref).into_extended(false, width, 64);
+      size_reg = size_ref.cur_reg();
+    }
     AsmReg res_reg = res_ref.alloc_try_reuse(size_ref);
 
     if (elem_size == 0) {
