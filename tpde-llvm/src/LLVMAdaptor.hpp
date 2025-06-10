@@ -101,9 +101,13 @@ union LLVMComplexPart {
     /// Indicates that our type layout is incompatible with LLVM's layout.
     /// Example: we scalarize <1 x i8>, but LLVM-AArch64 widens to <8 x i8>.
     bool incompatible_layout : 1;
+
+    /// At least one part has an invalid type.
+    bool invalid : 1;
   } desc;
 
-  LLVMComplexPart() : part{.type = LLVMBasicValType::invalid} {}
+  LLVMComplexPart()
+      : desc{.num_parts = 0, .incompatible_layout = false, .invalid = false} {}
 
   LLVMComplexPart(LLVMBasicValType type, u8 size, bool ends_value = true)
       : part{.type = type,
@@ -180,7 +184,6 @@ struct LLVMAdaptor {
   bool func_has_dynamic_alloca = false;
   // Index boundaries into values.
   u32 global_idx_end = 0;
-  u32 global_complex_part_types_end_idx = 0;
 
   tpde::util::SmallVector<BlockInfo, 128> blocks;
   tpde::util::SmallVector<u32, 256> block_succ_indices;

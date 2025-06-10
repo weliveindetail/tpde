@@ -302,10 +302,13 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
       add_global(&fn);
     }
     global_idx_end = values.size();
-    global_complex_part_types_end_idx = complex_part_types.size();
+    // Ensure that we can simply clear all complex types for each function. All
+    // globals have type ptr and therefore should never need complex types.
+    assert(complex_part_types.size() == 0 &&
+           "there should be no complex types during global initialization");
   } else {
     values.resize(global_idx_end);
-    complex_part_types.resize(global_complex_part_types_end_idx);
+    complex_part_types.clear();
   }
 
   const size_t arg_count = function->arg_size();
@@ -434,7 +437,6 @@ void LLVMAdaptor::reset() noexcept {
   cur_func = nullptr;
   globals_init = false;
   global_idx_end = 0;
-  global_complex_part_types_end_idx = 0;
   blocks.clear();
   block_succ_indices.clear();
   block_succ_ranges.clear();
@@ -597,7 +599,7 @@ std::pair<unsigned, unsigned>
     }
     if (nelem > 0) {
       if (nelem * len > LLVMComplexPart::MaxLength) {
-        report_unsupported_type(type);
+        complex_part_types[desc_idx].desc.invalid = true;
       }
       complex_part_types[start].part.nest_inc++;
       complex_part_types[start + nelem * len - 1].part.nest_dec++;
@@ -630,7 +632,7 @@ std::pair<unsigned, unsigned>
     size = tpde::util::align_up(size, align);
     if (size > 0) {
       if (end - start + 1 > LLVMComplexPart::MaxLength) {
-        report_unsupported_type(type);
+        complex_part_types[desc_idx].desc.invalid = true;
       }
       complex_part_types[start].part.nest_inc++;
       complex_part_types[end].part.nest_dec++;
@@ -641,7 +643,7 @@ std::pair<unsigned, unsigned>
   default: break;
   }
 
-  report_unsupported_type(type);
+  complex_part_types[desc_idx].desc.invalid = true;
   return std::make_pair(0, 1);
 }
 
@@ -659,6 +661,11 @@ std::pair<LLVMBasicValType, u32>
   complex_types_append(type, start);
   unsigned len = complex_part_types.size() - (start + 1);
   complex_part_types[start].desc.num_parts = len;
+
+  if (complex_part_types[start].desc.invalid) [[unlikely]] {
+    report_unsupported_type(type);
+    return std::make_pair(LLVMBasicValType::invalid, ~0u);
+  }
 
   return std::make_pair(LLVMBasicValType::complex, start);
 }

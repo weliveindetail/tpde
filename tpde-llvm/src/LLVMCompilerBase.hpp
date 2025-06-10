@@ -1642,7 +1642,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_load_generic(
     }
     return true;
   }
-  default: assert(0); return false;
+  default: return false;
   }
 
   ValuePartRef res_ref = res.part(0);
@@ -1842,7 +1842,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::compile_store_generic(
     }
     return true;
   }
-  default: assert(0); return false;
+  default: return false;
   }
 
   return true;
