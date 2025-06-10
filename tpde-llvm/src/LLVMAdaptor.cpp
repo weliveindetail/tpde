@@ -456,18 +456,13 @@ void LLVMAdaptor::report_unsupported_type(llvm::Type *type) noexcept {
   func_unsupported = true;
 }
 
-namespace {
-
-/// Returns (num, element-type), with num > 0 and a valid type, or (0, invalid).
-[[nodiscard]] std::pair<unsigned long, LLVMBasicValType>
-    llvm_ty_to_basic_ty_simple(const llvm::Type *type) noexcept {
+std::pair<LLVMBasicValType, unsigned long>
+    LLVMAdaptor::lower_simple_type(const llvm::Type *type) noexcept {
   switch (type->getTypeID()) {
-  case llvm::Type::FloatTyID: return {1, LLVMBasicValType::f32};
-  case llvm::Type::DoubleTyID: return {1, LLVMBasicValType::f64};
-  case llvm::Type::FP128TyID: return {1, LLVMBasicValType::f128};
-  case llvm::Type::VoidTyID:
-    return {1, LLVMBasicValType::none};
-    // case llvm::Type::X86_MMXTyID: return {1, LLVMBasicValType::v64};
+  case llvm::Type::FloatTyID: return {LLVMBasicValType::f32, 1};
+  case llvm::Type::DoubleTyID: return {LLVMBasicValType::f64, 1};
+  case llvm::Type::FP128TyID: return {LLVMBasicValType::f128, 1};
+  case llvm::Type::VoidTyID: return {LLVMBasicValType::none, 1};
 
   case llvm::Type::IntegerTyID: {
     const u32 bit_width = type->getIntegerBitWidth();
@@ -479,13 +474,13 @@ namespace {
       static_assert(base + 3 == static_cast<unsigned>(LLVMBasicValType::i64));
 
       unsigned off = 31 - tpde::util::cnt_lz((bit_width - 1) >> 2 | 1);
-      return {1, static_cast<LLVMBasicValType>(base + off)};
+      return {static_cast<LLVMBasicValType>(base + off), 1};
     } else if (bit_width == 128) {
-      return {2, LLVMBasicValType::i128};
+      return {LLVMBasicValType::i128, 2};
     }
-    return {0, LLVMBasicValType::invalid};
+    return {LLVMBasicValType::invalid, 0};
   }
-  case llvm::Type::PointerTyID: return {1, LLVMBasicValType::ptr};
+  case llvm::Type::PointerTyID: return {LLVMBasicValType::ptr, 1};
   case llvm::Type::FixedVectorTyID: {
     auto *el_ty = llvm::cast<llvm::FixedVectorType>(type)->getElementType();
     auto num_elts = llvm::cast<llvm::FixedVectorType>(type)->getNumElements();
@@ -494,7 +489,7 @@ namespace {
       // element type is a small integer, it gets assigned to GP regs; on
       // AArch64, it stays in a vector register.
       // TODO: handle this case.
-      return {0, LLVMBasicValType::invalid};
+      return {LLVMBasicValType::invalid, 0};
     }
 
     // LLVM vectors have two different representations, the in-memory/bitcast
@@ -538,40 +533,38 @@ namespace {
     case llvm::Type::IntegerTyID: {
       unsigned el_width = el_ty->getIntegerBitWidth();
       if (el_width < 8 || el_width > 64 || (el_width & (el_width - 1))) {
-        return {0, LLVMBasicValType::invalid};
+        return {LLVMBasicValType::invalid, 0};
       }
       if (el_width * num_elts == 64) {
-        return {1, LLVMBasicValType::v64};
+        return {LLVMBasicValType::v64, 1};
       } else if (el_width * num_elts == 128) {
-        return {1, LLVMBasicValType::v128};
+        return {LLVMBasicValType::v128, 1};
       }
-      return {0, LLVMBasicValType::invalid};
+      return {LLVMBasicValType::invalid, 0};
     }
     case llvm::Type::FloatTyID:
       if (num_elts == 2) {
-        return {1, LLVMBasicValType::v64};
+        return {LLVMBasicValType::v64, 1};
       } else if (num_elts == 4) {
-        return {1, LLVMBasicValType::v128};
+        return {LLVMBasicValType::v128, 1};
       }
-      return {0, LLVMBasicValType::invalid};
+      return {LLVMBasicValType::invalid, 0};
     case llvm::Type::DoubleTyID:
       if (num_elts == 2) {
-        return {1, LLVMBasicValType::v128};
+        return {LLVMBasicValType::v128, 1};
       }
-      return {0, LLVMBasicValType::invalid};
-    default: return {0, LLVMBasicValType::invalid};
+      return {LLVMBasicValType::invalid, 0};
+    default: return {LLVMBasicValType::invalid, 0};
     }
   }
-  default: return {0, LLVMBasicValType::invalid};
+  default: return {LLVMBasicValType::invalid, 0};
   }
 }
-
-} // end anonymous namespace
 
 std::pair<unsigned, unsigned>
     LLVMAdaptor::complex_types_append(llvm::Type *type,
                                       size_t desc_idx) noexcept {
-  if (auto [num, ty] = llvm_ty_to_basic_ty_simple(type);
+  if (auto [ty, num] = lower_simple_type(type);
       ty != LLVMBasicValType::invalid) {
     unsigned size = basic_ty_part_size(ty);
     unsigned align = basic_ty_part_align(ty);
@@ -647,14 +640,9 @@ std::pair<unsigned, unsigned>
   return std::make_pair(0, 1);
 }
 
-std::pair<LLVMBasicValType, u32>
-    LLVMAdaptor::lower_type(llvm::Type *type) noexcept {
+[[gnu::noinline]] std::pair<LLVMBasicValType, unsigned long>
+    LLVMAdaptor::lower_complex_type(llvm::Type *type) noexcept {
   // TODO: Cache this?
-  if (auto [num, ty] = llvm_ty_to_basic_ty_simple(type); num > 0) [[likely]] {
-    assert(num == 1 || ty == LLVMBasicValType::i128);
-    return std::make_pair(ty, ~0u);
-  }
-
   unsigned start = complex_part_types.size();
   complex_part_types.push_back(LLVMComplexPart{}); // length
   // TODO: store size/alignment?
