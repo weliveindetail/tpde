@@ -1021,10 +1021,10 @@ define void @insert_many_nested() {
 ; X64-NEXT:    mov qword ptr [rbp - 0x108], r15
 ; X64-NEXT:    mov r15, qword ptr [rbp - 0x38]
 ; X64-NEXT:    mov eax, 0x0
-; X64-NEXT:    movzx eax, byte ptr [rbp - 0x120]
-; X64-NEXT:    movzx eax, byte ptr [rbp - 0x118]
-; X64-NEXT:    movzx eax, byte ptr [rbp - 0x110]
-; X64-NEXT:    mov rax, qword ptr [rbp - 0x108]
+; X64-NEXT:    movzx ecx, byte ptr [rbp - 0x120]
+; X64-NEXT:    movzx edx, byte ptr [rbp - 0x118]
+; X64-NEXT:    movzx ebx, byte ptr [rbp - 0x110]
+; X64-NEXT:    mov rsi, qword ptr [rbp - 0x108]
 ; X64-NEXT:    mov eax, 0x0
 ; X64-NEXT:    lea rax, [rax + 0x4]
 ; X64-NEXT:    mov ecx, 0x0

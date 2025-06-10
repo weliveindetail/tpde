@@ -310,6 +310,9 @@ public:
     assignment().set_modified(true);
   }
 
+  /// Set the value to the value of a different value part, possibly taking
+  /// ownership of allocated registers. If this value part has an assignment,
+  /// the value part will be unlocked.
   void set_value(CompilerBase *compiler, ValuePart &&other) noexcept;
 
   /// Set the value to the value of the specified register, possibly taking
@@ -619,6 +622,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValuePart::set_value(
     AsmReg cur_reg = alloc_reg(compiler);
     other.reload_into_specific_fixed(compiler, cur_reg, ap.part_size());
     other.reset(compiler);
+    unlock(compiler);
     ap.set_register_valid(true);
     ap.set_modified(true);
     return;
