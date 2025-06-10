@@ -173,6 +173,9 @@ struct LLVMAdaptor {
   llvm::DenseMap<const llvm::BasicBlock *, u32> block_lookup;
 #endif
   tpde::util::SmallVector<LLVMComplexPart, 32> complex_part_types;
+  /// Map from complex type to the lowered type.
+  llvm::DenseMap<const llvm::Type *, std::pair<LLVMBasicValType, u32>>
+      complex_type_map;
 
   // helpers for faster lookup
   tpde::util::SmallVector<const llvm::AllocaInst *, 16>

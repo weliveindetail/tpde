@@ -302,13 +302,8 @@ bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
       add_global(&fn);
     }
     global_idx_end = values.size();
-    // Ensure that we can simply clear all complex types for each function. All
-    // globals have type ptr and therefore should never need complex types.
-    assert(complex_part_types.size() == 0 &&
-           "there should be no complex types during global initialization");
   } else {
     values.resize(global_idx_end);
-    complex_part_types.clear();
   }
 
   const size_t arg_count = function->arg_size();
@@ -433,6 +428,7 @@ void LLVMAdaptor::reset() noexcept {
   block_lookup.clear();
 #endif
   complex_part_types.clear();
+  complex_type_map.clear();
   initial_stack_slot_indices.clear();
   cur_func = nullptr;
   globals_init = false;
@@ -642,20 +638,28 @@ std::pair<unsigned, unsigned>
 
 [[gnu::noinline]] std::pair<LLVMBasicValType, unsigned long>
     LLVMAdaptor::lower_complex_type(llvm::Type *type) noexcept {
-  // TODO: Cache this?
-  unsigned start = complex_part_types.size();
-  complex_part_types.push_back(LLVMComplexPart{}); // length
-  // TODO: store size/alignment?
-  complex_types_append(type, start);
-  unsigned len = complex_part_types.size() - (start + 1);
-  complex_part_types[start].desc.num_parts = len;
+  auto [it, inserted] = complex_type_map.try_emplace(type);
+  if (inserted) {
+    unsigned start = complex_part_types.size();
+    complex_part_types.push_back(LLVMComplexPart{}); // Complex part desc
+    // TODO: store size/alignment?
+    complex_types_append(type, start);
+    unsigned len = complex_part_types.size() - (start + 1);
+    complex_part_types[start].desc.num_parts = len;
 
-  if (complex_part_types[start].desc.invalid) [[unlikely]] {
-    report_unsupported_type(type);
-    return std::make_pair(LLVMBasicValType::invalid, ~0u);
+    if (complex_part_types[start].desc.invalid) [[unlikely]] {
+      report_unsupported_type(type);
+      // Never store unsupported types in complex_type_map. The map lives
+      // throughout the entire module, but func_unsupported (set by
+      // report_unsupported_type) is reset for every function.
+      complex_type_map.erase(it);
+      return std::make_pair(LLVMBasicValType::invalid, ~0u);
+    }
+
+    it->second = std::make_pair(LLVMBasicValType::complex, start);
   }
 
-  return std::make_pair(LLVMBasicValType::complex, start);
+  return it->second;
 }
 
 std::pair<unsigned, unsigned>
