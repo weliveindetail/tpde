@@ -331,8 +331,13 @@ struct LLVMAdaptor {
   }
 
 
-  tpde::ValLocalIdx val_local_idx(const IRValueRef value) const noexcept {
-    return tpde::ValLocalIdx(val_lookup_idx(value));
+  tpde::ValLocalIdx val_local_idx(const IRValueRef v) const noexcept {
+    // Globals are handled together with constants; so only instructions and
+    // arguments have local indices.
+    if (auto *arg = llvm::dyn_cast<llvm::Argument>(v)) [[unlikely]] {
+      return tpde::ValLocalIdx(arg_lookup_idx(arg));
+    }
+    return tpde::ValLocalIdx(inst_lookup_idx(llvm::cast<llvm::Instruction>(v)));
   }
 
   [[nodiscard]] auto inst_operands(const IRInstRef inst) const noexcept {
@@ -527,22 +532,6 @@ public:
 
   void inst_set_fused(const IRInstRef value, const bool fused) noexcept {
     values[inst_lookup_idx(value)].fused = fused;
-  }
-
-  [[nodiscard]] u32 val_lookup_idx(const llvm::Value *val) const noexcept {
-    if (auto *inst = llvm::dyn_cast<llvm::Instruction>(val); inst) {
-      const auto idx = inst_lookup_idx(inst);
-      return idx;
-    }
-    if (auto *gv = llvm::dyn_cast<llvm::GlobalValue>(val)) {
-      if (auto it = global_lookup.find(gv); it != global_lookup.end()) {
-        return it->second;
-      }
-    }
-    if (auto *arg = llvm::dyn_cast<llvm::Argument>(val)) {
-      return arg_lookup_idx(arg);
-    }
-    TPDE_UNREACHABLE("unhandled value type");
   }
 
   const ValInfo &val_info(const llvm::Instruction *inst) const noexcept {

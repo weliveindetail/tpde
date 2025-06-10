@@ -25,6 +25,7 @@
 
 
 #include "tpde/CompilerBase.hpp"
+#include "tpde/ValLocalIdx.hpp"
 #include "tpde/base.hpp"
 #include "tpde/util/BumpAllocator.hpp"
 #include "tpde/util/SmallVector.hpp"
@@ -618,9 +619,9 @@ std::optional<typename LLVMCompilerBase<Adaptor, Derived, Config>::ValuePartRef>
   // At this point, ty is the basic type of the element and sub_part the part
   // inside the basic type.
 
-  if (llvm::isa<llvm::GlobalValue>(const_val)) {
+  if (auto *gv = llvm::dyn_cast<llvm::GlobalValue>(const_val)) {
     assert(ty == LLVMBasicValType::ptr && sub_part == 0);
-    auto local_idx = this->adaptor->val_local_idx(const_val);
+    auto local_idx = tpde::ValLocalIdx(this->adaptor->global_lookup.lookup(gv));
     auto *assignment = this->val_assignment(local_idx);
     if (!assignment) {
       this->init_variable_ref(local_idx, static_cast<u32>(local_idx));
