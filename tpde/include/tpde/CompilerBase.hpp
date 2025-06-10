@@ -979,7 +979,7 @@ void CompilerBase<Adaptor, Derived, Config>::handle_func_arg(
     return;
   }
 
-  const u32 part_count = derived()->val_parts(arg).count();
+  const u32 part_count = vr.assignment()->part_count;
 
   u32 align = 1;
   u32 consecutive = 0;
