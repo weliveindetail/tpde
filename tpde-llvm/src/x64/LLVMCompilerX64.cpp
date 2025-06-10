@@ -12,6 +12,7 @@
 #include "LLVMCompilerBase.hpp"
 #include "encode_template_x64.hpp"
 #include "tpde/base.hpp"
+#include "tpde/util/misc.hpp"
 #include "tpde/x64/CompilerX64.hpp"
 
 namespace tpde_llvm::x64 {
@@ -243,31 +244,38 @@ bool LLVMCompilerX64::compile_alloca(const llvm::Instruction *inst,
     const auto elem_size = layout.getTypeAllocSize(alloca->getAllocatedType());
     ScratchReg scratch{this};
 
-    ValuePartRef res = std::move(size_ref).into_temporary();
+    AsmReg size_reg = size_ref.load_to_reg();
+    AsmReg res_reg = res_ref.alloc_try_reuse(size_ref);
 
     if (elem_size == 0) {
-      ASM(XOR32rr, res.cur_reg(), res.cur_reg());
+      ASM(XOR32rr, res_reg, res_reg);
     } else if ((elem_size & (elem_size - 1)) == 0) {
-      // elSize is power of two
-      if (elem_size != 1) {
-        const auto shift = __builtin_ctzll(elem_size);
-        ASM(SHL64ri, res.cur_reg(), shift);
+      // elem_size is power of two
+      const auto shift = tpde::util::cnt_tz(static_cast<u32>(elem_size));
+      if (shift > 0 && shift < 4) {
+        ASM(LEA64rm, res_reg, FE_MEM(FE_NOREG, u8(1 << shift), size_reg, 0));
+      } else {
+        if (size_reg != res_reg) {
+          ASM(MOV64rr, res_reg, size_reg);
+        }
+        if (elem_size != 1) {
+          ASM(SHL64ri, res_reg, shift);
+        }
       }
     } else {
       if (elem_size <= 0x7FFF'FFFF) [[likely]] {
-        ASM(IMUL64rri, res.cur_reg(), res.cur_reg(), elem_size);
+        ASM(IMUL64rri, res_reg, size_reg, elem_size);
       } else {
         auto tmp = scratch.alloc_gp();
         ASM(MOV64ri, tmp, elem_size);
-        ASM(IMUL64rr, res.cur_reg(), tmp);
+        if (size_reg != res_reg) {
+          ASM(MOV64rr, res_reg, size_reg);
+        }
+        ASM(IMUL64rr, res_reg, tmp);
       }
     }
 
-    ASM(SUB64rr, FE_SP, res.cur_reg());
-    res_ref.set_value(std::move(res));
-    if (!res_ref.has_reg()) {
-      res_ref.lock();
-    }
+    ASM(SUB64rr, FE_SP, res_reg);
 
     align = align > 16 ? align : 16;
     if (elem_size & (align - 1)) {

@@ -199,13 +199,11 @@ define void @dyn_alloca_dyn_cnt_i64(i64 %a) {
 ; X64-NEXT:    sub rsp, rax
 ; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
-; X64-NEXT:    mov rax, rbx
-; X64-NEXT:    shl rax, 0x2
+; X64-NEXT:    lea rax, [4*rbx]
 ; X64-NEXT:    sub rsp, rax
 ; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
-; X64-NEXT:    mov rax, rbx
-; X64-NEXT:    shl rax, 0x3
+; X64-NEXT:    lea rax, [8*rbx]
 ; X64-NEXT:    sub rsp, rax
 ; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
@@ -213,8 +211,7 @@ define void @dyn_alloca_dyn_cnt_i64(i64 %a) {
 ; X64-NEXT:    shl rax, 0x4
 ; X64-NEXT:    sub rsp, rax
 ; X64-NEXT:    mov rax, rsp
-; X64-NEXT:    mov rax, rbx
-; X64-NEXT:    imul rax, rax, 0x18
+; X64-NEXT:    imul rax, rbx, 0x18
 ; X64-NEXT:    sub rsp, rax
 ; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
@@ -222,8 +219,7 @@ define void @dyn_alloca_dyn_cnt_i64(i64 %a) {
 ; X64-NEXT:    shl rax, 0x5
 ; X64-NEXT:    sub rsp, rax
 ; X64-NEXT:    mov rax, rsp
-; X64-NEXT:    mov rax, rbx
-; X64-NEXT:    imul rax, rax, 0x30
+; X64-NEXT:    imul rax, rbx, 0x30
 ; X64-NEXT:    sub rsp, rax
 ; X64-NEXT:    mov rax, rsp
 ; X64-NEXT:    mov rax, rbx
@@ -347,7 +343,7 @@ define void @dyn_alloca_dyn_i32_cnt_i32(i32 %0) {
 ; X64-NEXT:    nop dword ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x28
 ; X64-NEXT:    mov ebx, edi
-; X64-NEXT:    shl rbx, 0x2
+; X64-NEXT:    lea rbx, [4*rbx]
 ; X64-NEXT:    sub rsp, rbx
 ; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rbx, rsp
@@ -552,8 +548,7 @@ define i32 @dyn_alloca_dyn_i32_cnt_i32_no_salvage(i32 %0) {
 ; X64-NEXT:    nop dword ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x28
 ; X64-NEXT:    mov ebx, edi
-; X64-NEXT:    mov eax, ebx
-; X64-NEXT:    shl rax, 0x2
+; X64-NEXT:    lea rax, [4*rbx]
 ; X64-NEXT:    sub rsp, rax
 ; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
@@ -593,8 +588,7 @@ define i64 @dyn_alloca_dyn_si3_cnt_i64_no_salvage(i64 %0) {
 ; X64-NEXT:    nop dword ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x28
 ; X64-NEXT:    mov rbx, rdi
-; X64-NEXT:    mov rax, rbx
-; X64-NEXT:    imul rax, rax, 0xc
+; X64-NEXT:    imul rax, rbx, 0xc
 ; X64-NEXT:    sub rsp, rax
 ; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
@@ -636,8 +630,7 @@ define i32 @dyn_alloca_dyn_si3_cnt_i32_no_salvage(i32 %0) {
 ; X64-NEXT:    nop dword ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x28
 ; X64-NEXT:    mov ebx, edi
-; X64-NEXT:    mov eax, ebx
-; X64-NEXT:    imul rax, rax, 0xc
+; X64-NEXT:    imul rax, rbx, 0xc
 ; X64-NEXT:    sub rsp, rax
 ; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
@@ -679,8 +672,7 @@ define i16 @dyn_alloca_dyn_si3_cnt_i16_no_salvage(i16 %0) {
 ; X64-NEXT:    nop dword ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x28
 ; X64-NEXT:    mov ebx, edi
-; X64-NEXT:    mov eax, ebx
-; X64-NEXT:    imul rax, rax, 0xc
+; X64-NEXT:    imul rax, rbx, 0xc
 ; X64-NEXT:    sub rsp, rax
 ; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rax, rsp
@@ -750,8 +742,8 @@ define ptr @dynalloca_align_16(i64 %0) {
 ; X64-NEXT:    push rbx
 ; X64-NEXT:    nop dword ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x28
-; X64-NEXT:    sub rsp, rdi
 ; X64-NEXT:    mov rbx, rdi
+; X64-NEXT:    sub rsp, rbx
 ; X64-NEXT:    and rsp, -0x10
 ; X64-NEXT:    mov rbx, rsp
 ; X64-NEXT:    mov rax, rbx
