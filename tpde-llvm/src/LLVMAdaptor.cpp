@@ -170,11 +170,11 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::Instruction *inst) {
   // Check operands for constants; PHI nodes are handled by predecessors.
   if (!llvm::isa<llvm::PHINode>(inst)) {
     for (llvm::Use &use : inst->operands()) {
-      auto *cst = llvm::dyn_cast<llvm::Constant>(use.get());
-      if (!cst || llvm::isa<llvm::GlobalValue>(cst)) {
+      if (!llvm::isa<llvm::ConstantAggregate, llvm::ConstantExpr>(use.get())) {
         continue;
       }
 
+      auto *cst = llvm::cast<llvm::Constant>(use.get());
       if (auto [repl, ins_begin] = fixup_constant(cst, inst); repl)
           [[unlikely]] {
         use = repl;
