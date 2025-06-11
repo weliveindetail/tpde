@@ -514,11 +514,6 @@ public:
   }
 
   bool compile_inline_asm(const llvm::CallBase *) { return false; }
-  bool compile_call_inner(const llvm::CallInst *,
-                          std::variant<SymRef, ValuePartRef> &,
-                          bool) noexcept {
-    return false;
-  }
 
   bool compile_icmp(const llvm::ICmpInst *, InstRange) noexcept {
     return false;
