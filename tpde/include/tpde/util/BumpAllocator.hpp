@@ -22,6 +22,12 @@ class BumpAllocator {
   static constexpr auto SLAB_ALIGNMENT =
       std::align_val_t(alignof(std::max_align_t));
 
+  /// Slab size for the i-th slab.
+  static constexpr size_t slab_size(size_t i) {
+    // Double slab size every 8 slabs.
+    return SlabSize << (i / 8);
+  }
+
 public:
   BumpAllocator() = default;
   ~BumpAllocator() noexcept {
@@ -38,9 +44,9 @@ public:
     if (!slabs.empty()) {
       deallocate_slabs(1);
       slabs.resize(1);
-      util::poison_memory_region(slabs[0], SlabSize);
+      util::poison_memory_region(slabs[0], slab_size(0));
       cur = reinterpret_cast<uintptr_t>(slabs[0]);
-      end = cur + SlabSize;
+      end = cur + slab_size(0);
     }
     deallocate_large_slabs();
   }
@@ -59,17 +65,18 @@ public:
 
   void *allocate_slab(size_t size, [[maybe_unused]] size_t align) noexcept {
     assert(align <= alignof(std::max_align_t) && "alignment type unsupported");
-    if (size > SlabSize) [[unlikely]] {
+    size_t slab_sz = slab_size(slabs.size());
+    if (size > slab_sz) [[unlikely]] {
       void *slab = allocate_mem(size, SLAB_ALIGNMENT);
       large_slabs.emplace_back(slab, size);
       return slab;
     }
 
-    void *slab = allocate_mem(SlabSize, SLAB_ALIGNMENT);
-    util::poison_memory_region(slab, SlabSize);
+    void *slab = allocate_mem(slab_sz, SLAB_ALIGNMENT);
+    util::poison_memory_region(slab, slab_sz);
     slabs.push_back(slab);
     cur = reinterpret_cast<uintptr_t>(slab) + size;
-    end = reinterpret_cast<uintptr_t>(slab) + SlabSize;
+    end = reinterpret_cast<uintptr_t>(slab) + slab_sz;
     util::unpoison_memory_region(slab, size);
     return slab;
   }
@@ -91,7 +98,7 @@ private:
 
   void deallocate_slabs(size_t skip = 0) noexcept {
     for (size_t i = skip; i < slabs.size(); ++i) {
-      deallocate_mem(slabs[i], SlabSize, SLAB_ALIGNMENT);
+      deallocate_mem(slabs[i], slab_size(i), SLAB_ALIGNMENT);
     }
   }
 
