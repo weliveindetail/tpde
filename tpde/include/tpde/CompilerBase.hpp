@@ -824,9 +824,7 @@ void CompilerBase<Adaptor, Derived, Config>::init_assignment(
 
   assert(max_part_size <= 256);
   assignment->max_part_size = max_part_size;
-#ifndef NDEBUG
   assignment->pending_free = false;
-#endif
   assignment->variable_ref = false;
   assignment->stack_variable = false;
   assignment->delay_free = last_full;
@@ -1171,13 +1169,75 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 Reg CompilerBase<Adaptor, Derived, Config>::select_reg_evict(
     RegBank bank, u64 exclusion_mask) noexcept {
-  // TODO(ts): try to first find a non callee-saved/clobbered register...
-  Reg reg = register_file.find_clocked_nonfixed_excluding(bank, exclusion_mask);
-  if (reg.invalid()) [[unlikely]] {
+  TPDE_LOG_DBG("select_reg_evict for bank {}", bank.id());
+  auto candidates = register_file.allocatable & ~register_file.fixed &
+                    register_file.bank_regs(bank) & ~exclusion_mask;
+
+  Reg candidate = Reg::make_invalid();
+  u32 max_score = 0;
+  for (auto reg_id : util::BitSetIterator<>(candidates)) {
+    Reg reg{reg_id};
+
+    // Must be an evictable value, not a temporary.
+    auto local_idx = register_file.reg_local_idx(reg);
+    u32 part = register_file.reg_part(Reg{reg});
+    assert(local_idx != INVALID_VAL_LOCAL_IDX);
+    ValueAssignment *va = val_assignment(local_idx);
+    AssignmentPartRef ap{va, part};
+
+    // We want to sort registers by the following (ordered by priority):
+    // - stack variable ref (~1 add/sub to reconstruct)
+    // - other variable ref (1-2 instrs to reconstruct)
+    // - already spilled (no store needed)
+    // - last use farthest away (most likely to get spilled anyhow, so there's
+    //   not much harm in spilling earlier)
+    // - lowest ref-count (least used)
+    //
+    // TODO: evaluate and refine this heuristic
+
+    // TODO: evict stack variable refs before others
+    if (ap.variable_ref()) {
+      TPDE_LOG_DBG("  r{} ({}) is variable-ref", reg_id, u32(local_idx));
+      candidate = reg;
+      break;
+    }
+
+    u32 score = 0;
+    if (ap.stack_valid()) {
+      score |= u32{1} << 31;
+    }
+
+    const auto &liveness = analyzer.liveness_info(local_idx);
+    u32 last_use_dist = u32(liveness.last) - u32(cur_block_idx);
+    score |= (last_use_dist < 0x8000 ? 0x8000 - last_use_dist : 0) << 16;
+
+    u32 refs_left = va->pending_free ? 0 : va->references_left;
+    score |= (refs_left < 0xffff ? 0x10000 - refs_left : 1);
+
+    TPDE_LOG_DBG("  r{} ({}:{}) rc={}/{} live={}-{}{} spilled={} score={:#x}",
+                 reg_id,
+                 u32(local_idx),
+                 part,
+                 refs_left,
+                 liveness.ref_count,
+                 u32(liveness.first),
+                 u32(liveness.last),
+                 &"*"[!liveness.last_full],
+                 ap.stack_valid(),
+                 score);
+
+    assert(score != 0);
+    if (score > max_score) {
+      candidate = reg;
+      max_score = score;
+    }
+  }
+  if (candidate.invalid()) [[unlikely]] {
     TPDE_FATAL("ran out of registers for scratch registers");
   }
-  evict_reg(reg);
-  return reg;
+  TPDE_LOG_DBG("  selected r{}", candidate.id());
+  evict_reg(candidate);
+  return candidate;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>

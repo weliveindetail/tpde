@@ -149,9 +149,7 @@ void CompilerBase<Adaptor, Derived, Config>::ValueRef::reset() noexcept {
         auto &free_list_head =
             compiler->assignments.delayed_free_lists[u32(liveness.last)];
         state.a.assignment->next_delayed_free_entry = free_list_head;
-#ifndef NDEBUG
         state.a.assignment->pending_free = true;
-#endif
         free_list_head = local_idx;
       }
     }

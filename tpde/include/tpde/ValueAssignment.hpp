@@ -55,8 +55,7 @@ struct ValueAssignment {
       u8 max_part_size;
 
       /// Whether the assignment is in a delayed free list and the reference
-      /// count is therefore invalid (zero). Set/used in debug builds only to
-      /// catch use-after-frees.
+      /// count is therefore invalid (zero).
       bool pending_free : 1;
 
       /// Whether the assignment is a single-part variable reference.
