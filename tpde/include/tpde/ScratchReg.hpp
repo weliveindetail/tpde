@@ -98,21 +98,10 @@ CompilerBase<Adaptor, Derived, Config>::AsmReg
     return reg;
   }
 
-  // TODO(ts): try to first find a non callee-saved/clobbered register...
-  auto reg = reg_file.find_first_free_excluding(bank, 0);
-  if (reg.invalid()) {
-    // TODO(ts): use clock here?
-    reg = reg_file.find_first_nonfixed_excluding(bank, 0);
-    if (reg.invalid()) [[unlikely]] {
-      TPDE_FATAL("ran out of registers for scratch registers");
-    }
-    compiler->evict_reg(reg);
-  }
-
+  reg = compiler->select_reg(bank, /*exclusion_mask=*/0);
   reg_file.mark_used(reg, INVALID_VAL_LOCAL_IDX, 0);
   reg_file.mark_clobbered(reg);
   reg_file.mark_fixed(reg);
-  this->reg = reg;
   return reg;
 }
 

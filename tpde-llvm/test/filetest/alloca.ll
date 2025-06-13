@@ -1287,39 +1287,37 @@ define void @alloca_manyregs(i32 %0, ptr %1, ptr %2, ptr %3, i64 %4, i32 %5, ptr
 ; X64-NEXT:    mov eax, dword ptr [r15]
 ; X64-NEXT:    mov eax, 0x0
 ; X64-NEXT:    lea eax, [1*rax]
-; X64-NEXT:    mov r15, qword ptr [rbp - 0x407e0]
-; X64-NEXT:    mov dword ptr [rbp - 0x40828], eax
-; X64-NEXT:    mov eax, dword ptr [r15]
-; X64-NEXT:    mov rax, qword ptr [rbp - 0x407e8]
-; X64-NEXT:    mov dword ptr [rax], 0x0
-; X64-NEXT:    mov eax, dword ptr [rbp - 0x407ec]
-; X64-NEXT:    mov dword ptr [0x0], eax
-; X64-NEXT:    mov rcx, qword ptr [rbp - 0x407f8]
-; X64-NEXT:    cmp rcx, 0x0
-; X64-NEXT:    mov eax, 0x0
-; X64-NEXT:    sete al
-; X64-NEXT:    mov rax, qword ptr [rbp - 0x40]
-; X64-NEXT:    lea rcx, [rax + 0x4]
-; X64-NEXT:    mov edx, 0x0
-; X64-NEXT:    mov ebx, dword ptr [rbp - 0x407f0]
-; X64-NEXT:    mov ecx, ebx
-; X64-NEXT:    shr edx, cl
+; X64-NEXT:    mov rcx, qword ptr [rbp - 0x407e0]
+; X64-NEXT:    mov edx, dword ptr [rcx]
+; X64-NEXT:    mov rdx, qword ptr [rbp - 0x407e8]
+; X64-NEXT:    mov dword ptr [rdx], 0x0
+; X64-NEXT:    mov ebx, dword ptr [rbp - 0x407ec]
+; X64-NEXT:    mov dword ptr [0x0], ebx
+; X64-NEXT:    mov rsi, qword ptr [rbp - 0x407f8]
+; X64-NEXT:    cmp rsi, 0x0
+; X64-NEXT:    mov edi, 0x0
+; X64-NEXT:    sete dil
+; X64-NEXT:    mov rdi, qword ptr [rbp - 0x40]
+; X64-NEXT:    lea r8, [rdi + 0x4]
+; X64-NEXT:    mov r8d, 0x0
+; X64-NEXT:    mov r9d, dword ptr [rbp - 0x407f0]
+; X64-NEXT:    mov ecx, r9d
+; X64-NEXT:    shr r8d, cl
 ; X64-NEXT:    mov rcx, qword ptr [rbp - 0x40800]
-; X64-NEXT:    mov rdx, rcx
-; X64-NEXT:    mov rdx, qword ptr [rbp - 0x40808]
-; X64-NEXT:    mov rsi, qword ptr [rbp - 0x40810]
-; X64-NEXT:    lea rax, [rdx + 4*rsi]
-; X64-NEXT:    mov eax, dword ptr [rbp - 0x40814]
-; X64-NEXT:    mov ecx, eax
-; X64-NEXT:    and ecx, dword ptr [rbp - 0x40818]
-; X64-NEXT:    mov ecx, dword ptr [rbp - 0x4081c]
-; X64-NEXT:    mov eax, ecx
-; X64-NEXT:    shr eax, 0x0
-; X64-NEXT:    mov eax, dword ptr [rbp - 0x54]
-; X64-NEXT:    mov ecx, eax
-; X64-NEXT:    or ecx, 0x0
-; X64-NEXT:    mov ecx, dword ptr [rbp - 0x40828]
-; X64-NEXT:    mov dword ptr [rbp - 0x40824], ecx
+; X64-NEXT:    mov r8, rcx
+; X64-NEXT:    mov r8, qword ptr [rbp - 0x40808]
+; X64-NEXT:    mov r10, qword ptr [rbp - 0x40810]
+; X64-NEXT:    lea r11, [r8 + 4*r10]
+; X64-NEXT:    mov r11d, dword ptr [rbp - 0x40814]
+; X64-NEXT:    mov r12d, r11d
+; X64-NEXT:    and r12d, dword ptr [rbp - 0x40818]
+; X64-NEXT:    mov r12d, dword ptr [rbp - 0x4081c]
+; X64-NEXT:    mov r13d, r12d
+; X64-NEXT:    shr r13d, 0x0
+; X64-NEXT:    mov r13d, dword ptr [rbp - 0x54]
+; X64-NEXT:    mov r14d, r13d
+; X64-NEXT:    or r14d, 0x0
+; X64-NEXT:    mov dword ptr [rbp - 0x40824], eax
 ; X64-NEXT:    jmp <L0>
 ;
 ; ARM64-LABEL: <alloca_manyregs>:

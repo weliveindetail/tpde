@@ -399,18 +399,8 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
     bank = state.c.bank;
   }
 
+  Reg reg = compiler->select_reg(bank, exclusion_mask);
   auto &reg_file = compiler->register_file;
-  auto reg = reg_file.find_first_free_excluding(bank, exclusion_mask);
-  // TODO(ts): need to grab this from the registerfile since the reg type
-  // could be different
-  if (reg.invalid()) [[unlikely]] {
-    reg = reg_file.find_clocked_nonfixed_excluding(bank, exclusion_mask);
-    if (reg.invalid()) [[unlikely]] {
-      TPDE_FATAL("ran out of registers for value part");
-    }
-    compiler->evict_reg(reg);
-  }
-
   reg_file.mark_clobbered(reg);
   if (has_assignment()) {
     reg_file.mark_used(reg, state.v.local_idx, state.v.part);

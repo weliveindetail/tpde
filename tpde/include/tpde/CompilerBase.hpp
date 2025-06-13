@@ -339,6 +339,19 @@ public:
   /// ValuePartRef), store it in dst.
   AsmReg gval_as_reg_reuse(GenericValuePart &gv, ScratchReg &dst) noexcept;
 
+private:
+  Reg select_reg_evict(RegBank bank, u64 exclusion_mask) noexcept;
+
+public:
+  /// Select an available register, evicting loaded values if needed.
+  Reg select_reg(RegBank bank, u64 exclusion_mask) noexcept {
+    Reg res = register_file.find_first_free_excluding(bank, exclusion_mask);
+    if (res.valid()) [[likely]] {
+      return res;
+    }
+    return select_reg_evict(bank, exclusion_mask);
+  }
+
   /// Reload a value part from memory or recompute variable address.
   void reload_to_reg(AsmReg dst, AssignmentPartRef ap) noexcept;
 
@@ -1152,6 +1165,18 @@ typename CompilerBase<Adaptor, Derived, Config>::AsmReg
       }
     }
   }
+  return reg;
+}
+
+template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
+Reg CompilerBase<Adaptor, Derived, Config>::select_reg_evict(
+    RegBank bank, u64 exclusion_mask) noexcept {
+  // TODO(ts): try to first find a non callee-saved/clobbered register...
+  Reg reg = register_file.find_clocked_nonfixed_excluding(bank, exclusion_mask);
+  if (reg.invalid()) [[unlikely]] {
+    TPDE_FATAL("ran out of registers for scratch registers");
+  }
+  evict_reg(reg);
   return reg;
 }
 
