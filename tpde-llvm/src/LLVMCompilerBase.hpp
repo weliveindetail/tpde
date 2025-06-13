@@ -944,14 +944,13 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
 
     auto *init = gv->getInitializer();
     if (gv->hasAppendingLinkage()) [[unlikely]] {
-      if (gv->getName() == "llvm.used" ||
-          gv->getName() == "llvm.compiler.used") {
+      llvm::StringRef name = gv->getName();
+      if (name == "llvm.used" || name == "llvm.compiler.used") {
         // llvm.used is collected above and handled by select_section.
         // llvm.compiler.used needs no special handling.
         continue;
       }
-      assert(gv->getName() == "llvm.global_ctors" ||
-             gv->getName() == "llvm.global_dtors");
+      assert(name == "llvm.global_ctors" || name == "llvm.global_dtors");
       if (llvm::isa<llvm::ConstantAggregateZero>(init)) {
         continue;
       }
@@ -995,7 +994,7 @@ bool LLVMCompilerBase<Adaptor, Derived, Config>::
         structors.emplace_back(global_sym(ptr), group, prio_val);
       }
 
-      const auto is_ctor = (gv->getName() == "llvm.global_ctors");
+      const auto is_ctor = (name == "llvm.global_ctors");
 
       // We need to create one array section per comdat group per priority.
       // Therefore, sort so that structors for the same section are together.

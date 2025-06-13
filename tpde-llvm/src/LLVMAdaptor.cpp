@@ -215,7 +215,10 @@ llvm::Instruction *LLVMAdaptor::handle_inst_in_block(llvm::Instruction *inst) {
 }
 
 bool LLVMAdaptor::switch_func(const IRFuncRef function) noexcept {
-  llvm::TimeTraceScope time_scope("TPDE_Prepass", function->getName());
+  llvm::TimeTraceScope time_scope("TPDE_Prepass", [function]() {
+    // getName is expensive, so only call it when time tracing is enabled.
+    return std::string(function->getName());
+  });
 
   cur_func = function;
   func_unsupported = false;
