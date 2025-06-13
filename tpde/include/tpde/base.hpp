@@ -56,6 +56,12 @@
   #define TPDE_LIFETIMEBOUND
 #endif
 
+#if __has_builtin(__builtin_assume_separate_storage)
+  #define TPDE_NOALIAS(a, b) __builtin_assume_separate_storage(a, b)
+#else
+  #define TPDE_NOALIAS(a, b)
+#endif
+
 namespace tpde {
 // NOTE(ts): someone's gonna hate me...
 using u8 = uint8_t;

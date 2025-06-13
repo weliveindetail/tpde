@@ -8,24 +8,23 @@
 #include <cstring>
 
 #include "tpde/base.hpp"
+#include "tpde/util/SmallVector.hpp"
 #include "tpde/util/misc.hpp"
 
 namespace tpde::util {
 
-template <typename VecT>
-  requires std::same_as<typename VecT::value_type, u8>
 class VectorWriter {
-  VecT *vector = nullptr;
+  SmallVectorBase<u8> *vector = nullptr;
   u8 *cur;
   u8 *end;
 
 public:
   VectorWriter() noexcept = default;
-  VectorWriter(VecT &vector) noexcept
+  VectorWriter(SmallVectorBase<u8> &vector) noexcept
       : vector(&vector),
         cur(vector.data() + vector.size()),
         end(vector.data() + vector.size()) {}
-  VectorWriter(VecT &vector, size_t off) noexcept
+  VectorWriter(SmallVectorBase<u8> &vector, size_t off) noexcept
       : vector(&vector),
         cur(vector.data() + off),
         end(vector.data() + vector.size()) {}
@@ -48,14 +47,11 @@ public:
     assert(end >= cur);
     if (size_t(end - cur) < extra) [[unlikely]] {
       size_t off = size();
-      // First try to use the available capacity before growing furiously.
-      if (vector->capacity() >= off + extra) {
-        vector->resize(vector->capacity());
-        assert(cur == vector->data() + off &&
-               "in-capacity resize reallocated?");
-      } else {
-        vector->resize(vector->size() * 2 + extra);
+      if (vector->capacity() < off + extra) {
+        // This will grow exponentially.
+        vector->reserve(off + extra);
       }
+      vector->resize_uninitialized(vector->capacity());
       cur = vector->data() + off;
       end = vector->data() + vector->size();
     }
@@ -83,8 +79,26 @@ public:
     skip_unchecked(size);
   }
 
+  void unskip(size_t n) noexcept {
+    assert(n <= size());
+    cur -= n;
+  }
+
+  void zero_unchecked(size_t n) noexcept {
+    assert(size_t(end - cur) >= n);
+    TPDE_NOALIAS(this, cur);
+    std::memset(cur, 0, n);
+    cur += n;
+  }
+
+  void zero(size_t n) noexcept {
+    reserve(n);
+    zero_unchecked(n);
+  }
+
   void write_unchecked(std::span<const u8> data) noexcept {
     assert(size_t(end - cur) >= data.size());
+    TPDE_NOALIAS(this, cur);
     std::memcpy(cur, data.data(), data.size());
     cur += data.size();
   }
@@ -97,6 +111,7 @@ public:
   template <std::integral T>
   void write_unchecked(T t) noexcept {
     assert(size_t(end - cur) >= sizeof(T));
+    TPDE_NOALIAS(this, cur);
     std::memcpy(cur, &t, sizeof(T));
     cur += sizeof(T);
   }

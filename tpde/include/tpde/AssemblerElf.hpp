@@ -398,7 +398,7 @@ protected:
   SecRef secref_except_table = INVALID_SEC_REF;
 
 public:
-  util::VectorWriter<DataSection::StorageTy> eh_writer;
+  util::VectorWriter eh_writer;
 
 private:
   struct ExceptCallSiteInfo {
@@ -414,9 +414,9 @@ private:
   std::vector<ExceptCallSiteInfo> except_call_site_table;
 
   /// Temporary storage for encoding call sites
-  std::vector<u8> except_encoded_call_sites;
+  util::SmallVector<u8> except_encoded_call_sites;
   /// Action Table for current function
-  std::vector<u8> except_action_table;
+  util::SmallVector<u8> except_action_table;
   /// The type_info table (contains the symbols which contain the pointers to
   /// the type_info)
   std::vector<SymRef> except_type_info_table;
@@ -704,7 +704,6 @@ public:
   void eh_align_frame() noexcept;
   void eh_write_inst(u8 opcode, u64 arg) noexcept;
   void eh_write_inst(u8 opcode, u64 first_arg, u64 second_arg) noexcept;
-  void eh_write_uleb(u64 value) noexcept;
 
 private:
   void eh_init_cie(SymRef personality_func_addr = SymRef()) noexcept;

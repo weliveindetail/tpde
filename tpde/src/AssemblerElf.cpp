@@ -435,10 +435,14 @@ void AssemblerElfBase::reloc_sec(const SecRef sec,
 }
 
 void AssemblerElfBase::eh_align_frame() noexcept {
-  unsigned count = -eh_writer.size() & 7;
-  eh_writer.reserve(count);
-  for (unsigned i = 0; i < count; ++i) {
-    eh_writer.write_unchecked<u8>(dwarf::DW_CFA_nop);
+  if (unsigned count = -eh_writer.size() & 7) {
+    eh_writer.reserve(8);
+    // Small hack for performance: always write 8 bytes (single instruction, no
+    // loop in machine code), but adjust pointer only by count bytes.
+    for (unsigned i = 0; i < 8; ++i) {
+      eh_writer.write_unchecked<u8>(dwarf::DW_CFA_nop);
+    }
+    eh_writer.unskip(8 - count);
   }
 }
 
@@ -447,8 +451,9 @@ void AssemblerElfBase::eh_write_inst(const u8 opcode, const u64 arg) noexcept {
     assert((arg & dwarf::DWARF_CFI_PRIMARY_OPCODE_MASK) == 0);
     eh_writer.write<u8>(opcode | arg);
   } else {
-    eh_writer.write<u8>(opcode);
-    eh_write_uleb(arg);
+    eh_writer.reserve(11);
+    eh_writer.write_unchecked<u8>(opcode);
+    eh_writer.write_uleb_unchecked(arg);
   }
 }
 
@@ -456,16 +461,11 @@ void AssemblerElfBase::eh_write_inst(const u8 opcode,
                                      const u64 first_arg,
                                      const u64 second_arg) noexcept {
   eh_write_inst(opcode, first_arg);
-  eh_write_uleb(second_arg);
-}
-
-void AssemblerElfBase::eh_write_uleb(u64 value) noexcept {
-  eh_writer.write_uleb(value);
+  eh_writer.write_uleb(second_arg);
 }
 
 void AssemblerElfBase::eh_init_cie(SymRef personality_func_addr) noexcept {
   // write out the initial CIE
-  eh_align_frame();
 
   // CIE layout:
   // length: u32
@@ -489,71 +489,70 @@ void AssemblerElfBase::eh_init_cie(SymRef personality_func_addr) noexcept {
 
   const auto first = eh_writer.size() == 0;
   auto off = eh_writer.size();
+  assert(off % 8 == 0 && "eh_frame section unaligned");
   eh_cur_cie_off = off;
 
-  eh_writer.skip(!personality_func_addr.valid() ? 17 : 25);
-  u8 *data = eh_writer.data();
+  eh_writer.reserve(32 + target_info.cie_instrs.size());
 
-  // id is 0 for CIEs
-
-  // version is 1
-  data[off + 8] = 1;
-
+  eh_writer.skip_unchecked(4);       // length written at the end.
+  eh_writer.write_unchecked<u32>(0); // id is 0 for CIEs
+  eh_writer.write_unchecked<u8>(1);  // version
   if (!personality_func_addr.valid()) {
     // augmentation is "zR" for a CIE with no personality meaning there is
     // the augmentation_data_len and ptr_size field
-    data[off + 9] = 'z';
-    data[off + 10] = 'R';
+    eh_writer.write_unchecked<u8>('z');
+    eh_writer.write_unchecked<u8>('R');
   } else {
     // with a personality function the augmentation is "zPLR" meaning there
     // is augmentation_data_len, personality_encoding, personality_addr,
     // lsa_encoding and ptr_size
-    data[off + 9] = 'z';
-    data[off + 10] = 'P';
-    data[off + 11] = 'L';
-    data[off + 12] = 'R';
+    eh_writer.write_unchecked<u8>('z');
+    eh_writer.write_unchecked<u8>('P');
+    eh_writer.write_unchecked<u8>('L');
+    eh_writer.write_unchecked<u8>('R');
   }
+  eh_writer.write_unchecked<u8>(0);
 
-  u32 bias = (!personality_func_addr.valid()) ? 0 : 2;
-
-  data[off + 12 + bias] = target_info.cie_code_alignment_factor;
-  data[off + 13 + bias] = target_info.cie_data_alignment_factor;
+  eh_writer.write_unchecked<u8>(target_info.cie_code_alignment_factor);
+  eh_writer.write_unchecked<u8>(target_info.cie_data_alignment_factor);
 
   // return_addr_register is defined by the derived impl
-  data[off + 14 + bias] = target_info.cie_return_addr_register;
+  eh_writer.write_unchecked<u8>(target_info.cie_return_addr_register);
 
   // augmentation_data_len is 1 when no personality is present or 7 otherwise
-  data[off + 15 + bias] = (!personality_func_addr.valid()) ? 1 : 7;
+  eh_writer.write_unchecked<u8>((!personality_func_addr.valid()) ? 1 : 7);
 
   if (personality_func_addr.valid()) {
     // the personality encoding is a 4-byte pc-relative address where the
     // address of the personality func is stored
-    data[off + 16 + bias] = dwarf::DW_EH_PE_pcrel | dwarf::DW_EH_PE_sdata4 |
-                            dwarf::DW_EH_PE_indirect;
+    eh_writer.write_unchecked<u8>(dwarf::DW_EH_PE_pcrel |
+                                  dwarf::DW_EH_PE_sdata4 |
+                                  dwarf::DW_EH_PE_indirect);
 
     reloc_sec(secref_eh_frame,
               personality_func_addr,
               target_info.reloc_pc32,
-              off + 17 + bias,
+              eh_writer.size(),
               0);
+    eh_writer.write_unchecked<u32>(
+        0); // relocated, zero for deterministic output
 
     // the lsa_encoding as a 4-byte pc-relative address since the whole
     // object should fit in 2gb
-    data[off + 21 + bias] = dwarf::DW_EH_PE_pcrel | dwarf::DW_EH_PE_sdata4;
-
-    bias += 6;
+    eh_writer.write_unchecked<u8>(dwarf::DW_EH_PE_pcrel |
+                                  dwarf::DW_EH_PE_sdata4);
   }
 
   // fde_ptr_encoding is a 4-byte signed pc-relative address
-  data[off + bias + 16] = dwarf::DW_EH_PE_sdata4 | dwarf::DW_EH_PE_pcrel;
+  eh_writer.write_unchecked<u8>(dwarf::DW_EH_PE_sdata4 | dwarf::DW_EH_PE_pcrel);
 
-  eh_writer.write(target_info.cie_instrs);
+  eh_writer.write_unchecked(target_info.cie_instrs);
 
   eh_align_frame();
 
   // patch size of CIE (length is not counted)
-  *reinterpret_cast<u32 *>(eh_writer.data() + off) =
-      eh_writer.size() - off - sizeof(u32);
+  u32 size = eh_writer.size() - off - sizeof(u32);
+  std::memcpy(eh_writer.data() + off, &size, sizeof(size));
 
   if (first) {
     eh_first_fde_off = eh_writer.size();
@@ -566,9 +565,8 @@ u32 AssemblerElfBase::eh_begin_fde(SymRef personality_func_addr) noexcept {
     cur_personality_func_addr = personality_func_addr;
   }
 
-  eh_align_frame();
-
   const auto fde_off = eh_writer.size();
+  assert(fde_off % 8 == 0 && "eh_frame section unaligned");
 
   // FDE Layout:
   //  length: u32
@@ -584,7 +582,7 @@ u32 AssemblerElfBase::eh_begin_fde(SymRef personality_func_addr) noexcept {
   //
   // Total Size: 17 bytes or 21 bytes
 
-  eh_writer.skip(!cur_personality_func_addr.valid() ? 17 : 21);
+  eh_writer.zero(!cur_personality_func_addr.valid() ? 17 : 21);
   u8 *data = eh_writer.data() + fde_off;
 
   // we encode length later
@@ -724,7 +722,7 @@ void AssemblerElfBase::except_encode_func(SymRef func_sym) noexcept {
 
     if (!except_action_table.empty()) {
       // allocate space for type_info table
-      et_writer.skip((except_type_info_table.size() + 1) * sizeof(u32));
+      et_writer.zero((except_type_info_table.size() + 1) * sizeof(u32));
 
       // in reverse order since indices are negative
       size_t off = et_writer.size() - sizeof(u32) * 2;
