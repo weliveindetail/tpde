@@ -1450,16 +1450,12 @@ AsmReg
   for (const auto reg_id : util::BitSetIterator<>{possible_regs}) {
     const auto reg = AsmReg{reg_id};
 
-    if (this->register_file.is_fixed(reg)) {
-      continue;
-    }
+    assert(!this->register_file.is_fixed(reg));
 
     const auto local_idx = this->register_file.reg_local_idx(reg);
     const auto part = this->register_file.reg_part(reg);
+    assert(local_idx != Base::INVALID_VAL_LOCAL_IDX);
 
-    if (local_idx == Base::INVALID_VAL_LOCAL_IDX) {
-      continue;
-    }
     auto *assignment = this->val_assignment(local_idx);
     auto ap = AssignmentPartRef{assignment, part};
     if (ap.modified()) {

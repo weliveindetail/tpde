@@ -563,10 +563,10 @@ void CompilerBase<Adaptor, Derived, Config>::CallBuilderBase<CBDerived>::call(
 
   derived()->call_impl(std::move(target));
 
-  for (auto reg_id : util::BitSetIterator<>{arg_regs}) {
-    compiler.register_file.unmark_fixed(Reg{reg_id});
-    compiler.register_file.unmark_used(Reg{reg_id});
-  }
+  assert((compiler.register_file.fixed & arg_regs) == arg_regs);
+  assert((compiler.register_file.used & arg_regs) == arg_regs);
+  compiler.register_file.fixed &= ~arg_regs;
+  compiler.register_file.used &= ~arg_regs;
 }
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
@@ -652,10 +652,10 @@ void CompilerBase<Adaptor, Derived, Config>::RetBuilder::add(
 
 template <IRAdaptor Adaptor, typename Derived, CompilerConfig Config>
 void CompilerBase<Adaptor, Derived, Config>::RetBuilder::ret() noexcept {
-  for (auto reg_id : util::BitSetIterator<>{ret_regs}) {
-    compiler.register_file.unmark_fixed(Reg{reg_id});
-    compiler.register_file.unmark_used(Reg{reg_id});
-  }
+  assert((compiler.register_file.fixed & ret_regs) == ret_regs);
+  assert((compiler.register_file.used & ret_regs) == ret_regs);
+  compiler.register_file.fixed &= ~ret_regs;
+  compiler.register_file.used &= ~ret_regs;
 
   compiler.gen_func_epilog();
   compiler.release_regs_after_return();
@@ -1382,19 +1382,9 @@ void CompilerBase<Adaptor, Derived, Config>::release_spilled_regs(
   assert(may_change_value_state());
 
   // TODO(ts): needs changes for other RegisterFile impls
-  for (auto reg_id : util::BitSetIterator<>{regs}) {
-    auto reg = AsmReg{reg_id};
-    if (!register_file.is_used(reg)) {
-      continue;
-    }
-    if (register_file.is_fixed(reg)) {
-      // we don't need to release fixed assignments but they should be
-      // real assignments from values
-      assert(register_file.reg_local_idx(reg) != INVALID_VAL_LOCAL_IDX);
-      continue;
-    }
-
-    free_reg(reg);
+  auto used_non_fixed_regs = register_file.used & ~register_file.fixed;
+  for (auto reg_id : util::BitSetIterator<>{regs & used_non_fixed_regs}) {
+    free_reg(Reg{reg_id});
   }
 }
 
