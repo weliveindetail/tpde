@@ -99,15 +99,13 @@ Framework divides back-end into 7 components:
     which can then be used to load them to registers, get their stack frame offset, etc.
   - ValueRefs can also refer to a simple constant, when an assignment is accessed,
     user implementation gets a chance to simply return a constant ValueRef
-  - EXAMPLE
 - machine code generation complexity depends on instruction complexity
 - can be as simple as accessing the assignment of the operands and result, loading the operands
   into registers, asking for a register for the result and then emitting instructions
   that implement the semantics of the IR instruction and make sure the result is in the result register
   given
-- TODO: EXAMPLE? may be a bit overwhelming
   
-## encoding snippets:
+## Encoding Snippets:
 - since writing down the instruction selection for each instruction is difficult, a lot of work
   and not portable, TPDE includes a tool to generate code that generates a specific sequence of
   instructions given a high-level function
@@ -163,13 +161,11 @@ Framework divides back-end into 7 components:
 	  ```
 	  which is completely architecture-independent without any regards to the actual instructions
 	  being generated
-	- extremely usefule for fast porting to other architectures and when
+	- extremely useful for fast porting to other architectures and when
 	  the necessary instruction sequences are long (e.g. float/double to/from int conversions)
   - currently no support for branching to other basic blocks in the function
 	  or function calls
-	
   
-## Code Layout:
 
 <div class="section_buttons">
  

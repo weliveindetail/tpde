@@ -397,43 +397,6 @@ void Analyzer<Adaptor>::build_loop_tree_and_block_layout(
   }
 
   assert(static_cast<u32>(loops[0].end) == block_rpo.size());
-
-  // TODO(ts): this is currently disabled as it wants to enfore that loop
-  // childs directly follow their parent which the algorithm above does not
-  // guarantee. But I don't think any code actually relies on this being true,
-  // just that childs have to follow their parent
-#if defined(TPDE_ASSERTS) && 0
-  struct Constraint {
-    u32 begin, end;
-    u32 index;
-    u32 level;
-  };
-
-  util::SmallVector<Constraint, 16> constraint_stack{};
-  constraint_stack.push_back(
-      Constraint{0, static_cast<u32>(loops[0].end), 0, 0});
-  for (u32 i = 1; i < loops.size(); ++i) {
-    const auto &loop = loops[i];
-    assert(!constraint_stack.empty());
-    while (static_cast<u32>(loop.begin) >= constraint_stack.back().end) {
-      constraint_stack.pop_back();
-    }
-
-    const auto &con = constraint_stack.back();
-    assert(static_cast<u32>(loop.end) - static_cast<u32>(loop.begin) ==
-           loop.num_blocks);
-    assert(static_cast<u32>(loop.begin) >= con.begin);
-    assert(static_cast<u32>(loop.end) <= con.end);
-    assert(loop.parent == con.index);
-    assert(loop.level == con.level + 1);
-
-    constraint_stack.push_back(Constraint{static_cast<u32>(loop.begin),
-                                          static_cast<u32>(loop.end),
-                                          i,
-                                          loop.level});
-  }
-
-#endif
 }
 
 template <IRAdaptor Adaptor>
