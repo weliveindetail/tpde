@@ -342,3 +342,36 @@ define void @call_byval4(ptr %a, ptr %b) {
   call void @fn_byval4(ptr %a, ptr %b)
   ret void
 }
+
+define i64 @fn_byval5(ptr byval(i64) %a) {
+; X64-LABEL: <fn_byval5>:
+; X64:         push rbp
+; X64-NEXT:    mov rbp, rsp
+; X64-NEXT:    push rbx
+; X64-NEXT:    nop dword ptr [rax + rax]
+; X64-NEXT:    sub rsp, 0x28
+; X64-NEXT:    mov rax, qword ptr [rbp + 0x10]
+; X64-NEXT:    add rsp, 0x28
+; X64-NEXT:    pop rbx
+; X64-NEXT:    pop rbp
+; X64-NEXT:    ret
+;
+; ARM64-LABEL: <fn_byval5>:
+; ARM64:         sub sp, sp, #0xa0
+; ARM64-NEXT:    stp x29, x30, [sp]
+; ARM64-NEXT:    mov x29, sp
+; ARM64-NEXT:    str x19, [sp, #0x10]
+; ARM64-NEXT:    add x17, sp, #0xa0
+; ARM64-NEXT:    add x19, x17, #0x0
+; ARM64-NEXT:    ldr x19, [x19]
+; ARM64-NEXT:    mov x0, x19
+; ARM64-NEXT:    ldp x29, x30, [sp]
+; ARM64-NEXT:    ldr x19, [sp, #0x10]
+; ARM64-NEXT:    add sp, sp, #0xa0
+; ARM64-NEXT:    ret
+  br label %bb
+
+bb:
+  %r = load i64, ptr %a
+  ret i64 %r
+}

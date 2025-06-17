@@ -608,7 +608,9 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
   u32 arg_idx = 0;
   for (const IRValueRef arg : this->adaptor->cur_args()) {
     derived()->handle_func_arg(
-        arg_idx, arg, [&](ValuePart &&vp, CCAssignment cca) {
+        arg_idx,
+        arg,
+        [&](ValuePart &&vp, CCAssignment cca) -> std::optional<i32> {
           cca.bank = vp.bank();
           cca.size = vp.part_size();
 
@@ -620,22 +622,17 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
             // argument is unused, the register will be freed immediately and
             // can be used for later stack arguments.
             this->register_file.allocatable |= u64{1} << cca.reg.id();
-            return;
+            return {};
           }
 
           if (vp.is_owned()) {
             // no need to handle unused arguments
-            return;
+            return {};
           }
 
           if (cca.byval) {
-            ValLocalIdx local_idx = this->val_idx(arg);
-            // Ugly hack, we shouldn't create the assignment in the first place.
-            this->assignments.value_ptrs[u32(local_idx)] = nullptr;
-            this->init_variable_ref(local_idx, 0);
-            ValueAssignment *assignment = this->val_assignment(local_idx);
-            assignment->stack_variable = true;
-            assignment->frame_off = 0x10 + cca.stack_off;
+            // Return byval frame_off.
+            return 0x10 + cca.stack_off;
           } else {
             //  TODO(ts): maybe allow negative frame offsets for value
             //  assignments so we can simply reference this?
@@ -644,6 +641,7 @@ void CompilerX64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
             AsmReg dst = vp.alloc_reg(this);
             this->load_from_stack(dst, 0x10 + cca.stack_off, cca.size);
           }
+          return {};
         });
 
     arg_idx += 1;

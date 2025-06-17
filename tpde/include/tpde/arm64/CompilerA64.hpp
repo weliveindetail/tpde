@@ -753,7 +753,9 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
   u32 arg_idx = 0;
   for (const IRValueRef arg : this->adaptor->cur_args()) {
     derived()->handle_func_arg(
-        arg_idx, arg, [&](ValuePart &&vp, CCAssignment cca) {
+        arg_idx,
+        arg,
+        [&](ValuePart &&vp, CCAssignment cca) -> std::optional<i32> {
           cca.bank = vp.bank();
           cca.size = vp.part_size();
 
@@ -765,7 +767,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
             // argument is unused, the register will be freed immediately and
             // can be used for later stack arguments.
             this->register_file.allocatable |= u64{1} << cca.reg.id();
-            return;
+            return {};
           }
 
           this->text_writer.ensure_space(8);
@@ -803,6 +805,7 @@ void CompilerA64<Adaptor, Derived, BaseTy, Config>::gen_func_prolog_and_args(
             default: TPDE_UNREACHABLE("invalid FP reg size");
             }
           }
+          return {};
         });
 
     arg_idx += 1;

@@ -965,12 +965,30 @@ void CompilerBase<Adaptor, Derived, Config>::handle_func_arg(
     u32 arg_idx, IRValueRef arg, Fn add_arg) noexcept {
   ValueRef vr = derived()->result_ref(arg);
   if (adaptor->cur_arg_is_byval(arg_idx)) {
-    add_arg(vr.part(0),
-            CCAssignment{
-                .byval = true,
-                .byval_align = adaptor->cur_arg_byval_align(arg_idx),
-                .byval_size = adaptor->cur_arg_byval_size(arg_idx),
-            });
+    std::optional<i32> byval_frame_off =
+        add_arg(vr.part(0),
+                CCAssignment{
+                    .byval = true,
+                    .byval_align = adaptor->cur_arg_byval_align(arg_idx),
+                    .byval_size = adaptor->cur_arg_byval_size(arg_idx),
+                });
+
+    if (byval_frame_off) {
+      // We need to convert the assignment into a stack variable ref.
+      ValLocalIdx local_idx = val_idx(arg);
+      // TODO: we shouldn't create the result_ref for such cases in the first
+      // place. However, this is not easy to detect up front, it depends on the
+      // target and the calling convention whether this is possible.
+      vr.reset();
+      // Value assignment might have been free'd by ValueRef reset.
+      if (val_assignment(local_idx)) {
+        free_assignment(local_idx);
+      }
+      init_variable_ref(local_idx, 0);
+      ValueAssignment *assignment = this->val_assignment(local_idx);
+      assignment->stack_variable = true;
+      assignment->frame_off = *byval_frame_off;
+    }
     return;
   }
 
@@ -1930,6 +1948,21 @@ bool CompilerBase<Adaptor, Derived, Config>::compile_block(
       return false;
     }
   }
+
+#ifndef NDEBUG
+  // Some consistency checks. Register assignment information must match, all
+  // used registers must have an assignment (no temporaries across blocks), and
+  // fixed registers must be fixed assignments.
+  for (auto reg_id : register_file.used_regs()) {
+    Reg reg{reg_id};
+    assert(register_file.reg_local_idx(reg) != INVALID_VAL_LOCAL_IDX);
+    AssignmentPartRef ap{val_assignment(register_file.reg_local_idx(reg)),
+                         register_file.reg_part(reg)};
+    assert(ap.register_valid());
+    assert(ap.get_reg() == reg);
+    assert(!register_file.is_fixed(reg) || ap.fixed_assignment());
+  }
+#endif
 
   if (static_cast<u32>(assignments.delayed_free_lists[block_idx]) != ~0u) {
     auto list_entry = assignments.delayed_free_lists[block_idx];
