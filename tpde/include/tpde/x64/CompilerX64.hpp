@@ -377,10 +377,10 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
   }
 
   template <typename... Args>
-  auto asm_helper(unsigned (*fn)(u8 *, int, Args...)) {
+  auto asm_helper(unsigned (*enc_fn)(u8 *, int, Args...)) {
     struct Helper {
       CompilerX64 *compiler;
-      decltype(fn) fn;
+      decltype(enc_fn) fn;
       void encode(unsigned reserve, int flags, Args... args) {
         if (reserve) {
           compiler->text_writer.ensure_space(reserve);
@@ -390,7 +390,7 @@ struct CompilerX64 : BaseTy<Adaptor, Derived, Config> {
         compiler->text_writer.cur_ptr() += n;
       }
     };
-    return Helper{this, fn};
+    return Helper{this, enc_fn};
   }
 
   void start_func(u32 func_idx) noexcept;

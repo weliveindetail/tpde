@@ -38,9 +38,6 @@ else ()
         add_compile_options(-Wno-covered-switch-default)
         add_compile_options(-Wsign-compare)
     endif()
-    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-changes-meaning>)
-    endif()
 
     # for development builds use -Werror and enable sanitizers
     if (PROJECT_IS_TOP_LEVEL)

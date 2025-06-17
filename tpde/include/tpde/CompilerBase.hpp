@@ -98,7 +98,7 @@ struct CompilerBase {
   using Assembler = typename Config::Assembler;
   using AsmReg = typename Config::AsmReg;
 
-  using RegisterFile = RegisterFile<Config::NUM_BANKS, 32>;
+  using RegisterFile = tpde::RegisterFile<Config::NUM_BANKS, 32>;
 
   /// A default implementation for ValRefSpecial.
   // Note: Subclasses can override this, always used Derived::ValRefSpecial.
