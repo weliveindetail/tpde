@@ -21,4 +21,6 @@ llvm_config.with_environment('PATH', config.tpde_llvm_bin_dir, append_path=True)
 config.substitutions.append(('tpde-llc', 'tpde-llc --regular-exit'))
 config.substitutions.append(('%objdump', 'llvm-objdump -d -r --no-show-raw-insn --symbolize-operands --no-addresses --x86-asm-syntax=intel -'))
 
+config.available_features.add(f'llvm{config.llvm_version}')
+
 # TODO(ts): arch config

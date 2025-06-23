@@ -4,6 +4,7 @@
 ; SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 ; RUN: tpde-llc --target=x86_64 %s | %objdump | FileCheck %s -check-prefixes=X64
+; XFAIL: llvm20.1
 
 declare {i128, i1} @llvm.smul.with.overflow.i128(i128, i128)
 declare {i128, i1} @llvm.umul.with.overflow.i128(i128, i128)

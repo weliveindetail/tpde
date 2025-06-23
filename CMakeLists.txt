@@ -58,24 +58,36 @@ if (TPDE_ENABLE_COVERAGE)
 endif()
 
 if (TPDE_ENABLE_ENCODEGEN OR TPDE_ENABLE_LLVM)
+    # LLVM versions we currently support. The first version should be the
+    # "primary" versions where all tests pass (i.e., no XFAIL due to different
+    # code generation).
+    set(TPDE_LLVM_SUPPORTED_VERSIONS 19.1 20.1)
+
+    # allow overriding the LLVM version used
+    if (DEFINED LLVM_DIR)
+        find_package(LLVM CONFIG)
+    endif ()
+    foreach (VERSION ${TPDE_LLVM_SUPPORTED_VERSIONS})
+        if (NOT LLVM_FOUND)
+            find_package(LLVM ${VERSION} CONFIG)
+        endif ()
+    endforeach ()
     if (NOT LLVM_FOUND)
-        find_package(LLVM 19.1 CONFIG)
+        message(FATAL_ERROR "Unable to find suitable LLVM version "
+                "(supported versions: ${TPDE_LLVM_SUPPORTED_VERSIONS})")
     endif()
-    if (NOT LLVM_FOUND)
-        find_package(LLVM 20.1 CONFIG)
-        message(WARNING "LLVM version compatible, but tests are likely to fail")
-        message(NOTICE "Tests are written against LLVM 19.1")
-    endif()
-    if (NOT LLVM_FOUND)
-        message(FATAL_ERROR "Unable to find suitable LLVM (need 19.1 or 20.1)")
-    endif()
+
     message(STATUS "Found LLVM ${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}")
     message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-    if (NOT "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}" STREQUAL "19.1")
-        message(WARNING "LLVM version ${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR} "
-            "is supported, but tests will fail. Tests currently rely on LLVM 19.1; "
-            "test failures will likely be caused by different code generation.")
-    endif()
+    if (NOT "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}" IN_LIST TPDE_LLVM_SUPPORTED_VERSIONS)
+        message(WARNING "Found LLVM, but version is unsupported "
+                "(supported versions: ${TPDE_LLVM_SUPPORTED_VERSIONS})")
+    endif ()
+
+    if (LLVM_VERSION_MAJOR LESS 20)
+        # See https://github.com/llvm/llvm-project/pull/123578
+        add_compile_options(-Wno-error=cpp)
+    endif ()
 endif()
 
 if (TPDE_INCLUDE_TESTS)
