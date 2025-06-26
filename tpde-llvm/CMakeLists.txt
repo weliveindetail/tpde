@@ -11,7 +11,7 @@ project(tpde_llvm)
 
 if (NOT TPDE_ENABLE_ENCODEGEN)
     message(FATAL_ERROR "TPDE_ENABLE_LLVM needs TPDE_ENABLE_ENCODEGEN")
-endif()
+endif ()
 
 add_library(tpde_llvm)
 add_library(tpde::tpde_llvm ALIAS tpde_llvm)
@@ -60,12 +60,20 @@ target_sources(tpde_llvm PRIVATE
         src/LLVMCompilerBase.hpp
 )
 
-find_program(clang NAMES clang-20 clang-19 clang-18 clang-17 clang)
+set(CLANG_HINTS "")
+if (DEFINED LLVM_DIR)
+    set(CLANG_HINTS "${LLVM_DIR}/../clang")
+endif ()
 
-if(TPDE_X64)
+find_package(Clang ${LLVM_VERSION} REQUIRED CONFIG HINTS ${CLANG_HINTS})
+
+get_property(clang_path TARGET clang PROPERTY LOCATION)
+message("Using clang " ${Clang_VERSION} " at: " ${clang_path})
+
+if (TPDE_X64)
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
-        COMMAND ${clang} -c -emit-llvm -ffreestanding -fcf-protection=none
+        COMMAND ${clang_path} -c -emit-llvm -ffreestanding -fcf-protection=none
             -O3 -fomit-frame-pointer -fno-math-errno
             --target=x86_64-linux -march=x86-64-v4
             -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
@@ -98,12 +106,12 @@ if(TPDE_X64)
         FILES
             ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.hpp
     )
-endif()
+endif ()
 
-if(TPDE_A64)
+if (TPDE_A64)
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
-        COMMAND ${clang} -c -emit-llvm -ffreestanding -fcf-protection=none
+        COMMAND ${clang_path} -c -emit-llvm -ffreestanding -fcf-protection=none
             -O3 -fomit-frame-pointer -fno-math-errno
             --target=aarch64 -march=armv8.1-a
             -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
@@ -136,7 +144,7 @@ if(TPDE_A64)
         FILES
             ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.hpp
     )
-endif()
+endif ()
 
 
 # tpde-llc binary
@@ -173,4 +181,4 @@ if (TPDE_INCLUDE_TESTS)
 
     # Backwards-compatibility
     add_custom_target(tpde_llvm_filetest DEPENDS check-tpde-llvm)
-endif()
+endif ()
