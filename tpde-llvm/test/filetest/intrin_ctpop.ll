@@ -4,7 +4,7 @@
 
 ; RUN: tpde-llc --target=x86_64 %s | %objdump | FileCheck %s -check-prefixes=X64
 ; RUN: tpde-llc --target=aarch64 %s | %objdump | FileCheck %s -check-prefixes=ARM64
-; XFAIL: llvm20.1
+; XFAIL: llvm19.1
 
 define i8 @ctpop_i8(i8 %0) {
 ; X64-LABEL: <ctpop_i8>:
@@ -40,7 +40,7 @@ define i8 @ctpop_i8(i8 %0) {
 ; ARM64-NEXT:    uxtb w0, w0
 ; ARM64-NEXT:    fmov s0, w0
 ; ARM64-NEXT:    cnt v0.8b, v0.8b
-; ARM64-NEXT:    uaddlv h0, v0.8b
+; ARM64-NEXT:    addv b0, v0.8b
 ; ARM64-NEXT:    fmov w0, s0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -83,7 +83,7 @@ define i16 @ctpop_i16(i16 %0) {
 ; ARM64-NEXT:    uxth w0, w0
 ; ARM64-NEXT:    fmov s0, w0
 ; ARM64-NEXT:    cnt v0.8b, v0.8b
-; ARM64-NEXT:    uaddlv h0, v0.8b
+; ARM64-NEXT:    addv b0, v0.8b
 ; ARM64-NEXT:    fmov w0, s0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -126,7 +126,7 @@ define i23 @ctpop_i23(i23 %0) {
 ; ARM64-NEXT:    ubfx w0, w0, #0, #23
 ; ARM64-NEXT:    fmov s0, w0
 ; ARM64-NEXT:    cnt v0.8b, v0.8b
-; ARM64-NEXT:    uaddlv h0, v0.8b
+; ARM64-NEXT:    addv b0, v0.8b
 ; ARM64-NEXT:    fmov w0, s0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -167,7 +167,7 @@ define i32 @ctpop_i32(i32 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    fmov s0, w0
 ; ARM64-NEXT:    cnt v0.8b, v0.8b
-; ARM64-NEXT:    uaddlv h0, v0.8b
+; ARM64-NEXT:    addv b0, v0.8b
 ; ARM64-NEXT:    fmov w0, s0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -215,8 +215,8 @@ define i37 @ctpop_i37(i37 %0) {
 ; ARM64-NEXT:    ubfx x0, x0, #0, #37
 ; ARM64-NEXT:    fmov d0, x0
 ; ARM64-NEXT:    cnt v0.8b, v0.8b
-; ARM64-NEXT:    uaddlv h0, v0.8b
-; ARM64-NEXT:    fmov w0, s0
+; ARM64-NEXT:    addv b0, v0.8b
+; ARM64-NEXT:    fmov x0, d0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret
@@ -260,8 +260,8 @@ define i64 @ctpop_i64(i64 %0) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    fmov d0, x0
 ; ARM64-NEXT:    cnt v0.8b, v0.8b
-; ARM64-NEXT:    uaddlv h0, v0.8b
-; ARM64-NEXT:    fmov w0, s0
+; ARM64-NEXT:    addv b0, v0.8b
+; ARM64-NEXT:    fmov x0, d0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret

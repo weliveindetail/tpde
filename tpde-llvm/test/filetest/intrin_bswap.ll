@@ -4,7 +4,7 @@
 
 ; RUN: tpde-llc --target=x86_64 %s | %objdump | FileCheck %s -check-prefixes=X64
 ; RUN: tpde-llc --target=aarch64 %s | %objdump | FileCheck %s -check-prefixes=ARM64
-; XFAIL: llvm20.1
+; XFAIL: llvm19.1
 
 define i16 @bswapi16(i16 %x) {
 ; X64-LABEL: <bswapi16>:
@@ -23,9 +23,7 @@ define i16 @bswapi16(i16 %x) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    rev w0, w0
-; ARM64-NEXT:    lsr w1, w0, #16
-; ARM64-NEXT:    mov w0, w1
+; ARM64-NEXT:    rev16 w0, w0
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
 ; ARM64-NEXT:    ret

@@ -4,7 +4,7 @@
 
 ; RUN: tpde-llc --target=x86_64 %s | %objdump | FileCheck %s -check-prefixes=X64
 ; RUN: tpde-llc --target=aarch64 %s | %objdump | FileCheck %s -check-prefixes=ARM64
-; XFAIL: llvm20.1
+; XFAIL: llvm19.1
 
 define i17 @ucmpi17(i17 %0, i17 %1) {
 ; X64-LABEL: <ucmpi17>:
@@ -14,12 +14,10 @@ define i17 @ucmpi17(i17 %0, i17 %1) {
 ; X64-NEXT:    sub rsp, 0x30
 ; X64-NEXT:    and edi, 0x1ffff
 ; X64-NEXT:    and esi, 0x1ffff
-; X64-NEXT:    xor eax, eax
 ; X64-NEXT:    cmp edi, esi
 ; X64-NEXT:    seta al
-; X64-NEXT:    mov rcx, -0x1
-; X64-NEXT:    cmovae rcx, rax
-; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    sbb al, 0x0
+; X64-NEXT:    movsx rax, al
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -33,7 +31,8 @@ define i17 @ucmpi17(i17 %0, i17 %1) {
 ; ARM64-NEXT:    ubfx w1, w1, #0, #17
 ; ARM64-NEXT:    cmp w0, w1
 ; ARM64-NEXT:    cset w0, hi
-; ARM64-NEXT:    csinv x1, x0, xzr, hs
+; ARM64-NEXT:    csinv w0, w0, wzr, hs
+; ARM64-NEXT:    sxtw x1, w0
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -48,12 +47,10 @@ define i32 @ucmpi32(i32 %0, i32 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    xor eax, eax
 ; X64-NEXT:    cmp edi, esi
 ; X64-NEXT:    seta al
-; X64-NEXT:    mov rcx, -0x1
-; X64-NEXT:    cmovae rcx, rax
-; X64-NEXT:    mov eax, ecx
+; X64-NEXT:    sbb al, 0x0
+; X64-NEXT:    movsx rax, al
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -65,7 +62,8 @@ define i32 @ucmpi32(i32 %0, i32 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    cmp w0, w1
 ; ARM64-NEXT:    cset w0, hi
-; ARM64-NEXT:    csinv x1, x0, xzr, hs
+; ARM64-NEXT:    csinv w0, w0, wzr, hs
+; ARM64-NEXT:    sxtw x1, w0
 ; ARM64-NEXT:    mov w0, w1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -84,12 +82,10 @@ define i37 @ucmpi37(i37 %0, i37 %1) {
 ; X64-NEXT:    and rdi, rax
 ; X64-NEXT:    movabs rax, 0x1fffffffff
 ; X64-NEXT:    and rsi, rax
-; X64-NEXT:    xor eax, eax
 ; X64-NEXT:    cmp rdi, rsi
 ; X64-NEXT:    seta al
-; X64-NEXT:    mov rcx, -0x1
-; X64-NEXT:    cmovae rcx, rax
-; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    sbb al, 0x0
+; X64-NEXT:    movsx rax, al
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -103,7 +99,8 @@ define i37 @ucmpi37(i37 %0, i37 %1) {
 ; ARM64-NEXT:    ubfx x1, x1, #0, #37
 ; ARM64-NEXT:    cmp x0, x1
 ; ARM64-NEXT:    cset w0, hi
-; ARM64-NEXT:    csinv x1, x0, xzr, hs
+; ARM64-NEXT:    csinv w0, w0, wzr, hs
+; ARM64-NEXT:    sxtw x1, w0
 ; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0
@@ -118,12 +115,10 @@ define i64 @ucmpi64(i64 %0, i64 %1) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    xor eax, eax
 ; X64-NEXT:    cmp rdi, rsi
 ; X64-NEXT:    seta al
-; X64-NEXT:    mov rcx, -0x1
-; X64-NEXT:    cmovae rcx, rax
-; X64-NEXT:    mov rax, rcx
+; X64-NEXT:    sbb al, 0x0
+; X64-NEXT:    movsx rax, al
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -135,7 +130,8 @@ define i64 @ucmpi64(i64 %0, i64 %1) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    cmp x0, x1
 ; ARM64-NEXT:    cset w0, hi
-; ARM64-NEXT:    csinv x1, x0, xzr, hs
+; ARM64-NEXT:    csinv w0, w0, wzr, hs
+; ARM64-NEXT:    sxtw x1, w0
 ; ARM64-NEXT:    mov x0, x1
 ; ARM64-NEXT:    ldp x29, x30, [sp]
 ; ARM64-NEXT:    add sp, sp, #0xa0

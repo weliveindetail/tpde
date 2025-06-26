@@ -5,7 +5,7 @@
 
 ; RUN: tpde-llc --target=x86_64 %s | %objdump | FileCheck %s -check-prefixes=X64
 ; RUN: tpde-llc --target=aarch64 %s | %objdump | FileCheck %s -check-prefixes=ARM64
-; XFAIL: llvm20.1
+; XFAIL: llvm19.1
 
 declare i8   @llvm.cttz.i8  (i8, i1)
 declare i16   @llvm.cttz.i16  (i16, i1)
@@ -126,13 +126,8 @@ define void @cttz_i32(i32 %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    test edi, edi
-; X64-NEXT:    je <L0>
-; X64-NEXT:    bsf eax, edi
-; X64-NEXT:    jmp <L1>
-; X64-NEXT:  <L0>:
 ; X64-NEXT:    mov eax, 0x20
-; X64-NEXT:  <L1>:
+; X64-NEXT:    bsf eax, edi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -184,13 +179,8 @@ define void @cttz_i64(i64 %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    test rdi, rdi
-; X64-NEXT:    je <L0>
-; X64-NEXT:    bsf rax, rdi
-; X64-NEXT:    jmp <L1>
-; X64-NEXT:  <L0>:
 ; X64-NEXT:    mov eax, 0x40
-; X64-NEXT:  <L1>:
+; X64-NEXT:    bsf rax, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -242,21 +232,10 @@ define void @cttz_i32_no_salvage(i32 %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    test edi, edi
-; X64-NEXT:    mov ecx, edi
-; X64-NEXT:    je <L0>
-; X64-NEXT:    bsf eax, ecx
-; X64-NEXT:    jmp <L1>
-; X64-NEXT:  <L0>:
 ; X64-NEXT:    mov eax, 0x20
-; X64-NEXT:  <L1>:
-; X64-NEXT:    test edi, edi
-; X64-NEXT:    je <L2>
 ; X64-NEXT:    bsf eax, edi
-; X64-NEXT:    jmp <L3>
-; X64-NEXT:  <L2>:
 ; X64-NEXT:    mov eax, 0x20
-; X64-NEXT:  <L3>:
+; X64-NEXT:    bsf eax, edi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret
@@ -285,21 +264,10 @@ define void @cttz_i64_no_salvage(i64 %0) {
 ; X64-NEXT:    mov rbp, rsp
 ; X64-NEXT:    nop word ptr [rax + rax]
 ; X64-NEXT:    sub rsp, 0x30
-; X64-NEXT:    test rdi, rdi
-; X64-NEXT:    mov rcx, rdi
-; X64-NEXT:    je <L0>
-; X64-NEXT:    bsf rax, rcx
-; X64-NEXT:    jmp <L1>
-; X64-NEXT:  <L0>:
 ; X64-NEXT:    mov eax, 0x40
-; X64-NEXT:  <L1>:
-; X64-NEXT:    test rdi, rdi
-; X64-NEXT:    je <L2>
 ; X64-NEXT:    bsf rax, rdi
-; X64-NEXT:    jmp <L3>
-; X64-NEXT:  <L2>:
 ; X64-NEXT:    mov eax, 0x40
-; X64-NEXT:  <L3>:
+; X64-NEXT:    bsf rax, rdi
 ; X64-NEXT:    add rsp, 0x30
 ; X64-NEXT:    pop rbp
 ; X64-NEXT:    ret

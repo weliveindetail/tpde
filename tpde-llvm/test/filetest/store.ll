@@ -5,7 +5,7 @@
 
 ; RUN: tpde-llc --target=x86_64 %s | %objdump | FileCheck %s -check-prefixes=X64
 ; RUN: tpde-llc --target=aarch64 %s | %objdump | FileCheck %s -check-prefixes=ARM64
-; XFAIL: llvm20.1
+; XFAIL: llvm19.1
 
 ; TODO(ts): datalayout depending on arch?
 ; target datalayout = "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128"
@@ -682,7 +682,7 @@ define void @store_i24(ptr %a, i24 %b) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x2, x1, #16, #16
+; ARM64-NEXT:    lsr w2, w1, #16
 ; ARM64-NEXT:    strh w1, [x0]
 ; ARM64-NEXT:    strb w2, [x0, #0x2]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -711,7 +711,7 @@ define void @store_i24_alloca(i24 %b) {
 ; ARM64-NEXT:    stp x29, x30, [sp]
 ; ARM64-NEXT:    mov x29, sp
 ; ARM64-NEXT:    nop
-; ARM64-NEXT:    ubfx x1, x0, #16, #16
+; ARM64-NEXT:    lsr w1, w0, #16
 ; ARM64-NEXT:    strh w0, [x29, #0xa0]
 ; ARM64-NEXT:    strb w1, [x29, #0xa2]
 ; ARM64-NEXT:    ldp x29, x30, [sp]
@@ -744,7 +744,7 @@ define void @store_i24_const(ptr %a) {
 ; ARM64-NEXT:    nop
 ; ARM64-NEXT:    mov x1, #0x1337 // =4919
 ; ARM64-NEXT:    movk x1, #0x37, lsl #16
-; ARM64-NEXT:    ubfx x2, x1, #16, #16
+; ARM64-NEXT:    lsr w2, w1, #16
 ; ARM64-NEXT:    strh w1, [x0]
 ; ARM64-NEXT:    strb w2, [x0, #0x2]
 ; ARM64-NEXT:    ldp x29, x30, [sp]

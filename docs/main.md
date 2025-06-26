@@ -15,8 +15,8 @@ This repository contains:
 Requirements/external dependencies:
 
 - GNU-compatible C++20 compiler (e.g., Clang 19+, GCC 14+)
-- LLVM/Clang 19.1 or 20.1 (only for tests, TPDE-LLVM and TPDE-Encodegen)
-  - Prefer LLVM 19.1. LLVM 20.1 should work, but tests will fail due to different code generation.
+- LLVM/Clang 20.1 or 19.1 (only for tests, TPDE-LLVM and TPDE-Encodegen)
+  - Prefer LLVM 20.1. LLVM 19.1 should work, but tests will fail due to different code generation.
   - Note: for tests, also the LLVM tools (`lit`, `llc`, `llvm-objdump`, `FileCheck`, etc.) are required.
 - Python 3.10+
 - Other dependencies are bundled as submodules.

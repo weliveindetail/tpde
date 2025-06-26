@@ -37,7 +37,7 @@ else ()
         # We often add unreachable() to default cases
         add_compile_options(-Wno-covered-switch-default)
         add_compile_options(-Wsign-compare)
-    endif()
+    endif ()
 
     # for development builds use -Werror and enable sanitizers
     if (PROJECT_IS_TOP_LEVEL)
@@ -52,16 +52,16 @@ endif ()
 if (TPDE_ENABLE_COVERAGE)
     if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         error("coverage build only supported with Clang")
-    endif()
+    endif ()
     add_compile_options(-fprofile-instr-generate -fcoverage-mapping)
     add_link_options(-fprofile-instr-generate -fcoverage-mapping)
-endif()
+endif ()
 
 if (TPDE_ENABLE_ENCODEGEN OR TPDE_ENABLE_LLVM)
     # LLVM versions we currently support. The first version should be the
     # "primary" versions where all tests pass (i.e., no XFAIL due to different
     # code generation).
-    set(TPDE_LLVM_SUPPORTED_VERSIONS 19.1 20.1)
+    set(TPDE_LLVM_SUPPORTED_VERSIONS 20.1 19.1)
 
     # allow overriding the LLVM version used
     if (DEFINED LLVM_DIR)
@@ -93,7 +93,7 @@ endif()
 if (TPDE_INCLUDE_TESTS)
     find_program(LIT NAMES ${LLVM_DEFAULT_EXTERNAL_LIT} lit llvm-lit REQUIRED)
     message(STATUS "Found lit: ${LIT}")
-endif()
+endif ()
 
 function(add_tpde_lit_target target)
     cmake_parse_arguments(ARG "" "" "DEPENDS" ${ARGN})
@@ -102,7 +102,7 @@ function(add_tpde_lit_target target)
         USES_TERMINAL)
     if (ARG_DEPENDS)
         add_dependencies(${target} ${ARG_DEPENDS})
-    endif()
+    endif ()
 endfunction()
 
 function(add_tpde_lit_testsuite target)
@@ -115,17 +115,17 @@ endfunction()
 add_subdirectory(tpde)
 if (TPDE_ENABLE_ENCODEGEN)
     add_subdirectory(tpde-encodegen)
-endif()
+endif ()
 if (TPDE_ENABLE_LLVM)
     add_subdirectory(tpde-llvm)
-endif()
+endif ()
 
 if (TPDE_INCLUDE_TESTS)
     get_property(TPDE_LIT_TESTSUITES GLOBAL PROPERTY TPDE_LIT_TESTSUITES)
     get_property(TPDE_LIT_DEPENDS GLOBAL PROPERTY TPDE_LIT_DEPENDS)
     add_tpde_lit_target(check-tpde ${TPDE_LIT_TESTSUITES} DEPENDS ${TPDE_LIT_DEPENDS})
-endif()
+endif ()
 
 if (TPDE_BUILD_DOCS)
     add_subdirectory(docs)
-endif()
+endif ()
