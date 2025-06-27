@@ -65,15 +65,40 @@ if (DEFINED LLVM_DIR)
     set(CLANG_HINTS "${LLVM_DIR}/../clang")
 endif ()
 
-find_package(Clang ${LLVM_VERSION} REQUIRED CONFIG HINTS ${CLANG_HINTS})
-
-get_property(clang_path TARGET clang PROPERTY LOCATION)
-message("Using clang " ${Clang_VERSION} " at: " ${clang_path})
+function(check_clang_version validator_result_var CANDIDATE)
+    execute_process(COMMAND ${CANDIDATE} --version
+                    RESULT_VARIABLE CANDIDATE_VERSION_RC
+                    OUTPUT_VARIABLE CANDIDATE_VERSION_OUT)
+    if (CANDIDATE_VERSION_RC EQUAL 0)
+        string(REGEX MATCH "clang version [0-9]+.[0-9]+" CANDIDATE_VERSION_STR ${CANDIDATE_VERSION_OUT})
+    endif ()
+    if (NOT CANDIDATE_VERSION_STR)
+        message(VERBOSE "Unable to determine version for Clang at ${CANDIDATE}")
+        set(${validator_result_var} FALSE PARENT_SCOPE)
+    else ()
+        string(SUBSTRING ${CANDIDATE_VERSION_STR} 14 -1 CANDIDATE_VERSION)
+        message(VERBOSE "Found Clang ${CANDIDATE_VERSION} at ${CANDIDATE}")
+        if (${CANDIDATE_VERSION} VERSION_GREATER "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}")
+            message(VERBOSE "Cannot use Clang newer than used LLVM version")
+            set(${validator_result_var} FALSE PARENT_SCOPE)
+        elseif (NOT ${CANDIDATE_VERSION} VERSION_EQUAL "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}")
+            # TODO: run optimization in tpde-encodegen to avoid this.
+            message(WARNING "Different Clang (${CANDIDATE_VERSION}) and LLVM "
+                    "(${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}) versions "
+                    "might cause broken tests.")
+        endif ()
+    endif ()
+endfunction()
+find_program(CLANG NO_CACHE REQUIRED
+             NAMES clang-${LLVM_VERSION_MAJOR} clang-20 clang-19 clang-18 clang
+             HINTS ${LLVM_TOOLS_BINARY_DIR}
+             VALIDATOR check_clang_version)
+message(STATUS "Found Clang: " ${CLANG})
 
 if (TPDE_X64)
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
-        COMMAND ${clang_path} -c -emit-llvm -ffreestanding -fcf-protection=none
+        COMMAND ${CLANG} -c -emit-llvm -ffreestanding -fcf-protection=none
             -O3 -fomit-frame-pointer -fno-math-errno
             --target=x86_64-linux -march=x86-64-v4
             -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
@@ -111,7 +136,7 @@ endif ()
 if (TPDE_A64)
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
-        COMMAND ${clang_path} -c -emit-llvm -ffreestanding -fcf-protection=none
+        COMMAND ${CLANG} -c -emit-llvm -ffreestanding -fcf-protection=none
             -O3 -fomit-frame-pointer -fno-math-errno
             --target=aarch64 -march=armv8.1-a
             -o ${CMAKE_CURRENT_BINARY_DIR}/encode_template_arm64.bc
