@@ -95,6 +95,12 @@ find_program(CLANG NO_CACHE REQUIRED
              VALIDATOR check_clang_version)
 message(STATUS "Found Clang: " ${CLANG})
 
+if(CLANG)
+    message(STATUS "Found Clang: " ${CLANG})
+else()
+    set(CLANG /usr/lib/llvm-20/bin/clang)
+endif()
+
 if (TPDE_X64)
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/encode_template_x64.bc
